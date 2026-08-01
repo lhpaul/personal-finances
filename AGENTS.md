@@ -1,0 +1,269 @@
+# AGENTS.md
+
+This is the primary AI agent guidance file for this project. It follows the [AGENTS.md](https://github.com/agentsmd/agents.md) open format and is read by all AI coding assistants (Claude Code, Cursor, Codex, Gemini CLI, etc.).
+
+> **Note for Claude Code users**: `CLAUDE.md` is a symlink to this file.
+
+---
+
+## Project Overview
+
+**Finanzas** — a personal-finance app for people living in Chile. It reads their bank
+movements, guides them through categorizing those movements in short sessions, and shows where
+their money actually goes.
+
+**The defining constraint:** bank credentials never leave the user's phone. Scraping runs
+on-device in a hidden WebView; everything is stored in local SQLite. **There is no backend.**
+Any change that would send a credential or a movement to a server contradicts the product.
+
+**Users:** people in Chile with at least one bank account, who want visibility over their
+spending without handing their banking password to a third party.
+
+**MVP scope:** sign-in, Banco de Chile connection, sync, categorization, transactions,
+dashboard, settings, local reminders. Presupuestos, planificación and beneficios exist in the
+mockups (flagged `mvp: false`) and are **out** of implementation scope.
+
+### Non-negotiables
+
+1. Credentials live only in `expo-secure-store`, only in the scraper's memory during a sync.
+   Never in SQLite, never in a log, never in an error payload.
+2. Money is `INTEGER` minor units. Never floats.
+3. Bank movements are never deleted — only excluded from analysis, with a reason.
+4. Re-syncing is idempotent.
+5. Migrations are additive. A bad migration is unrecoverable on a user's device.
+6. `design/mockups/mobile/` is the UI contract. Every UI item names the `#screen=…&state=…`
+   it implements, and implements **every** state that screen declares.
+
+---
+
+## Repository Structure
+
+Turborepo + pnpm workspaces. Full detail in
+[`docs/project/2-repo-architecture.md`](docs/project/2-repo-architecture.md).
+
+```
+apps/mobile/            # Expo SDK 54 app — the only shippable artifact
+packages/
+  bank-scraper/         # On-device WebView scraping + per-bank script configs
+  db/                   # Drizzle schema, migrations, seeds, repositories — the only SQL
+  core/                 # Pure domain logic: no React, no SQL, no I/O
+  ui/                   # Primitives mirroring design/tokens.json
+  configs/              # Shared ESLint / TS / Prettier / Jest
+design/                 # Tokens + HTML mockups (the UI contract)
+docs/                   # Specs, best practices, AI workflow protocols
+```
+
+Layering: `app/ → feature hooks → @finanzas/db → SQLite`. Screens never import Drizzle.
+`@finanzas/core` never imports from `apps/` or `@finanzas/ui`.
+
+Local, gitignored reference: `bank-scrapper-app/` (source for `packages/bank-scraper`;
+Banco de Chile already implemented) and `personal-finances-app-mockups-v0/` (superseded).
+
+---
+
+## Key Documentation
+
+Always refer to these docs for authoritative guidance:
+
+| Document                                                                                                                                                       | Purpose                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [`docs/project/1-business-domain.md`](docs/project/1-business-domain.md)                                                                                       | Domain entities, business rules, glossary                                                       |
+| [`docs/project/2-repo-architecture.md`](docs/project/2-repo-architecture.md)                                                                                   | Repository structure, packages, apps                                                            |
+| [`docs/project/3-software-architecture.md`](docs/project/3-software-architecture.md)                                                                           | Tech stack, design patterns, architecture decisions                                             |
+| [`docs/project/4-database-model.md`](docs/project/4-database-model.md)                                                                                         | Data model, schema, access patterns (if applicable)                                             |
+| [`docs/best-practices/1-general.md`](docs/best-practices/1-general.md)                                                                                         | General coding standards                                                                        |
+| [`docs/best-practices/2-version-control.md`](docs/best-practices/2-version-control.md)                                                                         | Git conventions                                                                                 |
+| [`docs/best-practices/3-testing.md`](docs/best-practices/3-testing.md)                                                                                         | Testing standards                                                                               |
+| [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFIC.md)                                                                               | Stack-specific conventions                                                                      |
+| [`REVIEW.md`](REVIEW.md)                                                                                                                                       | Canonical review contract for spec, plan, and code review gates                                 |
+| [`docs/workflow/development-workflow/README.md`](docs/workflow/development-workflow/README.md)                                                                 | AI development workflow (master doc)                                                            |
+| [`docs/workflow/development-workflow/protocols/00-add-backlog-item-protocol.md`](docs/workflow/development-workflow/protocols/00-add-backlog-item-protocol.md) | Create backlog work items in a configured tracker (before spec/plan work)                       |
+| [`docs/workflow/development-workflow/agent-model-config.md`](docs/workflow/development-workflow/agent-model-config.md)                                         | Model assignments, tool restrictions, and override guide for all agents                         |
+| [`.ai-dev-workflow.yaml`](.ai-dev-workflow.yaml)                                                                                                               | Repo-level workflow integration manifest (review tools, issue tracker, VCS, browser automation) |
+| [`LLM_RULES.md`](LLM_RULES.md)                                                                                                                                 | Agent commit rules enforced by Haystack pre-commit hooks (when installed)                       |
+| [`docs/workflow/development-workflow/integrations/haystack.md`](docs/workflow/development-workflow/integrations/haystack.md)                                   | Optional Haystack Editor hooks and PR workflow                                                  |
+
+> **Note for Cursor users**: Start from the workflow commands, especially `/run-item <target>` for single-item advancement. Cursor subagents in `.cursor/agents/` are configured internal/expert roles that Agent may delegate to after the command has resolved scope, guardrails, policy, and checkpoints; direct invocation of `item-orchestrator` is retained for internal handoff and legacy compatibility, not as the normal user-facing path. Each subagent's model is configured in its file — see [`docs/workflow/development-workflow/agent-model-config.md`](docs/workflow/development-workflow/agent-model-config.md) for how to set or override models. This framework does not ship a `.cursor/skills/` mirror: Cursor discovers the existing agent, command, and shared `.agents/skills/` surfaces directly, and review tooling treats an absent Cursor skills tree as intentional rather than a missing mirror.
+
+---
+
+<!-- TEMPLATE-OWNED-START -->
+
+## Development Workflow
+
+This project uses a staged AI-assisted development workflow. See [`docs/workflow/development-workflow/README.md`](docs/workflow/development-workflow/README.md) for the full specification.
+
+Repository-specific workflow providers are declared in [`.ai-dev-workflow.yaml`](.ai-dev-workflow.yaml). Today, `review.on_draft.runner` is consumed by the Step 7a internal review gate protocol, and `review.on_draft.github` / `review.on_ready.github` are consumed by `pr-review-loop.sh` (Step 7); other sections are advisory until additional tooling adopts them. Legacy `review.internal_reviewers`, `review.platforms`, and `review.phase_after_clean` keys remain accepted for one transition release.
+
+### Workflow Commands
+
+| Stage                            | Claude Code                                                       | Cursor                                                        | Codex                                                                                | Any other tool                                                                                                                                                                    |
+| -------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project Setup                    | `project-setup` agent                                             | `/setup-project`                                              | `workflow-project-setup` skill                                                       | Follow `docs/workflow/setup/protocol.md`                                                                                                                                          |
+| Add backlog item                 | `/add-backlog-item`                                               | `/add-backlog-item`                                           | `/add-backlog-item` alias                                                            | Follow `docs/workflow/development-workflow/protocols/00-add-backlog-item-protocol.md`                                                                                             |
+| Write Spec                       | `product-manager` agent                                           | `/generate-new-feature`                                       | `workflow-spec-writer` skill                                                         | Follow `docs/workflow/development-workflow/protocols/01-generate-spec-protocol.md`                                                                                                |
+| Write Plan                       | `tech-lead` agent                                                 | `/generate-implementation-plan`                               | `workflow-plan-writer` skill                                                         | Follow `docs/workflow/development-workflow/protocols/02-generate-implementation-plan-protocol.md`                                                                                 |
+| Implement                        | `developer` agent                                                 | `/implement-development`                                      | `workflow-implementer` skill                                                         | Follow `docs/workflow/development-workflow/protocols/03-implement-development-protocol.md`                                                                                        |
+| Review Gate (Spec / Plan / Code) | Native review against `REVIEW.md`                                 | `/review-spec`, `/review-implementation-plan`, `/review-code` | Native review against `REVIEW.md`                                                    | Follow `REVIEW.md` and the compatibility wrapper protocols under `docs/workflow/development-workflow/protocols/` when needed                                                      |
+| Smoke Test                       | `smoke-tester` agent                                              | `/smoke-tester`                                               | —                                                                                    | Follow `docs/workflow/development-workflow/protocols/04-smoke-test-protocol.md`                                                                                                   |
+| Post-merge QA                    | `post-merge-qa` agent / `/post-merge-qa` (alias `/merged-qa-tester`) | `/post-merge-qa` (alias `/merged-qa-tester`)               | `/post-merge-qa` alias (or `/merged-qa-tester`)                                      | Follow `docs/workflow/development-workflow/protocols/08-post-merge-qa-protocol.md`                                                                                                |
+| Run reviewer loop (PR)           | `/run-reviewer-loop` command (or `automated-reviewer-loop` agent) | `/run-reviewer-loop`                                          | `/run-reviewer-loop` alias or `workflow-reviewer-loop` skill                         | Follow `docs/workflow/development-workflow/protocols/93-automated-reviewer-loop-protocol.md`                                                                                      |
+| Advance One Item                 | `/run-item` command (or `item-orchestrator` agent)                | `/run-item`                                                   | `/run-item` alias; `workflow-item-orchestrator` skill (same prelude + Protocol 91)   | Follow `docs/workflow/development-workflow/protocols/91-orchestrate-work-protocol.md` — `/run-item-work` is a deprecated alias; Cursor `item-orchestrator` is an internal handoff role, not the normal entrypoint |
+| Execute Multiple Items (bounded batch) | `/run-items`                                               | `/run-items`                                                  | `/run-items` alias                                                                   | Follow `docs/workflow/development-workflow/protocols/90-batch-orchestrate-work-protocol.md` Protocol 90 `explicit_list` mode — supply two or more item targets; targets `develop` directly |
+| Resolve Epic Scope / Delegated Gate (alias) | `/run-epic`                                           | `/run-epic`                                                   | `/run-epic` alias                                                                    | Follow `docs/workflow/development-workflow/protocols/95-run-epic-protocol.md`                                                                                                     |
+| Prepare Commit                   | —                                                                 | `/prepare-commit`                                             | Follow `docs/best-practices/2-version-control.md`                                    | Follow `docs/best-practices/2-version-control.md`                                                                                                                                 |
+| Prepare Release                  | `/prepare-release`                                                | `/prepare-release`                                            | `/prepare-release` alias                                                             | Follow `docs/workflow/development-workflow/protocols/05-prepare-release-protocol.md`                                                                                              |
+| Scan Portfolio (discover)        | `/run-work` command (or `orchestrator` agent)                     | `/run-work`                                                   | `/run-work` alias or `workflow-orchestrator` skill                                   | Follow `docs/workflow/development-workflow/protocols/90-batch-orchestrate-work-protocol.md` — read-only portfolio scan; proposes batch options; single/epic targets redirect to `/run-item` / `/run-epic` (Protocol 96) |
+| Batch Merge                      | `/batch-merge`                                                    | `/batch-merge`                                                | `/batch-merge` alias or `batch-merge` skill                                          | Follow `docs/workflow/development-workflow/protocols/94-batch-merge-protocol.md`                                                                                                  |
+| Graduate Integration Branch      | `/graduate-development <slug>`                                    | `/graduate-development <slug>`                                | `/graduate-development` alias                                                        | Follow `docs/workflow/development-workflow/protocols/05b-graduate-development-protocol.md`                                                                                        |
+| Retrospective                    | `/retrospective`                                                  | `/retrospective`                                              | `/retrospective` alias or `workflow-retrospective` skill                             | Follow `docs/workflow/development-workflow/protocols/06-retrospective-protocol.md`                                                                                                |
+| Meta-Retrospective               | `/retrospective` (invoke with meta scope)                         | `/retrospective` (meta scope)                                 | `/retrospective` alias or `workflow-retrospective` skill                             | Follow `docs/workflow/development-workflow/protocols/06b-meta-retrospective-protocol.md` — periodic verification that prior improvements are working; recommended every 5 batches |
+| Run feedback triage              | —                                                                 | —                                                             | —                                                                                    | Follow `docs/workflow/development-workflow/protocols/07-feedback-triage-protocol.md`                                                                                              |
+
+**Prepare release** does not stop after opening PRs: protocol `05` treats `pr-review-loop.sh` as skipped for `release/*` branches, then applies `ready-for-regression` on the **production PR to `main`** and completes the CI loop (including label-gated e2e/regression when configured) before handoff to merge.
+
+### Codex Skills
+
+The repository ships Codex skill definitions in two compatible locations:
+
+- `.agents/skills/`: repo-scoped Codex discovery path, including command-style aliases such as `/add-backlog-item`, `/run-work`, `/run-item`, `/run-items`, `/run-item-work` (deprecated alias), `/run-epic`, `/run-reviewer-loop`, `/batch-merge`, `/post-merge-cleanup`, `/post-merge-qa` (alias `/merged-qa-tester`), `/prepare-release`, `/graduate-development`, `/retrospective`, and `/sync-template`.
+- `.codex/skills/`: legacy canonical workflow skill definitions used by existing template integrations.
+
+Install them into your local Codex skill directories before first use:
+
+<!-- workflow-shell-contract: bash -->
+```bash
+bash ./scripts/development-workflow/install-codex-skills.sh
+```
+
+Installed skills are thin wrappers around the canonical workflow protocols. They do not redefine the workflow; they load the same documents used by other tools and, for orchestration, rely on the helper scripts in `scripts/development-workflow/` to inspect state, resume partial work, and resolve PR readiness deterministically. `/run-item` and `/run-epic` are the primary bounded commands (shared prelude + Protocol 91 or 95). `/run-item` prints `policyRecommendation.confirmationSummary` before mutation and records an invocation-scoped item/policy binding after explicit autonomy flags or human acceptance so the same selected policy is not re-prompted. `/run-items` is the bounded multi-item batch execute command (Protocol 90 `explicit_list` mode — two or more items, targeting `develop` directly). `/run-work` is the read-only portfolio scan entrypoint via `run-work-router.sh` (Protocol 96) — it proposes batch options but does not execute; single/epic targets redirect to `/run-item` / `/run-epic`. In no-target scan mode, `/run-work` separates `INFORMATIONAL - not actionable in this proposal`, `ACTIONABLE RESUME - can advance now`, `PROPOSED BATCH - your decision`, and `HELD - not included in proposed batch` records; approval or the recommended `/run-items` command applies only to proposed-batch records. `/run-item-work` is a deprecated alias identical to `/run-item`. `/run-epic` resolves a bounded execution scope, recommends missing autonomy policy in-place before mutation, captures invocation-scoped delegation policy, uses read-only PR risk classification and `run-epic-delegated-gate.sh` before delegated merge decisions, and records stable PR disposition and epic ledger audit comments after delegated decisions. The command-style aliases exist for parity with Claude Code slash commands; the underlying canonical skills remain the source of the workflow behavior. The bundled skills also include optional `agents/openai.yaml` metadata so downstream projects created from this template have cleaner Codex skill labels and default prompts out of the box.
+
+For normal Codex usage, use `/run-work` to scan the portfolio and discover what can advance (read-only — no mutation). Then execute with `/run-item` for a single item, `/run-items` for an explicit bounded batch, or `/run-epic` for an epic-scoped run. Use `/batch-merge` to merge ready PRs after execution. Use `/run-item` (not `/run-item-work`) for single-item advancement. Whether work is batch-orchestrated or item-scoped, runs should continue until they reach a real terminal condition: waiting on human review / merge, blocked dependency, unresolved decision, or escalation. For review gates, prefer the runner's native review capability against `REVIEW.md`; use the compatibility wrapper protocols only when a command, skill, or legacy workflow explicitly points to them.
+
+### Maintenance Commands
+
+| Task                                                                                 | Claude Code           | Cursor                | Codex                          |
+| ------------------------------------------------------------------------------------ | --------------------- | --------------------- | ------------------------------ |
+| Sync framework updates from template                                                 | `/sync-template`      | `/sync-template`      | `workflow-sync-template` skill |
+| Post-merge cleanup (fetch, develop, pull, delete local branch; update issue tracker) | `/post-merge-cleanup` | `/post-merge-cleanup` | `post-merge-cleanup` skill     |
+| Post-merge QA (develop / `develop-<slug>`; optional alias `/merged-qa-tester`) | `/post-merge-qa` | `/post-merge-qa` | `post-merge-qa` skill |
+
+<!-- TEMPLATE-OWNED-END -->
+
+---
+
+## Common Commands
+
+<!-- workflow-shell-contract: bash -->
+```bash
+# Development
+pnpm install
+pnpm --filter mobile exec expo start
+
+# Mockups (the UI contract — open before implementing any screen)
+open design/mockups/mobile/index.html
+
+# Build
+pnpm build
+
+# Test
+pnpm test
+pnpm --filter @finanzas/core test          # domain rules, fastest loop
+pnpm --filter @finanzas/db test            # repositories, migrations, dedup
+pnpm --filter @finanzas/bank-scraper test  # injected scripts vs HTML fixtures
+
+# Type check
+pnpm typecheck
+
+# Database
+pnpm --filter @finanzas/db db:generate     # generate a Drizzle migration
+pnpm --filter @finanzas/db db:check        # apply migrations to a fixture DB
+
+# Lint / Format
+pnpm lint
+pnpm format
+
+# Markdown lint (spec, plan, and CHANGELOG files)
+# Standard rules (trailing whitespace, relative links, files end with newline):
+npx markdownlint-cli2 "docs/specs/developments/**/*.md" "docs/testing/workflow/**/*.md" "CHANGELOG.md"
+
+# Heuristic rules (GLOB001, COUNT001):
+find docs/specs/developments docs/testing/workflow -name "*.md" -print0 \
+  | xargs -0 python3 scripts/lint/markdown-heuristic-lint.py CHANGELOG.md
+
+# Duplicate section-header check (detects repeated ### Fixed / ### Added etc. within a ## block):
+bash scripts/lint/check-changelog-duplicate-headers.sh CHANGELOG.md
+
+# Executable shell guidance lint
+python3 scripts/lint/workflow-shell-snippet-lint.py --base-ref origin/develop
+```
+
+---
+
+## Important Conventions
+
+### Git & Branching
+
+This repository follows the default template workflow (documented in `docs/workflow/development-workflow/`).
+
+- Integration branch: `develop` (spec/plan/feature/fix PRs target `develop`)
+- Release branch: `main` (release PR targets `main`, plus a mandatory backport PR to `develop`)
+- Branch naming:
+  - Features / improvements: `feature/[feature-slug]` (from `develop`)
+  - Refactors: `refactor/[slug]` (from `develop`)
+  - Bug fixes (fast track): `fix/[slug]` (from `develop`)
+  - Hotfixes: `hotfix/[slug]` (from `main`, then backport to `develop`)
+  - Releases: `release/v[X.Y.Z]` (from `develop`)
+
+Workflow branches must use a bare tracker identifier (for example,
+fix/1858-safe-name), never an issue-reference form such as
+fix/#1858-safe-name. The workflow guard rejects #, ?, ^, ~, :, backslash, and
+spaces before branch creation or push. To recover already started work, preserve
+the original branch, create a compliant replacement through the normal PR path,
+verify push-triggered checks start, and never force-push shared history.
+
+### Tracker Classification
+
+When `issue_tracker.provider: github_projects` is configured, the GitHub
+Projects **Type** field is the source of truth for work-item classification:
+`Feature`, `Bug`, `Refactor`, or `Workflow`. Use `Workflow` for
+AI-development-framework/process/tooling items. Do not use legacy repository
+classification labels (`workflow`, `bug`, `enhancement`, or `type:*`) for new
+automation; keep operational labels such as `ready-for-human-review`,
+`needs-fixes`, `ready-for-regression`, `reviewer-failed`, and
+`integration-branch:<slug>`.
+
+### CHANGELOG & Versioning
+
+- Follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
+- Use [Semantic Versioning](https://semver.org/): patch for fixes/tweaks, minor for new features or meaningful improvements, major for breaking changes to the template structure.
+- **Feature and fix PRs** merged into `develop` add entries under `[Unreleased]` in `CHANGELOG.md`; do not convert to a version number on merge. Spec-only and plan-only PRs are exempt. Fixes or changes to unreleased work should update the existing entry rather than adding a new one. In parallel batches, each PR adds its own CHANGELOG entry as normal; merge conflicts are resolved by the batch-merge auto-resolution (protocol 94 Step 4.3).
+- **Hotfix PRs** (`hotfix/*`) are the exception: they write a **new versioned section** (e.g., `[1.0.1] - YYYY-MM-DD`) directly below `[Unreleased]` (above all prior versioned sections), not an `[Unreleased]` entry. A hotfix patches released code on `main` and is released immediately on merge — `auto-tag-release.yml` creates the corresponding tag automatically. The backport PR carries the versioned entry to `develop`.
+- **A new version is created when releasing or hotfixing**: for normal releases, run the Prepare Release workflow (`/prepare-release` or `docs/workflow/development-workflow/protocols/05-prepare-release-protocol.md`) — that creates a `release/v[X.Y.Z]` branch, renames `[Unreleased]` to `[X.Y.Z]` in the CHANGELOG, opens PRs to `main` and backport to `develop`, then skips release-branch reviewer loops while driving regression + CI readiness on the **main** release PR before merge. For hotfixes, the developer writes the versioned section directly in Step 6 of Path 4 (`03-implement-development-protocol.md`) — no release branch is created.
+
+### Agent commit hooks (optional — Haystack)
+
+When `haystack hooks install` has been run, git uses `hooks/` for pre-commit enforcement on **AI agent** commits: truncation checks and `LLM_RULES.md` review (Option B — Entire session tracking not adopted; see integration doc for rationale). Human commits are unaffected. See [`docs/workflow/development-workflow/integrations/haystack.md`](docs/workflow/development-workflow/integrations/haystack.md). Customize `LLM_RULES.md` for your project; the template keeps `gh pr create` + protocol 93 as the default PR path.
+
+### Stack Conventions
+
+Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFIC.md) for the stack summary and the most important cross-cutting rules. For detailed conventions per technology, see the files in [`docs/best-practices/stack/`](docs/best-practices/stack/).
+
+### Safety Rules
+
+- **No `git push --force`**, `git reset --hard`, or rebase on shared branches without explicit human approval
+- **Stop and ask** if an action seems destructive or has wide blast radius
+- Human review is required before merging PRs; opening a PR is not a terminal condition by itself
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+|---------|--------------|
+| Scraper hangs on `LOGIN_START` | The bank changed a selector. Run `pnpm --filter @finanzas/bank-scraper test` — the fixture tests fail before the app does. Re-capture and scrub a fixture, then fix the script |
+| Duplicate movements after a sync | A write bypassed the repository upsert. All sync writes go through `(account_id, external_id)` / `dedup_hash` |
+| `home` and `dashboard` totals disagree | Someone hand-wrote an exclusion filter. Both must use the shared `isIncluded` / `includedAmount` fragments from `@finanzas/db` |
+| Amounts off by a factor of 100, or with decimals | Something treated CLP as having cents. Minor unit is the peso; amounts are `INTEGER` |
+| Native module missing at runtime | Needs a dev build, not Expo Go |
+| App crashes on launch after an update | A migration threw. This is unrecoverable in the field — that is why `db:check` is a required check |

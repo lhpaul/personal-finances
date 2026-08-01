@@ -1,0 +1,73 @@
+name: ShellCheck
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'scripts/development-workflow/**/*.sh'
+      - 'scripts/lint/workflow-shell-guard-lint.py'
+      - 'scripts/lint/tests/test-workflow-shell-guard-lint.sh'
+      - 'scripts/lint/workflow-shell-snippet-lint.py'
+      - 'scripts/lint/tests/test-workflow-shell-snippet-lint.sh'
+      - 'docs/workflow/**'
+      - 'docs/best-practices/**'
+      - '.agents/skills/**'
+      - '.codex/skills/**'
+      - '.claude/commands/**'
+      - '.claude/agents/**'
+      - '.cursor/commands/**'
+      - '.cursor/agents/**'
+      - 'AGENTS.md'
+      - '.shellcheckrc'
+      - '.github/workflows/shellcheck.yml'
+
+jobs:
+  shellcheck:
+    name: ShellCheck static analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
+        with:
+          fetch-depth: 0
+
+      - name: Run ShellCheck
+        run: |
+          mapfile -d '' -t shell_files < <(find scripts/development-workflow -type f -name "*.sh" -print0)
+          if [ "${#shell_files[@]}" -eq 0 ]; then
+            echo "No shell files found under scripts/development-workflow — skipping."
+            exit 0
+          fi
+          echo "Analyzing ${#shell_files[@]} shell file(s):"
+          printf '  %s\n' "${shell_files[@]}"
+          shellcheck --severity=warning "${shell_files[@]}"
+
+      - name: Run workflow shell guard lint tests
+        run: bash scripts/lint/tests/test-workflow-shell-guard-lint.sh
+
+      - name: Install zsh for cross-shell snippet tests
+        run: sudo apt-get update && sudo apt-get install --yes zsh
+
+      - name: Run workflow shell snippet lint tests
+        run: bash scripts/lint/tests/test-workflow-shell-snippet-lint.sh
+
+      - name: Validate pull request base ref
+        run: |
+          if [ -z "${GITHUB_BASE_REF:-}" ]; then
+            echo "ERROR: GITHUB_BASE_REF is required for workflow shell guard lint." >&2
+            echo "This workflow must run in a pull_request context." >&2
+            exit 1
+          fi
+
+      - name: Fetch base ref for workflow shell guard lint
+        run: git fetch --no-tags origin "$GITHUB_BASE_REF"
+
+      - name: Run workflow shell guard lint
+        run: python3 scripts/lint/workflow-shell-guard-lint.py --base-ref "origin/$GITHUB_BASE_REF"
+
+      - name: Run workflow shell snippet lint
+        run: python3 scripts/lint/workflow-shell-snippet-lint.py --base-ref "origin/$GITHUB_BASE_REF"

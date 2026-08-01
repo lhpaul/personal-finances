@@ -1,0 +1,2769 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finanzas · Mockup mobile</title>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════════
+       Tokens mirror — ../../tokens.json v1.0.0
+       Any change here must be mirrored in tokens.json in the same commit.
+       ═══════════════════════════════════════════════════════════════════════ */
+    :root {
+      --brand: #6366f1;
+      --brand-dark: #4f46e5;
+      --brand-darker: #4338ca;
+      --brand-2: #f59e0b;
+      --celebration: #8b5cf6;
+
+      --tab-bar: #ffffff;
+      --tab-active: #6366f1;
+      --tab-inactive: #64748b;
+
+      --s0: #fafbfc;
+      --s1: #ffffff;
+      --s2: #f8fafc;
+      --s3: #f1f5f9;
+
+      --t1: #1a1d29;
+      --t2: #64748b;
+      --t3: #94a3b8;
+      --t-brand: #6366f1;
+      --t-inv: #ffffff;
+
+      --border: #e2e8f0;
+      --border-input: #d1d5db;
+
+      --success: #10b981;
+      --success-bg: #ecfdf5;
+      --success-border: #d1fae5;
+
+      --warning: #f59e0b;
+      --warning-bg: #fffbeb;
+      --warning-border: #fef3c7;
+
+      --danger: #ef4444;
+      --danger-bg: #fef2f2;
+      --danger-border: #fee2e2;
+
+      --info: #6366f1;
+      --info-bg: #eef2ff;
+      --info-border: #e0e7ff;
+
+      --celebration-bg: #f5f3ff;
+      --celebration-border: #ede9fe;
+
+      --indigo-100: #e0e7ff;
+      --indigo-300: #a5b4fc;
+      --indigo-400: #818cf8;
+      --amber-400: #fbbf24;
+      --emerald-400: #34d399;
+      --violet-400: #a78bfa;
+      --slate-300: #cbd5e1;
+      --slate-700: #334155;
+
+      --grad-challenge: linear-gradient(135deg, #8b5cf6, #6366f1);
+      --grad-income: linear-gradient(135deg, #34d399, #10b981);
+      --grad-expense: linear-gradient(135deg, #fbbf24, #f59e0b);
+      --grad-celebration: linear-gradient(135deg, #a78bfa, #6366f1);
+      --grad-brand: linear-gradient(135deg, #6366f1, #4f46e5);
+
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+      --xs: 11px;
+      --sm: 12px;
+      --base: 14px;
+      --md: 16px;
+      --lg: 20px;
+      --xl: 24px;
+
+      --sp1: 4px;
+      --sp2: 8px;
+      --sp3: 12px;
+      --sp4: 16px;
+      --sp5: 20px;
+      --sp6: 24px;
+      --sp8: 32px;
+
+      --r-sm: 8px;
+      --r-md: 12px;
+      --r-lg: 16px;
+      --r-xl: 24px;
+      --r-card: 20px;
+      --r-btn: 14px;
+      --r-pill: 999px;
+
+      --sh-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --sh-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      --sh-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+      --sh-card: 0 1px 3px rgba(26, 29, 41, 0.06), 0 1px 2px rgba(26, 29, 41, 0.04);
+
+      --tab-bar-h: 84px;
+
+      /* Viewer shell only */
+      --phone-scale: 0.90;
+      --sidebar-w: 300px;
+      --shell-muted: #64748b;
+      --shell-border: #cbd5e1;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Viewer shell (three columns) — not part of the product UI
+       ═══════════════════════════════════════════════════════════════════════ */
+    body {
+      min-height: 100vh;
+      padding: 32px 24px 48px;
+      overflow-x: auto;
+      background: #cdd3e0;
+      color: #0f172a;
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) calc(393px * var(--phone-scale)) var(--sidebar-w);
+      gap: 32px;
+      width: fit-content;
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    .panel {
+      position: sticky;
+      top: 32px;
+      max-height: calc(100vh - 64px);
+      overflow: auto;
+      padding: 16px 14px 16px 16px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 1px 3px rgba(99, 102, 241, 0.08);
+      scrollbar-width: thin;
+    }
+
+    .right-col {
+      width: var(--sidebar-w);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 32px;
+      height: calc(100vh - 64px);
+      min-height: 0;
+    }
+    .state-panel, .meta-panel { position: static; max-height: none; }
+    .state-panel { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+    .meta-panel { overflow-y: auto; scrollbar-width: thin; flex: 0 1 auto; min-height: 0; max-height: 46%; }
+
+    .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; color: var(--brand-darker); margin-bottom: 6px; }
+    .subtitle { font-size: 12px; color: var(--shell-muted); line-height: 1.45; margin-bottom: 20px; }
+    .subtitle code { font-family: var(--mono); font-size: 11px; background: rgba(99,102,241,.1); padding: 1px 4px; border-radius: 4px; }
+
+    .sel-section { margin-bottom: 16px; }
+    .sel-section-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      color: #475569; margin: 0 0 6px 4px; font-family: var(--mono);
+    }
+    .sel-group {
+      display: flex; flex-direction: column; gap: 2px;
+      padding-left: 8px; border-left: 1.5px solid var(--shell-border); margin-left: 4px;
+    }
+    .sel-btn, .step-btn, .state-btn {
+      width: 100%; padding: 7px 10px; display: flex; align-items: center; gap: 8px;
+      border: none; border-radius: 8px; background: none; color: #334155;
+      font-size: 12.5px; font-weight: 500; text-align: left; cursor: pointer;
+      transition: background .15s, color .15s; font-family: var(--mono);
+    }
+    .sel-btn:hover, .step-btn:hover, .state-btn:hover { background: rgba(255,255,255,.9); color: var(--brand-darker); }
+    .sel-btn.active, .step-btn.active, .state-btn.active { background: var(--brand-dark); color: #fff; }
+    .nav-btn.parent-active { color: var(--brand-darker); font-weight: 600; }
+    .nav-btn.parent-active .sel-dot { opacity: 1; background: var(--brand); }
+    .sel-dot { width: 5px; height: 5px; border-radius: 999px; background: currentColor; opacity: .35; flex-shrink: 0; }
+    .sel-btn.active .sel-dot, .step-btn.active .sel-dot, .state-btn.active .sel-dot { opacity: 1; background: var(--amber-400); }
+    .step-btn { padding-left: 14px; font-size: 12px; }
+    .step-btn.depth-2 { padding-left: 18px; font-size: 11.5px; }
+    .step-btn.depth-3 { padding-left: 22px; font-size: 11.5px; }
+
+    .state-heading, .meta-heading { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px; }
+    .state-subtitle, .meta-subtitle { font-size: 11px; color: var(--shell-muted); margin-bottom: 12px; line-height: 1.4; }
+    .state-group-title {
+      font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: #475569; margin: 0 0 6px 4px; font-family: var(--mono);
+    }
+    .state-group-title[hidden] { display: none; }
+    .state-list { display: flex; flex-direction: column; gap: 2px; }
+    .state-empty { font-size: 11.5px; color: var(--shell-muted); font-style: italic; }
+    .state-empty[hidden] { display: none; }
+
+    .meta-title { font-size: 13px; font-weight: 600; color: var(--brand-darker); margin-bottom: 10px; line-height: 1.3; }
+    .meta-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-top: 1px solid rgba(203,213,225,.5); }
+    .meta-label { font-size: 10.5px; color: var(--shell-muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; flex-shrink: 0; }
+    .meta-value { font-size: 11px; text-align: right; word-break: break-all; }
+    .meta-value code { font-family: var(--mono); font-size: 10.5px; }
+    .meta-flag { display: inline-block; margin-top: 10px; padding: 4px 9px; border-radius: var(--r-pill); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .meta-flag[data-mvp='in'] { background: var(--success-bg); color: #047857; border: 1px solid var(--success-border); }
+    .meta-flag[data-mvp='out'] { background: var(--warning-bg); color: #b45309; border: 1px solid var(--warning-border); }
+
+    .phone-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .phone-label { font-size: 12px; color: #475569; font-weight: 600; text-align: center; font-family: var(--mono); max-width: calc(393px * var(--phone-scale)); }
+    .phone-slot { width: calc(393px * var(--phone-scale)); height: calc(852px * var(--phone-scale)); }
+    .phone {
+      position: relative; width: 393px; height: 852px;
+      transform: scale(var(--phone-scale)); transform-origin: top left;
+      overflow: hidden; border-radius: 52px; flex-shrink: 0;
+      box-shadow: 0 0 0 1px rgba(99,102,241,.15), 0 0 0 10px #1c1c1e, 0 0 0 12px rgba(58,58,60,.6), 0 32px 64px rgba(0,0,0,.35);
+      background: var(--s1); font-family: var(--font);
+    }
+    .phone::before {
+      content: ''; position: absolute; top: 13px; left: 50%; transform: translateX(-50%);
+      width: 126px; height: 37px; background: #1c1c1e; border-radius: 20px; z-index: 100; pointer-events: none;
+    }
+    .phone-screen { width: 100%; height: 100%; overflow: hidden; background: var(--s0); position: relative; }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Product UI — `mu-` primitives. This is the design system the Expo app
+       converges toward. Screens below compose these; avoid one-off styles.
+       ═══════════════════════════════════════════════════════════════════════ */
+    .app-screen {
+      display: none; flex-direction: column; width: 100%; height: 100%;
+      background: var(--s0); color: var(--t1); overflow: hidden;
+      font-family: var(--font); font-size: var(--base); line-height: 1.5;
+    }
+    .app-screen.active { display: flex; }
+    /* State-scoped fragments: the boot script toggles `hidden` on [data-states].
+       Everything else keeps the display its own classes define. */
+    [hidden] { display: none !important; }
+
+    .mu-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .mu-pad { padding: 0 var(--sp5); }
+    .mu-pad-b { padding-bottom: var(--sp8); }
+    .mu-safe-top { height: 52px; flex-shrink: 0; }
+
+    /* ── Headers ───────────────────────────────────────────────────────── */
+    .mu-head {
+      flex-shrink: 0; background: var(--s1); padding: 52px var(--sp5) var(--sp4);
+      display: flex; align-items: flex-start; gap: var(--sp3);
+      border-bottom: 1px solid var(--border);
+    }
+    .mu-head--plain { background: transparent; border-bottom: none; }
+    .mu-head__avatar {
+      width: 46px; height: 46px; border-radius: var(--r-lg); flex-shrink: 0;
+      display: grid; place-items: center; font-size: 22px; background: var(--info-bg);
+    }
+    .mu-head__avatar--brand { background: var(--grad-brand); }
+    .mu-head__txt { flex: 1; min-width: 0; }
+    .mu-head__title { font-size: var(--xl); font-weight: 800; letter-spacing: -.5px; line-height: 1.15; }
+    .mu-head__sub { font-size: var(--base); color: var(--t2); margin-top: 1px; }
+    .mu-head__action {
+      width: 40px; height: 40px; border-radius: var(--r-md); flex-shrink: 0;
+      display: grid; place-items: center; font-size: 18px; border: none;
+      background: var(--s3); color: var(--t2); cursor: pointer; position: relative;
+    }
+    .mu-head__action--brand { background: var(--brand); color: #fff; }
+    .mu-head__action--dot::after {
+      content: ''; position: absolute; top: 2px; right: 2px; width: 8px; height: 8px;
+      border-radius: 999px; background: var(--danger); border: 1.5px solid var(--s1);
+    }
+
+    .mu-topbar {
+      flex-shrink: 0; background: var(--s1); border-bottom: 1px solid var(--border);
+      padding: 52px var(--sp4) var(--sp3);
+      display: flex; align-items: center; gap: var(--sp3);
+    }
+    .mu-topbar__btn {
+      width: 36px; height: 36px; border: none; background: none; border-radius: var(--r-sm);
+      display: grid; place-items: center; font-size: 20px; color: var(--t1); cursor: pointer; flex-shrink: 0;
+    }
+    .mu-topbar__title { flex: 1; font-size: var(--md); font-weight: 700; text-align: center; }
+    .mu-topbar__title--left { text-align: left; }
+
+    /* ── Cards ─────────────────────────────────────────────────────────── */
+    .mu-card {
+      background: var(--s1); border-radius: var(--r-card); padding: var(--sp5);
+      box-shadow: var(--sh-card); border: 1px solid var(--border);
+    }
+    .mu-card + .mu-card, .mu-card + .mu-hero, .mu-hero + .mu-card { margin-top: var(--sp4); }
+    .mu-card--tight { padding: var(--sp4); }
+    .mu-card--flat { box-shadow: none; background: var(--s2); }
+    .mu-card__title { font-size: var(--md); font-weight: 700; letter-spacing: -.2px; }
+    .mu-card__sub { font-size: var(--sm); color: var(--t2); margin-top: 2px; }
+    .mu-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp3); margin-bottom: var(--sp4); }
+
+    .mu-hero {
+      border-radius: var(--r-card); padding: var(--sp5); color: #fff;
+      background: var(--grad-challenge); box-shadow: var(--sh-lg); position: relative; overflow: hidden;
+    }
+    .mu-hero::after {
+      content: ''; position: absolute; right: -30px; top: -30px; width: 130px; height: 130px;
+      border-radius: 999px; background: rgba(255,255,255,.12);
+    }
+    .mu-hero__row { display: flex; align-items: center; gap: var(--sp4); position: relative; z-index: 1; }
+    .mu-hero__icon {
+      width: 52px; height: 52px; border-radius: var(--r-lg); flex-shrink: 0;
+      background: rgba(255,255,255,.2); display: grid; place-items: center; font-size: 26px;
+    }
+    .mu-hero__title { font-size: var(--lg); font-weight: 800; letter-spacing: -.4px; }
+    .mu-hero__sub { font-size: var(--base); opacity: .9; margin-top: 2px; }
+
+    /* ── Typography helpers ────────────────────────────────────────────── */
+    .mu-h1 { font-size: 28px; font-weight: 800; letter-spacing: -.7px; line-height: 1.18; }
+    .mu-h2 { font-size: var(--lg); font-weight: 700; letter-spacing: -.3px; line-height: 1.25; }
+    .mu-h3 { font-size: var(--md); font-weight: 700; letter-spacing: -.2px; }
+    .mu-p { font-size: var(--base); color: var(--t2); line-height: 1.55; }
+    .mu-p--lead { font-size: 15px; }
+    .mu-small { font-size: var(--sm); color: var(--t2); }
+    .mu-xs { font-size: var(--xs); color: var(--t3); }
+    .mu-eyebrow {
+      font-size: var(--xs); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brand);
+    }
+    .mu-center { text-align: center; }
+    .mu-mt1 { margin-top: var(--sp1); } .mu-mt2 { margin-top: var(--sp2); }
+    .mu-mt3 { margin-top: var(--sp3); } .mu-mt4 { margin-top: var(--sp4); }
+    .mu-mt5 { margin-top: var(--sp5); } .mu-mt6 { margin-top: var(--sp6); }
+    .mu-row { display: flex; align-items: center; gap: var(--sp3); }
+    .mu-row--between { justify-content: space-between; }
+    .mu-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp3); }
+    .mu-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp2); }
+    .mu-spacer { flex: 1; }
+    .mu-amount { font-variant-numeric: tabular-nums; font-weight: 700; }
+    .mu-amount--in { color: var(--success); }
+    .mu-amount--out { color: var(--brand-2); }
+    .mu-amount--hero { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+
+    /* ── Buttons ───────────────────────────────────────────────────────── */
+    .mu-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: var(--sp2);
+      min-height: 52px; padding: 0 var(--sp5); width: 100%;
+      border: none; border-radius: var(--r-btn); cursor: pointer;
+      font-family: inherit; font-size: 15px; font-weight: 600; letter-spacing: -.1px;
+      background: var(--brand); color: #fff; transition: filter .15s;
+    }
+    .mu-btn:hover { filter: brightness(1.06); }
+    .mu-btn--muted { background: var(--indigo-300); }
+    .mu-btn--outline { background: var(--s1); color: var(--t1); border: 1px solid var(--border-input); }
+    .mu-btn--ghost { background: none; color: var(--t2); min-height: 44px; }
+    .mu-btn--danger { background: var(--danger); }
+    .mu-btn--danger-soft { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+    .mu-btn--sm { min-height: 40px; font-size: var(--base); padding: 0 var(--sp4); width: auto; }
+    .mu-btn--auto { width: auto; }
+    .mu-btn-stack { display: flex; flex-direction: column; gap: var(--sp3); }
+    .mu-btn-row { display: flex; gap: var(--sp3); }
+    .mu-btn-row .mu-btn { flex: 1; }
+
+    /* ── Badges & chips ────────────────────────────────────────────────── */
+    .mu-badge {
+      display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
+      border-radius: var(--r-pill); font-size: var(--xs); font-weight: 700; white-space: nowrap;
+      background: var(--s3); color: var(--t2); border: 1px solid var(--border);
+    }
+    .mu-badge--ok { background: var(--success-bg); color: #047857; border-color: var(--success-border); }
+    .mu-badge--warn { background: var(--warning-bg); color: #b45309; border-color: var(--warning-border); }
+    .mu-badge--danger { background: var(--danger-bg); color: #b91c1c; border-color: var(--danger-border); }
+    .mu-badge--info { background: var(--info-bg); color: var(--brand-darker); border-color: var(--info-border); }
+    .mu-badge--celebration { background: var(--celebration-bg); color: #6d28d9; border-color: var(--celebration-border); }
+
+    .mu-chip {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      min-height: 74px; padding: var(--sp3) var(--sp2); border-radius: var(--r-lg);
+      background: var(--s1); border: 1.5px solid var(--border); cursor: pointer;
+      font-family: inherit; font-size: var(--sm); font-weight: 600; color: var(--t1); text-align: center; position: relative;
+    }
+    .mu-chip__emoji { font-size: 22px; line-height: 1; }
+    .mu-chip__hint { font-size: var(--xs); font-weight: 500; color: var(--t3); }
+    .mu-chip.is-selected { border-color: var(--brand); background: var(--info-bg); }
+    .mu-chip.is-suggested { border-color: var(--brand); }
+    .mu-chip__star {
+      position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 999px;
+      background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 12px;
+    }
+
+    .mu-pill-row { display: flex; gap: var(--sp2); flex-wrap: wrap; }
+    .mu-pill {
+      padding: 7px 14px; border-radius: var(--r-pill); border: 1px solid var(--border);
+      background: var(--s1); font-family: inherit; font-size: var(--sm); font-weight: 600; color: var(--t2); cursor: pointer;
+    }
+    .mu-pill.is-active { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+    /* ── Segmented control ─────────────────────────────────────────────── */
+    .mu-segment {
+      display: inline-flex; padding: 3px; border-radius: var(--r-pill); background: var(--s3); gap: 2px;
+    }
+    .mu-segment__item {
+      padding: 6px 16px; border: none; border-radius: var(--r-pill); background: none; cursor: pointer;
+      font-family: inherit; font-size: var(--sm); font-weight: 600; color: var(--t2);
+    }
+    .mu-segment__item.is-active { background: var(--s1); color: var(--t1); box-shadow: var(--sh-sm); }
+
+    /* ── Form fields ───────────────────────────────────────────────────── */
+    .mu-field { margin-top: var(--sp4); }
+    .mu-label { display: block; font-size: var(--sm); font-weight: 600; color: var(--t2); margin-bottom: 6px; }
+    .mu-input {
+      display: flex; align-items: center; gap: var(--sp3);
+      min-height: 52px; padding: 0 var(--sp4); border-radius: var(--r-btn);
+      background: var(--s1); border: 1.5px solid var(--border-input); font-size: 15px; color: var(--t1);
+    }
+    .mu-input--ph { color: var(--t3); }
+    .mu-input.is-focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+    .mu-input.is-error { border-color: var(--danger); background: var(--danger-bg); }
+    .mu-input.is-locked { background: var(--s3); color: var(--t2); }
+    .mu-hint { font-size: var(--sm); color: var(--t2); margin-top: 6px; }
+    .mu-hint--error { color: var(--danger); font-weight: 600; }
+    .mu-otp { display: flex; gap: var(--sp2); justify-content: center; }
+    .mu-otp__box {
+      width: 46px; height: 56px; border-radius: var(--r-md); border: 1.5px solid var(--border-input);
+      background: var(--s1); display: grid; place-items: center; font-size: var(--lg); font-weight: 700;
+    }
+    .mu-otp__box.is-filled { border-color: var(--brand); color: var(--t1); }
+    .mu-otp__box.is-error { border-color: var(--danger); background: var(--danger-bg); color: var(--danger); }
+    .mu-check {
+      width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--border-input);
+      background: var(--s1); display: grid; place-items: center; font-size: 13px; color: transparent; flex-shrink: 0;
+    }
+    .mu-check.is-on { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .mu-radio {
+      width: 22px; height: 22px; border-radius: 999px; border: 2px solid var(--border-input); flex-shrink: 0;
+      display: grid; place-items: center;
+    }
+    .mu-radio.is-on { border-color: var(--brand); }
+    .mu-radio.is-on::after { content: ''; width: 11px; height: 11px; border-radius: 999px; background: var(--brand); }
+    .mu-switch {
+      width: 46px; height: 27px; border-radius: 999px; background: #e5e7eb; position: relative; flex-shrink: 0; transition: background .2s;
+    }
+    .mu-switch::after {
+      content: ''; position: absolute; top: 3px; left: 3px; width: 21px; height: 21px; border-radius: 999px;
+      background: #fff; box-shadow: var(--sh-sm); transition: transform .2s;
+    }
+    .mu-switch.is-on { background: var(--brand); }
+    .mu-switch.is-on::after { transform: translateX(19px); }
+
+    /* ── Lists ─────────────────────────────────────────────────────────── */
+    .mu-list { background: var(--s1); border-radius: var(--r-card); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--sh-card); }
+    .mu-item {
+      display: flex; align-items: center; gap: var(--sp3); width: 100%; padding: var(--sp4) var(--sp5);
+      border: none; background: none; cursor: pointer; font-family: inherit; text-align: left; color: var(--t1);
+    }
+    .mu-item + .mu-item { border-top: 1px solid var(--border); }
+    .mu-item__icon {
+      width: 40px; height: 40px; border-radius: var(--r-md); flex-shrink: 0;
+      display: grid; place-items: center; font-size: 19px; background: var(--s3);
+    }
+    .mu-item__txt { flex: 1; min-width: 0; }
+    .mu-item__title { font-size: 15px; font-weight: 600; }
+    .mu-item__sub { font-size: var(--sm); color: var(--t2); margin-top: 1px; }
+    .mu-item__chev { color: var(--t3); font-size: 18px; flex-shrink: 0; }
+
+    /* ── Transaction row ───────────────────────────────────────────────── */
+    .mu-tx {
+      display: flex; align-items: center; gap: var(--sp3); width: 100%;
+      padding: var(--sp3) var(--sp4); border-radius: var(--r-lg);
+      background: var(--s1); border: 1px solid var(--border); box-shadow: var(--sh-sm);
+      cursor: pointer; font-family: inherit; text-align: left; color: var(--t1);
+    }
+    .mu-tx + .mu-tx { margin-top: var(--sp2); }
+    .mu-tx--pending { border-color: var(--warning-border); background: var(--warning-bg); }
+    .mu-tx--excluded { opacity: .55; }
+    .mu-tx__icon { font-size: 20px; width: 30px; text-align: center; flex-shrink: 0; }
+    .mu-tx__txt { flex: 1; min-width: 0; }
+    .mu-tx__name { font-size: 15px; font-weight: 600; line-height: 1.25; }
+    .mu-tx__meta { font-size: var(--sm); color: var(--t2); margin-top: 1px; }
+    .mu-tx__meta--warn { color: #b45309; font-weight: 600; }
+    .mu-tx__amount { font-size: var(--md); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brand-2); flex-shrink: 0; }
+    .mu-tx__amount--in { color: var(--success); }
+    .mu-tx-group { font-size: var(--sm); font-weight: 700; color: var(--t2); margin: var(--sp5) 0 var(--sp3); }
+
+    /* ── Stat tiles & charts ───────────────────────────────────────────── */
+    .mu-stat { border-radius: var(--r-lg); padding: var(--sp4); color: #fff; position: relative; overflow: hidden; }
+    .mu-stat--in { background: var(--grad-income); }
+    .mu-stat--out { background: var(--grad-expense); }
+    .mu-stat__label { font-size: var(--base); opacity: .92; }
+    .mu-stat__value { font-size: 26px; font-weight: 800; letter-spacing: -.6px; margin-top: 6px; }
+    .mu-stat__sub { font-size: var(--sm); opacity: .85; margin-top: 4px; }
+    .mu-stat__arrow { position: absolute; top: var(--sp4); right: var(--sp4); font-size: 15px; opacity: .9; }
+
+    .mu-bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding-top: var(--sp2); }
+    .mu-bars__col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+    .mu-bars__bar { width: 100%; border-radius: 6px 6px 2px 2px; background: var(--brand); }
+    .mu-bars__bar--muted { background: var(--slate-300); }
+    .mu-bars__bar--warm { background: var(--brand-2); }
+    .mu-bars__lbl { font-size: 10px; color: var(--t3); }
+
+    .mu-line { width: 100%; height: 132px; display: block; }
+    .mu-donut { width: 132px; height: 132px; display: block; flex-shrink: 0; }
+    .mu-legend { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 0; }
+    .mu-legend__row { display: flex; align-items: center; gap: var(--sp2); font-size: var(--sm); }
+    .mu-legend__dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+    .mu-legend__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t2); }
+    .mu-legend__val { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    .mu-cat-row { display: flex; align-items: center; gap: var(--sp3); padding: var(--sp3) 0; }
+    .mu-cat-row + .mu-cat-row { border-top: 1px solid var(--border); }
+    .mu-cat-row__icon { font-size: 18px; width: 26px; text-align: center; }
+    .mu-cat-row__bar { height: 6px; border-radius: 999px; background: var(--s3); margin-top: 5px; overflow: hidden; }
+    .mu-cat-row__fill { height: 100%; border-radius: 999px; background: var(--brand); }
+
+    .mu-progress { height: 6px; border-radius: 999px; background: var(--s3); overflow: hidden; }
+    .mu-progress__fill { height: 100%; border-radius: 999px; background: var(--brand); }
+
+    /* ── Sheets & modals ───────────────────────────────────────────────── */
+    .mu-overlay {
+      position: absolute; inset: 0; background: rgba(15, 23, 42, .45); z-index: 40;
+      display: flex; flex-direction: column; justify-content: flex-end;
+    }
+    .mu-overlay--center { justify-content: center; padding: var(--sp5); }
+    .mu-sheet {
+      background: var(--s1); border-radius: var(--r-xl) var(--r-xl) 0 0;
+      padding: var(--sp3) var(--sp5) var(--sp8); max-height: 78%; overflow-y: auto;
+    }
+    .mu-sheet__grab { width: 40px; height: 4px; border-radius: 999px; background: var(--slate-300); margin: 0 auto var(--sp4); }
+    .mu-modal { background: var(--s1); border-radius: var(--r-xl); padding: var(--sp6) var(--sp5); text-align: center; }
+    .mu-modal__icon { font-size: 34px; }
+
+    /* ── Tab bar ───────────────────────────────────────────────────────── */
+    .mu-tabbar {
+      flex-shrink: 0; height: var(--tab-bar-h); display: grid; grid-template-columns: repeat(4, 1fr);
+      align-items: start; padding: var(--sp3) var(--sp2) 0; background: var(--tab-bar);
+      border-top: 1px solid var(--border);
+    }
+    .mu-tabbar__item {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      border: none; background: none; cursor: pointer; font-family: inherit;
+      font-size: var(--xs); font-weight: 600; color: var(--tab-inactive); padding: 0;
+    }
+    .mu-tabbar__icon {
+      width: 46px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center; font-size: 18px;
+    }
+    .mu-tabbar__item.is-active { color: var(--tab-active); }
+    .mu-tabbar__item.is-active .mu-tabbar__icon { background: var(--info-bg); }
+
+    /* ── Misc ──────────────────────────────────────────────────────────── */
+    .mu-note {
+      display: flex; gap: var(--sp3); padding: var(--sp4); border-radius: var(--r-lg);
+      background: var(--info-bg); border: 1px solid var(--info-border); font-size: var(--sm); color: var(--slate-700); line-height: 1.5;
+    }
+    .mu-note--warn { background: var(--warning-bg); border-color: var(--warning-border); }
+    .mu-note--ok { background: var(--success-bg); border-color: var(--success-border); }
+    .mu-note--danger { background: var(--danger-bg); border-color: var(--danger-border); }
+    .mu-note__icon { font-size: 17px; flex-shrink: 0; line-height: 1.3; }
+    .mu-empty { display: grid; place-items: center; text-align: center; padding: var(--sp8) var(--sp5); gap: var(--sp3); }
+    .mu-empty__icon { font-size: 42px; }
+    .mu-dots { display: flex; gap: 6px; justify-content: center; }
+    .mu-dots__dot { width: 7px; height: 7px; border-radius: 999px; background: var(--slate-300); }
+    .mu-dots__dot.is-on { width: 22px; background: var(--brand); }
+    .mu-steps { display: flex; gap: 6px; }
+    .mu-steps__step { flex: 1; height: 4px; border-radius: 999px; background: var(--s3); }
+    .mu-steps__step.is-on { background: var(--brand); }
+    .mu-bank {
+      display: flex; align-items: center; gap: var(--sp3); width: 100%; padding: var(--sp3) var(--sp4);
+      border-radius: var(--r-lg); background: var(--s1); border: 1px solid var(--border);
+      cursor: pointer; font-family: inherit; text-align: left; color: var(--t1);
+    }
+    .mu-bank + .mu-bank { margin-top: var(--sp2); }
+    .mu-bank__logo {
+      width: 40px; height: 40px; border-radius: var(--r-md); flex-shrink: 0;
+      display: grid; place-items: center; font-size: var(--sm); font-weight: 800; color: #fff; letter-spacing: -.3px;
+    }
+    .mu-bank__name { font-size: 15px; font-weight: 600; }
+    .mu-mono { font-family: var(--mono); font-size: var(--sm); letter-spacing: -.2px; }
+    .mu-draft {
+      display: inline-block; padding: 2px 7px; border-radius: 4px; background: var(--warning-bg);
+      color: #b45309; font-size: 9px; font-weight: 800; letter-spacing: .06em; border: 1px solid var(--warning-border);
+    }
+    .mu-swatch { border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--border); }
+    .mu-swatch__chip { height: 46px; }
+    .mu-swatch__meta { padding: 6px 8px; background: var(--s1); }
+    .mu-swatch__name { font-size: 10.5px; font-weight: 700; }
+    .mu-swatch__hex { font-family: var(--mono); font-size: 9.5px; color: var(--t2); }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="panel">
+    <div class="brand">Finanzas</div>
+    <p class="subtitle">
+      Mockup mobile · v1.0.0<br>
+      Hash: <code>#screen=…&amp;state=…</code> · <a href="INVENTORY.md" style="color:inherit">inventory</a>
+    </p>
+    <div id="mockup-nav"></div>
+  </aside>
+
+  <main class="phone-col">
+    <div class="phone-label" id="phone-label">—</div>
+    <div class="phone-slot">
+      <div class="phone">
+        <div class="phone-screen" id="phone-screen">
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     AUTH
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="app-screen" id="s-auth">
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-safe-top"></div>
+    <div class="mu-center mu-mt6">
+      <div style="width:84px;height:84px;border-radius:22px;background:var(--grad-brand);display:grid;place-items:center;font-size:40px;margin:0 auto;box-shadow:var(--sh-lg)">💰</div>
+      <h1 class="mu-h1 mu-mt5">Finanzas</h1>
+      <p class="mu-p mu-mt1">Tu asistente financiero personal</p>
+    </div>
+
+    <div class="mu-card mu-mt6">
+      <div class="mu-center">
+        <div class="mu-h3">Comienza ahora</div>
+        <p class="mu-small mu-mt1">Elige cómo quieres acceder</p>
+      </div>
+
+      <div class="mu-btn-stack mu-mt5">
+        <button class="mu-btn mu-btn--outline">🇬 Continuar con Google</button>
+        <button class="mu-btn mu-btn--outline">🍎 Continuar con Apple</button>
+      </div>
+
+      <div class="mu-row mu-mt5" style="gap:var(--sp3)">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span class="mu-xs">O con tu email</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+
+      <div class="mu-mt4">
+        <div class="mu-input mu-input--ph" data-states="empty">✉️ tu@email.com</div>
+        <div class="mu-input is-focus" data-states="email-typed">✉️ laura@ejemplo.cl</div>
+      </div>
+
+      <div class="mu-mt4">
+        <button class="mu-btn mu-btn--muted" data-states="empty">Enviar código de verificación →</button>
+        <button class="mu-btn" data-states="email-typed" onclick="go('verify-code')">Enviar código de verificación →</button>
+      </div>
+    </div>
+
+    <p class="mu-xs mu-center mu-mt5" style="line-height:1.6">
+      Al continuar, aceptas nuestros <b style="color:var(--brand)">Términos</b><br>y <b style="color:var(--brand)">Política de Privacidad</b>
+    </p>
+  </div>
+</section>
+
+<section class="app-screen" id="s-verify-code">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('auth')">←</button>
+    <div class="mu-topbar__title">Verificar código</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-center mu-mt6">
+      <div style="font-size:44px">📬</div>
+      <h2 class="mu-h2 mu-mt3">Revisa tu correo</h2>
+      <p class="mu-p mu-mt2">Enviamos un código de 6 caracteres a<br><b style="color:var(--t1)">laura@ejemplo.cl</b></p>
+    </div>
+
+    <div class="mu-card mu-mt6">
+      <p class="mu-small mu-center">Ingresa el código de 6 caracteres (letras y números)</p>
+
+      <div class="mu-otp mu-mt4" data-states="empty">
+        <div class="mu-otp__box is-filled">A</div><div class="mu-otp__box">·</div><div class="mu-otp__box">·</div>
+        <div class="mu-otp__box">·</div><div class="mu-otp__box">·</div><div class="mu-otp__box">·</div>
+      </div>
+      <div class="mu-otp mu-mt4" data-states="filled resend-ready">
+        <div class="mu-otp__box is-filled">A</div><div class="mu-otp__box is-filled">7</div><div class="mu-otp__box is-filled">K</div>
+        <div class="mu-otp__box is-filled">2</div><div class="mu-otp__box is-filled">P</div><div class="mu-otp__box is-filled">9</div>
+      </div>
+      <div class="mu-otp mu-mt4" data-states="invalid">
+        <div class="mu-otp__box is-error">B</div><div class="mu-otp__box is-error">3</div><div class="mu-otp__box is-error">X</div>
+        <div class="mu-otp__box is-error">1</div><div class="mu-otp__box is-error">Q</div><div class="mu-otp__box is-error">4</div>
+      </div>
+
+      <p class="mu-hint mu-hint--error mu-center" data-states="invalid">Código incorrecto. Te quedan 2 intentos.</p>
+
+      <div class="mu-mt4">
+        <button class="mu-btn mu-btn--muted" data-states="empty">Verificar código</button>
+        <button class="mu-btn" data-states="filled resend-ready invalid" onclick="go('onboarding-intro')">Verificar código</button>
+      </div>
+    </div>
+
+    <div class="mu-center mu-mt5">
+      <p class="mu-small">¿No recibiste el código?</p>
+      <p class="mu-small mu-mt1" data-states="empty filled invalid" style="color:var(--t3)">Reenviar en 0:47</p>
+      <p class="mu-small mu-mt1" data-states="resend-ready"><b style="color:var(--brand)">Reenviar código</b></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ONBOARDING
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="app-screen" id="s-onboarding-intro">
+  <div class="mu-scroll mu-pad mu-pad-b" style="display:flex;flex-direction:column">
+    <div class="mu-safe-top"></div>
+    <div class="mu-spacer"></div>
+    <div class="mu-center">
+      <div style="font-size:62px">👋</div>
+      <h1 class="mu-h1 mu-mt4">Bienvenido a Finanzas</h1>
+      <p class="mu-p mu-p--lead mu-mt3">Te ayudaremos a tomar control de tu dinero —<br>paso a paso, a tu propio ritmo.</p>
+    </div>
+    <div class="mu-spacer"></div>
+    <button class="mu-btn" onclick="go('onboarding-value')">Comenzar</button>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-onboarding-value">
+  <div class="mu-topbar" style="border-bottom:none;background:transparent">
+    <div style="width:36px"></div>
+    <div class="mu-spacer"></div>
+    <button class="mu-btn mu-btn--ghost mu-btn--auto" onclick="go('connect-bank-intro')">Saltar</button>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b" style="display:flex;flex-direction:column">
+    <div class="mu-spacer"></div>
+
+    <div class="mu-center" data-states="step-1">
+      <div style="font-size:62px">🎯</div>
+      <h2 class="mu-h2 mu-mt4">Mejoras financieras simples</h2>
+      <p class="mu-p mu-p--lead mu-mt3">Organizamos tus gastos de forma automática sin abrumarte. Cada paso es claro y fácil de seguir.</p>
+    </div>
+    <div class="mu-center" data-states="step-2">
+      <div style="font-size:62px">🔒</div>
+      <h2 class="mu-h2 mu-mt4">Tus claves nunca salen del teléfono</h2>
+      <p class="mu-p mu-p--lead mu-mt3">Leemos tu banco desde tu propio dispositivo. Tus credenciales se guardan cifradas aquí, no en nuestros servidores.</p>
+    </div>
+    <div class="mu-center" data-states="step-3">
+      <div style="font-size:62px">🌱</div>
+      <h2 class="mu-h2 mu-mt4">A tu ritmo, unos minutos por semana</h2>
+      <p class="mu-p mu-p--lead mu-mt3">No es una app que te exige todos los días. Un par de sesiones cortas por semana bastan para mantener el control.</p>
+    </div>
+
+    <div class="mu-card mu-card--flat mu-mt6" data-states="step-1">
+      <div class="mu-row mu-mt1"><span>✓</span><span class="mu-small">Sin complicaciones técnicas</span></div>
+      <div class="mu-row mu-mt3"><span>✓</span><span class="mu-small">Proceso paso a paso</span></div>
+      <div class="mu-row mu-mt3"><span>✓</span><span class="mu-small">Interfaz intuitiva</span></div>
+    </div>
+
+    <div class="mu-spacer"></div>
+    <div class="mu-dots mu-mt5">
+      <div class="mu-dots__dot is-on" data-states="step-1"></div><div class="mu-dots__dot" data-states="step-2 step-3"></div>
+      <div class="mu-dots__dot is-on" data-states="step-2"></div><div class="mu-dots__dot" data-states="step-1 step-3"></div>
+      <div class="mu-dots__dot is-on" data-states="step-3"></div><div class="mu-dots__dot" data-states="step-1 step-2"></div>
+    </div>
+    <button class="mu-btn mu-mt5" data-states="step-1" onclick="go('onboarding-value','step-2')">Continuar</button>
+    <button class="mu-btn mu-mt5" data-states="step-2" onclick="go('onboarding-value','step-3')">Continuar</button>
+    <button class="mu-btn mu-mt5" data-states="step-3" onclick="go('connect-bank-intro')">Continuar</button>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-connect-bank-intro">
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-safe-top"></div>
+    <div class="mu-mt4">
+      <div class="mu-eyebrow">Primer paso</div>
+      <h1 class="mu-h1 mu-mt2">Conecta tu banco</h1>
+      <p class="mu-p mu-p--lead mu-mt3">Este es el paso más importante — una vez que conectes tu banco, tendrás el control total de tu información financiera.</p>
+    </div>
+
+    <div class="mu-card mu-mt5" style="border-color:var(--success-border);background:var(--success-bg)">
+      <div class="mu-row">
+        <span style="font-size:22px">🔒</span>
+        <div class="mu-item__txt">
+          <div class="mu-item__title">Máxima seguridad garantizada</div>
+        </div>
+      </div>
+      <div class="mu-row mu-mt4" style="align-items:flex-start">
+        <span style="font-size:20px">📱</span>
+        <div class="mu-item__txt">
+          <div class="mu-item__title" style="font-size:var(--base)">Almacenamiento local seguro</div>
+          <p class="mu-small mu-mt1">Tus contraseñas se guardan cifradas únicamente en tu dispositivo. Nunca viajan a nuestros servidores.</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="mu-item mu-mt4" style="background:var(--s1);border:1px solid var(--border);border-radius:var(--r-lg)"
+            onclick="go('connect-bank-intro', document.getElementById('s-connect-bank-intro').dataset.state === 'how-it-works' ? 'default' : 'how-it-works')">
+      <span class="mu-item__icon">❓</span>
+      <span class="mu-item__txt"><span class="mu-item__title" style="font-size:var(--base)">¿Cómo funciona la conexión segura?</span></span>
+      <span class="mu-item__chev" data-states="default">▾</span>
+      <span class="mu-item__chev" data-states="how-it-works">▴</span>
+    </button>
+
+    <div class="mu-card mu-card--flat mu-mt3" data-states="how-it-works">
+      <div class="mu-row" style="align-items:flex-start">
+        <span class="mu-badge mu-badge--info">1</span>
+        <p class="mu-small">Abrimos el sitio de tu banco dentro de la app, en tu teléfono.</p>
+      </div>
+      <div class="mu-row mu-mt3" style="align-items:flex-start">
+        <span class="mu-badge mu-badge--info">2</span>
+        <p class="mu-small">Tus credenciales se escriben en ese formulario y se guardan cifradas en el llavero del dispositivo.</p>
+      </div>
+      <div class="mu-row mu-mt3" style="align-items:flex-start">
+        <span class="mu-badge mu-badge--info">3</span>
+        <p class="mu-small">Leemos tus productos y movimientos y los guardamos localmente. Nada de esto pasa por un servidor nuestro.</p>
+      </div>
+    </div>
+
+    <button class="mu-btn mu-mt5" onclick="go('bank-picker')">Conectar con mi banco</button>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-bank-picker">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('connect-bank-intro')">←</button>
+    <div class="mu-topbar__title">Selecciona tu banco</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-mt4">
+      <div class="mu-input mu-input--ph" data-states="list">🔍 Buscar banco…</div>
+      <div class="mu-input is-focus" data-states="search">🔍 chi</div>
+      <div class="mu-input is-focus" data-states="no-results">🔍 banco imaginario</div>
+    </div>
+
+    <p class="mu-small mu-mt4" data-states="list">Bancos disponibles en Chile</p>
+    <p class="mu-small mu-mt4" data-states="search">1 resultado</p>
+
+    <div class="mu-mt3" data-states="list search">
+      <button class="mu-bank" onclick="go('bank-credentials')">
+        <span class="mu-bank__logo" style="background:#003da5">BCH</span>
+        <span class="mu-item__txt"><span class="mu-bank__name">Banco de Chile</span><span class="mu-item__sub">Cuentas, tarjetas y líneas</span></span>
+        <span class="mu-badge mu-badge--ok">Disponible</span>
+      </button>
+    </div>
+
+    <div class="mu-mt2" data-states="list">
+      <button class="mu-bank">
+        <span class="mu-bank__logo" style="background:#ec0000">SAN</span>
+        <span class="mu-item__txt"><span class="mu-bank__name">Banco Santander</span><span class="mu-item__sub">Próximamente</span></span>
+        <span class="mu-item__chev">›</span>
+      </button>
+      <button class="mu-bank">
+        <span class="mu-bank__logo" style="background:#00396a">BCI</span>
+        <span class="mu-item__txt"><span class="mu-bank__name">Banco BCI</span><span class="mu-item__sub">Próximamente</span></span>
+        <span class="mu-item__chev">›</span>
+      </button>
+      <button class="mu-bank">
+        <span class="mu-bank__logo" style="background:#e30613">EST</span>
+        <span class="mu-item__txt"><span class="mu-bank__name">BancoEstado</span><span class="mu-item__sub">Próximamente</span></span>
+        <span class="mu-item__chev">›</span>
+      </button>
+      <button class="mu-bank">
+        <span class="mu-bank__logo" style="background:#78b833">FAL</span>
+        <span class="mu-item__txt"><span class="mu-bank__name">Banco Falabella</span><span class="mu-item__sub">Próximamente</span></span>
+        <span class="mu-item__chev">›</span>
+      </button>
+      <button class="mu-bank">
+        <span class="mu-bank__logo" style="background:#1b3a6b">ITA</span>
+        <span class="mu-item__txt"><span class="mu-bank__name">Banco Itaú</span><span class="mu-item__sub">Próximamente</span></span>
+        <span class="mu-item__chev">›</span>
+      </button>
+    </div>
+
+    <div class="mu-empty" data-states="no-results">
+      <div class="mu-empty__icon">🔎</div>
+      <div class="mu-h3">No encontramos ese banco</div>
+      <p class="mu-p">Revisa el nombre o cuéntanos cuál necesitas para priorizarlo.</p>
+      <button class="mu-btn mu-btn--outline mu-btn--sm mu-mt2">Sugerir un banco</button>
+    </div>
+
+    <div class="mu-note mu-mt5" data-states="list search">
+      <span class="mu-note__icon">ℹ️</span>
+      <span>El MVP soporta <b>Banco de Chile</b>. Iremos sumando bancos con el mismo mecanismo de scraping local.</span>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-bank-credentials">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('bank-picker')">←</button>
+    <div class="mu-topbar__title">Banco de Chile</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-row mu-mt4">
+      <span class="mu-bank__logo" style="background:#003da5;width:48px;height:48px;font-size:var(--base)">BCH</span>
+      <div class="mu-item__txt">
+        <div class="mu-h3">Banco de Chile</div>
+        <p class="mu-small">Ingresa tus credenciales de banca en línea</p>
+      </div>
+    </div>
+
+    <div class="mu-note mu-note--ok mu-mt4">
+      <span class="mu-note__icon">🔒</span>
+      <span>Estos datos se cifran y se guardan <b>solo en este teléfono</b>. No se envían a ningún servidor.</span>
+    </div>
+
+    <div class="mu-field">
+      <label class="mu-label">RUT</label>
+      <div class="mu-input mu-input--ph" data-states="empty">12.345.678-9</div>
+      <div class="mu-input" data-states="filled error">18.456.789-0</div>
+      <div class="mu-input is-locked" data-states="rut-locked">18.456.789-0 🔒</div>
+      <p class="mu-hint" data-states="rut-locked">Todos tus bancos deben estar a nombre del mismo RUT.</p>
+    </div>
+
+    <div class="mu-field">
+      <label class="mu-label">Clave de internet</label>
+      <div class="mu-input mu-input--ph" data-states="empty">••••••••</div>
+      <div class="mu-input" data-states="filled rut-locked">••••••••</div>
+      <div class="mu-input is-error" data-states="error">••••••••</div>
+      <p class="mu-hint mu-hint--error" data-states="error">El banco rechazó estas credenciales. Revisa tu clave e inténtalo de nuevo.</p>
+    </div>
+
+    <div class="mu-mt5">
+      <button class="mu-btn mu-btn--muted" data-states="empty">Conectar</button>
+      <button class="mu-btn" data-states="filled rut-locked error" onclick="go('bank-syncing')">Conectar</button>
+      <button class="mu-btn mu-btn--ghost mu-mt2" onclick="go('bank-picker')">Cancelar</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-bank-syncing">
+  <div class="mu-scroll mu-pad mu-pad-b" style="display:flex;flex-direction:column">
+    <div class="mu-safe-top"></div>
+    <div class="mu-spacer"></div>
+
+    <div class="mu-center" data-states="login products transactions">
+      <div style="font-size:52px">🔄</div>
+      <h2 class="mu-h2 mu-mt4">Conectando con Banco de Chile…</h2>
+      <p class="mu-p mu-mt2">Esto ocurre dentro de tu teléfono. Puede tomar hasta un minuto.</p>
+    </div>
+    <div class="mu-center" data-states="error">
+      <div style="font-size:52px">⚠️</div>
+      <h2 class="mu-h2 mu-mt4">No pudimos completar la conexión</h2>
+      <p class="mu-p mu-mt2">El banco cerró la sesión antes de terminar. Tus credenciales siguen guardadas en el dispositivo.</p>
+    </div>
+
+    <div class="mu-card mu-mt6" data-states="login products transactions">
+      <div class="mu-progress"><div class="mu-progress__fill" style="width:25%" data-states="login"></div><div class="mu-progress__fill" style="width:60%" data-states="products"></div><div class="mu-progress__fill" style="width:90%" data-states="transactions"></div></div>
+      <div class="mu-row mu-mt4"><span>✅</span><span class="mu-small">Sesión iniciada</span><span class="mu-spacer"></span><span class="mu-badge mu-badge--info" data-states="login">En curso</span><span class="mu-badge mu-badge--ok" data-states="products transactions">Listo</span></div>
+      <div class="mu-row mu-mt3"><span data-states="login">⏳</span><span data-states="products transactions">✅</span><span class="mu-small">Leyendo productos</span><span class="mu-spacer"></span><span class="mu-badge" data-states="login">Pendiente</span><span class="mu-badge mu-badge--info" data-states="products">En curso</span><span class="mu-badge mu-badge--ok" data-states="transactions">Listo</span></div>
+      <div class="mu-row mu-mt3"><span data-states="login products">⏳</span><span data-states="transactions">✅</span><span class="mu-small">Descargando movimientos</span><span class="mu-spacer"></span><span class="mu-badge" data-states="login products">Pendiente</span><span class="mu-badge mu-badge--info" data-states="transactions">En curso</span></div>
+    </div>
+
+    <div class="mu-note mu-note--danger mu-mt5" data-states="error">
+      <span class="mu-note__icon">💡</span>
+      <span>Si tu banco pide una clave dinámica o bloqueó la sesión, vuelve a intentarlo en unos minutos.</span>
+    </div>
+
+    <div class="mu-spacer"></div>
+    <button class="mu-btn" data-states="transactions" onclick="go('bank-connected')">Ver resultado</button>
+    <div class="mu-btn-stack" data-states="error">
+      <button class="mu-btn" onclick="go('bank-credentials','filled')">Reintentar</button>
+      <button class="mu-btn mu-btn--ghost" onclick="go('bank-picker')">Elegir otro banco</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-bank-connected">
+  <div class="mu-scroll mu-pad mu-pad-b" style="display:flex;flex-direction:column">
+    <div class="mu-safe-top"></div>
+    <div class="mu-spacer"></div>
+    <div class="mu-center">
+      <div style="font-size:56px">🎉</div>
+      <h2 class="mu-h2 mu-mt4" data-states="single">¡Banco conectado!</h2>
+      <h2 class="mu-h2 mu-mt4" data-states="multiple">¡Bancos conectados!</h2>
+      <p class="mu-p mu-mt2">Excelente. Has completado el primer paso hacia el control de tus finanzas.</p>
+    </div>
+
+    <div class="mu-mt6">
+      <div class="mu-bank">
+        <span class="mu-bank__logo" style="background:#003da5">BCH</span>
+        <span class="mu-item__txt"><span class="mu-bank__name">Banco de Chile</span><span class="mu-item__sub">3 productos · 57 movimientos</span></span>
+        <span class="mu-badge mu-badge--ok">✓</span>
+      </div>
+      <div class="mu-bank" data-states="multiple">
+        <span class="mu-bank__logo" style="background:#ec0000">SAN</span>
+        <span class="mu-item__txt"><span class="mu-bank__name">Banco Santander</span><span class="mu-item__sub">2 productos · 31 movimientos</span></span>
+        <span class="mu-badge mu-badge--ok">✓</span>
+      </div>
+    </div>
+
+    <div class="mu-spacer"></div>
+    <div class="mu-btn-stack">
+      <button class="mu-btn mu-btn--outline" onclick="go('bank-picker')">Agregar otro banco</button>
+      <button class="mu-btn" onclick="go('notifications-intro')">Estoy listo</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-notifications-intro">
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-safe-top"></div>
+    <div class="mu-mt4">
+      <div class="mu-eyebrow">Paso 2</div>
+      <h1 class="mu-h1 mu-mt2">Activar notificaciones</h1>
+      <p class="mu-p mu-p--lead mu-mt3">A partir de ahora recibirás pequeños desafíos para tomar control de tus finanzas poco a poco.</p>
+    </div>
+
+    <div class="mu-card mu-mt5">
+      <p class="mu-small mu-center">📱 Recibirás notificaciones como esta:</p>
+      <div class="mu-card mu-card--flat mu-mt3" style="border:1px solid var(--border)">
+        <div class="mu-row">
+          <span style="font-size:20px">💰</span>
+          <div class="mu-item__txt">
+            <div class="mu-row mu-row--between">
+              <span class="mu-item__title" style="font-size:var(--sm)">Finanzas</span>
+              <span class="mu-xs">ahora</span>
+            </div>
+            <p class="mu-small mu-mt1"><b>💰 Desafío diario:</b> categoriza tu gasto en café de hoy. Toca para comenzar.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mu-note mu-note--warn mu-mt5" data-states="denied">
+      <span class="mu-note__icon">📵</span>
+      <span>Las notificaciones están bloqueadas para esta app. Puedes habilitarlas en los ajustes del teléfono cuando quieras.</span>
+    </div>
+
+    <div class="mu-btn-stack mu-mt5" data-states="default">
+      <button class="mu-btn" onclick="go('notifications-schedule')">Habilitar notificaciones</button>
+      <button class="mu-btn mu-btn--ghost" onclick="go('notifications-intro','denied')">Tal vez después</button>
+    </div>
+    <div class="mu-btn-stack mu-mt5" data-states="denied">
+      <button class="mu-btn" onclick="go('onboarding-ready')">Continuar sin notificaciones</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-notifications-schedule">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('notifications-intro')">←</button>
+    <div class="mu-topbar__title">Recordatorios</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-mt4">
+      <h2 class="mu-h2" data-states="time custom-time">⏰ ¿Cuándo te funciona mejor?</h2>
+      <h2 class="mu-h2" data-states="days">📅 ¿Qué días?</h2>
+      <p class="mu-p mu-mt2" data-states="time custom-time">Elige la hora en que te gustaría recibir tus desafíos.</p>
+      <p class="mu-p mu-mt2" data-states="days">Selecciona los días en que quieres recibir desafíos.</p>
+    </div>
+
+    <div class="mu-grid-2 mu-mt5" data-states="time custom-time">
+      <button class="mu-chip"><span class="mu-chip__emoji">🌅</span>7:00 AM</button>
+      <button class="mu-chip is-selected" data-states="time"><span class="mu-chip__emoji">☀️</span>9:00 AM</button>
+      <button class="mu-chip" data-states="custom-time"><span class="mu-chip__emoji">☀️</span>9:00 AM</button>
+      <button class="mu-chip"><span class="mu-chip__emoji">🕛</span>12:00 PM</button>
+      <button class="mu-chip"><span class="mu-chip__emoji">🌆</span>6:00 PM</button>
+      <button class="mu-chip"><span class="mu-chip__emoji">🌙</span>8:00 PM</button>
+      <button class="mu-chip" data-states="time" onclick="go('notifications-schedule','custom-time')"><span class="mu-chip__emoji">⚙️</span>Personalizada</button>
+      <button class="mu-chip is-selected" data-states="custom-time"><span class="mu-chip__emoji">⚙️</span>Personalizada</button>
+    </div>
+
+    <div class="mu-card mu-mt4" data-states="custom-time">
+      <p class="mu-label">Hora personalizada</p>
+      <div class="mu-row" style="justify-content:center;gap:var(--sp2)">
+        <div class="mu-otp__box is-filled" style="width:62px">08</div>
+        <span class="mu-h2">:</span>
+        <div class="mu-otp__box is-filled" style="width:62px">30</div>
+        <div class="mu-segment" style="margin-left:var(--sp2)">
+          <button class="mu-segment__item is-active">AM</button>
+          <button class="mu-segment__item">PM</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mu-list mu-mt5" data-states="days">
+      <div class="mu-item"><span class="mu-check is-on">✓</span><span class="mu-item__txt"><span class="mu-item__title">Lunes</span></span></div>
+      <div class="mu-item"><span class="mu-check is-on">✓</span><span class="mu-item__txt"><span class="mu-item__title">Martes</span></span></div>
+      <div class="mu-item"><span class="mu-check is-on">✓</span><span class="mu-item__txt"><span class="mu-item__title">Miércoles</span></span></div>
+      <div class="mu-item"><span class="mu-check is-on">✓</span><span class="mu-item__txt"><span class="mu-item__title">Jueves</span></span></div>
+      <div class="mu-item"><span class="mu-check is-on">✓</span><span class="mu-item__txt"><span class="mu-item__title">Viernes</span></span></div>
+      <div class="mu-item"><span class="mu-check">✓</span><span class="mu-item__txt"><span class="mu-item__title">Sábado</span></span></div>
+      <div class="mu-item"><span class="mu-check">✓</span><span class="mu-item__txt"><span class="mu-item__title">Domingo</span></span></div>
+    </div>
+    <button class="mu-btn mu-btn--outline mu-btn--sm mu-mt3" data-states="days">Solo días laborales</button>
+
+    <div class="mu-mt6">
+      <button class="mu-btn" data-states="time custom-time" onclick="go('notifications-schedule','days')">Continuar</button>
+      <button class="mu-btn" data-states="days" onclick="go('onboarding-ready')">Continuar</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-onboarding-ready">
+  <div class="mu-scroll mu-pad mu-pad-b" style="display:flex;flex-direction:column">
+    <div class="mu-safe-top"></div>
+    <div class="mu-spacer"></div>
+    <div class="mu-center">
+      <div style="font-size:62px">🎉</div>
+      <h1 class="mu-h1 mu-mt4">¡Todo listo!</h1>
+      <p class="mu-p mu-p--lead mu-mt3">Estás preparado para comenzar tu camino hacia el control financiero.</p>
+    </div>
+
+    <div class="mu-card mu-mt6">
+      <div class="mu-row"><span style="font-size:20px">🏦</span><span class="mu-item__txt"><span class="mu-item__title" style="font-size:var(--base)">1 banco conectado</span><span class="mu-item__sub">Banco de Chile · 3 productos</span></span><span class="mu-badge mu-badge--ok">✓</span></div>
+      <div class="mu-row mu-mt4"><span style="font-size:20px">🔔</span><span class="mu-item__txt"><span class="mu-item__title" style="font-size:var(--base)">Notificaciones activadas</span><span class="mu-item__sub">9:00 AM · días laborales</span></span><span class="mu-badge mu-badge--ok">✓</span></div>
+    </div>
+
+    <div class="mu-spacer"></div>
+    <button class="mu-btn" onclick="go('stage-intro')">Comenzar</button>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     CATEGORIZACIÓN
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="app-screen" id="s-stage-intro">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('home')">←</button>
+    <div class="mu-topbar__title">Etapa 1</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-center mu-mt5">
+      <div style="font-size:56px">🎯</div>
+      <h1 class="mu-h1 mu-mt3">Tu primera etapa</h1>
+      <p class="mu-eyebrow mu-mt2">Categorización inteligente</p>
+      <p class="mu-p mu-mt3">Ya tienes todo configurado. Ahora viene lo divertido: tomar control de tus finanzas paso a paso.</p>
+    </div>
+
+    <div class="mu-card mu-mt5">
+      <div class="mu-card__title">¿Qué vamos a hacer?</div>
+      <p class="mu-p mu-mt2">Vamos a categorizar tus transacciones recientes juntos. Es rápido, y cada categorización es una pequeña victoria.</p>
+      <div class="mu-grid-3 mu-mt4">
+        <div class="mu-center"><div style="font-size:22px">🔍</div><div class="mu-small mu-mt1"><b>Identificamos</b></div><div class="mu-xs">Gastos por categorizar</div></div>
+        <div class="mu-center"><div style="font-size:22px">🏷️</div><div class="mu-small mu-mt1"><b>Categorizamos</b></div><div class="mu-xs">Uno por uno</div></div>
+        <div class="mu-center"><div style="font-size:22px">🎉</div><div class="mu-small mu-mt1"><b>Celebramos</b></div><div class="mu-xs">Cada progreso</div></div>
+      </div>
+    </div>
+
+    <div class="mu-grid-2 mu-mt4">
+      <div class="mu-card mu-card--tight mu-center"><div class="mu-h1" style="color:var(--brand)">4</div><div class="mu-xs">Transacciones por categorizar</div></div>
+      <div class="mu-card mu-card--tight mu-center"><div class="mu-h1" style="color:var(--brand)">~5</div><div class="mu-xs">Minutos estimados</div></div>
+    </div>
+
+    <div class="mu-card mu-mt4">
+      <div class="mu-card__title">¿Por qué es importante?</div>
+      <div class="mu-row mu-mt3" style="align-items:flex-start"><span style="color:var(--success)">✓</span><div><div class="mu-small"><b>Visibilidad total</b></div><div class="mu-xs">Sabrás exactamente en qué gastas tu dinero</div></div></div>
+      <div class="mu-row mu-mt3" style="align-items:flex-start"><span style="color:var(--success)">✓</span><div><div class="mu-small"><b>Insights inteligentes</b></div><div class="mu-xs">Análisis automáticos de tus patrones de gasto</div></div></div>
+      <div class="mu-row mu-mt3" style="align-items:flex-start"><span style="color:var(--success)">✓</span><div><div class="mu-small"><b>Control gradual</b></div><div class="mu-xs">Cada categorización te acerca a tus objetivos</div></div></div>
+    </div>
+
+    <div class="mu-note mu-mt4">
+      <span class="mu-note__icon">💡</span>
+      <span><b>Flexibilidad total:</b> puedes parar cuando quieras y continuar después. No hay presión, solo progreso.</span>
+    </div>
+
+    <button class="mu-btn mu-mt5" onclick="go('categorize')">🚀 ¡Empezar mi primera etapa!</button>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-categorize">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('stage-intro')">←</button>
+    <div class="mu-topbar__title">Categorizar</div>
+    <button class="mu-topbar__btn" onclick="go('home')">✕</button>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-mt4">
+      <div class="mu-steps"><div class="mu-steps__step is-on"></div><div class="mu-steps__step"></div><div class="mu-steps__step"></div><div class="mu-steps__step"></div></div>
+      <p class="mu-small mu-center mu-mt3">Transacción 1 de 4</p>
+    </div>
+
+    <!-- Expense card -->
+    <div class="mu-card mu-mt4" data-states="expense not-sure advanced exclude-sheet">
+      <div class="mu-row">
+        <span class="mu-item__icon" style="background:var(--warning-bg)">💳</span>
+        <span class="mu-badge mu-badge--warn">Gasto</span>
+        <span class="mu-spacer"></span>
+        <span class="mu-small">26 ene · 14:32</span>
+      </div>
+      <div class="mu-center mu-mt4">
+        <div class="mu-amount mu-amount--hero mu-amount--out">$42.000</div>
+        <button class="mu-row mu-mt3" style="border:none;background:none;font-family:inherit;margin:var(--sp3) auto 0;cursor:pointer" onclick="go('merchant-edit')">
+          <span class="mu-h3">MercadoLibre Chile</span><span style="color:var(--brand)">✏️</span>
+        </button>
+        <p class="mu-xs" style="color:var(--brand)">Toca para editar</p>
+      </div>
+      <div class="mu-mt4">
+        <p class="mu-label" style="border-left:3px solid var(--brand);padding-left:8px">Descripción del banco</p>
+        <div class="mu-card mu-card--flat mu-mt2 mu-mono" style="padding:var(--sp3)">MERCADOLIBRE COMPRA ONLINE PRODUCTO ELECTRONICO</div>
+      </div>
+    </div>
+
+    <!-- Income card -->
+    <div class="mu-card mu-mt4" data-states="income">
+      <div class="mu-row">
+        <span class="mu-item__icon" style="background:var(--success-bg)">📥</span>
+        <span class="mu-badge mu-badge--ok">Ingreso</span>
+        <span class="mu-spacer"></span>
+        <span class="mu-small">27 ene · 21:00</span>
+      </div>
+      <div class="mu-center mu-mt4">
+        <div class="mu-amount mu-amount--hero mu-amount--in">$1.200.000</div>
+        <button class="mu-row mu-mt3" style="border:none;background:none;font-family:inherit;margin:var(--sp3) auto 0;cursor:pointer" onclick="go('merchant-edit')">
+          <span class="mu-h3">Consultoría Digital SpA</span><span style="color:var(--brand)">✏️</span>
+        </button>
+        <p class="mu-xs" style="color:var(--brand)">Toca para editar</p>
+      </div>
+      <div class="mu-mt4">
+        <p class="mu-label" style="border-left:3px solid var(--brand);padding-left:8px">Descripción del banco</p>
+        <div class="mu-card mu-card--flat mu-mt2 mu-mono" style="padding:var(--sp3)">TRANSFERENCIA ELECTRONICA PAGO CONSULTORIA DESARROLLO WEB</div>
+      </div>
+    </div>
+
+    <!-- Category pickers -->
+    <div data-states="expense not-sure advanced exclude-sheet">
+      <p class="mu-h3 mu-mt5">¿En qué categoría lo pones?</p>
+      <div class="mu-grid-2 mu-mt3">
+        <button class="mu-chip is-suggested"><span class="mu-chip__star">✨</span><span class="mu-chip__emoji">📦</span>Compras<span class="mu-chip__hint">Sugerido</span></button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🍔</span>Comida</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🛒</span>Supermercado</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🚗</span>Transporte</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🎬</span>Entretenimiento</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">⚡</span>Servicios</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">💊</span>Salud</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🔲</span>Elegir otra</button>
+      </div>
+    </div>
+
+    <div data-states="income">
+      <p class="mu-h3 mu-mt5">¿De qué tipo de ingreso se trata?</p>
+      <div class="mu-grid-2 mu-mt3">
+        <button class="mu-chip is-suggested"><span class="mu-chip__star">✨</span><span class="mu-chip__emoji">💻</span>Freelance<span class="mu-chip__hint">Sugerido</span></button>
+        <button class="mu-chip"><span class="mu-chip__emoji">💼</span>Sueldo</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">💰</span>Ingresos extra</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🔲</span>Elegir otra</button>
+      </div>
+    </div>
+
+    <!-- Not sure -->
+    <button class="mu-item mu-mt4" style="background:var(--s1);border:1px solid var(--border);border-radius:var(--r-lg)"
+            data-states="expense income" onclick="go('categorize','not-sure')">
+      <span class="mu-item__icon">🤔</span>
+      <span class="mu-item__txt"><span class="mu-item__title" style="font-size:var(--base)">¿No estás seguro?</span></span>
+      <span class="mu-item__chev">▾</span>
+    </button>
+
+    <div class="mu-list mu-mt4" data-states="not-sure">
+      <button class="mu-item"><span class="mu-item__icon">🕒</span><span class="mu-item__txt"><span class="mu-item__title">Revisar más tarde</span><span class="mu-item__sub">Lo veré después</span></span></button>
+      <button class="mu-item"><span class="mu-item__icon">❓</span><span class="mu-item__txt"><span class="mu-item__title">No recuerdo</span><span class="mu-item__sub">No estoy seguro de qué fue</span></span></button>
+      <button class="mu-item" onclick="go('categorize','exclude-sheet')"><span class="mu-item__icon">🚫</span><span class="mu-item__txt"><span class="mu-item__title">Excluir del análisis</span><span class="mu-item__sub">No es un gasto propio</span></span></button>
+    </div>
+
+    <!-- Advanced -->
+    <button class="mu-item mu-mt3" style="background:var(--s1);border:1px solid var(--border);border-radius:var(--r-lg)"
+            data-states="expense income not-sure" onclick="go('categorize','advanced')">
+      <span class="mu-item__icon">⚙️</span>
+      <span class="mu-item__txt"><span class="mu-item__title" style="font-size:var(--base)">Opciones avanzadas</span><span class="mu-item__sub">Configurar inclusión en análisis</span></span>
+      <span class="mu-item__chev">▾</span>
+    </button>
+
+    <div class="mu-card mu-mt3" data-states="advanced">
+      <div class="mu-card__title">Inclusión en el análisis</div>
+      <div class="mu-row mu-mt3"><span class="mu-radio is-on"></span><div class="mu-item__txt"><div class="mu-small"><b>Incluir completo</b></div><div class="mu-xs">$42.000 cuentan como gasto propio</div></div></div>
+      <div class="mu-row mu-mt3"><span class="mu-radio"></span><div class="mu-item__txt"><div class="mu-small"><b>Incluir parcialmente</b></div><div class="mu-xs">Compartido con otras personas</div></div></div>
+      <div class="mu-row mu-mt3" style="padding-left:34px">
+        <div class="mu-input" style="flex:1">$21.000</div>
+        <div class="mu-segment"><button class="mu-segment__item is-active">50%</button><button class="mu-segment__item">Monto</button></div>
+      </div>
+      <div class="mu-row mu-mt3"><span class="mu-radio"></span><div class="mu-item__txt"><div class="mu-small"><b>Excluir del análisis</b></div><div class="mu-xs">No afecta tus totales ni gráficos</div></div></div>
+    </div>
+
+    <div class="mu-btn-row mu-mt5">
+      <button class="mu-btn mu-btn--outline">Omitir</button>
+      <button class="mu-btn" onclick="go('categorize-complete')">Siguiente →</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+
+  <div class="mu-overlay" data-states="exclude-sheet">
+    <div class="mu-sheet">
+      <div class="mu-sheet__grab"></div>
+      <div class="mu-h3">🚫 Excluir del análisis</div>
+      <p class="mu-p mu-mt2">¿Por qué quieres excluir esta transacción?</p>
+      <div class="mu-list mu-mt4">
+        <div class="mu-item"><span class="mu-radio is-on"></span><span class="mu-item__txt"><span class="mu-item__title">Transferencia personal</span></span></div>
+        <div class="mu-item"><span class="mu-radio"></span><span class="mu-item__txt"><span class="mu-item__title">Involucra a más personas</span></span></div>
+        <div class="mu-item"><span class="mu-radio"></span><span class="mu-item__txt"><span class="mu-item__title">Gasto no relevante</span></span></div>
+        <div class="mu-item"><span class="mu-radio"></span><span class="mu-item__txt"><span class="mu-item__title">Retiro de efectivo</span></span></div>
+        <div class="mu-item"><span class="mu-radio"></span><span class="mu-item__txt"><span class="mu-item__title">Otro</span></span></div>
+      </div>
+      <div class="mu-field"><div class="mu-input mu-input--ph">Explica brevemente (opcional)</div></div>
+      <div class="mu-btn-row mu-mt5">
+        <button class="mu-btn mu-btn--outline" onclick="go('categorize','not-sure')">Cancelar</button>
+        <button class="mu-btn mu-btn--danger" onclick="go('categorize','expense')">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-merchant-edit">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('categorize')">←</button>
+    <div class="mu-topbar__title">Configurar comercio</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-card mu-mt4">
+      <label class="mu-label">Nombre del comercio</label>
+      <div class="mu-input is-focus">MercadoLibre Chile</div>
+      <p class="mu-hint">Este nombre se usará para agrupar todas las transacciones futuras.</p>
+    </div>
+
+    <div class="mu-card mu-mt4" data-states="default suggestions">
+      <div class="mu-card__head">
+        <div class="mu-card__title">Categoría por defecto</div>
+        <button class="mu-btn mu-btn--outline mu-btn--sm" onclick="go('merchant-edit','category-picker')">Cambiar</button>
+      </div>
+      <div class="mu-row">
+        <span class="mu-item__icon" style="background:var(--info-bg)">📦</span>
+        <div class="mu-item__txt"><div class="mu-item__title">Compras</div><div class="mu-item__sub">Se aplicará automáticamente a futuras transacciones</div></div>
+      </div>
+    </div>
+
+    <div class="mu-card mu-mt4" data-states="category-picker">
+      <div class="mu-card__title">Elige una categoría</div>
+      <div class="mu-grid-2 mu-mt3">
+        <button class="mu-chip is-selected"><span class="mu-chip__emoji">📦</span>Compras</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🍔</span>Comida</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🛒</span>Supermercado</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🚗</span>Transporte</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🎬</span>Entretenimiento</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">⚡</span>Servicios</button>
+      </div>
+      <button class="mu-btn mu-btn--outline mu-mt4" onclick="go('merchant-edit','default')">Guardar categoría</button>
+    </div>
+
+    <div class="mu-card mu-mt4" data-states="default suggestions">
+      <div class="mu-card__title">Estadísticas de gasto</div>
+      <div class="mu-row mu-mt3">
+        <div class="mu-item__txt"><div class="mu-small">Promedio mensual</div><div class="mu-xs" style="color:var(--success)">−55% vs mes anterior</div></div>
+        <div class="mu-amount" style="font-size:var(--lg)">$60.200</div>
+      </div>
+      <div class="mu-bars mu-mt4" style="height:80px">
+        <div class="mu-bars__col"><div class="mu-bars__bar mu-bars__bar--muted" style="height:55%"></div><span class="mu-bars__lbl">nov</span></div>
+        <div class="mu-bars__col"><div class="mu-bars__bar mu-bars__bar--muted" style="height:70%"></div><span class="mu-bars__lbl">dic</span></div>
+        <div class="mu-bars__col"><div class="mu-bars__bar" style="height:32%"></div><span class="mu-bars__lbl">ene</span></div>
+      </div>
+    </div>
+
+    <button class="mu-item mu-mt4" style="background:var(--s1);border:1px solid var(--border);border-radius:var(--r-lg)"
+            data-states="default" onclick="go('merchant-edit','suggestions')">
+      <span class="mu-item__icon">🧾</span>
+      <span class="mu-item__txt"><span class="mu-item__title" style="font-size:var(--base)">Posibles nombres legales (4)</span></span>
+      <span class="mu-item__chev">▾</span>
+    </button>
+
+    <div class="mu-card mu-mt4" data-states="suggestions">
+      <div class="mu-card__title">Nombres detectados en tus movimientos</div>
+      <div class="mu-list mu-mt3">
+        <div class="mu-item"><span class="mu-item__txt"><span class="mu-item__title mu-mono" style="font-size:var(--sm)">MERCADOLIBRE COMPRA ONLINE</span><span class="mu-item__sub">12 movimientos</span></span><span class="mu-badge mu-badge--ok">Actual</span></div>
+        <div class="mu-item"><span class="mu-item__txt"><span class="mu-item__title mu-mono" style="font-size:var(--sm)">MERPAGO*MERCADOLIBRE</span><span class="mu-item__sub">5 movimientos</span></span><span class="mu-badge mu-badge--info">Agrupar</span></div>
+        <div class="mu-item"><span class="mu-item__txt"><span class="mu-item__title mu-mono" style="font-size:var(--sm)">ML CHILE SPA</span><span class="mu-item__sub">3 movimientos</span></span><span class="mu-badge mu-badge--info">Agrupar</span></div>
+      </div>
+      <button class="mu-btn mu-btn--ghost mu-mt3" onclick="go('merchant-edit','default')">Cerrar</button>
+    </div>
+
+    <button class="mu-btn mu-mt5" onclick="go('categorize')">Guardar</button>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-categorize-complete">
+  <div class="mu-scroll mu-pad mu-pad-b" style="display:flex;flex-direction:column">
+    <div class="mu-safe-top"></div>
+    <div class="mu-spacer"></div>
+    <div class="mu-center">
+      <div style="font-size:60px">🎉</div>
+      <h1 class="mu-h1 mu-mt4" data-states="partial">¡Buen trabajo!</h1>
+      <h1 class="mu-h1 mu-mt4" data-states="done">¡Increíble trabajo!</h1>
+      <p class="mu-p mu-p--lead mu-mt3" data-states="partial">Categorizaste las transacciones recientes.</p>
+      <p class="mu-p mu-p--lead mu-mt3" data-states="done">Has organizado completamente tus transacciones.</p>
+    </div>
+
+    <div class="mu-card mu-mt6">
+      <div class="mu-center">
+        <div class="mu-small">Total categorizado</div>
+        <div class="mu-h1 mu-mt1" style="color:var(--brand)" data-states="partial">7 / 20</div>
+        <div class="mu-h1 mu-mt1" style="color:var(--brand)" data-states="done">57</div>
+        <div class="mu-xs">transacciones organizadas</div>
+      </div>
+      <div class="mu-progress mu-mt4"><div class="mu-progress__fill" style="width:35%" data-states="partial"></div><div class="mu-progress__fill" style="width:100%" data-states="done"></div></div>
+    </div>
+
+    <div class="mu-grid-2 mu-mt4">
+      <div class="mu-card mu-card--tight"><div class="mu-xs">Gasto diario promedio</div><div class="mu-amount mu-mt1" style="font-size:var(--lg)">$46.700</div><div class="mu-xs">este mes</div></div>
+      <div class="mu-card mu-card--tight"><div class="mu-xs">vs mes pasado</div><div class="mu-amount mu-mt1" style="font-size:var(--lg);color:var(--success)">−12%</div><div class="mu-xs">estás gastando menos</div></div>
+    </div>
+
+    <div class="mu-spacer"></div>
+    <div class="mu-btn-stack" data-states="partial">
+      <button class="mu-btn" onclick="go('categorize','expense')">Seguir categorizando</button>
+      <button class="mu-btn mu-btn--ghost" onclick="go('home')">Terminado por hoy</button>
+    </div>
+    <div class="mu-btn-stack" data-states="done">
+      <button class="mu-btn" onclick="go('home')">Continuar a inicio</button>
+    </div>
+    <p class="mu-xs mu-center mu-mt3">¡Ahora tienes una vista completa de tus gastos!</p>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     HOME
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="app-screen" id="s-home">
+  <div class="mu-head">
+    <div class="mu-head__avatar mu-head__avatar--brand">💰</div>
+    <div class="mu-head__txt">
+      <div class="mu-head__title">Finanzas</div>
+      <div class="mu-head__sub">Tu asistente financiero</div>
+    </div>
+    <button class="mu-head__action" onclick="go('settings')">⚙️</button>
+  </div>
+
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <!-- Challenge hero -->
+    <div class="mu-mt4" data-states="pending">
+      <button class="mu-hero" style="width:100%;border:none;text-align:left;font-family:inherit;cursor:pointer" onclick="go('stage-intro')">
+        <span class="mu-hero__row">
+          <span class="mu-hero__icon">🎯</span>
+          <span>
+            <span class="mu-hero__title" style="display:block">¡Tu primera etapa!</span>
+            <span class="mu-hero__sub" style="display:block">4 transacciones pendientes · ~5 min</span>
+          </span>
+        </span>
+      </button>
+    </div>
+    <div class="mu-mt4" data-states="all-clear">
+      <div class="mu-hero" style="background:var(--grad-income)">
+        <div class="mu-hero__row">
+          <span class="mu-hero__icon">✅</span>
+          <div>
+            <div class="mu-hero__title">¡Todo al día!</div>
+            <div class="mu-hero__sub">No tienes transacciones pendientes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mu-note mu-note--danger mu-mt4" data-states="sync-error">
+      <span class="mu-note__icon">⚠️</span>
+      <span><b>No pudimos sincronizar Banco de Chile.</b><br>Último sync exitoso: ayer 21:14. <b style="color:var(--brand)">Reintentar</b></span>
+    </div>
+
+    <div class="mu-dots mu-mt4" data-states="pending all-clear sync-error">
+      <div class="mu-dots__dot is-on"></div><div class="mu-dots__dot"></div><div class="mu-dots__dot"></div>
+    </div>
+
+    <!-- Empty first sync -->
+    <div class="mu-empty" data-states="empty">
+      <div class="mu-empty__icon">🌱</div>
+      <div class="mu-h3">Estamos preparando tus datos</div>
+      <p class="mu-p">Tu primer sincronización con Banco de Chile está en curso. Esto puede tomar un par de minutos.</p>
+      <div class="mu-progress" style="width:100%"><div class="mu-progress__fill" style="width:45%"></div></div>
+    </div>
+
+    <!-- Financial summary -->
+    <div class="mu-card mu-mt5" data-states="pending all-clear sync-error">
+      <div class="mu-card__head">
+        <div><div class="mu-card__title">Resumen financiero</div></div>
+        <div class="mu-row" style="gap:var(--sp2)">
+          <span class="mu-badge mu-badge--warn">ene 2025</span>
+          <span class="mu-xs">‹ ›</span>
+        </div>
+      </div>
+      <div class="mu-grid-2">
+        <div class="mu-stat mu-stat--in">
+          <span class="mu-stat__arrow">↗</span>
+          <div class="mu-stat__label">Ingresos</div>
+          <div class="mu-stat__value">3.7M</div>
+          <div class="mu-stat__sub">2 movimientos</div>
+        </div>
+        <div class="mu-stat mu-stat--out">
+          <span class="mu-stat__arrow">↘</span>
+          <div class="mu-stat__label">Gastos</div>
+          <div class="mu-stat__value">1.4M</div>
+          <div class="mu-stat__sub">24 movimientos</div>
+        </div>
+      </div>
+      <div class="mu-row mu-row--between mu-mt4" style="padding-top:var(--sp3);border-top:1px solid var(--border)">
+        <span class="mu-p">Balance del mes</span>
+        <span class="mu-amount mu-amount--in" style="font-size:var(--lg)">+2.3M</span>
+      </div>
+    </div>
+
+    <!-- Trend -->
+    <div class="mu-card mu-mt4" data-states="pending all-clear sync-error">
+      <div class="mu-card__head">
+        <div class="mu-card__title">Análisis de tendencias</div>
+        <span class="mu-badge">ene 2025</span>
+      </div>
+      <div class="mu-segment"><button class="mu-segment__item is-active">Gastos</button><button class="mu-segment__item">Ingresos</button></div>
+      <svg class="mu-line mu-mt3" viewBox="0 0 300 120" preserveAspectRatio="none" aria-label="Tendencia de gastos del mes">
+        <line x1="0" y1="30" x2="300" y2="30" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="0" y1="60" x2="300" y2="60" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="0" y1="90" x2="300" y2="90" stroke="#e2e8f0" stroke-width="1"/>
+        <polyline points="0,100 50,88 100,92 150,66 200,58 250,40 300,26" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 4"/>
+        <polyline points="0,105 50,95 100,72 150,74 200,48 250,36 300,18" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="mu-row mu-mt3" style="gap:var(--sp4)">
+        <span class="mu-legend__row"><span class="mu-legend__dot" style="background:#f59e0b"></span><span class="mu-xs">Este mes</span></span>
+        <span class="mu-legend__row"><span class="mu-legend__dot" style="background:#cbd5e1"></span><span class="mu-xs">dic 2024</span></span>
+        <span class="mu-spacer"></span>
+        <button class="mu-btn mu-btn--ghost mu-btn--auto" style="min-height:auto;font-size:var(--sm)" onclick="go('dashboard')">Ver análisis completo →</button>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="mu-card mu-mt4" data-states="pending all-clear sync-error">
+      <div class="mu-card__head">
+        <div><div class="mu-card__title">Análisis por categorías</div><div class="mu-card__sub">8 categorías · ene 2025</div></div>
+      </div>
+      <div class="mu-cat-row"><span class="mu-cat-row__icon">🍔</span><div class="mu-item__txt"><div class="mu-row mu-row--between"><span class="mu-small"><b>Comida</b></span><span class="mu-amount">$279K</span></div><div class="mu-cat-row__bar"><div class="mu-cat-row__fill" style="width:100%"></div></div><div class="mu-xs">5 transacciones · 20,6%</div></div></div>
+      <div class="mu-cat-row"><span class="mu-cat-row__icon">📦</span><div class="mu-item__txt"><div class="mu-row mu-row--between"><span class="mu-small"><b>Compras</b></span><span class="mu-amount">$235K</span></div><div class="mu-cat-row__bar"><div class="mu-cat-row__fill" style="width:84%;background:var(--brand-2)"></div></div><div class="mu-xs">2 transacciones · 17,4%</div></div></div>
+      <div class="mu-cat-row"><span class="mu-cat-row__icon">💊</span><div class="mu-item__txt"><div class="mu-row mu-row--between"><span class="mu-small"><b>Salud</b></span><span class="mu-amount">$193K</span></div><div class="mu-cat-row__bar"><div class="mu-cat-row__fill" style="width:69%;background:var(--success)"></div></div><div class="mu-xs">3 transacciones · 14,3%</div></div></div>
+      <div class="mu-cat-row"><span class="mu-cat-row__icon">❓</span><div class="mu-item__txt"><div class="mu-row mu-row--between"><span class="mu-small"><b>Sin categorizar</b></span><span class="mu-amount">$156K</span></div><div class="mu-cat-row__bar"><div class="mu-cat-row__fill" style="width:56%;background:var(--slate-300)"></div></div><div class="mu-xs">3 transacciones · 11,6%</div></div></div>
+      <button class="mu-btn mu-btn--ghost mu-mt3" onclick="go('dashboard')">Ver análisis completo →</button>
+    </div>
+
+    <!-- Recent -->
+    <div class="mu-mt5" data-states="pending all-clear sync-error">
+      <div class="mu-row mu-row--between">
+        <div class="mu-h3">Transacciones recientes</div>
+        <button class="mu-btn mu-btn--ghost mu-btn--auto" style="min-height:auto;font-size:var(--sm)" onclick="go('transactions')">Ver todas</button>
+      </div>
+      <div class="mu-mt3">
+        <button class="mu-tx" onclick="go('transaction-detail','uncategorized')">
+          <span class="mu-tx__icon">💰</span>
+          <span class="mu-tx__txt"><span class="mu-tx__name">Consultoría Digital SpA</span><span class="mu-tx__meta">27 ene · Sin categorizar</span></span>
+          <span class="mu-tx__amount mu-tx__amount--in">+$1.200.000</span>
+        </button>
+        <button class="mu-tx mu-tx--pending" onclick="go('transaction-detail','uncategorized')">
+          <span class="mu-tx__icon">💳</span>
+          <span class="mu-tx__txt"><span class="mu-tx__name">MercadoLibre Chile</span><span class="mu-tx__meta mu-tx__meta--warn">⚠️ Necesita categorización</span></span>
+          <span class="mu-tx__amount">$42.000</span>
+        </button>
+        <button class="mu-tx" onclick="go('transaction-detail','categorized')">
+          <span class="mu-tx__icon">🛒</span>
+          <span class="mu-tx__txt"><span class="mu-tx__name">Líder S.A.</span><span class="mu-tx__meta">24 ene · Comida</span></span>
+          <span class="mu-tx__amount">$35.000</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Banks -->
+    <div class="mu-card mu-mt5" data-states="pending all-clear sync-error">
+      <div class="mu-card__head"><div class="mu-card__title">Bancos conectados</div><span class="mu-badge mu-badge--ok" data-states="pending all-clear">Al día</span><span class="mu-badge mu-badge--danger" data-states="sync-error">Error</span></div>
+      <button class="mu-bank" onclick="go('bank-review')">
+        <span class="mu-bank__logo" style="background:#003da5">BCH</span>
+        <span class="mu-item__txt"><span class="mu-bank__name">Banco de Chile</span><span class="mu-item__sub" data-states="pending all-clear">Sincronizado hace 2 h</span><span class="mu-item__sub" data-states="sync-error">Error de sincronización</span></span>
+        <span class="mu-item__chev">›</span>
+      </button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+
+  <nav class="mu-tabbar">
+    <button class="mu-tabbar__item is-active"><span class="mu-tabbar__icon">🏠</span>Inicio</button>
+    <button class="mu-tabbar__item" onclick="go('transactions')"><span class="mu-tabbar__icon">💳</span>Transacciones</button>
+    <button class="mu-tabbar__item" onclick="go('budgets')"><span class="mu-tabbar__icon">🎯</span>Presupuestos</button>
+    <button class="mu-tabbar__item" onclick="go('benefits')"><span class="mu-tabbar__icon">🎁</span>Beneficios</button>
+  </nav>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     TRANSACCIONES · DASHBOARD
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="app-screen" id="s-transactions">
+  <div class="mu-head">
+    <div class="mu-head__avatar">💳</div>
+    <div class="mu-head__txt">
+      <div class="mu-head__title" style="font-size:var(--lg)">Transacciones</div>
+      <div class="mu-head__sub" style="font-size:var(--sm)">Historial completo de movimientos</div>
+    </div>
+    <button class="mu-head__action mu-head__action--brand mu-head__action--dot" onclick="go('transactions','filters')">⚙</button>
+  </div>
+
+  <div class="mu-pad" style="padding-top:var(--sp3);padding-bottom:var(--sp3);background:var(--s1);border-bottom:1px solid var(--border)">
+    <div class="mu-input mu-input--ph" data-states="list filters">🔍 Buscar por comercio, categoría, nota…</div>
+    <div class="mu-input is-focus" data-states="search">🔍 uber</div>
+    <div class="mu-input is-focus" data-states="empty">🔍 zzz</div>
+  </div>
+
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div data-states="list filters">
+      <div class="mu-tx-group">📅 Enero de 2025 (31)</div>
+      <button class="mu-tx" onclick="go('transaction-detail','uncategorized')">
+        <span class="mu-tx__icon">💰</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">Consultoría Digital SpA</span><span class="mu-tx__meta">27 ene</span></span>
+        <span class="mu-tx__amount mu-tx__amount--in">+$1.200.000</span>
+      </button>
+      <button class="mu-tx mu-tx--pending" onclick="go('transaction-detail','uncategorized')">
+        <span class="mu-tx__icon">💳</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">MercadoLibre Chile</span><span class="mu-tx__meta mu-tx__meta--warn">⚠️ Necesita categorización</span></span>
+        <span class="mu-tx__amount">$42.000</span>
+      </button>
+      <button class="mu-tx mu-tx--pending" onclick="go('transaction-detail','uncategorized')">
+        <span class="mu-tx__icon">💳</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">Ripley Store</span><span class="mu-tx__meta mu-tx__meta--warn">⚠️ Necesita categorización</span></span>
+        <span class="mu-tx__amount">$89.000</span>
+      </button>
+      <button class="mu-tx" onclick="go('transaction-detail','categorized')">
+        <span class="mu-tx__icon">🛒</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">Líder S.A.</span><span class="mu-tx__meta">24 ene · Comida · Compras semanales</span></span>
+        <span class="mu-tx__amount">$35.000</span>
+      </button>
+      <button class="mu-tx" onclick="go('transaction-detail','categorized')">
+        <span class="mu-tx__icon">🚗</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">UBER BV</span><span class="mu-tx__meta">23 ene · Transporte</span></span>
+        <span class="mu-tx__amount">$12.000</span>
+      </button>
+      <button class="mu-tx" onclick="go('transaction-detail','categorized')">
+        <span class="mu-tx__icon">💼</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">PAYROLL INC</span><span class="mu-tx__meta">19 ene · Sueldo</span></span>
+        <span class="mu-tx__amount mu-tx__amount--in">+$2.500.000</span>
+      </button>
+      <button class="mu-tx mu-tx--excluded" onclick="go('transaction-detail','excluded')">
+        <span class="mu-tx__icon">🚫</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">Compra errónea online</span><span class="mu-tx__meta">14 ene · Excluida: involucra más personas</span></span>
+        <span class="mu-tx__amount">$75.000</span>
+      </button>
+      <div class="mu-tx-group">📅 Diciembre de 2024 (14)</div>
+      <button class="mu-tx" onclick="go('transaction-detail','categorized')">
+        <span class="mu-tx__icon">🎉</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">Cena Año Nuevo</span><span class="mu-tx__meta">29 dic · Entretenimiento</span></span>
+        <span class="mu-tx__amount">$180.000</span>
+      </button>
+      <button class="mu-tx" onclick="go('transaction-detail','categorized')">
+        <span class="mu-tx__icon">🎁</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">Regalos Navidad</span><span class="mu-tx__meta">27 dic · Compras</span></span>
+        <span class="mu-tx__amount">$320.000</span>
+      </button>
+    </div>
+
+    <div data-states="search">
+      <div class="mu-tx-group">2 resultados para «uber»</div>
+      <button class="mu-tx" onclick="go('transaction-detail','categorized')">
+        <span class="mu-tx__icon">🚗</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">UBER BV</span><span class="mu-tx__meta">23 ene · Transporte</span></span>
+        <span class="mu-tx__amount">$12.000</span>
+      </button>
+      <button class="mu-tx" onclick="go('transaction-detail','categorized')">
+        <span class="mu-tx__icon">🚗</span>
+        <span class="mu-tx__txt"><span class="mu-tx__name">UBER BV</span><span class="mu-tx__meta">11 dic · Transporte</span></span>
+        <span class="mu-tx__amount">$15.000</span>
+      </button>
+    </div>
+
+    <div class="mu-empty" data-states="empty">
+      <div class="mu-empty__icon">🔎</div>
+      <div class="mu-h3">Sin resultados</div>
+      <p class="mu-p">No encontramos movimientos con ese término. Prueba con otro comercio o ajusta los filtros.</p>
+    </div>
+
+    <button class="mu-btn mu-btn--outline mu-mt5" data-states="list">+ Agregar transacción manual</button>
+    <div style="height:var(--sp6)"></div>
+  </div>
+
+  <div class="mu-overlay" data-states="filters">
+    <div class="mu-sheet">
+      <div class="mu-sheet__grab"></div>
+      <div class="mu-row mu-row--between">
+        <div class="mu-h3">Filtros</div>
+        <button class="mu-topbar__btn" onclick="go('transactions','list')">✕</button>
+      </div>
+      <div class="mu-field">
+        <label class="mu-label">Tipo</label>
+        <div class="mu-pill-row"><button class="mu-pill is-active">Todos</button><button class="mu-pill">Gastos</button><button class="mu-pill">Ingresos</button></div>
+      </div>
+      <div class="mu-field">
+        <label class="mu-label">Estado</label>
+        <div class="mu-pill-row"><button class="mu-pill is-active">Todas</button><button class="mu-pill">Sin categorizar</button><button class="mu-pill">Categorizadas</button></div>
+      </div>
+      <div class="mu-field">
+        <label class="mu-label">Producto</label>
+        <div class="mu-pill-row"><button class="mu-pill is-active">Todos</button><button class="mu-pill">Cta. corriente</button><button class="mu-pill">Tarjeta crédito</button></div>
+      </div>
+      <div class="mu-list mu-mt4">
+        <div class="mu-item"><span class="mu-item__txt"><span class="mu-item__title">Mostrar excluidas</span><span class="mu-item__sub">Movimientos fuera del análisis</span></span><span class="mu-switch is-on"></span></div>
+      </div>
+      <div class="mu-btn-row mu-mt5">
+        <button class="mu-btn mu-btn--outline" onclick="go('transactions','list')">Limpiar</button>
+        <button class="mu-btn" onclick="go('transactions','list')">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="mu-tabbar">
+    <button class="mu-tabbar__item" onclick="go('home')"><span class="mu-tabbar__icon">🏠</span>Inicio</button>
+    <button class="mu-tabbar__item is-active"><span class="mu-tabbar__icon">💳</span>Transacciones</button>
+    <button class="mu-tabbar__item" onclick="go('budgets')"><span class="mu-tabbar__icon">🎯</span>Presupuestos</button>
+    <button class="mu-tabbar__item" onclick="go('benefits')"><span class="mu-tabbar__icon">🎁</span>Beneficios</button>
+  </nav>
+</section>
+
+<section class="app-screen" id="s-transaction-detail">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('transactions')">←</button>
+    <div class="mu-topbar__title">Detalle de transacción</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-card mu-mt4 mu-center">
+      <span class="mu-badge mu-badge--warn" data-states="categorized uncategorized exclude-sheet">Gasto</span>
+      <span class="mu-badge" data-states="excluded">Excluida del análisis</span>
+      <div style="font-size:34px;margin-top:var(--sp3)" data-states="categorized exclude-sheet">🛒</div>
+      <div style="font-size:34px;margin-top:var(--sp3)" data-states="uncategorized">❓</div>
+      <div style="font-size:34px;margin-top:var(--sp3)" data-states="excluded">🚫</div>
+      <div class="mu-amount mu-amount--hero mu-amount--out mu-mt2">$35.000</div>
+      <div class="mu-h3 mu-mt2">Líder S.A.</div>
+    </div>
+
+    <div class="mu-card mu-mt4">
+      <div class="mu-card__title">Información</div>
+      <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Comercio</span><span class="mu-small"><b>Líder S.A.</b></span></div>
+      <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Fecha</span><span class="mu-small"><b>viernes, 24 de enero de 2025</b></span></div>
+      <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Hora</span><span class="mu-small"><b>11:20</b></span></div>
+      <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Producto</span><span class="mu-small"><b>Cta. corriente ••4821</b></span></div>
+      <div class="mu-row mu-row--between mu-mt3">
+        <span class="mu-small">Categoría</span>
+        <span class="mu-small" data-states="categorized excluded exclude-sheet"><b>🛒 Comida</b></span>
+        <span class="mu-badge mu-badge--warn" data-states="uncategorized">Sin categorizar</span>
+      </div>
+      <p class="mu-xs mu-mt1" data-states="categorized exclude-sheet">Categoría sugerida automáticamente según el comercio</p>
+      <div class="mu-mt4">
+        <div class="mu-label">Descripción del banco</div>
+        <div class="mu-card mu-card--flat mu-mono" style="padding:var(--sp3)">COMPRA LIDER EXPRESS 15 PEDRO DE VALDIVIA SANTIAGO CL</div>
+      </div>
+      <div class="mu-field">
+        <label class="mu-label">Nota</label>
+        <div class="mu-input" data-states="categorized excluded exclude-sheet">Compras semanales</div>
+        <div class="mu-input mu-input--ph" data-states="uncategorized">Agregar una nota…</div>
+      </div>
+    </div>
+
+    <div class="mu-note mu-note--warn mu-mt4" data-states="excluded">
+      <span class="mu-note__icon">🚫</span>
+      <span><b>Excluida del análisis.</b> Motivo: involucra más personas. No cuenta en totales ni gráficos.</span>
+    </div>
+
+    <div class="mu-btn-stack mu-mt5" data-states="uncategorized">
+      <button class="mu-btn" onclick="go('categorize')">Categorizar ahora</button>
+      <button class="mu-btn mu-btn--outline" onclick="go('merchant-edit')">Configurar comercio</button>
+      <button class="mu-btn mu-btn--ghost" onclick="go('transaction-detail','exclude-sheet')">Excluir del análisis</button>
+    </div>
+    <div class="mu-btn-stack mu-mt5" data-states="categorized exclude-sheet">
+      <button class="mu-btn mu-btn--outline" onclick="go('categorize')">Cambiar categoría</button>
+      <button class="mu-btn mu-btn--outline" onclick="go('merchant-edit')">Configurar comercio</button>
+      <button class="mu-btn mu-btn--ghost" onclick="go('transaction-detail','exclude-sheet')">Excluir del análisis</button>
+    </div>
+    <div class="mu-btn-stack mu-mt5" data-states="excluded">
+      <button class="mu-btn" onclick="go('transaction-detail','categorized')">Volver a incluir en el análisis</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+
+  <div class="mu-overlay" data-states="exclude-sheet">
+    <div class="mu-sheet">
+      <div class="mu-sheet__grab"></div>
+      <div class="mu-h3">🚫 Excluir del análisis</div>
+      <p class="mu-p mu-mt2">¿Por qué quieres excluir esta transacción?</p>
+      <div class="mu-list mu-mt4">
+        <div class="mu-item"><span class="mu-radio is-on"></span><span class="mu-item__txt"><span class="mu-item__title">Transferencia personal</span></span></div>
+        <div class="mu-item"><span class="mu-radio"></span><span class="mu-item__txt"><span class="mu-item__title">Involucra a más personas</span></span></div>
+        <div class="mu-item"><span class="mu-radio"></span><span class="mu-item__txt"><span class="mu-item__title">Gasto no relevante</span></span></div>
+        <div class="mu-item"><span class="mu-radio"></span><span class="mu-item__txt"><span class="mu-item__title">Otro</span></span></div>
+      </div>
+      <div class="mu-btn-row mu-mt5">
+        <button class="mu-btn mu-btn--outline" onclick="go('transaction-detail','categorized')">Cancelar</button>
+        <button class="mu-btn mu-btn--danger" onclick="go('transaction-detail','excluded')">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-dashboard">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('home')">←</button>
+    <div class="mu-topbar__title">Dashboard</div>
+    <button class="mu-topbar__btn" onclick="go('settings')">⚙️</button>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-row mu-mt4" style="justify-content:center">
+      <div class="mu-segment">
+        <button class="mu-segment__item is-active" data-states="month" onclick="go('dashboard','week')">Mes</button>
+        <button class="mu-segment__item" data-states="week" onclick="go('dashboard','month')">Mes</button>
+        <button class="mu-segment__item" data-states="month" onclick="go('dashboard','week')">Semana</button>
+        <button class="mu-segment__item is-active" data-states="week">Semana</button>
+      </div>
+    </div>
+
+    <!-- Card 1 · Trend -->
+    <div class="mu-card mu-mt4">
+      <div class="mu-card__head">
+        <div><div class="mu-card__title">Tendencia</div><div class="mu-card__sub" data-states="month">Últimos 6 meses</div><div class="mu-card__sub" data-states="week">Últimas 6 semanas</div></div>
+      </div>
+      <div class="mu-grid-2">
+        <div class="mu-card mu-card--flat mu-card--tight"><div class="mu-xs">Ingresos</div><div class="mu-amount mu-amount--in mu-mt1" style="font-size:var(--md)">$3.700.000</div></div>
+        <div class="mu-card mu-card--flat mu-card--tight"><div class="mu-xs">Gastos</div><div class="mu-amount mu-amount--out mu-mt1" style="font-size:var(--md)">$1.352.470</div></div>
+      </div>
+      <svg class="mu-line mu-mt4" viewBox="0 0 300 120" preserveAspectRatio="none" aria-label="Tendencia de ingresos y gastos">
+        <line x1="0" y1="24" x2="300" y2="24" stroke="#e2e8f0"/><line x1="0" y1="56" x2="300" y2="56" stroke="#e2e8f0"/>
+        <line x1="0" y1="88" x2="300" y2="88" stroke="#e2e8f0"/>
+        <polyline points="0,42 60,38 120,44 180,30 240,34 300,22" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+        <polyline points="0,96 60,84 120,90 180,72 240,80 300,64" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
+        <polyline points="0,102 60,96 120,98 180,88 240,92 300,84" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 4"/>
+      </svg>
+      <div class="mu-row mu-mt3" style="gap:var(--sp4);flex-wrap:wrap">
+        <span class="mu-legend__row"><span class="mu-legend__dot" style="background:#10b981"></span><span class="mu-xs">Ingresos</span></span>
+        <span class="mu-legend__row"><span class="mu-legend__dot" style="background:#f59e0b"></span><span class="mu-xs">Gastos</span></span>
+        <span class="mu-legend__row"><span class="mu-legend__dot" style="background:#cbd5e1"></span><span class="mu-xs">Promedio 3 períodos</span></span>
+      </div>
+    </div>
+
+    <!-- Card 2 · Spending overview -->
+    <div class="mu-card mu-mt4">
+      <div class="mu-card__head"><div class="mu-card__title">Resumen de gastos</div></div>
+      <div class="mu-row mu-row--between">
+        <div>
+          <div class="mu-xs">💵 Total gastado</div>
+          <div class="mu-amount mu-mt1" style="font-size:var(--xl)">$1.352.470</div>
+        </div>
+        <span class="mu-badge mu-badge--ok">▼ 12% vs período anterior</span>
+      </div>
+      <div class="mu-bars mu-mt5">
+        <div class="mu-bars__col"><div class="mu-bars__bar mu-bars__bar--muted" style="height:78%"></div><span class="mu-bars__lbl" data-states="month">dic</span><span class="mu-bars__lbl" data-states="week">S-1</span></div>
+        <div class="mu-bars__col"><div class="mu-bars__bar mu-bars__bar--warm" style="height:68%"></div><span class="mu-bars__lbl" data-states="month">ene</span><span class="mu-bars__lbl" data-states="week">S-2</span></div>
+      </div>
+      <div class="mu-row mu-mt3" style="gap:var(--sp4)">
+        <span class="mu-legend__row"><span class="mu-legend__dot" style="background:#cbd5e1"></span><span class="mu-xs">Período anterior</span></span>
+        <span class="mu-legend__row"><span class="mu-legend__dot" style="background:#f59e0b"></span><span class="mu-xs">Este período</span></span>
+      </div>
+    </div>
+
+    <!-- Card 3 · Category report -->
+    <div class="mu-card mu-mt4">
+      <div class="mu-card__head"><div class="mu-card__title">Reporte por categorías</div></div>
+      <div class="mu-segment"><button class="mu-segment__item is-active">Este mes</button><button class="mu-segment__item">Mes anterior</button></div>
+
+      <div class="mu-mt5">
+        <div class="mu-row mu-row--between"><span class="mu-small"><b>Gastos</b></span><span class="mu-amount mu-amount--out">$1.352.470</span></div>
+        <div class="mu-row mu-mt3" style="gap:var(--sp4)">
+          <svg class="mu-donut" viewBox="0 0 42 42" aria-label="Distribución de gastos por categoría">
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#f1f5f9" stroke-width="7"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#6366f1" stroke-width="7" stroke-dasharray="20.6 79.4" stroke-dashoffset="25"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#f59e0b" stroke-width="7" stroke-dasharray="17.4 82.6" stroke-dashoffset="4.4"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#10b981" stroke-width="7" stroke-dasharray="14.3 85.7" stroke-dashoffset="87"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#ef4444" stroke-width="7" stroke-dasharray="13.3 86.7" stroke-dashoffset="72.7"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#8b5cf6" stroke-width="7" stroke-dasharray="11.8 88.2" stroke-dashoffset="59.4"/>
+          </svg>
+          <div class="mu-legend">
+            <div class="mu-legend__row"><span class="mu-legend__dot" style="background:#6366f1"></span><span class="mu-legend__name">🍔 Comida</span><span class="mu-legend__val">20,6%</span></div>
+            <div class="mu-legend__row"><span class="mu-legend__dot" style="background:#f59e0b"></span><span class="mu-legend__name">📦 Compras</span><span class="mu-legend__val">17,4%</span></div>
+            <div class="mu-legend__row"><span class="mu-legend__dot" style="background:#10b981"></span><span class="mu-legend__name">💊 Salud</span><span class="mu-legend__val">14,3%</span></div>
+            <div class="mu-legend__row"><span class="mu-legend__dot" style="background:#ef4444"></span><span class="mu-legend__name">🎓 Educación</span><span class="mu-legend__val">13,3%</span></div>
+            <div class="mu-legend__row"><span class="mu-legend__dot" style="background:#8b5cf6"></span><span class="mu-legend__name">⚡ Servicios</span><span class="mu-legend__val">11,8%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mu-mt6" style="padding-top:var(--sp4);border-top:1px solid var(--border)">
+        <div class="mu-row mu-row--between"><span class="mu-small"><b>Ingresos</b></span><span class="mu-amount mu-amount--in">$3.700.000</span></div>
+        <div class="mu-row mu-mt3" style="gap:var(--sp4)">
+          <svg class="mu-donut" viewBox="0 0 42 42" aria-label="Distribución de ingresos por categoría">
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#f1f5f9" stroke-width="7"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#10b981" stroke-width="7" stroke-dasharray="67.6 32.4" stroke-dashoffset="25"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#6366f1" stroke-width="7" stroke-dasharray="32.4 67.6" stroke-dashoffset="57.4"/>
+          </svg>
+          <div class="mu-legend">
+            <div class="mu-legend__row"><span class="mu-legend__dot" style="background:#10b981"></span><span class="mu-legend__name">💼 Sueldo</span><span class="mu-legend__val">67,6%</span></div>
+            <div class="mu-legend__row"><span class="mu-legend__dot" style="background:#6366f1"></span><span class="mu-legend__name">💻 Freelance</span><span class="mu-legend__val">32,4%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PRESUPUESTOS · PLANIFICACIÓN — fuera del MVP de desarrollo
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="app-screen" id="s-budgets">
+  <div class="mu-head">
+    <div class="mu-head__avatar">🎯</div>
+    <div class="mu-head__txt">
+      <div class="mu-head__title" style="font-size:var(--lg)">Presupuestos <span class="mu-draft">FUERA DEL MVP</span></div>
+      <div class="mu-head__sub" style="font-size:var(--sm)">Control de gastos mensuales</div>
+    </div>
+    <button class="mu-head__action" onclick="go('planning')">📈</button>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-empty" data-states="empty">
+      <div class="mu-empty__icon">🗂</div>
+      <div class="mu-h3">Comencemos simple</div>
+      <p class="mu-p">Crea tu primer presupuesto para controlar tus gastos y alcanzar tus metas financieras.</p>
+      <button class="mu-btn mu-mt2" onclick="go('budget-create')">Crear presupuesto inteligente</button>
+    </div>
+
+    <div data-states="active">
+      <div class="mu-card mu-mt4">
+        <div class="mu-card__head"><div><div class="mu-card__title">Enero 2025</div><div class="mu-card__sub">3 presupuestos activos</div></div><span class="mu-badge mu-badge--ok">Al día</span></div>
+        <div class="mu-row mu-row--between"><span class="mu-small">Total presupuestado</span><span class="mu-amount">$820.000</span></div>
+        <div class="mu-progress mu-mt3"><div class="mu-progress__fill" style="width:62%"></div></div>
+        <div class="mu-row mu-row--between mu-mt2"><span class="mu-xs">$508.400 gastado</span><span class="mu-xs">62%</span></div>
+      </div>
+
+      <div class="mu-mt4">
+        <div class="mu-card mu-card--tight">
+          <div class="mu-row"><span class="mu-item__icon">🍔</span><div class="mu-item__txt"><div class="mu-item__title">Comida</div><div class="mu-item__sub">$279.000 de $350.000</div></div><span class="mu-badge mu-badge--ok">80%</span></div>
+          <div class="mu-progress mu-mt3"><div class="mu-progress__fill" style="width:80%;background:var(--success)"></div></div>
+        </div>
+        <div class="mu-card mu-card--tight mu-mt3">
+          <div class="mu-row"><span class="mu-item__icon">📦</span><div class="mu-item__txt"><div class="mu-item__title">Compras</div><div class="mu-item__sub">$235.000 de $250.000</div></div><span class="mu-badge mu-badge--warn">94%</span></div>
+          <div class="mu-progress mu-mt3"><div class="mu-progress__fill" style="width:94%;background:var(--warning)"></div></div>
+        </div>
+        <div class="mu-card mu-card--tight mu-mt3">
+          <div class="mu-row"><span class="mu-item__icon">🎬</span><div class="mu-item__txt"><div class="mu-item__title">Entretenimiento</div><div class="mu-item__sub">$36.000 de $220.000</div></div><span class="mu-badge">16%</span></div>
+          <div class="mu-progress mu-mt3"><div class="mu-progress__fill" style="width:16%"></div></div>
+        </div>
+      </div>
+      <button class="mu-btn mu-btn--outline mu-mt4" onclick="go('budget-create')">+ Nuevo presupuesto</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+  <nav class="mu-tabbar">
+    <button class="mu-tabbar__item" onclick="go('home')"><span class="mu-tabbar__icon">🏠</span>Inicio</button>
+    <button class="mu-tabbar__item" onclick="go('transactions')"><span class="mu-tabbar__icon">💳</span>Transacciones</button>
+    <button class="mu-tabbar__item is-active"><span class="mu-tabbar__icon">🎯</span>Presupuestos</button>
+    <button class="mu-tabbar__item" onclick="go('benefits')"><span class="mu-tabbar__icon">🎁</span>Beneficios</button>
+  </nav>
+</section>
+
+<section class="app-screen" id="s-budget-create">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('budgets')">←</button>
+    <div class="mu-topbar__title">Crear presupuesto</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-center mu-mt4">
+      <div style="font-size:44px">💰</div>
+      <h2 class="mu-h2 mu-mt3">Crear presupuesto</h2>
+      <p class="mu-p mu-mt2">Configura un límite para controlar tus gastos en una categoría específica.</p>
+    </div>
+
+    <div class="mu-card mu-mt5">
+      <div class="mu-card__title">Categoría</div>
+      <p class="mu-small mu-mt1">¿En qué área quieres controlar tus gastos?</p>
+      <div class="mu-grid-2 mu-mt3">
+        <button class="mu-chip" data-states="empty"><span class="mu-chip__emoji">🍔</span>Comida</button>
+        <button class="mu-chip is-selected" data-states="filled"><span class="mu-chip__emoji">🍔</span>Comida</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🚗</span>Transporte</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🎬</span>Entretenimiento</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">💊</span>Salud</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">📦</span>Compras</button>
+        <button class="mu-chip"><span class="mu-chip__emoji">🏠</span>Hogar</button>
+      </div>
+    </div>
+
+    <div class="mu-card mu-mt4">
+      <div class="mu-card__title">Límite mensual</div>
+      <p class="mu-small mu-mt1">¿Cuánto planeas gastar como máximo?</p>
+      <div class="mu-field">
+        <div class="mu-input mu-input--ph" data-states="empty">$0</div>
+        <div class="mu-input is-focus" data-states="filled">$350.000</div>
+      </div>
+      <div class="mu-note mu-mt3" data-states="filled">
+        <span class="mu-note__icon">💡</span>
+        <span>Tu promedio de los últimos 3 meses en Comida es <b>$298.000</b>. Un límite de $350.000 te da holgura.</span>
+      </div>
+    </div>
+
+    <div class="mu-btn-row mu-mt5">
+      <button class="mu-btn mu-btn--outline" onclick="go('budgets')">Cancelar</button>
+      <button class="mu-btn mu-btn--muted" data-states="empty">Crear</button>
+      <button class="mu-btn" data-states="filled" onclick="go('budgets','active')">Crear presupuesto</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-planning">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('budgets')">←</button>
+    <div class="mu-topbar__title">Planificación <span class="mu-draft">FUERA DEL MVP</span></div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <p class="mu-p mu-mt4">Organiza tu futuro financiero.</p>
+
+    <button class="mu-hero mu-mt4" style="width:100%;border:none;text-align:left;font-family:inherit;cursor:pointer;background:var(--grad-celebration)" onclick="go('planning-life')">
+      <span class="mu-hero__row">
+        <span class="mu-hero__icon">✨</span>
+        <span>
+          <span class="mu-hero__title" style="display:block">Planifica tu vida ideal</span>
+          <span class="mu-hero__sub" style="display:block">¿Puedes costear el estilo de vida que quieres?</span>
+        </span>
+      </span>
+    </button>
+
+    <div class="mu-row mu-mt5" style="justify-content:center">
+      <div class="mu-segment">
+        <button class="mu-segment__item is-active" data-states="projections" onclick="go('planning','goals')">Proyecciones</button>
+        <button class="mu-segment__item" data-states="goals" onclick="go('planning','projections')">Proyecciones</button>
+        <button class="mu-segment__item" data-states="projections" onclick="go('planning','goals')">Metas</button>
+        <button class="mu-segment__item is-active" data-states="goals">Metas</button>
+      </div>
+    </div>
+
+    <div class="mu-empty" data-states="projections">
+      <div class="mu-empty__icon">📅</div>
+      <div class="mu-h3">Planifica gastos futuros</div>
+      <p class="mu-p">Anticipa gastos como seguros, permisos de circulación y renovaciones para prepararte mejor.</p>
+      <button class="mu-btn mu-mt2">Crear proyección</button>
+    </div>
+
+    <div class="mu-empty" data-states="goals">
+      <div class="mu-empty__icon">🏁</div>
+      <div class="mu-h3">Define tus metas</div>
+      <p class="mu-p">Fondo de emergencia, viaje, pie de departamento. Te mostramos cuánto necesitas ahorrar cada mes.</p>
+      <button class="mu-btn mu-mt2">Crear meta</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-planning-life">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('planning')">←</button>
+    <div class="mu-topbar__title">Planificación de vida</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <p class="mu-p mu-mt4">Diseña el futuro que quieres vivir.</p>
+    <div class="mu-steps mu-mt4">
+      <div class="mu-steps__step is-on"></div>
+      <div class="mu-steps__step" data-states="step-1"></div><div class="mu-steps__step is-on" data-states="step-2"></div>
+      <div class="mu-steps__step"></div><div class="mu-steps__step"></div>
+    </div>
+
+    <div data-states="step-1">
+      <h2 class="mu-h2 mu-mt5">¿Qué tipo de vida quieres vivir?</h2>
+      <p class="mu-p mu-mt2">Selecciona las experiencias y objetivos que son importantes para ti.</p>
+      <div class="mu-mt4">
+        <div class="mu-card mu-card--tight"><div class="mu-row"><span class="mu-item__icon">✈️</span><div class="mu-item__txt"><div class="mu-row mu-row--between"><span class="mu-item__title">Vacaciones anuales</span><span class="mu-badge mu-badge--info">Importante</span></div><div class="mu-item__sub">Un viaje al año · $1.500.000 al año</div></div><span class="mu-check is-on">✓</span></div></div>
+        <div class="mu-card mu-card--tight mu-mt3"><div class="mu-row"><span class="mu-item__icon">🏖️</span><div class="mu-item__txt"><div class="mu-row mu-row--between"><span class="mu-item__title">Jubilación cómoda</span><span class="mu-badge mu-badge--ok">Esencial</span></div><div class="mu-item__sub">Mantener mi estilo de vida · $2.400.000 al año</div></div><span class="mu-check is-on">✓</span></div></div>
+        <div class="mu-card mu-card--tight mu-mt3"><div class="mu-row"><span class="mu-item__icon">💪</span><div class="mu-item__txt"><div class="mu-row mu-row--between"><span class="mu-item__title">Salud y bienestar</span><span class="mu-badge mu-badge--ok">Esencial</span></div><div class="mu-item__sub">Gym, seguros, tratamientos · $800.000 al año</div></div><span class="mu-check is-on">✓</span></div></div>
+        <div class="mu-card mu-card--tight mu-mt3"><div class="mu-row"><span class="mu-item__icon">📚</span><div class="mu-item__txt"><div class="mu-row mu-row--between"><span class="mu-item__title">Desarrollo profesional</span><span class="mu-badge">Sería genial</span></div><div class="mu-item__sub">Cursos, certificaciones · $400.000 al año</div></div><span class="mu-check">✓</span></div></div>
+      </div>
+      <div class="mu-card mu-mt4 mu-center">
+        <div class="mu-small">Total anual deseado</div>
+        <div class="mu-amount mu-amount--hero mu-mt1">$4.700.000</div>
+        <div class="mu-xs">Costo de tu estilo de vida ideal</div>
+      </div>
+      <button class="mu-btn mu-mt5" onclick="go('planning-life','step-2')">Continuar con análisis de realidad</button>
+    </div>
+
+    <div data-states="step-2">
+      <h2 class="mu-h2 mu-mt5">Tu realidad actual</h2>
+      <p class="mu-p mu-mt2">Comparamos tu estilo de vida deseado con lo que hoy te permite tu flujo de caja.</p>
+      <div class="mu-card mu-mt4">
+        <div class="mu-row mu-row--between"><span class="mu-small">Ingreso anual estimado</span><span class="mu-amount mu-amount--in">$38.400.000</span></div>
+        <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Gasto anual estimado</span><span class="mu-amount mu-amount--out">$32.100.000</span></div>
+        <div class="mu-row mu-row--between mu-mt3" style="padding-top:var(--sp3);border-top:1px solid var(--border)"><span class="mu-small"><b>Capacidad de ahorro</b></span><span class="mu-amount">$6.300.000</span></div>
+      </div>
+      <div class="mu-note mu-note--ok mu-mt4">
+        <span class="mu-note__icon">🎉</span>
+        <span>Tu estilo de vida ideal cuesta <b>$4.700.000</b> al año y tu capacidad de ahorro es <b>$6.300.000</b>. Es alcanzable.</span>
+      </div>
+      <button class="mu-btn mu-mt5" onclick="go('planning')">Ver plan sugerido</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     BENEFICIOS — fuera del MVP de desarrollo
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="app-screen" id="s-benefits">
+  <div class="mu-head">
+    <div class="mu-head__avatar">🎁</div>
+    <div class="mu-head__txt">
+      <div class="mu-head__title" style="font-size:var(--lg)">Beneficios <span class="mu-draft">FUERA DEL MVP</span></div>
+      <div class="mu-head__sub" style="font-size:var(--sm)">Descuentos exclusivos de tus bancos</div>
+    </div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-row mu-mt4" style="justify-content:center">
+      <div class="mu-segment">
+        <button class="mu-segment__item is-active" data-states="discounts" onclick="go('benefits','premium')">💳 Descuentos</button>
+        <button class="mu-segment__item" data-states="premium" onclick="go('benefits','discounts')">💳 Descuentos</button>
+        <button class="mu-segment__item" data-states="discounts" onclick="go('benefits','premium')">⭐ Premium</button>
+        <button class="mu-segment__item is-active" data-states="premium">⭐ Premium</button>
+      </div>
+    </div>
+
+    <div data-states="discounts">
+      <p class="mu-h3 mu-mt5">Categorías de descuentos</p>
+      <div class="mu-mt3">
+        <button class="mu-item" style="background:var(--s1);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:var(--sp2)" onclick="go('benefit-category')">
+          <span class="mu-item__icon" style="background:var(--warning-bg)">🍔</span>
+          <span class="mu-item__txt"><span class="mu-item__title">Comida &amp; Restaurantes</span><span class="mu-item__sub">Hasta 25% de descuento · 15 ofertas</span></span>
+          <span class="mu-item__chev">›</span>
+        </button>
+        <button class="mu-item" style="background:var(--s1);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:var(--sp2)" onclick="go('benefit-category')">
+          <span class="mu-item__icon" style="background:var(--info-bg)">📦</span>
+          <span class="mu-item__txt"><span class="mu-item__title">Compras &amp; Retail</span><span class="mu-item__sub">Hasta 20% de descuento · 12 ofertas</span></span>
+          <span class="mu-item__chev">›</span>
+        </button>
+        <button class="mu-item" style="background:var(--s1);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:var(--sp2)" onclick="go('benefit-category')">
+          <span class="mu-item__icon" style="background:var(--success-bg)">🛒</span>
+          <span class="mu-item__txt"><span class="mu-item__title">Supermercados</span><span class="mu-item__sub">Hasta 10% cashback · 18 ofertas</span></span>
+          <span class="mu-item__chev">›</span>
+        </button>
+        <button class="mu-item" style="background:var(--s1);border:1px solid var(--border);border-radius:var(--r-lg)" onclick="go('benefit-category')">
+          <span class="mu-item__icon" style="background:var(--celebration-bg)">🎟️</span>
+          <span class="mu-item__txt"><span class="mu-item__title">Experiencias</span><span class="mu-item__sub">Hasta 40% de descuento · 20 ofertas</span></span>
+          <span class="mu-item__chev">›</span>
+        </button>
+      </div>
+    </div>
+
+    <div data-states="premium">
+      <div class="mu-hero mu-mt5" style="background:var(--grad-celebration)">
+        <div class="mu-hero__row">
+          <span class="mu-hero__icon">⭐</span>
+          <div><div class="mu-hero__title">Finanzas Premium</div><div class="mu-hero__sub">Presupuestos ilimitados y planificación de vida</div></div>
+        </div>
+      </div>
+      <div class="mu-card mu-mt4">
+        <div class="mu-row"><span>✓</span><span class="mu-small">Presupuestos y proyecciones ilimitadas</span></div>
+        <div class="mu-row mu-mt3"><span>✓</span><span class="mu-small">Planificación de vida completa</span></div>
+        <div class="mu-row mu-mt3"><span>✓</span><span class="mu-small">Exportar tus datos a Excel</span></div>
+      </div>
+      <button class="mu-btn mu-mt4">Conocer Premium</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+  <nav class="mu-tabbar">
+    <button class="mu-tabbar__item" onclick="go('home')"><span class="mu-tabbar__icon">🏠</span>Inicio</button>
+    <button class="mu-tabbar__item" onclick="go('transactions')"><span class="mu-tabbar__icon">💳</span>Transacciones</button>
+    <button class="mu-tabbar__item" onclick="go('budgets')"><span class="mu-tabbar__icon">🎯</span>Presupuestos</button>
+    <button class="mu-tabbar__item is-active"><span class="mu-tabbar__icon">🎁</span>Beneficios</button>
+  </nav>
+</section>
+
+<section class="app-screen" id="s-benefit-category">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('benefits')">←</button>
+    <div class="mu-topbar__title">🍔 Comida &amp; Restaurantes</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-pad" style="padding-top:var(--sp3);padding-bottom:var(--sp3);background:var(--s1);border-bottom:1px solid var(--border)">
+    <div class="mu-pill-row"><button class="mu-pill is-active">Todos</button><button class="mu-pill">Banco de Chile</button><button class="mu-pill">Hoy</button></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div data-states="list">
+      <p class="mu-small mu-mt4">15 ofertas disponibles</p>
+      <div class="mu-card mu-card--tight mu-mt3">
+        <div class="mu-row"><span class="mu-item__icon" style="background:var(--warning-bg)">🍕</span><div class="mu-item__txt"><div class="mu-item__title">Papa Johns</div><div class="mu-item__sub">Lunes a jueves · Tarjeta de crédito</div></div><span class="mu-badge mu-badge--warn">25%</span></div>
+      </div>
+      <div class="mu-card mu-card--tight mu-mt3">
+        <div class="mu-row"><span class="mu-item__icon" style="background:var(--success-bg)">☕</span><div class="mu-item__txt"><div class="mu-item__title">Starbucks</div><div class="mu-item__sub">Todos los días · Tarjeta de débito</div></div><span class="mu-badge mu-badge--ok">15%</span></div>
+      </div>
+      <div class="mu-card mu-card--tight mu-mt3">
+        <div class="mu-row"><span class="mu-item__icon" style="background:var(--info-bg)">🍽️</span><div class="mu-item__txt"><div class="mu-item__title">Restaurant Central</div><div class="mu-item__sub">Martes y miércoles · Tarjeta de crédito</div></div><span class="mu-badge mu-badge--info">20%</span></div>
+      </div>
+    </div>
+
+    <div class="mu-empty" data-states="empty">
+      <div class="mu-empty__icon">🎫</div>
+      <div class="mu-h3">No se encontraron ofertas</div>
+      <p class="mu-p">Intenta con otros términos de búsqueda o ajusta los filtros.</p>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+  <nav class="mu-tabbar">
+    <button class="mu-tabbar__item" onclick="go('home')"><span class="mu-tabbar__icon">🏠</span>Inicio</button>
+    <button class="mu-tabbar__item" onclick="go('transactions')"><span class="mu-tabbar__icon">💳</span>Transacciones</button>
+    <button class="mu-tabbar__item" onclick="go('budgets')"><span class="mu-tabbar__icon">🎯</span>Presupuestos</button>
+    <button class="mu-tabbar__item is-active"><span class="mu-tabbar__icon">🎁</span>Beneficios</button>
+  </nav>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     CONFIGURACIÓN
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="app-screen" id="s-settings">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('home')">←</button>
+    <div class="mu-topbar__title">Configuración</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-list mu-mt4">
+      <button class="mu-item" onclick="go('settings-account')"><span class="mu-item__icon">👤</span><span class="mu-item__txt"><span class="mu-item__title">Cuenta</span><span class="mu-item__sub">laura@ejemplo.cl</span></span><span class="mu-item__chev">›</span></button>
+      <button class="mu-item" onclick="go('settings-banks')"><span class="mu-item__icon">🏦</span><span class="mu-item__txt"><span class="mu-item__title">Bancos conectados</span><span class="mu-item__sub">1 banco · 3 productos</span></span><span class="mu-item__chev">›</span></button>
+      <button class="mu-item" onclick="go('settings-notifications')"><span class="mu-item__icon">🔔</span><span class="mu-item__txt"><span class="mu-item__title">Recordatorios</span><span class="mu-item__sub">9:00 AM · días laborales</span></span><span class="mu-item__chev">›</span></button>
+      <button class="mu-item" onclick="go('settings-categories')"><span class="mu-item__icon">🗂</span><span class="mu-item__txt"><span class="mu-item__title">Categorías</span><span class="mu-item__sub">10 de gastos · 6 de ingresos</span></span><span class="mu-item__chev">›</span></button>
+      <button class="mu-item" onclick="go('settings-about')"><span class="mu-item__icon">ℹ️</span><span class="mu-item__txt"><span class="mu-item__title">Acerca de</span><span class="mu-item__sub">Versión 1.0.0</span></span><span class="mu-item__chev">›</span></button>
+    </div>
+    <button class="mu-btn mu-btn--danger-soft mu-mt5" onclick="go('settings-account','sign-out-confirm')">Cerrar sesión</button>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-settings-account">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('settings')">←</button>
+    <div class="mu-topbar__title">Cuenta</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-card mu-mt4 mu-center">
+      <div style="width:64px;height:64px;border-radius:999px;background:var(--info-bg);display:grid;place-items:center;font-size:28px;margin:0 auto">👤</div>
+      <div class="mu-h3 mu-mt3">Laura Herrera</div>
+      <p class="mu-small">laura@ejemplo.cl</p>
+      <span class="mu-badge mu-badge--info mu-mt3">Ingreso con Google</span>
+    </div>
+
+    <div class="mu-card mu-mt4">
+      <div class="mu-row mu-row--between"><span class="mu-small">RUT</span><span class="mu-small"><b>18.456.789-0</b></span></div>
+      <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Miembro desde</span><span class="mu-small"><b>enero 2025</b></span></div>
+      <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Datos almacenados</span><span class="mu-small"><b>Solo en este dispositivo</b></span></div>
+    </div>
+
+    <div class="mu-note mu-mt4">
+      <span class="mu-note__icon">🔒</span>
+      <span>Tus movimientos y credenciales viven cifrados en este teléfono. Si eliminas la app, se eliminan contigo.</span>
+    </div>
+
+    <div class="mu-btn-stack mu-mt5">
+      <button class="mu-btn mu-btn--outline" onclick="go('settings-account','sign-out-confirm')">Cerrar sesión</button>
+      <button class="mu-btn mu-btn--danger-soft" onclick="go('settings-account','delete-confirm')">Eliminar cuenta</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+
+  <div class="mu-overlay mu-overlay--center" data-states="sign-out-confirm">
+    <div class="mu-modal">
+      <div class="mu-modal__icon">👋</div>
+      <div class="mu-h3 mu-mt3">Cerrar sesión</div>
+      <p class="mu-p mu-mt2">Tus datos quedan guardados en este dispositivo. Podrás volver a entrar cuando quieras.</p>
+      <div class="mu-btn-row mu-mt5">
+        <button class="mu-btn mu-btn--outline" onclick="go('settings-account','default')">Cancelar</button>
+        <button class="mu-btn" onclick="go('auth')">Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mu-overlay mu-overlay--center" data-states="delete-confirm">
+    <div class="mu-modal">
+      <div class="mu-modal__icon">❌</div>
+      <div class="mu-h3 mu-mt3">Eliminar cuenta</div>
+      <p class="mu-p mu-mt2">¿Estás seguro? Esta acción es <b>permanente</b> y borrará todos tus datos, credenciales y movimientos de este dispositivo.</p>
+      <div class="mu-btn-row mu-mt5">
+        <button class="mu-btn mu-btn--outline" onclick="go('settings-account','default')">Cancelar</button>
+        <button class="mu-btn mu-btn--danger" onclick="go('auth')">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-settings-banks">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('settings')">←</button>
+    <div class="mu-topbar__title">Bancos conectados</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div data-states="list disconnect-confirm">
+      <p class="mu-small mu-mt4">1 banco · 3 productos</p>
+      <button class="mu-bank mu-mt3" onclick="go('bank-review')">
+        <span class="mu-bank__logo" style="background:#003da5">BCH</span>
+        <span class="mu-item__txt"><span class="mu-bank__name">Banco de Chile</span><span class="mu-item__sub">Sincronizado hace 2 h · 3 productos</span></span>
+        <span class="mu-badge mu-badge--ok">✓</span>
+      </button>
+      <button class="mu-btn mu-btn--outline mu-mt4" onclick="go('bank-picker')">+ Conectar nuevo banco</button>
+      <button class="mu-btn mu-btn--ghost mu-mt2" onclick="go('settings-banks','disconnect-confirm')">Desconectar Banco de Chile</button>
+    </div>
+
+    <div class="mu-empty" data-states="empty">
+      <div class="mu-empty__icon">🏦</div>
+      <div class="mu-h3">No hay bancos conectados</div>
+      <p class="mu-p">Conecta tu primer banco para comenzar a gestionar tus finanzas.</p>
+      <button class="mu-btn mu-mt2" onclick="go('bank-picker')">Conectar primer banco</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+
+  <div class="mu-overlay mu-overlay--center" data-states="disconnect-confirm">
+    <div class="mu-modal">
+      <div class="mu-modal__icon">🔌</div>
+      <div class="mu-h3 mu-mt3">Desconectar banco</div>
+      <p class="mu-p mu-mt2">¿Desconectar <b>Banco de Chile</b>? Eliminaremos las credenciales del dispositivo y dejaremos de sincronizar. Tus movimientos ya descargados se mantienen.</p>
+      <div class="mu-btn-row mu-mt5">
+        <button class="mu-btn mu-btn--outline" onclick="go('settings-banks','list')">Cancelar</button>
+        <button class="mu-btn mu-btn--danger" onclick="go('settings-banks','empty')">Desconectar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-bank-review">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('settings-banks')">←</button>
+    <div class="mu-topbar__title">Banco de Chile</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-card mu-mt4">
+      <div class="mu-row">
+        <span class="mu-bank__logo" style="background:#003da5;width:48px;height:48px;font-size:var(--base)">BCH</span>
+        <div class="mu-item__txt"><div class="mu-h3">Banco de Chile</div><div class="mu-item__sub" data-states="ok">Sincronizado hace 2 h</div><div class="mu-item__sub" data-states="error">Última sincronización exitosa: ayer 21:14</div></div>
+        <span class="mu-badge mu-badge--ok" data-states="ok">Al día</span>
+        <span class="mu-badge mu-badge--danger" data-states="error">Error</span>
+      </div>
+    </div>
+
+    <div class="mu-note mu-note--danger mu-mt4" data-states="error">
+      <span class="mu-note__icon">⚠️</span>
+      <span><b>El banco rechazó las credenciales.</b> Puede que hayas cambiado tu clave de internet. Vuelve a ingresarla para reanudar la sincronización.</span>
+    </div>
+
+    <p class="mu-h3 mu-mt5">Productos</p>
+    <div class="mu-mt3">
+      <div class="mu-card mu-card--tight">
+        <div class="mu-row"><span class="mu-item__icon">🏦</span><div class="mu-item__txt"><div class="mu-item__title">Cuenta corriente</div><div class="mu-item__sub mu-mono">••4821</div></div><span class="mu-amount">$1.842.300</span></div>
+      </div>
+      <div class="mu-card mu-card--tight mu-mt3">
+        <div class="mu-row"><span class="mu-item__icon">💳</span><div class="mu-item__txt"><div class="mu-item__title">Tarjeta de crédito</div><div class="mu-item__sub mu-mono">••7734 · cupo $2.500.000</div></div><span class="mu-amount mu-amount--out">$412.000</span></div>
+      </div>
+      <div class="mu-card mu-card--tight mu-mt3">
+        <div class="mu-row"><span class="mu-item__icon">📈</span><div class="mu-item__txt"><div class="mu-item__title">Línea de crédito</div><div class="mu-item__sub mu-mono">••4821 · cupo $800.000</div></div><span class="mu-amount">$0</span></div>
+      </div>
+    </div>
+
+    <div class="mu-card mu-mt4">
+      <div class="mu-row mu-row--between"><span class="mu-small">Sincronización automática</span><span class="mu-switch is-on"></span></div>
+      <p class="mu-hint">Al abrir la app sincronizamos si pasaron más de 6 horas.</p>
+    </div>
+
+    <div class="mu-btn-stack mu-mt5">
+      <button class="mu-btn" data-states="error" onclick="go('bank-credentials','filled')">Actualizar credenciales</button>
+      <button class="mu-btn mu-btn--outline" data-states="ok" onclick="go('bank-syncing')">Sincronizar ahora</button>
+      <button class="mu-btn mu-btn--ghost" onclick="go('settings-banks','disconnect-confirm')">Desconectar banco</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-settings-notifications">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('settings')">←</button>
+    <div class="mu-topbar__title">Recordatorios</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-card mu-mt4">
+      <div class="mu-row mu-row--between"><span class="mu-item__title">Recordatorios activados</span><span class="mu-switch is-on" data-states="enabled"></span><span class="mu-switch" data-states="disabled"></span></div>
+    </div>
+
+    <div class="mu-note mu-note--warn mu-mt4" data-states="disabled">
+      <span class="mu-note__icon">📵</span>
+      <span>Las notificaciones están bloqueadas en los ajustes del sistema. <b style="color:var(--brand)">Abrir ajustes del teléfono</b></span>
+    </div>
+
+    <div data-states="enabled">
+      <p class="mu-h3 mu-mt5">Hora del desafío</p>
+      <div class="mu-list mu-mt3">
+        <div class="mu-item"><span class="mu-radio"></span><span class="mu-item__txt"><span class="mu-item__title">Mañana</span><span class="mu-item__sub">9:00 AM</span></span></div>
+        <div class="mu-item"><span class="mu-radio"></span><span class="mu-item__txt"><span class="mu-item__title">Tarde</span><span class="mu-item__sub">2:00 PM</span></span></div>
+        <div class="mu-item"><span class="mu-radio"></span><span class="mu-item__txt"><span class="mu-item__title">Noche</span><span class="mu-item__sub">8:00 PM</span></span></div>
+        <div class="mu-item"><span class="mu-radio is-on"></span><span class="mu-item__txt"><span class="mu-item__title">Hora personalizada</span><span class="mu-item__sub">7:30 PM</span></span></div>
+      </div>
+
+      <p class="mu-h3 mu-mt5">Días</p>
+      <div class="mu-list mu-mt3">
+        <div class="mu-item"><span class="mu-check is-on">✓</span><span class="mu-item__txt"><span class="mu-item__title">Lunes</span></span></div>
+        <div class="mu-item"><span class="mu-check is-on">✓</span><span class="mu-item__txt"><span class="mu-item__title">Martes</span></span></div>
+        <div class="mu-item"><span class="mu-check is-on">✓</span><span class="mu-item__txt"><span class="mu-item__title">Miércoles</span></span></div>
+        <div class="mu-item"><span class="mu-check is-on">✓</span><span class="mu-item__txt"><span class="mu-item__title">Jueves</span></span></div>
+        <div class="mu-item"><span class="mu-check is-on">✓</span><span class="mu-item__txt"><span class="mu-item__title">Viernes</span></span></div>
+        <div class="mu-item"><span class="mu-check">✓</span><span class="mu-item__txt"><span class="mu-item__title">Sábado</span></span></div>
+        <div class="mu-item"><span class="mu-check">✓</span><span class="mu-item__txt"><span class="mu-item__title">Domingo</span></span></div>
+      </div>
+      <button class="mu-btn mu-mt5" onclick="go('settings')">Guardar</button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-settings-categories">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('settings')">←</button>
+    <div class="mu-topbar__title">Categorías</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-pad" style="padding-top:var(--sp3);padding-bottom:var(--sp3);background:var(--s1);border-bottom:1px solid var(--border)">
+    <div class="mu-segment" style="display:flex;width:100%">
+      <button class="mu-segment__item is-active" style="flex:1" data-states="expense edit delete-confirm" onclick="go('settings-categories','income')">Gastos</button>
+      <button class="mu-segment__item" style="flex:1" data-states="income" onclick="go('settings-categories','expense')">Gastos</button>
+      <button class="mu-segment__item" style="flex:1" data-states="expense edit delete-confirm" onclick="go('settings-categories','income')">Ingresos</button>
+      <button class="mu-segment__item is-active" style="flex:1" data-states="income">Ingresos</button>
+    </div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-list mu-mt4" data-states="expense edit delete-confirm">
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">🍔</span><span class="mu-item__txt"><span class="mu-item__title">Comida</span><span class="mu-item__sub">5 transacciones este mes</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">🛒</span><span class="mu-item__txt"><span class="mu-item__title">Supermercado</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">🚗</span><span class="mu-item__txt"><span class="mu-item__title">Transporte</span><span class="mu-item__sub">3 transacciones este mes</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">📦</span><span class="mu-item__txt"><span class="mu-item__title">Compras</span><span class="mu-item__sub">2 transacciones este mes</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">🎬</span><span class="mu-item__txt"><span class="mu-item__title">Entretenimiento</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">⚡</span><span class="mu-item__txt"><span class="mu-item__title">Servicios</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">💊</span><span class="mu-item__txt"><span class="mu-item__title">Salud</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">✨</span><span class="mu-item__txt"><span class="mu-item__title">Otros</span><span class="mu-item__sub">Categoría por defecto · no se puede eliminar</span></span></button>
+    </div>
+
+    <div class="mu-list mu-mt4" data-states="income">
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">💼</span><span class="mu-item__txt"><span class="mu-item__title">Sueldo</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">💻</span><span class="mu-item__txt"><span class="mu-item__title">Freelance</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">💰</span><span class="mu-item__txt"><span class="mu-item__title">Ingresos extra</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">📈</span><span class="mu-item__txt"><span class="mu-item__title">Inversiones</span></span><span class="mu-item__chev">☰</span></button>
+      <button class="mu-item" onclick="go('settings-categories','edit')"><span class="mu-item__icon">✨</span><span class="mu-item__txt"><span class="mu-item__title">Otros</span><span class="mu-item__sub">Categoría por defecto</span></span></button>
+    </div>
+
+    <button class="mu-btn mu-btn--outline mu-mt4" data-states="expense edit delete-confirm">+ Nueva categoría de gasto</button>
+    <button class="mu-btn mu-btn--outline mu-mt4" data-states="income">+ Nueva categoría de ingreso</button>
+    <div style="height:var(--sp6)"></div>
+  </div>
+
+  <div class="mu-overlay" data-states="edit">
+    <div class="mu-sheet">
+      <div class="mu-sheet__grab"></div>
+      <div class="mu-h3">Editar categoría</div>
+      <div class="mu-field">
+        <label class="mu-label">Nombre</label>
+        <div class="mu-input">Comida</div>
+      </div>
+      <div class="mu-field">
+        <label class="mu-label">Ícono</label>
+        <div class="mu-grid-3">
+          <button class="mu-chip is-selected"><span class="mu-chip__emoji">🍔</span></button>
+          <button class="mu-chip"><span class="mu-chip__emoji">🍽️</span></button>
+          <button class="mu-chip"><span class="mu-chip__emoji">🥦</span></button>
+          <button class="mu-chip"><span class="mu-chip__emoji">☕</span></button>
+          <button class="mu-chip"><span class="mu-chip__emoji">🍕</span></button>
+          <button class="mu-chip"><span class="mu-chip__emoji">🍺</span></button>
+        </div>
+      </div>
+      <div class="mu-btn-row mu-mt5">
+        <button class="mu-btn mu-btn--outline" onclick="go('settings-categories','expense')">Cancelar</button>
+        <button class="mu-btn" onclick="go('settings-categories','expense')">Guardar</button>
+      </div>
+      <button class="mu-btn mu-btn--ghost mu-mt3" style="color:var(--danger)" onclick="go('settings-categories','delete-confirm')">Eliminar categoría</button>
+    </div>
+  </div>
+
+  <div class="mu-overlay mu-overlay--center" data-states="delete-confirm">
+    <div class="mu-modal">
+      <div class="mu-modal__icon">🗑</div>
+      <div class="mu-h3 mu-mt3">Eliminar categoría</div>
+      <p class="mu-p mu-mt2">¿Eliminar «🍔 Comida»? Las 5 transacciones de esta categoría se moverán a <b>✨ Otros</b>.</p>
+      <div class="mu-btn-row mu-mt5">
+        <button class="mu-btn mu-btn--outline" onclick="go('settings-categories','expense')">Cancelar</button>
+        <button class="mu-btn mu-btn--danger" onclick="go('settings-categories','expense')">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-settings-about">
+  <div class="mu-topbar">
+    <button class="mu-topbar__btn" onclick="go('settings')">←</button>
+    <div class="mu-topbar__title">Acerca de</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <div class="mu-center mu-mt6">
+      <div style="width:74px;height:74px;border-radius:20px;background:var(--grad-brand);display:grid;place-items:center;font-size:34px;margin:0 auto">💰</div>
+      <div class="mu-h2 mu-mt4">Finanzas</div>
+      <p class="mu-small">Versión 1.0.0 (MVP)</p>
+    </div>
+
+    <div class="mu-note mu-note--ok mu-mt6">
+      <span class="mu-note__icon">🔒</span>
+      <span><b>Privacidad por diseño.</b> Tus credenciales bancarias y tus movimientos se guardan cifrados solo en este teléfono. No tenemos servidores con tus datos financieros.</span>
+    </div>
+
+    <div class="mu-list mu-mt5">
+      <button class="mu-item"><span class="mu-item__icon">📄</span><span class="mu-item__txt"><span class="mu-item__title">Política de privacidad</span></span><span class="mu-item__chev">›</span></button>
+      <button class="mu-item"><span class="mu-item__icon">📑</span><span class="mu-item__txt"><span class="mu-item__title">Términos de servicio</span></span><span class="mu-item__chev">›</span></button>
+      <button class="mu-item"><span class="mu-item__icon">💬</span><span class="mu-item__txt"><span class="mu-item__title">Enviar feedback</span></span><span class="mu-item__chev">›</span></button>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     DESIGN SYSTEM
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="app-screen" id="s-ds-colors">
+  <div class="mu-topbar"><div class="mu-topbar__title mu-topbar__title--left">DS · Colores</div></div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <p class="mu-small mu-mt4">Espejo de <span class="mu-mono">design/tokens.json</span> → <span class="mu-mono">:root</span>.</p>
+
+    <p class="mu-eyebrow mu-mt5">Marca</p>
+    <div class="mu-grid-3 mu-mt2">
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#6366f1"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">brandPrimary</div><div class="mu-swatch__hex">#6366f1</div></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#4f46e5"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">brandDark</div><div class="mu-swatch__hex">#4f46e5</div></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#f59e0b"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">brandSecondary</div><div class="mu-swatch__hex">#f59e0b</div></div></div>
+    </div>
+
+    <p class="mu-eyebrow mu-mt5">Semánticos</p>
+    <div class="mu-grid-3 mu-mt2">
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#10b981"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">success</div><div class="mu-swatch__hex">#10b981</div></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#f59e0b"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">warning</div><div class="mu-swatch__hex">#f59e0b</div></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#ef4444"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">danger</div><div class="mu-swatch__hex">#ef4444</div></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#8b5cf6"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">celebration</div><div class="mu-swatch__hex">#8b5cf6</div></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#64748b"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">textSecondary</div><div class="mu-swatch__hex">#64748b</div></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#1a1d29"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">textPrimary</div><div class="mu-swatch__hex">#1a1d29</div></div></div>
+    </div>
+
+    <p class="mu-eyebrow mu-mt5">Superficies</p>
+    <div class="mu-grid-3 mu-mt2">
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#fafbfc"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">surface0</div><div class="mu-swatch__hex">#fafbfc</div></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#ffffff"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">surface1</div><div class="mu-swatch__hex">#ffffff</div></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#f1f5f9"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">surface3</div><div class="mu-swatch__hex">#f1f5f9</div></div></div>
+    </div>
+
+    <p class="mu-eyebrow mu-mt5">Gradientes</p>
+    <div class="mu-mt2">
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:var(--grad-challenge)"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">challenge · hero de desafío</div></div></div>
+      <div class="mu-swatch mu-mt2"><div class="mu-swatch__chip" style="background:var(--grad-income)"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">income · tile de ingresos</div></div></div>
+      <div class="mu-swatch mu-mt2"><div class="mu-swatch__chip" style="background:var(--grad-expense)"></div><div class="mu-swatch__meta"><div class="mu-swatch__name">expense · tile de gastos</div></div></div>
+    </div>
+
+    <p class="mu-eyebrow mu-mt5">Series de gráficos</p>
+    <div class="mu-grid-3 mu-mt2">
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#6366f1;height:30px"></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#f59e0b;height:30px"></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#10b981;height:30px"></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#ef4444;height:30px"></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#8b5cf6;height:30px"></div></div>
+      <div class="mu-swatch"><div class="mu-swatch__chip" style="background:#cbd5e1;height:30px"></div></div>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-ds-typography">
+  <div class="mu-topbar"><div class="mu-topbar__title mu-topbar__title--left">DS · Tipografía</div></div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <p class="mu-small mu-mt4">Familia: system UI stack. Números tabulares en montos.</p>
+    <div class="mu-card mu-mt4">
+      <div class="mu-h1">Display · 28/800</div>
+      <div class="mu-xs mu-mono">.mu-h1 · títulos de pantalla</div>
+      <div class="mu-h2 mu-mt4">Heading lg · 20/700</div>
+      <div class="mu-xs mu-mono">.mu-h2 · secciones</div>
+      <div class="mu-h3 mu-mt4">Heading md · 16/700</div>
+      <div class="mu-xs mu-mono">.mu-h3 · títulos de card</div>
+      <p class="mu-p mu-mt4">Body md · 14/1.55 — texto corrido, descripciones y ayuda contextual.</p>
+      <div class="mu-xs mu-mono">.mu-p</div>
+      <p class="mu-small mu-mt4">Body sm · 12 — metadatos, subtítulos.</p>
+      <div class="mu-xs mu-mono">.mu-small</div>
+      <p class="mu-eyebrow mu-mt4">Eyebrow · 11/700 · +0.1em</p>
+      <div class="mu-xs mu-mono">.mu-eyebrow</div>
+    </div>
+    <div class="mu-card mu-mt4">
+      <div class="mu-card__title">Montos</div>
+      <div class="mu-amount mu-amount--hero mu-mt3">$1.200.000</div>
+      <div class="mu-xs mu-mono">.mu-amount--hero · 32/800</div>
+      <div class="mu-row mu-mt4" style="gap:var(--sp5)">
+        <div><div class="mu-amount mu-amount--in" style="font-size:var(--lg)">+$2.500.000</div><div class="mu-xs mu-mono">--in</div></div>
+        <div><div class="mu-amount mu-amount--out" style="font-size:var(--lg)">$35.000</div><div class="mu-xs mu-mono">--out</div></div>
+      </div>
+      <p class="mu-hint">Formato CLP: punto como separador de miles, sin decimales. Ingresos con signo <b>+</b>; gastos sin signo.</p>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+<section class="app-screen" id="s-ds-components">
+  <div class="mu-topbar"><div class="mu-topbar__title mu-topbar__title--left">DS · Componentes</div></div>
+  <div class="mu-scroll mu-pad mu-pad-b">
+    <p class="mu-eyebrow mu-mt4">Botones</p>
+    <div class="mu-btn-stack mu-mt2">
+      <button class="mu-btn">Primario</button>
+      <button class="mu-btn mu-btn--muted">Primario deshabilitado</button>
+      <button class="mu-btn mu-btn--outline">Secundario</button>
+      <button class="mu-btn mu-btn--ghost">Terciario</button>
+      <button class="mu-btn mu-btn--danger">Destructivo</button>
+      <button class="mu-btn mu-btn--danger-soft">Destructivo suave</button>
+    </div>
+
+    <p class="mu-eyebrow mu-mt5">Badges</p>
+    <div class="mu-pill-row mu-mt2">
+      <span class="mu-badge">Neutro</span><span class="mu-badge mu-badge--ok">Al día</span>
+      <span class="mu-badge mu-badge--warn">Pendiente</span><span class="mu-badge mu-badge--danger">Error</span>
+      <span class="mu-badge mu-badge--info">Info</span><span class="mu-badge mu-badge--celebration">Logro</span>
+    </div>
+
+    <p class="mu-eyebrow mu-mt5">Chips de categoría</p>
+    <div class="mu-grid-3 mu-mt2">
+      <button class="mu-chip is-suggested"><span class="mu-chip__star">✨</span><span class="mu-chip__emoji">📦</span>Sugerido</button>
+      <button class="mu-chip is-selected"><span class="mu-chip__emoji">🍔</span>Elegido</button>
+      <button class="mu-chip"><span class="mu-chip__emoji">🚗</span>Normal</button>
+    </div>
+
+    <p class="mu-eyebrow mu-mt5">Campos</p>
+    <div class="mu-mt2">
+      <div class="mu-input mu-input--ph">Placeholder</div>
+      <div class="mu-input is-focus mu-mt2">Con foco</div>
+      <div class="mu-input is-error mu-mt2">Con error</div>
+      <p class="mu-hint mu-hint--error">Mensaje de error</p>
+      <div class="mu-input is-locked mu-mt2">Bloqueado 🔒</div>
+    </div>
+    <div class="mu-row mu-mt4" style="gap:var(--sp5)">
+      <span class="mu-check is-on">✓</span><span class="mu-check">✓</span>
+      <span class="mu-radio is-on"></span><span class="mu-radio"></span>
+      <span class="mu-switch is-on"></span><span class="mu-switch"></span>
+    </div>
+
+    <p class="mu-eyebrow mu-mt5">Transacciones</p>
+    <div class="mu-mt2">
+      <div class="mu-tx"><span class="mu-tx__icon">🛒</span><span class="mu-tx__txt"><span class="mu-tx__name">Categorizada</span><span class="mu-tx__meta">24 ene · Comida</span></span><span class="mu-tx__amount">$35.000</span></div>
+      <div class="mu-tx mu-tx--pending"><span class="mu-tx__icon">💳</span><span class="mu-tx__txt"><span class="mu-tx__name">Pendiente</span><span class="mu-tx__meta mu-tx__meta--warn">⚠️ Necesita categorización</span></span><span class="mu-tx__amount">$42.000</span></div>
+      <div class="mu-tx mu-tx--excluded"><span class="mu-tx__icon">🚫</span><span class="mu-tx__txt"><span class="mu-tx__name">Excluida</span><span class="mu-tx__meta">14 ene · Fuera del análisis</span></span><span class="mu-tx__amount">$75.000</span></div>
+    </div>
+
+    <p class="mu-eyebrow mu-mt5">Avisos</p>
+    <div class="mu-note mu-mt2"><span class="mu-note__icon">ℹ️</span><span>Informativo</span></div>
+    <div class="mu-note mu-note--ok mu-mt2"><span class="mu-note__icon">🔒</span><span>Éxito / seguridad</span></div>
+    <div class="mu-note mu-note--warn mu-mt2"><span class="mu-note__icon">⚠️</span><span>Advertencia</span></div>
+    <div class="mu-note mu-note--danger mu-mt2"><span class="mu-note__icon">⛔</span><span>Error</span></div>
+
+    <p class="mu-eyebrow mu-mt5">Stat tiles</p>
+    <div class="mu-grid-2 mu-mt2">
+      <div class="mu-stat mu-stat--in"><span class="mu-stat__arrow">↗</span><div class="mu-stat__label">Ingresos</div><div class="mu-stat__value">3.7M</div><div class="mu-stat__sub">2 movimientos</div></div>
+      <div class="mu-stat mu-stat--out"><span class="mu-stat__arrow">↘</span><div class="mu-stat__label">Gastos</div><div class="mu-stat__value">1.4M</div><div class="mu-stat__sub">24 movimientos</div></div>
+    </div>
+    <div style="height:var(--sp6)"></div>
+  </div>
+</section>
+
+        </div><!-- /.phone-screen -->
+      </div><!-- /.phone -->
+    </div><!-- /.phone-slot -->
+  </main>
+
+  <div class="right-col">
+    <aside class="panel state-panel" id="state-panel" aria-label="States">
+      <div class="state-heading">States</div>
+      <p class="state-subtitle">Variantes locales de la pantalla seleccionada.</p>
+      <div class="state-group-title" id="state-group-title"></div>
+      <div class="state-list" id="state-list"></div>
+      <p class="state-empty" id="state-empty" hidden>Esta pantalla no declara estados alternativos.</p>
+    </aside>
+
+    <aside class="panel meta-panel" aria-label="Metadata">
+      <div class="meta-heading">Metadata</div>
+      <p class="meta-subtitle">Identidad de la pantalla y ruta esperada en la app.</p>
+      <div class="meta-title" id="meta-title">—</div>
+      <div class="meta-row"><div class="meta-label">Screen ID</div><div class="meta-value"><code id="meta-id">—</code></div></div>
+      <div class="meta-row"><div class="meta-label">State ID</div><div class="meta-value"><code id="meta-state">—</code></div></div>
+      <div class="meta-row"><div class="meta-label">Route</div><div class="meta-value"><code id="meta-route">—</code></div></div>
+      <div class="meta-row"><div class="meta-label">Kind</div><div class="meta-value"><code id="meta-kind">—</code></div></div>
+      <div class="meta-row"><div class="meta-label">Synced</div><div class="meta-value" id="meta-synced">—</div></div>
+      <span class="meta-flag" id="meta-mvp" data-mvp="in">En el MVP</span>
+    </aside>
+  </div>
+</div>
+
+<script src="../shared/viewer.js"></script>
+<script src="./mockup-manifest.js"></script>
+<script>
+  (async function boot() {
+    const navRoot = document.getElementById('mockup-nav');
+    let manifest;
+    try {
+      manifest = await MockupViewer.loadManifest();
+    } catch (err) {
+      console.error(err);
+      if (navRoot) {
+        navRoot.textContent = err.message;
+        navRoot.style.cssText = 'white-space:pre-wrap;padding:16px;font-size:13px;color:#b91c1c';
+      }
+      return;
+    }
+
+    const screensById = Object.fromEntries(manifest.screens.map((s) => [s.screen_id, s]));
+
+    const __viewer = MockupViewer.init(manifest, {
+      navRoot,
+      onNavigate: (screenId) => go(screenId),
+      onStateChange: (screenId, stateId) => go(screenId, stateId),
+      meta: { frameLabelId: 'phone-label' },
+    });
+    const SCREENS = __viewer.domMap;
+    const DEFAULT_SCREEN = __viewer.defaultScreen;
+
+    /**
+     * States are NOT separate DOM screens. Each screen owns one node; fragments
+     * that belong to a subset of states declare `data-states="a b"` and this
+     * function toggles them. Nodes without `data-states` are always visible.
+     */
+    function applyState(screenEl, stateId) {
+      screenEl.dataset.state = stateId ?? '';
+      screenEl.querySelectorAll('[data-states]').forEach((el) => {
+        el.hidden = !el.dataset.states.split(/\s+/).includes(stateId);
+      });
+    }
+
+    function updatePanels(screenId, stateId) {
+      __viewer.updatePanels(screenId, stateId);
+      __viewer.updateMeta(screenId, stateId);
+      const screen = screensById[screenId];
+      const flag = document.getElementById('meta-mvp');
+      const inMvp = screen.mvp !== false;
+      flag.dataset.mvp = inMvp ? 'in' : 'out';
+      flag.textContent = inMvp ? 'En el MVP' : 'Fuera del MVP';
+    }
+
+    let __urlSync = false;
+
+    function go(screenId, requestedStateId) {
+      if (!SCREENS[screenId]) screenId = DEFAULT_SCREEN;
+      const stateId = __viewer.resolveStateForScreen(screenId, requestedStateId);
+
+      document.querySelectorAll('.app-screen.active').forEach((el) => el.classList.remove('active'));
+      const target = document.getElementById(SCREENS[screenId]);
+      if (target) {
+        target.classList.add('active');
+        applyState(target, stateId);
+        target.querySelectorAll('.mu-scroll').forEach((el) => { el.scrollTop = 0; });
+      }
+
+      updatePanels(screenId, stateId);
+
+      if (!__urlSync) {
+        const stateHash = stateId ? `&state=${encodeURIComponent(stateId)}` : '';
+        const nextHash = `screen=${encodeURIComponent(screenId)}${stateHash}`;
+        if (location.hash !== `#${nextHash}`) history.replaceState(null, '', `#${nextHash}`);
+      }
+    }
+
+    window.go = go;
+
+    window.addEventListener('hashchange', () => {
+      const target = __viewer.getTargetFromUrl();
+      __urlSync = true;
+      go(target.screenId, target.stateId);
+      __urlSync = false;
+    });
+
+    const initial = __viewer.getTargetFromUrl();
+    go(initial.screenId, initial.stateId);
+  })();
+</script>
+</body>
+</html>
