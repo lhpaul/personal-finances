@@ -163,6 +163,14 @@ partial inclusion and manual-entry marker the person had set is exactly as they 
   movement to overwrite and destroying the classification the person already gave it.
 - Nothing in this item performs a sync. This item defines the storage guarantee that the sync
   item relies on, and proves it against recorded bank responses.
+- **Design note for the sync engine (item #10), not a gate on this item**: the sync engine
+  reuses the identity this item establishes rather than inventing its own. It performs an
+  idempotent upsert keyed on `UNIQUE(user_financial_product_id, external_id)` when the bank
+  supplies an identifier, falling back to `dedup_hash` when it does not, exactly as
+  `docs/project/4-database-model.md` gap #1 already specifies. `merchant_id`,
+  `transaction_category_id`, `category_source`, `note`, `review_flag`, `excluded_at`,
+  `exclusion_reason`, `exclusion_note`, `included_amount` and `is_manual` stay person-owned on
+  every re-store (Business Rule 8); item #10 does not need to rediscover this, only rely on it.
 
 ---
 
@@ -341,9 +349,15 @@ person-owned value, or the check fails and names what would be lost.
     located by that category's stable slug (`otros-gasto` for spending, `otros-ingreso` for
     income) and never by its displayed name. The move and the deletion are one indivisible
     operation. Deleting a category never deletes a movement.
-19. **A category's displayed name is resolved by locale**: the device's full locale tag first,
-    then its language, then Spanish. Every starter category carries a Spanish name and an
-    English name.
+19. **A category's displayed name is resolved by locale**, using the same device-locale mapping
+    as the app's catalogues (`docs/best-practices/stack/i18n.md`): `expo-localization` reads the
+    device's language code and it is mapped to `es` or `en`, defaulting to `es`. That two-valued
+    result is looked up directly in `labels`, falling back to `es` if the key is somehow absent.
+    A three-tier "full locale tag, then language, then Spanish" resolver was considered and
+    dropped: `labels` is only ever keyed by `es` or `en`, so a full-tag tier (`es-CL`) could never
+    match anything the language-code tier would not already match — it added a step with no
+    reachable behaviour behind it. Every starter category carries a Spanish name and an English
+    name, sourced from `design/tokens.json → categoryLabels` (see [Categories](#categories)).
 20. **Disconnecting a bank is not deleting it.** Disconnecting marks the connection and removes
     the credentials from the secure store; the connection record, its products and every
     movement already downloaded stay, exactly as the mockups promise
@@ -542,11 +556,17 @@ and short name as presentational data, and its logo reference.
 
 ### Categories
 
-Sixteen starter categories, taken from the `categoryIcons` block of
-[`design/tokens.json`](../../../../design/tokens.json), which is the single source for the
-emoji. All sixteen are starter content (no owner), each carries a Spanish and an English name,
-and each has an explicit display order within its direction, following the order the tokens file
-declares.
+Sixteen starter categories, sourced from two blocks of
+[`design/tokens.json`](../../../../design/tokens.json), keyed by the same slug: `categoryIcons`
+for the emoji, and `categoryLabels` for the `es`/`en` display names seeded into `labels`. All
+sixteen are starter content (no owner), each carries a Spanish and an English name, and each has
+an explicit display order within its direction, following the order the tokens file declares.
+
+`es` is the production string and is authoritative — it must match the mockup copy verbatim.
+`en` in `categoryLabels` is a first pass, not yet reviewed by the product owner; treat it as
+provisional starter content, not a locked translation. Because it lives in `categoryLabels`
+rather than being invented at seed time, correcting it later is a `design/tokens.json` edit
+plus a starter-content refresh (Business Rules 13–16), not a schema or seed-mechanism change.
 
 Spending (order 1–10):
 
@@ -659,10 +679,11 @@ to the stored shape.
 - [ ] **AC10.** Deleting a category clears the default category of any merchant that pointed at
       it, and removes any budget or recurring record that pointed at it. No merchant and no
       movement is deleted.
-- [ ] **AC11.** A category's displayed name resolves to the name for the device's full locale
-      tag when present, otherwise for its language, otherwise Spanish. On a device set to an
-      unsupported locale, every starter category shows its Spanish name; on an English device,
-      its English name.
+- [ ] **AC11.** A category's displayed name resolves through the same device-locale mapping the
+      app's catalogues use (`expo-localization` language code → `es` \| `en`, default `es`),
+      looked up directly in `labels`, falling back to `es`. On a device mapped to an unsupported
+      or absent locale, every starter category shows its Spanish name; on a device mapped to
+      `en`, its English name.
 - [ ] **AC12.** The check command applies the full change history to an empty store and the
       result matches the declared shape exactly, with no pending difference.
 - [ ] **AC13.** The check command applies the pending change set to every committed snapshot of a
@@ -800,8 +821,8 @@ truth documents. Each is listed so the product owner can revisit it.
 | --- | --- | --- | --- |
 | 1 | The two ✨ Otros categories are the only undeletable ones. | Mockup `delete-confirm` deletes a starter category; see [Conflict 1](#conflict-1--which-categories-a-person-may-delete). | Yes |
 | 2 | A starter-content refresh never overwrites a person's edit and never resurrects a starter record they removed. | Follows from Decision 1 plus the editable name/emoji in `settings-categories`. The brief only said "refreshes seeded rows without touching user-created ones", which does not cover an edited or deleted starter row. | Yes — it implies the stored shape must be able to tell an edited or removed starter record apart, which the plan must provision for now rather than add later. |
-| 3 | All sixteen starter categories carry both a Spanish and an English name. | The data model says "`es` (and `en` where known)"; the architecture doc makes `es` primary and `en` the fallback for all copy. Seeding Spanish only would make the locale-resolution acceptance criterion vacuous. | Yes — the MVP UI is Spanish-only, so English category names are only reachable on an English device. |
-| 4 | Locale resolution is full tag, then language, then Spanish. | The data model says "reads the device locale and falls back to `es`" without defining the middle step; `es-CL` must not miss an `es` name. | No |
+| 3 | All sixteen starter categories carry both a Spanish and an English name, read from `design/tokens.json → categoryLabels`. | An earlier draft of this spec cited `categoryIcons` as the source for the English names; that block only ever held emoji, and the names were invented. `categoryLabels` was added to `tokens.json` specifically to give the seed a real source (`docs/project/4-database-model.md`, `docs/best-practices/stack/i18n.md`). `es` is authoritative and matches the mockups; `en` is a first pass, not yet product-owner reviewed. | Yes — the `en` values are provisional and should be reviewed against `categoryLabels`, not against this spec, since the spec no longer states them independently. |
+| 4 | Locale resolution maps the device locale to `es` or `en` (via the same `expo-localization` mapping the app's catalogues use) and looks that key up directly in `labels`, falling back to `es`. | `labels` is only ever keyed `es`/`en` (from `categoryLabels`), so a "full tag, then language, then Spanish" resolver has no key a full locale tag could match that the language-code tier would not already match. Reconciled with the i18next stack pin (`docs/best-practices/stack/i18n.md`) so the database-layer and app-layer locale mapping are the same mechanism. | No |
 | 5 | Deleting a category clears a merchant's default category and removes budget and recurring records for it. | The domain rule covers movements only. Neither budgets nor recurring transactions have any UI in the MVP, so neither can hold data a person would miss; leaving a merchant with a dangling default would silently re-apply a deleted category. | Yes |
 | 6 | Disconnecting a bank never deletes the connection record. | Required to reconcile the cascade in the data model with the mockup promise "Tus movimientos ya descargados se mantienen". | No |
 | 7 | A movement the bank re-states with a changed amount or description is treated as a new movement when the bank supplies no identifier. | The alternative — overwriting by partial match — risks destroying a person's categorization, which is worse than a visible duplicate they can exclude. | Yes |
