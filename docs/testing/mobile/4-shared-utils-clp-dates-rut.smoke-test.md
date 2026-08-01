@@ -257,22 +257,31 @@ verification** in the pull request description. Do not claim it as passing.
 `apps/mobile/eslint.config.mjs` spreads after the root config. Step 4 passes. The temporary
 violation is **never** committed.
 
-### Step 8: The package is still pure and still consumable
+### Step 8: The package is still pure and still consumable by all three consumers
 
-**Maps to**: brief rule 3 (`@finanzas/shared-utils` is consumed by both `apps/mobile` and
-`@finanzas/bank-scraper`)
+**Maps to**: brief rule 3 (`@finanzas/shared-utils` is consumed by `apps/mobile`,
+`packages/bank-scraper` and `packages/shared-domain` — verified at plan time via each consumer's
+`dependencies.@finanzas/shared-utils: workspace:*`)
 
 1. Temporarily add `import { readFileSync } from 'node:fs';` to
    `packages/shared-utils/src/index.ts`, run `pnpm lint`, confirm it fails with the
    `sharedUtilsPurity` message, then remove it and confirm `pnpm lint` passes.
-2. Run `pnpm --filter @finanzas/mobile test` and confirm the existing
+2. **`apps/mobile`** — this consumer has **no `build` script** (`apps/mobile/package.json`), so
+   `pnpm build` cannot validate it; use its wiring test and a typecheck instead. Run
+   `pnpm --filter @finanzas/mobile test` and confirm the existing
    `apps/mobile/src/__tests__/workspace-wiring.test.ts` still passes — `PACKAGE_NAME` must still
-   be exported.
-3. Run `pnpm build` and confirm `packages/shared-utils` emits `dist/` with declarations.
+   be exported — then run `pnpm --filter @finanzas/mobile typecheck` and confirm it passes.
+3. **`packages/bank-scraper` and `packages/shared-domain`** — both declare a `build` script and
+   both depend on `@finanzas/shared-utils`. Run `pnpm build` and confirm it emits `dist/` with
+   declarations for `packages/shared-utils`, `packages/bank-scraper` **and**
+   `packages/shared-domain`. `pnpm build` validates these two package consumers; it does **not**
+   build or validate `apps/mobile` (Step 8.2 covers that consumer separately).
 4. Confirm `packages/shared-utils/package.json` still has **no** `dependencies` block.
 
-**Expected result**: the purity rule fires and then clears; the app's wiring test still passes;
-the package builds; no dependency was added.
+**Expected result**: the purity rule fires and then clears; `apps/mobile`'s wiring test and
+typecheck both pass; `packages/bank-scraper` and `packages/shared-domain` both build with
+declarations; no dependency was added. All three consumers are covered — two by `pnpm build`, one
+by its wiring test plus typecheck, never by `pnpm build` alone.
 
 ### Last Step: Validate & shut down
 
@@ -301,8 +310,9 @@ Each checkbox maps to an acceptance criterion from
       rather than by convention (Step 7)
 - [ ] Every formatted string is character-identical to the mockup (Steps 3, 5)
 - [ ] The RUT never reaches a log line or an error message (Step 4)
-- [ ] The package remains pure and dependency-free, and its three consumers still build
-      (Step 8)
+- [ ] The package remains pure and dependency-free, and all three consumers still consume it
+      correctly — `packages/bank-scraper` and `packages/shared-domain` still build,
+      `apps/mobile` (no `build` script) still passes its wiring test and typecheck (Step 8)
 
 ---
 
