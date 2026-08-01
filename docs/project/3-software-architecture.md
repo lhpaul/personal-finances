@@ -4,7 +4,7 @@
 
 | Layer | Choice | Rationale |
 |-------|--------|-----------|
-| App runtime | **Expo SDK 54 / React Native**, TypeScript strict | The scraper needs a native WebView on the user's device. Expo gives OTA-free dev velocity plus `expo-secure-store` and `expo-notifications` out of the box. Continues the stack already proven in `bank-scrapper-app` |
+| App runtime | **Expo SDK 54 / React Native 0.81**, TypeScript strict. Node 22, pnpm 11.12.0 | The scraper needs a native WebView on the user's device. Expo gives OTA-free dev velocity plus `expo-secure-store` and `expo-notifications` out of the box. Continues the stack already proven in `bank-scrapper-app` |
 | Navigation | **Expo Router** (file-based) | Routes in `design/mockups/mobile/mockup-manifest.js` are already written as Expo Router paths — the mockup manifest doubles as the routing spec |
 | Storage | **SQLite** via `expo-sqlite` + **Drizzle ORM** | Local-first is a product requirement, not a shortcut. Drizzle gives typed queries and file-based migrations without a codegen daemon |
 | Secrets | **`expo-secure-store`** (iOS Keychain / Android Keystore) | The one place bank credentials may exist |

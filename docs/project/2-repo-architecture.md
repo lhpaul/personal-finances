@@ -59,6 +59,8 @@ personal-finances/
 
 ### Conventions inherited from `zeki-platform`
 
+- Toolchain pins match Zeki: `.nvmrc` = `22`, `packageManager: pnpm@11.12.0`,
+  `engines.node >= 22`. Expo SDK 54 / React Native 0.81.
 - `pnpm-workspace.yaml` declares `apps/*` and `packages/*`.
 - Package names are scoped: `@finanzas/mobile`, `@finanzas/shared-domain`, …
 - Shared packages are minimal: `src/`, `package.json`, `tsconfig.json`, with
@@ -105,7 +107,7 @@ SQL library. Enforced by a `no-restricted-imports` rule in the root `eslint.conf
 ## Common Commands
 
 ```bash
-# Install dependencies (Node 20+, pnpm 10+)
+# Install dependencies (Node 22 via .nvmrc, pnpm 11.12.0 via packageManager)
 pnpm install
 
 # Development
@@ -142,7 +144,9 @@ pnpm mobile:build:production-store
 
 ## Environment Setup
 
-1. Node 20+ (`.nvmrc`), pnpm 10+, Xcode (iOS Simulator) and/or Android Studio.
+1. **Node 22** (`.nvmrc`) and **pnpm 11.12.0** (`packageManager` in the root
+   `package.json`) — matching `zeki-platform`. Node 20 is end-of-life and must not be pinned.
+   Plus Xcode (iOS Simulator) and/or Android Studio.
    See [React Native environment setup](https://reactnative.dev/docs/set-up-your-environment).
 2. `pnpm install`
 3. `cp apps/mobile/.env.example apps/mobile/.env.local`
