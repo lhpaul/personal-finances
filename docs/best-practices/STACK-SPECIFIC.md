@@ -14,10 +14,14 @@ Architecture and rationale: [`../project/3-software-architecture.md`](../project
 
 | Area | File |
 |------|------|
-| Framework · language | [stack/expo-react-native.md](stack/expo-react-native.md) |
+| Language | [stack/typescript.md](stack/typescript.md) |
+| Framework | [stack/expo-react-native.md](stack/expo-react-native.md) |
+| Monorepo | [stack/turborepo-pnpm.md](stack/turborepo-pnpm.md) |
 | Database | [stack/sqlite-drizzle.md](stack/sqlite-drizzle.md) |
 | Scraping | [stack/bank-scraper.md](stack/bank-scraper.md) |
 | Styling | [stack/design-tokens.md](stack/design-tokens.md) |
+| Copy | [stack/i18n.md](stack/i18n.md) |
+| UI fidelity | [stack/mobile-ui-fidelity.md](stack/mobile-ui-fidelity.md) |
 
 ---
 
@@ -66,6 +70,10 @@ The rules most likely to be violated in this codebase. Detail lives in the `stac
   `packages/bank-scraper/configs/<country>/<bank>/`. Every script generator gets a jsdom test
   against captured HTML. Never reach into a bank's DOM from app code.
 
-- **Spanish (es-CL) in user-facing copy, English in code.** `screen_id`s, identifiers, table
-  and column names, commit messages and comments are English; every string a user reads is
-  Spanish and matches the mockup copy.
+- **No user-facing literal strings in JSX.** Copy lives in the `src/i18n/` catalogues (`es`
+  primary, `en` fallback) and the Spanish string comes from the mockup. Identifiers, table and
+  column names, commit messages and comments stay English. Enum-like values are stored as
+  stable codes and resolved to copy by the catalogue — never persist a translated string.
+
+- **No cross-package relative imports.** Shared code is imported by its `@finanzas/*` package
+  name. A `../../packages/…` import defeats the boundary that keeps the domain testable.

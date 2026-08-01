@@ -1,108 +1,61 @@
 # Database Best Practices
 
-> **STATUS: TEMPLATE SEED**
->
-> This file ships with the framework template and contains general database best practices
-> that apply regardless of which database engine or ORM your project uses.
->
-> After running the project setup agent (`docs/workflow/setup/protocol.md`), add your
-> project-specific conventions in [`stack/`](stack/) files and link them from
-> [`STACK-SPECIFIC.md`](STACK-SPECIFIC.md).
+This product has **no server database**. Everything lives in one SQLite file on the user's
+phone, and there is no operator who can repair a mistake after the fact. That single fact
+drives every rule here.
+
+Schema: [`../project/4-database-model.md`](../project/4-database-model.md).
+Implementation detail: [`stack/sqlite-drizzle.md`](stack/sqlite-drizzle.md).
 
 ---
+
+## What does not apply here
+
+This file replaced the framework template's generic database guidance, which covered
+row-level security, connection pooling and staged production migrations. None of it applies:
+
+- **No RLS.** One local profile, no multi-tenancy. Authorization has no surface.
+- **No migration window.** Migrations run on a user's device, on app launch, unattended.
+- **No rollback.** There is no snapshot, no replica, and no support engineer with a console.
 
 ## Migrations
 
-- Keep migrations small and reversible whenever possible.
-- Never edit a migration file that has already been applied in any environment; create a
-  new one instead.
-- Test every migration against a production-representative dataset before applying to
-  staging or production.
-- Run `EXPLAIN ANALYZE` on queries that touch columns affected by a new index or schema
-  change before shipping.
+- **Additive only.** New tables, new nullable columns, new indexes. Never drop a column, never
+  rename one, never tighten a constraint on existing data.
+- Every migration ships with a test that opens a fixture database at the previous schema
+  version and migrates it, asserting no data loss.
+- `db:check` is a required check. A migration that throws on a user's device leaves the app
+  permanently unusable for that user.
+- To "remove" a column: stop writing it, stop reading it, leave it. To "rename" one: add the
+  new column, backfill in the migration, write both for one release, then stop reading the old.
 
----
+## Data integrity
 
-## Row-Level Security (RLS)
+- **Money is `INTEGER` minor units.** CLP has no cents. A decimal in an amount is a bug —
+  including inside a JSON column.
+- **The inclusion rule is written once.** Totals count a transaction when `excluded_at IS NULL`,
+  at `COALESCE(included_amount, amount)`. Import the shared fragment; a hand-written filter
+  that forgets exclusions is a review blocker, not a nit.
+- **Writes from sync are idempotent.** Upsert on `(user_financial_product_id, external_id)`,
+  falling back to `dedup_hash`. Never overwrite user-owned columns on conflict.
+- Wrap multi-table writes in a transaction — a sync run touches three tables.
+- Aggregate in SQL, not in JavaScript. These tables grow unbounded.
 
-### Enabling RLS on a new table
+## What never goes in the database
 
-When creating a new table, enable RLS immediately after the `CREATE TABLE` statement and
-define all policies in the same migration:
+Credentials, including **the RUT** — it is half of what logs into the bank. Not encrypted, not
+hashed, not "just the identifier". `user_financial_institutions` stores a keychain *key*; every
+value lives in `expo-secure-store`.
 
-```sql
-CREATE TABLE public.my_table ( ... );
+## Access boundaries
 
-ALTER TABLE public.my_table ENABLE ROW LEVEL SECURITY;
+- `src/db` is the only module that emits SQL.
+- Repository functions return domain types, not Drizzle rows. Screens never import Drizzle.
+- Enum-like values are stored as **stable codes** (`personal_transfer`, `invalid_credentials`),
+  never as display strings. The i18n catalogue resolves them — see
+  [`stack/i18n.md`](stack/i18n.md).
 
-CREATE POLICY "users can read their own rows"
-  ON public.my_table FOR SELECT
-  USING (auth.uid() = user_id);
-```
+## Seed data
 
-### Enabling RLS on an existing table — safety checklist
-
-When retrofitting RLS onto a table that already exists in production, follow these steps
-in order. Skipping Step 1 is a common security mistake: legacy `GRANT` statements survive
-the `ALTER TABLE` and can expose more rows than intended if policies are incomplete or
-overly permissive during rollout.
-
-1. **Revoke broad grants before enabling RLS.**
-   Pre-existing grants (e.g. `GRANT SELECT ON public.my_table TO public`) increase the
-   blast radius: if any RLS policy is incomplete or missing during rollout, more rows
-   than intended are exposed. Both table privileges and RLS policies are required to
-   restrict access — neither control bypasses the other. Revoke broad grants first to
-   limit that blast radius:
-
-   ```sql
-   -- Revoke from every role that should no longer have unrestricted access.
-   -- Adjust the role list to match your auth setup (e.g. anon, authenticated, service_role).
-   REVOKE ALL ON public.my_table FROM public, anon, authenticated;
-   ```
-
-2. **Enable RLS.**
-
-   ```sql
-   ALTER TABLE public.my_table ENABLE ROW LEVEL SECURITY;
-   ```
-
-3. **Define your policies.**
-
-   ```sql
-   CREATE POLICY "users can read their own rows"
-     ON public.my_table FOR SELECT
-     USING (auth.uid() = user_id);
-   ```
-
-4. **Re-grant only what each role needs** (if anything).
-   If a role requires read access but must still go through policies, grant `SELECT` back
-   after policies are in place:
-
-   ```sql
-   -- Only if the role needs access that a policy will filter:
-   GRANT SELECT ON public.my_table TO authenticated;
-   ```
-
-5. **Verify with a smoke test** against a staging environment: confirm that a row owned
-   by user A is not visible to user B, and that service-role access still works if
-   required.
-
-> **Why this order matters**: PostgreSQL access control combines table privileges (GRANT)
-> and RLS policies as layered, complementary controls — both must permit access for a
-> user to see rows. A `GRANT SELECT TO public` grants table-level access, but RLS
-> policies further restrict which rows are visible. The risk is not that grants override
-> policies; it is that a broad grant **expands the blast radius** if any policy is
-> incomplete or missing during a migration. The safe order is REVOKE → ENABLE → CREATE
-> POLICY → re-GRANT, so the blast radius is minimised throughout the transition.
-> See the [PostgreSQL Row Security Policies documentation](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
-> for the authoritative reference.
-
----
-
-## General Access Control
-
-- Apply the principle of least privilege: grant only the permissions a role or user
-  actually needs.
-- Prefer explicit, narrow grants over broad ones (e.g. `SELECT` on specific tables rather
-  than `ALL PRIVILEGES ON SCHEMA public`).
-- Audit existing grants whenever a security-sensitive migration is applied.
+Seeds are keyed by `slug` / `id` so re-running them after an app update refreshes seeded rows
+without touching user-created ones. A seed must never overwrite a row where `user_id` is set.

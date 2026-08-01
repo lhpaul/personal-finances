@@ -85,7 +85,8 @@ apps/mobile/
 ├── src/
 │   ├── features/                # One folder per domain area
 │   │   └── <feature>/{components,hooks,queries}.ts
-│   └── lib/                     # Query client, db provider, formatters, i18n
+│   ├── i18n/                    # es / en catalogues — all user-facing copy
+│   └── lib/                     # Query client, db provider, formatters, logger
 ```
 
 There is no `(auth)` route group — this product has no sign-in. The tab bar renders exactly
@@ -97,8 +98,9 @@ destinations until those sections ship.
   repositories. Screens never call Drizzle directly.
 - **Screen states** in the mockups (`empty`, `error`, `filters`…) are real render branches.
   A screen is not done until every state in its manifest entry renders.
-- **Copy is Spanish (es-CL)** and lives with the component. No i18n framework in the MVP; a
-  single `strings.ts` per feature keeps extraction cheap later.
+- **Copy lives in i18n catalogues** (`src/i18n/`), never inline in JSX. `es` is primary and
+  `en` is the fallback, matching `zeki-platform` and the per-locale
+  `transaction_categories.labels` in the data model.
 
 ## Backend / API Architecture
 

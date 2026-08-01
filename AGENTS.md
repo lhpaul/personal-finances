@@ -37,6 +37,9 @@ only Inicio and Transacciones.
    it implements, and implements **every** state that screen declares — for screens that are
    in the MVP. Screens flagged `mvp: false` are not built.
 7. No account, no session, no auth secret. The app opens straight into onboarding.
+8. **No user-facing literal strings in JSX.** Copy lives in `apps/mobile/src/i18n/` catalogues
+   (`es` primary, `en` fallback); the Spanish string comes from the mockup.
+9. No cross-package relative imports. Shared code is imported by its `@finanzas/*` name.
 
 ---
 

@@ -14,10 +14,10 @@ sign-in. Everything else is a stack route.
 
 ```
 app/(tabs)/home.tsx          # route: layout + composition only
-features/home/
+src/features/home/
 ├── components/              # presentational, no data access
-├── queries.ts               # TanStack Query hooks over apps/mobile/src/db repositories
-└── strings.ts               # es-CL copy, matching the mockup
+└── queries.ts               # TanStack Query hooks over src/db repositories
+src/i18n/{es,en}.ts          # all user-facing copy, keyed home.*
 ```
 
 A route file that contains business logic or a SQL query is in the wrong place.
@@ -58,8 +58,10 @@ implemented in the description.
 
 ## Copy and formatting
 
-- All user-facing text is **Spanish (es-CL)** and matches the mockup copy verbatim. If the copy
-  should change, change the mockup first.
+- **No user-facing literal strings in JSX.** Copy comes from the `src/i18n/` catalogues via
+  `t('…')`, with flat keys matching the screen (`home.pending_title`). The Spanish string
+  comes from the mockup — if copy should change, change the mockup first. See
+  [`i18n.md`](i18n.md).
 - Currency: `$1.200.000` — point as thousands separator, no decimals, no space after `$`.
   Income prefixed `+`, expenses unsigned. Abbreviate (`3.7M`) **only** in the stat tiles on
   `home`, per the mockups.
