@@ -2196,13 +2196,12 @@
   </div>
   <div class="mu-scroll mu-pad mu-pad-b">
     <div class="mu-list mu-mt4">
-      <button class="mu-item" onclick="go('settings-account')"><span class="mu-item__icon">👤</span><span class="mu-item__txt"><span class="mu-item__title">Cuenta</span><span class="mu-item__sub">laura@ejemplo.cl</span></span><span class="mu-item__chev">›</span></button>
+      <button class="mu-item" onclick="go('settings-account')"><span class="mu-item__icon">👤</span><span class="mu-item__txt"><span class="mu-item__title">Perfil local</span><span class="mu-item__sub">RUT 18.456.789-0</span></span><span class="mu-item__chev">›</span></button>
       <button class="mu-item" onclick="go('settings-banks')"><span class="mu-item__icon">🏦</span><span class="mu-item__txt"><span class="mu-item__title">Bancos conectados</span><span class="mu-item__sub">1 banco · 3 productos</span></span><span class="mu-item__chev">›</span></button>
       <button class="mu-item" onclick="go('settings-notifications')"><span class="mu-item__icon">🔔</span><span class="mu-item__txt"><span class="mu-item__title">Recordatorios</span><span class="mu-item__sub">9:00 AM · días laborales</span></span><span class="mu-item__chev">›</span></button>
       <button class="mu-item" onclick="go('settings-categories')"><span class="mu-item__icon">🗂</span><span class="mu-item__txt"><span class="mu-item__title">Categorías</span><span class="mu-item__sub">10 de gastos · 6 de ingresos</span></span><span class="mu-item__chev">›</span></button>
       <button class="mu-item" onclick="go('settings-about')"><span class="mu-item__icon">ℹ️</span><span class="mu-item__txt"><span class="mu-item__title">Acerca de</span><span class="mu-item__sub">Versión 1.0.0</span></span><span class="mu-item__chev">›</span></button>
     </div>
-    <button class="mu-btn mu-btn--danger-soft mu-mt5" onclick="go('settings-account','sign-out-confirm')">Cerrar sesión</button>
     <div style="height:var(--sp6)"></div>
   </div>
 </section>
@@ -2210,54 +2209,43 @@
 <section class="app-screen" id="s-settings-account">
   <div class="mu-topbar">
     <button class="mu-topbar__btn" onclick="go('settings')">←</button>
-    <div class="mu-topbar__title">Cuenta</div>
+    <div class="mu-topbar__title">Perfil local</div>
     <div style="width:36px"></div>
   </div>
   <div class="mu-scroll mu-pad mu-pad-b">
     <div class="mu-card mu-mt4 mu-center">
-      <div style="width:64px;height:64px;border-radius:999px;background:var(--info-bg);display:grid;place-items:center;font-size:28px;margin:0 auto">👤</div>
-      <div class="mu-h3 mu-mt3">laura@ejemplo.cl</div>
-      <span class="mu-badge mu-badge--info mu-mt3">Ingreso con código por correo</span>
+      <div style="width:64px;height:64px;border-radius:999px;background:var(--info-bg);display:grid;place-items:center;font-size:28px;margin:0 auto">📱</div>
+      <div class="mu-h3 mu-mt3">Este dispositivo</div>
+      <span class="mu-badge mu-badge--ok mu-mt3">Sin cuenta · sin servidor</span>
     </div>
 
     <div class="mu-card mu-mt4">
       <div class="mu-row mu-row--between"><span class="mu-small">RUT</span><span class="mu-small"><b>18.456.789-0</b></span></div>
-      <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Miembro desde</span><span class="mu-small"><b>enero 2025</b></span></div>
+      <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Usando la app desde</span><span class="mu-small"><b>enero 2025</b></span></div>
       <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Datos almacenados</span><span class="mu-small"><b>Solo en este dispositivo</b></span></div>
+      <div class="mu-row mu-row--between mu-mt3"><span class="mu-small">Movimientos guardados</span><span class="mu-small"><b>57</b></span></div>
     </div>
 
-    <div class="mu-note mu-mt4">
+    <div class="mu-note mu-note--ok mu-mt4">
       <span class="mu-note__icon">🔒</span>
-      <span>Tus movimientos y credenciales viven cifrados en este teléfono. Si eliminas la app, se eliminan contigo.</span>
+      <span>No hay cuenta que crear ni sesión que iniciar. Tus movimientos y credenciales viven cifrados en este teléfono; si borras la app, se borran contigo.</span>
     </div>
 
     <div class="mu-btn-stack mu-mt5">
-      <button class="mu-btn mu-btn--outline" onclick="go('settings-account','sign-out-confirm')">Cerrar sesión</button>
-      <button class="mu-btn mu-btn--danger-soft" onclick="go('settings-account','delete-confirm')">Eliminar cuenta</button>
+      <button class="mu-btn mu-btn--danger-soft" onclick="go('settings-account','delete-confirm')">Borrar todos mis datos</button>
     </div>
     <div style="height:var(--sp6)"></div>
-  </div>
-
-  <div class="mu-overlay mu-overlay--center" data-states="sign-out-confirm">
-    <div class="mu-modal">
-      <div class="mu-modal__icon">👋</div>
-      <div class="mu-h3 mu-mt3">Cerrar sesión</div>
-      <p class="mu-p mu-mt2">Tus datos quedan guardados en este dispositivo. Podrás volver a entrar cuando quieras.</p>
-      <div class="mu-btn-row mu-mt5">
-        <button class="mu-btn mu-btn--outline" onclick="go('settings-account','default')">Cancelar</button>
-        <button class="mu-btn" onclick="go('auth')">Cerrar sesión</button>
-      </div>
-    </div>
   </div>
 
   <div class="mu-overlay mu-overlay--center" data-states="delete-confirm">
     <div class="mu-modal">
       <div class="mu-modal__icon">❌</div>
-      <div class="mu-h3 mu-mt3">Eliminar cuenta</div>
-      <p class="mu-p mu-mt2">¿Estás seguro? Esta acción es <b>permanente</b> y borrará todos tus datos, credenciales y movimientos de este dispositivo.</p>
+      <div class="mu-h3 mu-mt3">Borrar todos mis datos</div>
+      <p class="mu-p mu-mt2">¿Estás seguro? Esta acción es <b>permanente</b> y no se puede deshacer: se borran tus movimientos, categorías y las credenciales de tus bancos de este dispositivo.</p>
+      <p class="mu-small mu-mt3">No tenemos copia en ningún servidor.</p>
       <div class="mu-btn-row mu-mt5">
         <button class="mu-btn mu-btn--outline" onclick="go('settings-account','default')">Cancelar</button>
-        <button class="mu-btn mu-btn--danger" onclick="go('auth')">Eliminar</button>
+        <button class="mu-btn mu-btn--danger" onclick="go('onboarding-intro')">Borrar todo</button>
       </div>
     </div>
   </div>

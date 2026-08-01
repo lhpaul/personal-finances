@@ -19,9 +19,11 @@ Any change that would send a credential or a movement to a server contradicts th
 **Users:** people in Chile with at least one bank account, who want visibility over their
 spending without handing their banking password to a third party.
 
-**MVP scope:** sign-in, Banco de Chile connection, sync, categorization, transactions,
-dashboard, settings, local reminders. Presupuestos, planificación and beneficios exist in the
-mockups (flagged `mvp: false`) and are **out** of implementation scope.
+**MVP scope:** onboarding, Banco de Chile connection, sync, categorization, transactions,
+dashboard, settings, local reminders. **There is no sign-in** — the profile is the device.
+Auth, presupuestos, planificación and beneficios exist in the mockups (flagged `mvp: false`)
+and are **out** of implementation scope. The tab bar is drawn with four tabs; the MVP renders
+only Inicio and Transacciones.
 
 ### Non-negotiables
 
@@ -32,7 +34,9 @@ mockups (flagged `mvp: false`) and are **out** of implementation scope.
 4. Re-syncing is idempotent.
 5. Migrations are additive. A bad migration is unrecoverable on a user's device.
 6. `design/mockups/mobile/` is the UI contract. Every UI item names the `#screen=…&state=…`
-   it implements, and implements **every** state that screen declares.
+   it implements, and implements **every** state that screen declares — for screens that are
+   in the MVP. Screens flagged `mvp: false` are not built.
+7. No account, no session, no auth secret. The app opens straight into onboarding.
 
 ---
 

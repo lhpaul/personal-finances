@@ -6,12 +6,12 @@ Legend: **MVP** = part of the development MVP · **—** = mockup only (`mvp: fa
 
 ---
 
-## Auth
+## Auth · fuera del MVP
 
 | screen_id | route | states | MVP |
 |-----------|-------|--------|-----|
-| `auth` | `/(auth)/sign-in` | empty · email-typed | ✅ |
-| `verify-code` | `/(auth)/verify-code` | empty · filled · invalid · resend-ready | ✅ |
+| `auth` | `/(auth)/sign-in` | empty · email-typed | — |
+| `verify-code` | `/(auth)/verify-code` | empty · filled · invalid · resend-ready | — |
 
 ## Onboarding
 
@@ -67,7 +67,7 @@ Legend: **MVP** = part of the development MVP · **—** = mockup only (`mvp: fa
 | screen_id | route | states | MVP |
 |-----------|-------|--------|-----|
 | `settings` | `/settings` | — | ✅ |
-| `settings-account` | `/settings/account` | default · sign-out-confirm · delete-confirm | ✅ |
+| `settings-account` | `/settings/account` | default · delete-confirm | ✅ |
 | `settings-banks` | `/settings/banks` | list · empty · disconnect-confirm | ✅ |
 | `bank-review` | `/settings/banks/[bankId]` | ok · error | ✅ |
 | `settings-notifications` | `/settings/notifications` | enabled · disabled | ✅ |
@@ -97,7 +97,9 @@ Cambios deliberados al reconstruir desde `personal-finances-app-mockups-v0`:
 | "Eliminar transacción" → "Excluir del análisis" | Nunca se borra un movimiento del banco; se excluye del cálculo. Alinea copy, modelo de datos y comportamiento |
 | Se unificaron `transaction-categorization` y `ongoing-categorization` en `categorize` | Son la misma pantalla con distinto punto de entrada |
 | Se descartó `onboarding` vs `welcome` duplicados | El v0 tenía dos pantallas de bienvenida solapadas |
-| Se sacó el login con Google y Apple | El MVP parte solo con email + código. Menos superficie de auth, una dependencia nativa menos, y el correo es lo único que identifica el perfil |
+| Se sacó el login con Google y Apple | El MVP parte solo con email + código. Menos superficie de auth y una dependencia nativa menos |
+| Auth quedó **fuera del MVP** (`mvp: false`) | Sin servidor no hay contra qué autenticar: un código emitido y validado por el mismo cliente no valida nada, y la API key del servicio de correo viajaría extraíble dentro del binario. El perfil es el dispositivo. Las pantallas quedan dibujadas para cuando llegue el sync |
+| `settings-account` → «Perfil local», sin cerrar sesión | No hay sesión que cerrar. «Eliminar cuenta» pasa a «Borrar todos mis datos», que es lo que realmente hace |
 | Se agregaron `ds-*` | El framework los exige y no existían |
 
 ## Preguntas abiertas
@@ -106,3 +108,11 @@ Cambios deliberados al reconstruir desde `personal-finances-app-mockups-v0`:
 2. **Inclusión parcial** — el v0 permite incluir un % de una transacción. ¿Entra al MVP o se simplifica a incluir/excluir?
 3. **`bank-syncing` en background** — ¿la sincronización puede correr con la app en segundo plano, o siempre requiere la pantalla abierta? Afecta el copy y el estado `home/empty`.
 4. **Multi-banco en el MVP** — las pantallas soportan N bancos; el MVP implementa solo Banco de Chile. ¿Se muestra el selector con los demás en "Próximamente" (como está hoy) o se oculta?
+
+## Decisiones cerradas
+
+| Decisión | Resolución |
+|----------|------------|
+| Login social | Fuera. Ver diferencias arriba |
+| Auth en el MVP | Fuera. El perfil es el dispositivo; `auth` y `verify-code` quedan `mvp: false` |
+| Tab bar | Los mockups dibujan 4 tabs. **El MVP renderiza solo Inicio y Transacciones**; Presupuestos y Beneficios aparecen cuando esas secciones se implementen |

@@ -54,15 +54,22 @@ mirrors `design/tokens.json`. Every backlog item names the `#screen=` / `state=`
 **Why:** it removes the "what should this look like?" round-trip from the implementation agent
 and makes visual review diffable.
 
-### 5. Auth is identity-only
+### 5. No auth in the MVP
 
-Sign-in is **email plus a one-time code**, and establishes *who the profile belongs to*,
-stored locally. It gates nothing, because there is no server to gate. There is no password and
-no social sign-in.
+There is no account, no sign-in and no identity. The app opens straight into onboarding, and
+the profile is the device.
 
-**Why:** it lets the sign-in flow ship as designed and leaves the door open for sync later
-without reworking the UX. The code delivery sits behind a single `AuthProvider`
-interface so social sign-in can be added later without reworking the UX.
+**Why:** with no server, there is nothing to authenticate against. An emailed one-time code
+would need a service to send and hold it — shipping an extractable API key in the binary while
+still verifying nothing, since the client would both issue and check the code. Rather than
+build security theatre, the MVP is honest: the data is on the device, protected by the device
+passcode and the OS sandbox.
+
+**What this costs:** no recovery and no multi-device. Both were already out of MVP scope.
+
+**How it comes back:** `auth` and `verify-code` are drawn in the mockups and flagged
+`mvp: false`. When sync ships, identity ships with it, backed by a managed auth provider that
+never sees financial data. `users.id` and stable UUID keys already exist as anchors.
 
 ## Frontend Architecture
 
@@ -92,7 +99,7 @@ apps/mobile/
 ## Backend / API Architecture
 
 **None.** The only network traffic the app makes is the WebView loading the bank's own site,
-plus the transactional email service that delivers the one-time code.
+and the store/OS endpoints the platform itself uses. Nothing else.
 
 Any future backend must be introduced as an *optional sync target*, never as a required
 dependency, and must never receive credentials.
@@ -117,8 +124,8 @@ screen → feature hook (TanStack Query) → src/db repository → Drizzle → S
 | Bank credentials | `expo-secure-store` only. Keyed `bank_creds:<institutionId>`. Read exclusively by the scraper, in memory, for the duration of one sync |
 | Credentials in logs | The scraper's trace log redacts credential fields before any `console` call. `no-console` is enabled; traces go through a logger that strips known secret keys |
 | Database | SQLite in the app sandbox. Not encrypted at rest in the MVP — the OS sandbox plus device passcode is the boundary. **SQLCipher is a fast follow, tracked in the backlog** |
-| Auth | Identity only; no authorization surface exists |
-| Network | No financial data ever leaves the device. The WebView is restricted to the target bank's origin. The only candidate first-party call is sign-in code delivery — an open decision, see above |
+| Auth | None. There is no account, no session and no authorization surface |
+| Network | The app makes no requests to first-party servers. The WebView is restricted to the target bank's origin |
 | Deletion | "Eliminar cuenta" wipes the SQLite file and every `expo-secure-store` key, irreversibly and locally |
 
 Threat model note: an attacker with an unlocked device has the data. That is the same exposure
@@ -141,21 +148,17 @@ There are no server environments. "Environment" means **build profile**, via EAS
 | `develop` | `preview` (EAS internal) | `.github/workflows/deploy.yml` | required checks only |
 | `main` | `production` (EAS store submit) | `.github/workflows/deploy.yml` | required reviewers + environment protection |
 
-Environment-specific secrets, **names only**: `EXPO_TOKEN`, `EAS_PROJECT_ID`,
-`APPLE_TEAM_ID`.
+Environment-specific secrets, **names only**: `EXPO_TOKEN`, `EAS_PROJECT_ID`, `APPLE_TEAM_ID`.
 
-> **Open decision — sign-in delivery.** Email + one-time code needs something to send the mail
-> and hold the code, which a no-backend product does not have. Until this is resolved, no
-> secret for it is listed. See [1-business-domain.md](1-business-domain.md#business-rules)
-> rule 0 and issue #7.
-No bank-related secret exists at build time — credentials only ever come from the user.
+There is no auth secret, because there is no auth. No bank-related secret exists at build time
+either — credentials only ever come from the user, at runtime, on the device.
 
 ## External Integrations
 
 | Service | Purpose | Notes |
 |---------|---------|-------|
 | Banco de Chile online banking | Source of products and movements | Scraped on-device. **Unversioned third-party HTML — expect breakage.** Scripts are isolated per bank and unit-tested |
-| Transactional email | Delivers the one-time sign-in code | The only first-party network call. Carries an email address and a code — never financial data |
+| *(none)* | — | The app makes no first-party network calls |
 | Expo EAS | Builds and submissions | |
 
 No analytics or crash reporting in the MVP. Adding either requires an explicit decision about

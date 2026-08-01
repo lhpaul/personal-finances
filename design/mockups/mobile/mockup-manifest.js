@@ -8,7 +8,9 @@
  *  - Visual variants (empty, error, filled, open sheet…) are `screens[].states`.
  *  - Exactly one state per screen sets `initial: true`.
  *  - `mvp: false` marks screens intentionally OUT of the development MVP
- *    (budgets / planning / benefits). They stay in the mockups on purpose.
+ *    (auth / budgets / planning / benefits). They stay in the mockups on purpose.
+ *  - The tab bar is drawn with four tabs. The MVP renders only Inicio and
+ *    Transacciones; Presupuestos and Beneficios appear when those ship.
  */
 window.__MOCKUP_MANIFEST__ = {
   $status: 'complete',
@@ -21,7 +23,7 @@ window.__MOCKUP_MANIFEST__ = {
 
   navigation: [
     {
-      label: 'Auth',
+      label: 'Auth · fuera del MVP',
       items: [
         { screen_id: 'auth', label: '(auth)/sign-in' },
         { screen_id: 'verify-code', label: '(auth)/verify-code' },
@@ -133,6 +135,7 @@ window.__MOCKUP_MANIFEST__ = {
       route: '/(auth)/sign-in',
       title: 'Ingreso · email + código',
       kind: 'html',
+      mvp: false,
       state_label: 'Estados del formulario',
       states: [
         { state_id: 'empty', label: 'Inicial · email vacío', initial: true },
@@ -144,6 +147,7 @@ window.__MOCKUP_MANIFEST__ = {
       route: '/(auth)/verify-code',
       title: 'Verificar código de 6 caracteres',
       kind: 'html',
+      mvp: false,
       state_label: 'Estados del código',
       states: [
         { state_id: 'empty', label: 'Inicial · contador 1:00', initial: true },
@@ -446,13 +450,12 @@ window.__MOCKUP_MANIFEST__ = {
     {
       screen_id: 'settings-account',
       route: '/settings/account',
-      title: 'Cuenta',
+      title: 'Perfil local',
       kind: 'html',
       state_label: 'Confirmaciones',
       states: [
         { state_id: 'default', label: 'Inicial', initial: true },
-        { state_id: 'sign-out-confirm', label: 'Confirmar cerrar sesión' },
-        { state_id: 'delete-confirm', label: 'Confirmar eliminar cuenta' },
+        { state_id: 'delete-confirm', label: 'Confirmar borrar mis datos' },
       ],
     },
     {

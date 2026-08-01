@@ -19,7 +19,7 @@ framed as small challenges with immediate positive feedback rather than a daily 
 |-------|-------------|
 | **User** | A person in Chile with at least one bank account. Owns the device, the credentials and the data |
 | **Bank web app** | The bank's own online-banking site, driven by the on-device scraper. External, unversioned, and free to change without notice |
-| **The app itself** | Runs the scraper, resolves merchants, suggests categories and schedules reminders. Has no server-side counterpart in the MVP |
+| **The app itself** | Runs the scraper, resolves merchants, suggests categories and schedules reminders. Has no server-side counterpart, and no user account |
 
 ## Core Entities
 
@@ -50,9 +50,11 @@ and cannot be deleted.
 
 ## Business Rules
 
-0. **There is no password.** Sign-in is an email address plus a one-time code.
-   The only secret the product ever handles is the user's *bank* credential, and that never
-   leaves the device.
+0. **There is no account and no sign-in.** The profile *is* the device. A local-first app with
+   no server has nothing to authenticate against, and a code emailed by a client that also
+   verifies it would be theatre. The only secret the product handles is the user's *bank*
+   credential, and that never leaves the device. Sign-in screens exist in the mockups
+   (`mvp: false`) for when multi-device sync makes identity mean something.
 1. **Credentials never leave the device.** They are written to `expo-secure-store` and read
    only by the scraper. They are never logged, never serialized into the database, and never
    sent over the network to anything but the bank's own site.
@@ -100,5 +102,7 @@ Not in the **MVP**, but in the product vision — present in the mockups, flagge
 - **Presupuestos** and **Planificación de vida**
 - **Beneficios / Descuentos** and a Premium tier
 - Banks other than **Banco de Chile**
+- User accounts and sign-in — `auth` and `verify-code` are drawn but flagged `mvp: false`;
+  they ship with sync
 - Multi-device sync, and the community-sourced merchant suggestions that would require it
 - Recurring-transaction detection, and Persons (transfers between known people)

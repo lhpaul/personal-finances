@@ -13,7 +13,7 @@ Local-first SQLite schema for **Finanzas**. Validated against the 36 mockup scre
 | Engine | **SQLite** via `expo-sqlite` (device-local, no server) |
 | Access layer | **Drizzle ORM** + `drizzle-kit` migrations bundled in the app |
 | Hosting | None. The database file lives in the app sandbox |
-| Multi-tenancy | Single local profile. One row in `users` |
+| Multi-tenancy | None. Single local profile, one row in `users`. No account, no sign-in |
 | Secrets | **Never in SQLite.** Bank credentials live in `expo-secure-store` (iOS Keychain / Android Keystore) |
 | Money | Integer **minor units** (CLP has no cents → store pesos as integers). Never floats |
 | Dates | ISO-8601 `TEXT` in UTC; a `date_local` `TEXT` (`YYYY-MM-DD`) column carries the bank's calendar day for grouping |
@@ -54,7 +54,7 @@ and five entities are correct but out of MVP scope.
 | `currency_code` FKs to a `currencies` table absent from the diagram. | **Kept as a plain `TEXT` code**, `'CLP'` for the MVP. No lookup table until a second currency exists |
 | `TransactionCategories` has no ordering and no "cannot delete" marker. | Added `sort_order` (the ☰ drag handles in `settings-categories`) and `is_system` (the ✨ Otros fallback) |
 | `Transactions.type` is `debit`/`credit` (bank vocabulary). | **Kept** — it is what the scraper emits. The UI's income/expense reads from the category's `is_income` together with `type` |
-| `AuthenticationMethods` is a separate table. | **Dropped.** Sign-in is email + one-time code only, so there is nothing to model beyond `users.email` |
+| `AuthenticationMethods` is a separate table. | **Dropped.** The MVP has no sign-in at all, so there is nothing to model. `users.email` is kept nullable for when identity ships with sync |
 
 ### Correct but out of MVP scope
 
@@ -86,15 +86,16 @@ transaction_categories 1──N user_recurring_transactions  [no UI in MVP]
 
 ### `users`
 
-Exactly one row. Exists so a future server sync has an anchor, and so the RUT is stored once —
+Exactly one row, created on first launch. There is no sign-in — the profile *is* the device.
+The row exists so a future server sync has an anchor, and so the RUT is stored once:
 `bank-credentials/rut-locked` requires every connection to share one RUT.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | `TEXT PK` | UUID |
-| `email` | `TEXT NOT NULL` | The profile's identity. Verified by one-time code |
-| `first_name` | `TEXT` | Not collected at sign-in; reserved |
-| `last_name` | `TEXT` | Not collected at sign-in; reserved |
+| `id` | `TEXT PK` | UUID, generated locally on first launch |
+| `email` | `TEXT` | **Nullable and unused in the MVP.** Reserved for when sign-in ships with sync |
+| `first_name` | `TEXT` | Not collected; reserved |
+| `last_name` | `TEXT` | Not collected; reserved |
 | `national_id_type` | `TEXT NOT NULL DEFAULT 'rut'` | |
 | `national_id_value` | `TEXT` | RUT, normalized without dots, check digit included |
 | `country_code` | `TEXT NOT NULL DEFAULT 'CL'` | |
@@ -240,7 +241,7 @@ Gap #9. Key-value; avoids a migration per new preference.
 | `value` | `TEXT NOT NULL` (JSON) |
 
 MVP keys: `onboarding_completed`, `reminder_enabled`, `reminder_time`, `reminder_days`,
-`last_categorization_session_at`, `schema_version`.
+`last_categorization_session_at`, `schema_version`, `first_launch_at`.
 
 ### `user_budgets`, `user_recurring_transactions`
 

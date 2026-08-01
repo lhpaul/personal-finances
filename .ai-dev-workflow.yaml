@@ -192,6 +192,14 @@ guardrails:
   # mode: delegated — agents may merge within per-stage permissions and risk limits.
   mode: delegated
 
+  # parallelism — how many items may sit in the implementation stage at once.
+  # Raised from the default of 1: after the monorepo bootstrap lands, backlog items
+  # touch largely disjoint areas (scraper, db, individual screens), so serializing
+  # implementation is a large throughput cost for a bounded conflict risk.
+  parallelism:
+    max_concurrent_by_stage:
+      implementation: 3
+
   # backlog_start — agents may start eligible Backlog work without an additional
   # policy confirmation.
   backlog_start:
