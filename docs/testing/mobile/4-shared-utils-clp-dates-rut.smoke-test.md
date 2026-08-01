@@ -225,20 +225,50 @@ supports without a timezone-database lookup — and the human confirmed empirica
 RN 0.81.5 / Expo 54 carries full ICU (locale data included), so this device check is scoped to
 the IANA-timezone seam only and does not need to be repeated for the label seam.
 
-1. Launch `apps/mobile` on an iOS Simulator or device dev build (`pnpm dev:mobile`).
+This step covers **two** distinct device failure modes, not one:
+
+- **Missing/unresolvable time zone** — a device whose Hermes `Intl` cannot resolve
+  `America/Santiago` at all. `deriveZonedParts`'s capability check throws a descriptive `Error` for
+  this case (Group F in the implementation plan), so it is expected to surface as a thrown error,
+  not a wrong value.
+- **Silent-ignore** — a device whose Hermes `Intl` accepts the `timeZone` option but quietly
+  computes with the *device's own* zone instead, without throwing. This is the failure mode a
+  reviewer flagged as not provably caught by a Node-only Jest run: Node's ICU is fully
+  spec-compliant, so this specific misbehaviour cannot be *literally* reproduced in a Jest test —
+  only simulated via a mocked `Intl.DateTimeFormat`. Steps 5-6 below are what actually exercise it
+  on a real device.
+
+1. Launch `apps/mobile` on an iOS Simulator or device dev build (`pnpm dev:mobile`), with the
+   simulator/device's system timezone left at its default.
 2. From any temporary entry point in the app (for example a `useEffect` in
    `apps/mobile/app/index.tsx`), log the results of
    `deriveDateLocal(new Date('2025-04-06T03:00:00Z'))` and
    `formatTimeOfDay(new Date('2025-04-06T03:00:00Z'))`.
 3. Read the values from the Metro console.
-4. Remove the temporary logging before committing.
-
-**Expected result**: `2025-04-05` and `23:00` — the same values Step 1 asserts under Node. If the
-call throws the capability error instead, record the exact message and stop: the fallback is a
-caller-supplied UTC offset parameter, and that is an implementation-plan change, not a quick fix.
+4. **Expected result for steps 1-3**: `2025-04-05` and `23:00` — the same values Step 1 asserts
+   under Node. If the call throws the capability error instead, record the exact message and stop:
+   the fallback is a caller-supplied UTC offset parameter, and that is an implementation-plan
+   change, not a quick fix.
+5. **Silent-ignore check.** Change the simulator/device's **system timezone** to something distinct
+   from both `UTC` and `America/Santiago` — for example `America/New_York` (iOS Simulator:
+   Settings app > General > Date & Time > Time Zone, or `xcrun simctl` with a timezone override) —
+   and repeat step 2 with the same fixed instant, `2025-04-06T03:00:00Z`.
+6. **Expected result for step 5**: unchanged from step 4 — `2025-04-05` and `23:00`. If the values
+   instead shift to match the device's *new* local time (e.g. drift toward the device's
+   `America/New_York` wall clock rather than staying pinned to `America/Santiago`),
+   `deriveZonedParts` is silently substituting the device zone for the requested one — the exact
+   Hermes failure mode the plan's `resolvedOptions()` cross-check targets. Record the exact
+   observed values and the device/OS/Hermes version, and treat this as a **blocking** finding, not
+   a note: it means the runtime's `Intl.DateTimeFormat.resolvedOptions()` itself misreports the
+   zone it used, so the code-level guard cannot distinguish the substitution from success, and the
+   only defense left is this device check.
+7. Restore the simulator/device's system timezone to its default before continuing.
+8. Remove the temporary logging before committing.
 
 If this step cannot be executed in the current environment, mark it **pending human
-verification** in the pull request description. Do not claim it as passing.
+verification** in the pull request description. Do not claim it as passing — this applies to both
+the baseline check (steps 1-4) and the silent-ignore check (steps 5-6) independently; a device run
+that only exercises the baseline device timezone has not verified the silent-ignore failure mode.
 
 ### Step 7: `toLocaleString` is banned, not merely absent
 
@@ -334,6 +364,7 @@ Each checkbox maps to an acceptance criterion from
 | A transaction appears in the wrong month | The local day was derived from the UTC timestamp instead of via `deriveDateLocal` | Use `deriveDateLocal(instant)` and group on the resulting `date_local` — this is exactly the bug the column exists to prevent |
 | Step 2 gives different results under different `TZ` values | A code path reads the host zone (a no-argument `new Date()`, `getMonth()` instead of `getUTCMonth()`, or a missing `timeZone` option) | Pass the clock in; use `Date.UTC` / `getUTC*` for all civil arithmetic (Decision 3) |
 | `deriveZonedParts` throws on device but passes in Jest | Hermes' `Intl` cannot resolve the time zone on that platform | Record the exact message and escalate. The fallback is a caller-supplied UTC offset, which is a plan change — do not silently substitute the device zone |
+| Step 6's silent-ignore check (changing the device timezone) shows the resolved date/time drifting to the device's local zone instead of staying pinned to `America/Santiago` | Hermes' `Intl` accepts the `timeZone` option but silently computes with the device zone, and `resolvedOptions().timeZone` also misreports the zone it used (the one case the code-level cross-check in `deriveZonedParts` cannot catch) | This is a blocking finding, not a note — record the device/OS/Hermes version and escalate. Do not attempt a code-level fix without a plan change; this is exactly the residual risk documented in the implementation plan's Risks table |
 | A time renders as `24:00` | `hour12: false` was used instead of `hourCycle: 'h23'` | Switch to `hourCycle: 'h23'` |
 | `isValidRut` rejects a RUT a user says is real | Decision 10's 6-8 digit body range, or a leading-zero handling bug | Check the body length after leading zeros are stripped. Widening the range is a deliberate decision, not a quick patch — the RUT is the bank login, so a false rejection blocks a real user |
 | `pnpm --filter @finanzas/mobile test` fails after this item | `PACKAGE_NAME` was removed from `packages/shared-utils/src/index.ts` | Restore it verbatim; `apps/mobile/src/__tests__/workspace-wiring.test.ts` asserts on it |
@@ -346,6 +377,13 @@ Each checkbox maps to an acceptance criterion from
   project generally, and a Node-based Jest run cannot substitute for it: the whole point of Step 6
   is that Hermes' `Intl` implementation differs from Node's. In an automated agent environment
   this step is expected to be marked *pending human verification*.
+- **Step 6's silent-ignore check has one irreducible residual gap.** It proves `deriveZonedParts`
+  is not silently substituting the device zone by observing the actual computed wall-clock value on
+  a real device with its system timezone deliberately changed. The one failure mode it cannot rule
+  out by construction is a device whose `Intl.DateTimeFormat.resolvedOptions()` itself lies about
+  the zone it used *and* happens to produce the correct wall-clock output for this one probe while
+  failing elsewhere — an extremely narrow, effectively hypothetical combination. This gap is
+  explicitly accepted in the implementation plan's Risks table rather than silently ignored.
 - **This item ships no UI.** Steps 3 and 4 evaluate the library directly rather than exercising a
   screen. The screens that consume these helpers arrive with later items; the fidelity check in
   Step 5 compares the library's *output strings* against the mockup, not a rendered React Native
