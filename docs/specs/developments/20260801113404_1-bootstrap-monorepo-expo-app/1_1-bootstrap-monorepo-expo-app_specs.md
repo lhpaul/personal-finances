@@ -65,10 +65,14 @@ placeholder screen.
 
 **Steps**:
 
-1. The contributor opens the app and moves through the sign-in, onboarding, categorization,
-   main-app and settings areas.
-2. On any placeholder, the contributor reads which mockup screen that route will become.
-3. The contributor opens the corresponding mockup entry to compare the intended flow.
+1. The contributor opens the app. On first launch it lands on the onboarding entry route; on a
+   later launch it lands on the main-app home route instead. The gate that decides which one is
+   entered reads `app_settings.onboarding_completed` and is wired by a separate item (see
+   Business Rule 13); this item only creates both destinations as placeholders.
+2. The contributor moves through the onboarding, categorization, main-app and settings areas.
+   There is no sign-in area to move through — the product has none.
+3. On any placeholder, the contributor reads which mockup screen that route will become.
+4. The contributor opens the corresponding mockup entry to compare the intended flow.
 
 **Postconditions**: Every MVP route in the mockup manifest has been reached and every reached
 placeholder identifies the mockup screen it stands for.
@@ -88,11 +92,10 @@ placeholder identifies the mockup screen it stands for.
 
 - Routes carrying an identifier in the path (a merchant, a transaction, a bank) must be
   reachable with any placeholder identifier value; the skeleton does not validate it.
-- The out-of-MVP areas (Presupuestos, Planificación, Beneficios) are not reachable, because no
-  route is created for them. See Business Rule 4.
-- The tab area exposes only the MVP tabs. The mockups draw four tabs, two of which are
-  out-of-MVP destinations; the shipped tab-bar composition is deliberately deferred (see
-  Deferral Note 2).
+- The out-of-MVP areas (Auth, Presupuestos, Planificación, Beneficios) are not reachable,
+  because no route is created for them. See Business Rule 4.
+- The tab area renders exactly two tabs, Inicio and Transacciones. The mockups draw four tabs;
+  Presupuestos and Beneficios appear only when those sections ship (Deferral Note 2, resolved).
 
 ---
 
@@ -174,10 +177,11 @@ lint pass again.
    declares it, and it uses exactly the path the manifest declares. Adding, removing or
    renaming a route requires changing the manifest in the same change.
 4. Route scope for this item is the MVP screens: every manifest screen that is not flagged as
-   out of MVP, excluding the three design-system reference screens. The six out-of-MVP screens
-   (Presupuestos, crear presupuesto, Planificación, planificación de vida, Beneficios,
-   categoría de beneficio) get no route. The design-system reference screens document the
-   visual language and are not destinations in the app, so they get no route either.
+   out of MVP, excluding the three design-system reference screens. The eight out-of-MVP
+   screens (Auth, verificación de código, Presupuestos, crear presupuesto, Planificación,
+   planificación de vida, Beneficios, categoría de beneficio) get no route. The design-system
+   reference screens document the visual language and are not destinations in the app, so they
+   get no route either.
 5. Every route created in this item renders a placeholder. No route reads or writes product
    data, and no route reproduces mockup layout or copy as if it were implemented.
 6. The shared domain package may not depend on the application, on Expo modules, or on any SQL
@@ -201,6 +205,13 @@ lint pass again.
     silently to match whatever happens to be installed.
 12. Verification is reproducible. The same commands succeed from a clean clone and in automated
     checks, resolving dependencies from the committed lockfile.
+13. There is no sign-in in this product. The app's entry point is `(onboarding)/intro` on first
+    launch and `(tabs)/home` on later launches; both routes are created as placeholders by this
+    item. The gate that decides which one is entered — reading
+    `app_settings.onboarding_completed` — is out of scope here and is wired by a separate item.
+    The tab bar itself renders exactly two tabs, Inicio and Transacciones; Presupuestos and
+    Beneficios are not tab destinations in this item because they have no route (Business Rule
+    4).
 
 ---
 
@@ -215,8 +226,9 @@ lint pass again.
 - The flow between placeholders follows the navigation structure declared in the mockup
   manifest, so the skeleton can be walked end to end in the order the product intends.
 - Every MVP route is also reachable directly, not only by walking the flow that leads to it.
-- The tab area exposes only the MVP tab destinations. Final tab labels, icons and ordering
-  arrive with the tab-shell implementation item.
+- The tab bar renders exactly two tabs — Inicio and Transacciones. Final tab labels, icons and
+  styling arrive with the tab-shell implementation item; this item creates only the two
+  tab-group route placeholders and their count.
 - The skeleton introduces no visual design decisions: no colours, spacing or typography are
   chosen here, because the design tokens are mirrored into the app by a later item.
 
@@ -250,9 +262,10 @@ lint pass again.
 - [ ] **AC5.** Every MVP route listed in [MVP Route Scope](#mvp-route-scope) exists in the app, is
       reachable both by navigating the flow and directly, and renders a placeholder that names
       the mockup screen identifier and route it stands for.
-- [ ] **AC6.** No route exists in the app for the six out-of-MVP manifest screens (`budgets`,
-      `budget-create`, `planning`, `planning-life`, `benefits`, `benefit-category`) or for the
-      three design-system reference screens (`ds-colors`, `ds-typography`, `ds-components`).
+- [ ] **AC6.** No route exists in the app for the eight out-of-MVP manifest screens (`auth`,
+      `verify-code`, `budgets`, `budget-create`, `planning`, `planning-life`, `benefits`,
+      `benefit-category`) or for the three design-system reference screens (`ds-colors`,
+      `ds-typography`, `ds-components`).
 - [ ] **AC7.** Adding, in the shared domain package, an import of app code, of an Expo module, or of a
       SQL library makes the lint command fail with a message naming the violated restriction;
       removing the import makes the lint command pass again.
@@ -271,6 +284,10 @@ lint pass again.
 - [ ] **AC13.** The workspace names, directory layout and root command surface match
       [`docs/project/2-repo-architecture.md`](../../../project/2-repo-architecture.md); any
       intentional difference is reflected in that document within the same change.
+- [ ] **AC14.** The tab bar renders exactly two tabs, Inicio and Transacciones, and no tab or
+      route exists for Presupuestos or Beneficios. There is no sign-in route anywhere in the
+      app: `(onboarding)/intro` and `(tabs)/home` both exist as placeholders, and no `(auth)`
+      route group exists.
 
 ---
 
@@ -281,8 +298,6 @@ flagged out of MVP, excluding the three design-system reference screens.
 
 | Area | Mockup screen | Route |
 | --- | --- | --- |
-| Auth | `auth` | `/(auth)/sign-in` |
-| Auth | `verify-code` | `/(auth)/verify-code` |
 | Onboarding | `onboarding-intro` | `/(onboarding)/intro` |
 | Onboarding | `onboarding-value` | `/(onboarding)/value` |
 | Onboarding | `connect-bank-intro` | `/(onboarding)/connect-bank` |
@@ -313,6 +328,8 @@ Explicitly **not** in scope for the route skeleton:
 
 | Mockup screen | Route in the manifest | Why excluded |
 | --- | --- | --- |
+| `auth` | `/(auth)/sign-in` | Flagged out of MVP in the manifest — no sign-in in this product |
+| `verify-code` | `/(auth)/verify-code` | Flagged out of MVP in the manifest — no sign-in in this product |
 | `budgets` | `/(tabs)/budgets` | Flagged out of MVP in the manifest |
 | `budget-create` | `/budgets/new` | Flagged out of MVP in the manifest |
 | `planning` | `/planning` | Flagged out of MVP in the manifest |
@@ -331,12 +348,16 @@ Explicitly **not** in scope for the route skeleton:
   render placeholders only.
 - The database: schema, migrations, seeds and data access of any kind.
 - Scraper behaviour: bank-specific scripts, the scraping state machine and any real sync.
-- Sign-in providers, notification scheduling, and any other product capability behind a route.
+- Any sign-in or session concept: this product has none. Notification scheduling and any other
+  product capability behind a route are also out of scope here.
 - The theme file mirroring the design tokens, and the design-system primitives built on it.
-- Routes for the six out-of-MVP manifest screens and for the three design-system reference
+- Routes for the eight out-of-MVP manifest screens and for the three design-system reference
   screens.
-- The shipped MVP tab-bar composition — whether the released app shows two tabs or keeps the
-  four drawn in the mockups with the out-of-MVP ones visibly unavailable (Deferral Note 2).
+- The launch-time entry gate that reads `app_settings.onboarding_completed` to decide between
+  `(onboarding)/intro` and `(tabs)/home`. This item creates both destinations as placeholders;
+  the gate itself is wired by a separate item (Business Rule 13).
+- The polished tab-bar shell — icons, labels and styling. This item creates exactly two
+  tab-group route placeholders, Inicio and Transacciones (Deferral Note 2, resolved).
 - Producing real store or internal builds. Build-profile definitions exist so later items have
   somewhere to add to; running builds and submissions is not part of this item.
 - Device end-to-end flows.
@@ -353,8 +374,9 @@ Explicitly **not** in scope for the route skeleton:
 2. The mobile app on Expo SDK 54 with file-based routing and strict TypeScript, including its
    app configuration, build-profile configuration, bundler configuration, test configuration,
    per-app lint configuration and per-app TypeScript configuration.
-3. A route skeleton matching the mockup manifest, covering the auth, onboarding, tab,
-   categorization, transactions, dashboard and settings areas.
+3. A route skeleton matching the mockup manifest, covering the onboarding, tab, categorization,
+   transactions, dashboard and settings areas. There is no auth area — this product has no
+   sign-in.
 4. Three shared workspaces (domain rules, utilities, bank scraper), each with its own source
    directory, manifest exposing build, development, clean and lint commands, and TypeScript
    configuration.
@@ -377,51 +399,54 @@ Explicitly **not** in scope for the route skeleton:
 | --- | --- |
 | 1. Root workspace configuration and command surface | AC1, AC2, AC13; Business Rules 1, 2, 9, 11, 12 |
 | 2. The mobile app with file-based routing and strict TypeScript | AC2, AC4, AC13; Business Rule 1 |
-| 3. Route skeleton matching the manifest | AC5, AC6; Business Rules 3, 4, 5; MVP Route Scope; UX Rules |
+| 3. Route skeleton matching the manifest | AC5, AC6, AC14; Business Rules 3, 4, 5, 13; MVP Route Scope; UX Rules |
 | 4. Three shared workspaces with their own commands | AC2, AC3; Business Rules 1, 2 |
 | 5. Enforced domain-purity import restriction | AC7; Business Rule 6; Use Case 4 |
 | 6. Automated checks on pull requests | AC8, AC9, AC10; Business Rules 10, 12; Operational Visibility |
 | 7. Brief-declared out of scope (screens, database, scraper; placeholders only) | Out of Scope; AC12; Business Rules 5, 7 |
 | 8a. Install, lint, type-check and test pass from a clean clone | AC1, AC2, AC3 |
 | 8b. The mobile development command boots the app in the iOS Simulator | AC4 |
-| 8c. Every route in the manifest exists and is reachable | AC5, AC6 (narrowed to MVP routes — Deferral Note 1) |
+| 8c. Every MVP route in the manifest exists and is reachable; no route for an `mvp: false` screen | AC5, AC6 (scoped to MVP routes — Deferral Note 1, resolved) |
 | 8d. The import restriction fails a deliberate violation | AC7 |
 | 8e. Automated checks are green on the pull request | AC8, AC9, AC10 |
+| 8f. The tab bar renders exactly two tabs | AC14 (Deferral Note 2, resolved) |
 
 ---
 
 ## Deferral Notes
 
-### Deferral Note 1 — "Every route in the manifest exists and is reachable"
+### Deferral Note 1 — "Every route in the manifest exists and is reachable" (RESOLVED)
 
-**Objective wording**: "Every route in the manifest exists and is reachable" (brief acceptance
-criteria).
+**Objective wording**: "Every MVP route in the manifest exists and no route exists for a screen
+flagged `mvp: false`" (issue #1, rewritten 2026-08-01).
 
-**Rationale**: Read literally, the manifest contains 36 screens, six of which the manifest
-itself flags as out of MVP (Presupuestos, crear presupuesto, Planificación, planificación de
-vida, Beneficios, categoría de beneficio) and three of which are design-system reference screens
-that are not app destinations at all. Both the brief's own closing note and the product overview
-state that Presupuestos, Planificación and Beneficios are out of implementation scope. Creating
-routes for screens that are out of implementation scope would produce dead destinations that
-later work would have to remove, and would force a tab bar containing destinations the MVP does
-not ship. This spec therefore narrows the criterion to the 27 MVP routes listed under
-[MVP Route Scope](#mvp-route-scope) and states the exclusion explicitly rather than dropping it
-silently.
+**Rationale**: Read literally against an earlier version of the brief, the manifest's "every
+route" wording was ambiguous about the eight screens flagged out of MVP (Auth, verificación de
+código, Presupuestos, crear presupuesto, Planificación, planificación de vida, Beneficios,
+categoría de beneficio) and the three design-system reference screens that are not app
+destinations at all. Creating routes for screens that are out of implementation scope would
+produce dead destinations that later work would have to remove, and would force a tab bar
+containing destinations the MVP does not ship.
 
-**Human confirmation requested**: Yes — confirm that narrowing this criterion to MVP routes is
-the intended reading of the brief.
+**Resolution**: The product owner rewrote issue #1 to state the MVP-only scoping explicitly,
+including moving Auth from an MVP route to an `mvp: false` screen. This spec's criterion is
+narrowed to the 25 MVP routes listed under [MVP Route Scope](#mvp-route-scope); the exclusion is
+stated explicitly rather than dropped silently. **Source**: issue #1 rewrite, 2026-08-01, human
+instruction to the runner ("AUTH IS OUT OF THE MVP ENTIRELY").
 
-### Deferral Note 2 — MVP tab-bar composition
+### Deferral Note 2 — MVP tab-bar composition (RESOLVED)
 
 **Objective wording**: Derived from brief objective 3 (a route skeleton covering the tab area)
 combined with the mockups, which draw a four-tab bar (Inicio, Transacciones, Presupuestos,
 Beneficios) on every tab screen.
 
 **Rationale**: Two of the four drawn tabs lead to out-of-MVP destinations. Because this item
-creates no route for those destinations, the skeleton's tab area exposes only the MVP tabs.
-Whether the *released* MVP ships a two-tab bar or keeps four tabs with the out-of-MVP ones
-visibly unavailable is a product decision about the shipped experience, not about the skeleton,
-and it belongs with the item that implements the tab shell and the home screen.
+creates no route for those destinations, the skeleton's tab area can expose at most the MVP
+tabs. Whether the *released* MVP ships a two-tab bar or keeps four tabs with the out-of-MVP ones
+visibly unavailable was a product decision about the shipped experience, not about the skeleton.
 
-**Human confirmation requested**: Yes — a product decision is needed before the tab shell is
-implemented, but it does not block this item.
+**Resolution**: The tab bar renders exactly two tabs, Inicio and Transacciones; Presupuestos and
+Beneficios are not rendered, even as disabled placeholders, and appear only when those sections
+ship. See Business Rule 13, Use Case 2, UX Rules, and AC14. **Source**: issue #1 rewrite,
+2026-08-01, human instruction to the runner ("Tab bar renders exactly two tabs: Inicio and
+Transacciones").
