@@ -56,7 +56,7 @@ on it.
 | Web e2e gating (AC10) | `sed -n '/^    if:/,/^    runs-on/p' .github/workflows/e2e-regression.yml` | Job is gated on `vars.ENABLE_TEMPLATE_PLACEHOLDER_REGRESSION == 'true'` **and** the `ready-for-regression` label; this item changes nothing in that file |
 | Same-surface open PRs (bounded assumption cross-check) | Current invocation item list is `{#1}`; `gh pr list --state open` | `[]` — the only other PR in this repository is #26, this item's own already-merged spec PR. No unbounded repository-wide PR scan was performed |
 | Design assets discovery | Issue #1 body has no `## Design assets` section; no tracker attachments; no `<dev-folder>/assets/` directory | Authoritative visual reference is the repo's own UI contract, `design/mockups/mobile/index.html` (+ `mockup-manifest.js`), which the spec itself links as the routing contract |
-| Local runtime on the authoring machine | `node --version` | `v26.5.0` — differs from the Node 20 pin this item introduces. Recorded as a known risk requiring human verification, **not** as a reason to change the pin (spec Business Rule 11) |
+| Local runtime on the authoring machine | `node --version` | `v26.5.0` — differs from the Node 22 pin this item introduces. Recorded as a known fact, **not** as evidence for the pinned runtime and **not** as a reason to change the pin (spec Business Rule 11) |
 | Agent-commit hook coupling to the lockfile switch | `sed -n '35,50p' hooks/truncation-checker/index.ts` | Its skip list already contains both `/package-lock/` and `/pnpm-lock/`, so deleting `package-lock.json` and adding `pnpm-lock.yaml` needs no hook change |
 | Markdown files under `e2e/` (AC11 exposure of a new `.prettierignore`) | `find e2e -name "*.md"` | No matches — ignoring `e2e` in `.prettierignore` cannot change what `pnpm format` rewrites |
 | Nested-artifact guard | `run-nested-artifact-guard.sh --mode pre-pr --issue 1 --expected-branch implementation-plan/1-bootstrap-monorepo-expo-app --approved-base develop` (the `pre-create` run was performed by the parent orchestrator before this branch was dispatched) | `RESULT=clean`, `CANONICAL_COUNT=3`, `UNEXPECTED_COUNT=0` |
@@ -71,8 +71,8 @@ on it.
 | --- | --- | --- | --- | --- | --- |
 | Artifact owner / repository mode | `single_repo` (no `mode` key present) — this repository owns spec, plan and implementation artifacts | `.ai-dev-workflow.yaml` (no `mode`, no `workflow_hub`, no `product_repo` section) | 2026-08-01T16:45Z, `3cd4939` | Current invocation item list = `{#1}`; the only other PR in the repository is the merged spec PR #26 for this same item, so no other work can be changing artifact ownership | `Verified` |
 | Approved base branch for plan and implementation PRs | `develop` | Parent orchestrator handoff for this run; `AGENTS.md` → *Git & Branching* ("spec/plan/feature/fix PRs target `develop`"); merged spec PR #26 targeted `develop` | 2026-08-01T16:45Z, `3cd4939` | Current invocation item list = `{#1}`; no same-surface open PR changes branching policy | `Verified` |
-| Pinned runtime version | Node 20 (`.nvmrc` = `20.19.4`, `engines.node`) | Spec Business Rule 11; issue #1 scope section (".nvmrc (Node 20)") | 2026-08-01T16:45Z, `3cd4939` | Current invocation item list = `{#1}`; no same-surface open PR pins a runtime, and `.nvmrc` does not exist yet. The authoring machine's Node v26.5.0 is a *local environment* fact, not a competing declaration of the pin | `Verified` |
-| Package manager and workspace layout | pnpm 10+ workspaces over `apps/*` and `packages/*`; workspace names `@finanzas/mobile`, `@finanzas/shared-domain`, `@finanzas/shared-utils`, `@finanzas/bank-scraper` | [`docs/project/2-repo-architecture.md`](../../../project/2-repo-architecture.md) (Directory Structure, Conventions, Applications, Shared Packages tables) | 2026-08-01T16:45Z, `3cd4939` | Same-surface scan: no open PR touches `package.json`, `pnpm-workspace.yaml` or the architecture doc | `Verified` |
+| Pinned runtime version | Node 22 (`.nvmrc` = `22`, `engines.node >= 22`) | Spec Business Rule 11; `docs/project/2-repo-architecture.md` ("Toolchain pins match Zeki: `.nvmrc` = `22`"); `docs/project/3-software-architecture.md` (tech stack row) | 2026-08-01T16:45Z, `3cd4939` | Current invocation item list = `{#1}`; no same-surface open PR pins a runtime, and `.nvmrc` does not exist yet. The authoring machine's Node v26.5.0 is a *local environment* fact, not evidence for or against the pin | `Verified` |
+| Package manager and workspace layout | pnpm 11.12.0 (`packageManager` pin) workspaces over `apps/*` and `packages/*`; workspace names `@finanzas/mobile`, `@finanzas/shared-domain`, `@finanzas/shared-utils`, `@finanzas/bank-scraper` | [`docs/project/2-repo-architecture.md`](../../../project/2-repo-architecture.md) (Directory Structure, Conventions, Applications, Shared Packages tables) | 2026-08-01T16:45Z, `3cd4939` | Same-surface scan: no open PR touches `package.json`, `pnpm-workspace.yaml` or the architecture doc | `Verified` |
 | Internal review runner for the draft plan PR | `claude` (local override), policy `warn` | `.ai-dev-workflow.local.yaml` overriding `review.on_draft.runner: [codex]` in `.ai-dev-workflow.yaml` | 2026-08-01T16:45Z, `3cd4939` | Current invocation only; the override is machine-local and gitignored | `Verified` |
 
 No `Conflict` rows. Nothing in this check blocks implementation.
@@ -121,23 +121,20 @@ switches from `npm ci` to pnpm. `e2e/` keeps its own `package.json` + `package-l
 own npm-based workflow: it is not a pnpm workspace member (`pnpm-workspace.yaml` declares only
 `apps/*` and `packages/*`), so AC10 is unaffected.
 
-**Decision 6 — Node is pinned at `20.19.4`.** `.nvmrc` contains `20.19.4` and the root
-`package.json` declares `"engines": { "node": ">=20.19.4", "pnpm": ">=10" }`. Expo SDK 54 /
-React Native 0.81 documents Node 20.19.4 as its Node 20 floor, and pinning a patch rather than a
-bare major keeps Business Rule 11 satisfied while making CI and local runs reproducible.
+**Decision 6 — Node is pinned at `22`.** `.nvmrc` contains `22` and the root `package.json`
+declares `"packageManager": "pnpm@11.12.0"` and `"engines": { "node": ">=22", "pnpm": ">=11" }`.
+This matches the `zeki-platform` convention this repository follows: the same Expo SDK 54 /
+React Native 0.81 stack already runs on Node 22 there, and Node 20 reached end-of-life in April
+2026, so pinning it would ship an unsupported runtime on day one (spec Business Rule 11).
 `engine-strict` is deliberately **not** enabled in `.npmrc`, so the declared range is advisory at
 install time rather than a hard install failure.
 
-The authoring machine for this plan runs **Node v26.5.0**, so the pinned runtime is *not* the
-runtime the plan was written under. Two consequences the implementer must honour:
+The authoring machine for this plan runs **Node v26.5.0**, which is neither the pinned runtime
+nor evidence for it. The implementer must honour:
 
-- Every verification command in the Implementation Order is run after `nvm use` (Node 20), and CI
-  resolves the same version through `node-version-file: .nvmrc`. A green run on Node 26 is not
-  evidence for AC1 or AC2.
-- If Expo SDK 54 tooling turns out not to work on Node 20, that is an **escalation**, recorded as
-  an explicit decision on the pull request. Raising the patch *within* Node 20 is allowed and must
-  be recorded; changing the major version to match whatever is installed is forbidden (spec
-  Business Rule 11).
+- Every verification command in the Implementation Order is run after `nvm use` (Node 22), and CI
+  resolves the same version through `node-version-file: .nvmrc`. A green run on the local Node
+  v26.5.0 is not evidence for AC1 or AC2 — only CI resolving the pinned version is.
 
 **Decision 7 — `app/index.tsx` is an entry shim, not a destination.** Expo Router needs a match
 for `/`. This item ships an unconditional `<Redirect href="/(onboarding)/intro" />`, with a
@@ -192,12 +189,12 @@ them is a blocking unknown: every one has a bounded fallback or an explicit esca
 
 | Claim | Used by | Confirm with | If false |
 | --- | --- | --- | --- |
-| Expo SDK 54 / React Native 0.81 accept Node 20 and document `20.19.4` as the floor | Decision 6 | The `engines` field of the installed `expo` package plus the SDK 54 release notes | Raise the patch **within** Node 20 and record it; a major change is an escalation (Business Rule 11) |
+| Expo SDK 54 / React Native 0.81 run on Node 22 | Decision 6 | `zeki-platform`, which runs the same Expo SDK 54 / React Native 0.81 stack on Node 22 today; the `engines` field of the installed `expo` package | Escalate with the exact incompatibility; the pin is never silently changed to match whatever is installed (Business Rule 11) |
 | Expo tooling needs a flat `node_modules` (`node-linker=hoisted`) under pnpm | Decision 1 | Boot the app in Implementation Order Step 6 | Escalate with the resolver error; do not switch package manager silently |
 | ESLint 9 flat config performs no nested config discovery, and `files` globs resolve relative to the loaded config file | Decision 3 | `pnpm lint` from the root **and** from inside `packages/shared-domain`; both must report the deliberate violation in Step 3 | Fall back to defining `sharedDomainPurity` with a root-relative glob in a single root-run `eslint .`, and record the change in `docs/project/2-repo-architecture.md` |
 | `expo install --fix` resolves every dependency to the SDK 54 compatibility table | Step 4 | The reported versions after the command | Pin the versions manually from the SDK 54 release notes |
 | Expo Router accepts `app/(tabs)/transactions.tsx` alongside `app/transactions/[transactionId].tsx` | Route skeleton | Metro output during Step 6 | Escalate the exact conflict message; never rename a manifest route (Business Rule 3) |
-| Bundled Corepack versions fail signature verification with pnpm 10 | Risks table (why `pnpm/action-setup` is used) | Not applicable — this is the reason an alternative was **not** chosen; if `pnpm/action-setup` is unacceptable, re-evaluate Corepack on the CI runner | Use Corepack in CI and drop the third-party action |
+| Bundled Corepack versions fail signature verification with pnpm 11 | Risks table (why `pnpm/action-setup` is used) | Not applicable — this is the reason an alternative was **not** chosen; if `pnpm/action-setup` is unacceptable, re-evaluate Corepack on the CI runner | Use Corepack in CI and drop the third-party action |
 
 ### Toolchain dependencies to add
 
@@ -306,7 +303,7 @@ So the implementer does not have to guess the dependency set:
 | `pnpm-workspace.yaml` | Declares `apps/*` and `packages/*` |
 | `turbo.json` | `build` (`dependsOn: ["^build"]`, `outputs: ["dist/**"]`), `dev` (persistent, uncached), `lint`, `typecheck`, `test`, `clean` (uncached); plus `globalDependencies` listing `design/mockups/mobile/mockup-manifest.js` so a routing-contract edit invalidates the cached `test` result (Decision 11) |
 | `.npmrc` | `node-linker=hoisted` (Decision 1) |
-| `.nvmrc` | `20.19.4` (Decision 6) |
+| `.nvmrc` | `22` (Decision 6) |
 | `tsconfig.base.json` | `strict: true`, `target`/`lib` ES2022, `moduleResolution: bundler`, `noUncheckedIndexedAccess`, `skipLibCheck` |
 | `eslint.config.mjs` | Default export: shared flat config (typescript-eslint recommended, `no-console`). Named export: `sharedDomainPurity` (Decision 3) |
 | `.prettierignore` | `node_modules`, `dist`, `.expo`, `.turbo`, `pnpm-lock.yaml`, `design/mockups/mobile/index.html`, `e2e` |
@@ -582,13 +579,12 @@ require the architecture document and the skeleton to agree at the end of this c
 | --- | --- | --- | --- |
 | **AC4 (iOS Simulator boot) cannot be verified in the automated agent environment** | Certain | Medium | Implementation Order Step 6 is marked human-verification-required, and the pull request description must flag AC4 as pending human verification instead of claiming it. Runbook Steps 4-8 carry the same marking |
 | pnpm's symlinked layout breaks Metro/Expo resolution | High | High | `node-linker=hoisted` from the start (Decision 1); the simulator boot in Implementation Order Step 6 is the gate that proves it — which means this risk is only fully retired by a human run |
-| The implementation is verified on the developer machine's Node v26.5.0 instead of the pinned Node 20, hiding a Node 20 incompatibility until CI | Medium | Medium | `nvm use` before every verification command; CI resolves the version from `.nvmrc` (`node-version-file`), so the pinned runtime is exercised on every pull request regardless of the local machine (Decision 6) |
+| The implementation is verified on the developer machine's Node v26.5.0 instead of the pinned Node 22, hiding a Node 22 incompatibility until CI | Medium | Medium | `nvm use` before every verification command; CI resolves the version from `.nvmrc` (`node-version-file`), so the pinned runtime is exercised on every pull request regardless of the local machine (Decision 6) |
 | Replacing the root `package.json` breaks the markdown lint workflow the whole AI workflow depends on | Medium | High | Keep the three markdown devDependencies and the `format` glob byte-identical (Decisions 4, 5); run the three AGENTS.md markdown commands locally before and after (AC11); the markdown-lint workflow itself is exercised by this PR |
-| Expo SDK 54 tooling rejects the pinned Node patch | Medium | Medium | Decision 6 allows raising the patch within Node 20 and requires escalation for anything larger (Business Rule 11) |
 | `app/(tabs)/transactions.tsx` and the sibling `app/transactions/` directory are reported by Expo Router as a route conflict | Low | Medium | Both come straight from the manifest, so a rename is not an option (Business Rule 3). Verify during Step 6; if the router reports a conflict, stop and escalate the exact message rather than renaming a manifest route |
 | `tsc --noEmit` passes locally but fails in CI because a generated Expo type file is missing | Medium | Medium | Commit `expo-env.d.ts` and keep typed routes off (Decision 8); Implementation Order Step 9 verifies type-check in a clean clone before the PR |
 | Three CI jobs each install dependencies, tripling minutes on every PR including docs-only ones | Medium | Low | `concurrency` with `cancel-in-progress`, pnpm store caching via `actions/setup-node` `cache: pnpm`; revisit path filters only if a required-check configuration makes them safe (Decision 9) |
-| `pnpm/action-setup` is a third-party action | Low | Medium | Pin by commit SHA like every other action in this repository; the Corepack alternative is rejected because bundled Corepack versions have known signature-verification failures with pnpm 10 |
+| `pnpm/action-setup` is a third-party action | Low | Medium | Pin by commit SHA like every other action in this repository; the Corepack alternative is rejected because bundled Corepack versions have known signature-verification failures with pnpm 11 |
 | Placeholder screens drift toward looking implemented | Low | Medium | One shared `RoutePlaceholder` component, no theme import, no token usage; the smoke runbook has an explicit "does not resemble the mockup" check |
 
 ---

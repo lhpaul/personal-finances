@@ -23,7 +23,7 @@ mockups.
 
 **Actor**: Contributor (human developer or implementation agent) working on this product.
 **Preconditions**: The contributor has a clean clone of the repository, the pinned Node version
-and pnpm 10 or newer, and — for the simulator step — a macOS machine with Xcode installed.
+and pnpm 11.12.0 or newer, and — for the simulator step — a macOS machine with Xcode installed.
 
 **Steps**:
 
@@ -199,10 +199,12 @@ lint pass again.
    after the root workspace manifest is replaced.
 10. Web end-to-end regression stays disabled for this product. Device end-to-end coverage is a
     separate backlog item and is not wired up here.
-11. The pinned runtime version is the one named in the brief (Node 20). If the app tooling
-    cannot run on it, or the contributor's installed runtime is incompatible with the app
-    tooling, that is escalated as an explicit decision — the pinned version is never changed
-    silently to match whatever happens to be installed.
+11. The pinned runtime version is Node 22, matching the `zeki-platform` convention this
+    repository follows (Expo SDK 54 / React Native 0.81 already run on Node 22 there; Node 20
+    reached end-of-life in April 2026 and must not be pinned). If the app tooling cannot run on
+    it, or the contributor's installed runtime is incompatible with the app tooling, that is
+    escalated as an explicit decision — the pinned version is never changed silently to match
+    whatever happens to be installed.
 12. Verification is reproducible. The same commands succeed from a clean clone and in automated
     checks, resolving dependencies from the committed lockfile.
 13. There is no sign-in in this product. The app's entry point is `(onboarding)/intro` on first
@@ -249,7 +251,7 @@ lint pass again.
 
 ## Acceptance Criteria
 
-- [ ] **AC1.** From a clean clone, under the pinned runtime version and pnpm 10 or newer, the single
+- [ ] **AC1.** From a clean clone, under the pinned runtime version and pnpm 11.12.0 or newer, the single
       root install command completes successfully with no manual repair step and no
       undocumented environment variable.
 - [ ] **AC2.** From the repository root, the lint command, the type-check command and the test command

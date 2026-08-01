@@ -15,7 +15,7 @@ Before running this smoke test:
 - [ ] A **fresh clone** of the branch under test, in a directory that has never had
       `node_modules` installed (Steps 1-3 test clean-clone behaviour and cannot be trusted in a
       dirty tree).
-- [ ] The Node version named in `.nvmrc` is active (`nvm use`), and pnpm 10 or newer is
+- [ ] The Node version named in `.nvmrc` is active (`nvm use`), and pnpm 11.12.0 or newer is
       available (`pnpm --version`).
 - [ ] macOS with Xcode and an iOS Simulator installed — required for Steps 4-8 and for nothing
       else.
