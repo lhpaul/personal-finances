@@ -40,6 +40,9 @@ only Inicio and Transacciones.
 8. **No user-facing literal strings in JSX.** Copy lives in `apps/mobile/src/i18n/` catalogues
    (`es` primary, `en` fallback); the Spanish string comes from the mockup.
 9. No cross-package relative imports. Shared code is imported by its `@finanzas/*` name.
+10. **Tracker status is manual.** `update-tracker-on-merge.yml` is disabled — it needs a PAT
+    that is not configured. Set the project Status explicitly with `gh` at every stage
+    transition and verify it with a live read. Never assume automation did it.
 
 ---
 
