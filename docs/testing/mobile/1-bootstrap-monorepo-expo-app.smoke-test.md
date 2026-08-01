@@ -78,9 +78,14 @@ unchanged afterwards (`git status` reports a clean tree).
 `clean` removes it. The mobile workspace's `workspace-wiring` test passes, proving the app
 consumes code from all three packages.
 
-### Step 4: Boot the app in the iOS Simulator
+### Step 4: Boot the app in the iOS Simulator — HUMAN VERIFICATION REQUIRED
 
 **Maps to**: AC4
+
+> Steps 4-8 need an interactive macOS session with Xcode and cannot be executed by the
+> implementation agent. Their results must be recorded by a human; until then the pull request
+> must list AC4 — and the flow-walk portions of AC5 and AC14 — as *pending human verification*
+> rather than claiming them.
 
 1. Run `pnpm dev:mobile:ios`.
 2. Wait for the iOS Simulator to open the app.
@@ -279,7 +284,8 @@ the architecture document is reflected in that document in the same change.
 
 ## Known Limitations
 
-- Steps 4-8 need macOS with Xcode; every other step runs on any platform.
+- Steps 4-8 need an interactive macOS session with Xcode and are human-verification-required;
+  every other step runs unattended on any platform.
 - Step 11 mutates a scratch branch and must be cleaned up afterwards.
 - Fidelity in Step 8 is a deliberate *non*-match check: placeholders are expected to look
   unfinished, so this runbook cannot detect visual regressions against the mockups. Real fidelity

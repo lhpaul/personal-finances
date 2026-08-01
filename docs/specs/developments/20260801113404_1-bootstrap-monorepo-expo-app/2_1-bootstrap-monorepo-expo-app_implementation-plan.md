@@ -431,9 +431,10 @@ Files that must **not** exist: any route under `(auth)/`, `(tabs)/budgets`, `bud
 
 ## Testing Strategy
 
-**Test types**: Unit (Jest, four workspaces) + Smoke (manual runbook on the iOS Simulator). No
-integration or device-E2E tier in this item — there is no data layer to integrate and Maestro is
-a separate backlog item (spec Business Rule 10).
+**Test types**: Unit (Jest, four workspaces) + Smoke (manual runbook, partly on the iOS
+Simulator). No integration or device-E2E tier in this item — there is no data layer to integrate,
+web end-to-end stays disabled (Decision 12), and device end-to-end through Maestro is item #22
+(spec Business Rule 10).
 
 **Key scenarios to test**:
 
@@ -448,10 +449,11 @@ a separate backlog item (spec Business Rule 10).
 5. Tab composition: `apps/mobile/app/(tabs)/` contains exactly two route files besides
    `_layout.tsx` (AC14).
 6. `toRoutePath` edge cases (see the parser-risk addendum below).
-7. Domain-purity violation: a deliberate `import { Platform } from 'react-native'` (or
-   `expo-constants`, or `drizzle-orm`) inside `packages/shared-domain/src/index.ts` makes
-   `pnpm lint` fail with the restriction message; removing it makes lint pass (AC7 — smoke
-   runbook Step 9, executed manually so the repository never contains the violation).
+7. Domain-purity violation: a deliberate `import Constants from 'expo-constants';` inside
+   `packages/shared-domain/src/index.ts` makes `pnpm lint` fail with the restriction message;
+   removing it makes lint pass (AC7). Executed manually in Implementation Order Step 3 and smoke
+   runbook Step 9 — never committed, because a permanent violation would permanently break
+   `pnpm lint`. `expo-constants` is the chosen probe in all three places.
 8. Clean-clone reproducibility: `pnpm install && pnpm lint && pnpm typecheck && pnpm test` in a
    fresh clone (AC1, AC2, AC12 review).
 9. Simulator boot and flow walk (AC4, AC5 reachability) — smoke runbook.
@@ -489,7 +491,7 @@ verbatim rather than stripped.
 | `index.tsx` (app root) | `null` | Entry shim, excluded by Decision 7 |
 | `settings/_shared.ts` | `null` | Leading-underscore non-route file |
 | `+not-found.tsx` | `null` | Expo special file; must not be counted as a manifest route even if a later item adds it |
-| `src/test-utils/route-inventory.test.ts` style names, e.g. `dashboard.test.tsx` | `null` | Negative case: a test file whose name resembles a route |
+| `dashboard.test.tsx` | `null` | Negative case: a test file whose name resembles a route |
 | `dashboard.tsx.bak` | `null` | Negative case: only `.tsx`/`.ts` route extensions count |
 | `Settings/about.tsx` | `/Settings/about` (no case normalisation) | Guard against accidental case folding hiding a real mismatch — the parity assertion must fail loudly, not silently pass |
 | `settings//about.tsx` (doubled separator) | `/settings/about` | Separator normalisation so a path-join artefact cannot fail parity spuriously |
@@ -568,7 +570,9 @@ require the architecture document and the skeleton to agree at the end of this c
 
 | Risk | Likelihood | Impact | Mitigation |
 | --- | --- | --- | --- |
-| pnpm's symlinked layout breaks Metro/Expo resolution | High | High | `node-linker=hoisted` from the start (Decision 1); the simulator boot in Step 6 is the gate that proves it |
+| **AC4 (iOS Simulator boot) cannot be verified in the automated agent environment** | Certain | Medium | Implementation Order Step 6 is marked human-verification-required, and the pull request description must flag AC4 as pending human verification instead of claiming it. Runbook Steps 4-8 carry the same marking |
+| pnpm's symlinked layout breaks Metro/Expo resolution | High | High | `node-linker=hoisted` from the start (Decision 1); the simulator boot in Implementation Order Step 6 is the gate that proves it — which means this risk is only fully retired by a human run |
+| The implementation is verified on the developer machine's Node v26.5.0 instead of the pinned Node 20, hiding a Node 20 incompatibility until CI | Medium | Medium | `nvm use` before every verification command; CI resolves the version from `.nvmrc` (`node-version-file`), so the pinned runtime is exercised on every pull request regardless of the local machine (Decision 6) |
 | Replacing the root `package.json` breaks the markdown lint workflow the whole AI workflow depends on | Medium | High | Keep the three markdown devDependencies and the `format` glob byte-identical (Decisions 4, 5); run the three AGENTS.md markdown commands locally before and after (AC11); the markdown-lint workflow itself is exercised by this PR |
 | Expo SDK 54 tooling rejects the pinned Node patch | Medium | Medium | Decision 6 allows raising the patch within Node 20 and requires escalation for anything larger (Business Rule 11) |
 | `app/(tabs)/transactions.tsx` and the sibling `app/transactions/` directory are reported by Expo Router as a route conflict | Low | Medium | Both come straight from the manifest, so a rename is not an option (Business Rule 3). Verify during Step 6; if the router reports a conflict, stop and escalate the exact message rather than renaming a manifest route |
@@ -700,12 +704,19 @@ export default function TabsLayout() {
    MVP-route row again and confirm the printed route list matches the route files you created,
    file by file.
 
-6. **Boot and walk.** `pnpm dev:mobile:ios` on a macOS machine with Xcode.
-   *Verify*: the app boots to the onboarding intro placeholder; walk the onboarding,
+6. **Boot and walk — HUMAN VERIFICATION REQUIRED.** `pnpm dev:mobile:ios` on a macOS machine with
+   Xcode. **This step cannot be executed in the automated agent environment**: booting the iOS
+   Simulator needs an interactive macOS session with Xcode, which the implementation agent does
+   not have. The implementation pull request description must list AC4 (and the flow-walk parts of
+   AC5 and AC14) as *pending human verification* rather than claiming them from agent evidence,
+   and must say so explicitly before `ready-for-human-review` is requested.
+   *Verify (human)*: the app boots to the onboarding intro placeholder; walk the onboarding,
    categorization, tab, transactions, dashboard and settings areas; confirm the tab bar shows two
    tabs; confirm the Metro output reports no route conflict and no missing-module warning. Reach
    one dynamic route directly with
    `pnpm --filter @finanzas/mobile exec uri-scheme open "finanzas://transactions/any-id" --ios`.
+   The agent-runnable substitutes for this step are Step 5's route enumeration and Step 7's parity
+   test; they establish that the route *files* are correct, not that the app *boots*.
 
 7. **Parity and wiring tests.** Add `src/test-utils/route-inventory.ts`,
    `src/test-utils/mockup-manifest.ts`, `src/test-utils/route-inventory.test.ts`,
