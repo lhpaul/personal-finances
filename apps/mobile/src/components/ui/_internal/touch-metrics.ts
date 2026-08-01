@@ -74,4 +74,12 @@ export const TOUCH_METRICS: Record<string, TouchMetrics> = {
   }),
   segmentItem: withMinTarget({ height: componentMetrics.segment.itemMinTouchHeight }),
   pill: withMinTarget({ height: componentMetrics.pill.minTouchHeight }),
+  tabBarItem: withMinTarget({ height: componentMetrics.tabBar.itemMinTouchHeight }),
+  /** `EmptyState`'s action renders as `Button` `size="sm"` — same visual box as `buttonSm`,
+   * listed under its own key because it is a distinct call site the plan names explicitly. */
+  emptyStateAction: withMinTarget({ height: componentMetrics.button.heightSm }),
+  sheetDismiss: withMinTarget({
+    width: componentMetrics.sheet.grabWidth,
+    height: componentMetrics.sheet.grabHeight,
+  }),
 };

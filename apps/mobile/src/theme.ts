@@ -526,6 +526,12 @@ export const componentMetrics = {
     itemIconHeight: 30,
     /** `.mu-tabbar__item` (L541) icon/label gap. */
     itemGap: 4,
+    /** `.mu-tabbar__item` (L540-544) has no explicit CSS height — it fills the tab bar's own
+     * height (`theme.layout.tabBarHeight`, 84). Conservative touch-target estimate for
+     * `TOUCH_METRICS`, scoped to the item's own icon+label stack: `itemIconHeight` (30) +
+     * `itemGap` (4) + the label line (`--xs` 11 × the inherited 1.5 line-height = 16.5 → 17)
+     * = 51. */
+    itemMinTouchHeight: 51,
   },
 
   progress: {
