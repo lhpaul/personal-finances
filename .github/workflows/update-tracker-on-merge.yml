@@ -1,3 +1,18 @@
+# ⚠️ DISABLED for this repository (`gh workflow disable`), 2026-08-01.
+#
+# It requires a GH_PROJECT_TOKEN secret — a PAT with `project` scope, because the
+# GITHUB_TOKEN that Actions injects cannot mutate Projects v2 (a project is owned
+# by the user/org, not the repo). Neither that secret nor the PROJECT_NUMBER /
+# PROJECT_OWNER variables are configured here, so every run failed, and a red
+# check on every merge erodes the signal of the checks that matter.
+#
+# CONSEQUENCE: tracker status is maintained MANUALLY. Agents must set it
+# explicitly with `gh` at each stage transition and verify it with a live read.
+# A status that looks right without an agent having set it should be distrusted.
+#
+# To re-enable: add the secret and the two variables, then `gh workflow enable
+# "Update tracker status on PR merge"`.
+#
 # Updates the GitHub Projects tracker status when a workflow PR is merged.
 #
 # Branch-to-status mapping:

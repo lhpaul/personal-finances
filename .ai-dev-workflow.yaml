@@ -52,6 +52,22 @@ review:
     # Ordered list of GitHub/App/CLI reviewers that run only after draft gates
     # are clean and the PR has been converted with `gh pr ready`.
     #
+    # History, so this is not re-litigated:
+    #   1. `coderabbit` — worked, but appeared to hit an org spending cap on PR #29.
+    #   2. Switched to `codex-github` on that report. It is NOT installed on this
+    #      repository (only on the zeki-cl org), so it escalated on timeout and
+    #      applied `reviewer-failed` to PR #30.
+    #   3. Reverted here. The cap was advisory, not binding: CodeRabbit reviewed
+    #      #29 clean once its rolling window elapsed, and left 10 substantive
+    #      threads on #30 (7 major, all fixed). It is installed and it works.
+    #
+    # `auto_review.drafts: false` in .coderabbit.yaml means it correctly skips
+    # draft PRs — that is not a failure, it is why it sits in on_ready.
+    github:
+      - coderabbit
+  # Ordered list of GitHub/App/CLI reviewers that run only after draft gates
+    # are clean and the PR has been converted with `gh pr ready`.
+    #
     # Switched from `coderabbit` on 2026-08-01: the CodeRabbit organization hit
     # its usage spending cap on the third PR of the session, which is not
     # self-resolving and would gate all ~40 remaining PRs.
