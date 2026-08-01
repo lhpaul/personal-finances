@@ -11,16 +11,24 @@ specification of record for this plan.
 ## Summary
 
 **Approach**: Fill in the empty `@finanzas/shared-utils` workspace with three pure modules —
-`money.ts`, `dates.ts`, `rut.ts` — re-exported from `index.ts`. Every user-visible string is
-built by hand from integer arithmetic and hard-coded Spanish (es-CL) label tables, so the output
-matches the mockup byte-for-byte and no float ever enters a money code path. All calendar
-arithmetic (month/week period boundaries, month lengths, day-of-week) runs on **UTC civil-date
-math**, which has no DST by construction. The single place a real timezone is consulted is
+`money.ts`, `dates.ts`, `rut.ts` — re-exported from `index.ts`. Money and dates are treated
+**asymmetrically, and deliberately so** (`docs/best-practices/stack/i18n.md`, "Formatting"):
+CLP strings are built by hand from integer arithmetic, hard-coded and locale-invariant, because
+platform `Intl.NumberFormat` output disagrees with the mockup for the tags this app actually
+uses — the mockup wins, per that doc's own rule, "If the platform output differs, format by
+hand — the mockup wins, not the platform default." Date labels take the opposite path: Hermes on
+RN 0.81.5 / Expo 54 has full ICU, `Intl.DateTimeFormat(locale, {...})` reproduces every mockup
+date literal exactly, and that same doc forbids a hardcoded Spanish month table ("hardcoding one
+leaves Spanish dates under an English UI") — so every date-label formatter takes `locale` as a
+parameter instead. All calendar arithmetic (month/week period boundaries, month lengths,
+day-of-week) runs on **UTC civil-date math**, which has no DST by construction. Two narrow,
+cached, capability-checked `Intl` seams carry all locale/timezone-dependent behaviour:
 `deriveZonedParts`, which converts an instant to Chilean wall-clock fields via
-`Intl.DateTimeFormat(...).formatToParts` — the one narrow, cached, capability-checked seam where
-DST correctness actually lives, and the one place the DST acceptance criterion is tested. RUT
-helpers are pure `string -> string | boolean` functions that never log, never cache and never
-embed the input in an error message.
+`Intl.DateTimeFormat(...).formatToParts` (the one place the DST acceptance criterion is tested),
+and the date-label formatters, which call `Intl.DateTimeFormat(locale, {...}).format(...)`
+directly. Neither seam is `toLocaleString`, so AC4 (banning `toLocaleString`/`toLocaleDateString`/
+`toLocaleTimeString`) is unaffected by either. RUT helpers are pure `string -> string | boolean`
+functions that never log, never cache and never embed the input in an error message.
 
 **Estimated complexity**: M
 
@@ -69,7 +77,9 @@ are **consumers**, not blockers.
 | Data model contract for `amount` (drives the money API shape) | `sed -n '240,275p' docs/project/4-database-model.md` | `amount` is `INTEGER NOT NULL`, "Minor units, **always positive**. Direction comes from `type`" (`debit` \| `credit`). `date_local` is `TEXT NOT NULL`, `YYYY-MM-DD`, used for month grouping |
 | Data model contract for the RUT (drives the privacy rules) | `sed -n '96,103p' docs/best-practices/stack/sqlite-drizzle.md` | "Credentials — including **the RUT** … There is no `national_id_value` column, by design". Confirms revision `de4c364`; the RUT is never persisted |
 | ESLint wiring the new rules must flow through | `cat eslint.config.mjs apps/mobile/eslint.config.mjs packages/shared-domain/eslint.config.mjs` | Root default-exports the shared flat-config array and named-exports `sharedDomainPurity`. Every workspace config spreads `rootConfig`; `apps/mobile` spreads `rootConfig` then `expoConfig`. A rule added to the root shared array reaches all four workspaces |
-| Doc drift found while reading conventions (recorded, not a blocker — see "Known documentation drift") | `sed -n '59,71p' docs/best-practices/stack/expo-react-native.md` | Line 70 says "Formatting lives in `lib/format.ts`"; line 64 links `[i18n.md](i18n.md)`, which does not exist (`ls docs/best-practices/stack/` → `bank-scraper.md`, `design-tokens.md`, `expo-react-native.md`, `sqlite-drizzle.md`); line 67 says abbreviate "**only** in the stat tiles on `home`", which the `$279K` category rows contradict |
+| Doc drift found while reading conventions (recorded, not a blocker — see "Known documentation drift") | `sed -n '59,71p' docs/best-practices/stack/expo-react-native.md` | Line 70 says "Formatting lives in `lib/format.ts`"; line 67 says abbreviate "**only** in the stat tiles on `home`", which the `$279K` category rows contradict |
+| `docs/best-practices/stack/i18n.md` exists and governs date formatting (corrects a false claim in an earlier draft of this plan) | `ls docs/best-practices/stack/` and `sed -n '1,90p' docs/best-practices/stack/i18n.md` | The file exists (`bank-scraper.md`, `design-tokens.md`, `expo-react-native.md`, `i18n.md`, `mobile-ui-fidelity.md`, `sqlite-drizzle.md`, `turborepo-pnpm.md`, `typescript.md`); it landed in `ecf46ef`. Its "Formatting" section is the authoritative source for this plan's date-vs-money asymmetry: formatters "take the active locale as a parameter and use `Intl`", "Do not hand-write a Spanish month table", Hermes needs full ICU for non-English `Intl` output (verified true below), and for CLP "If the platform output differs, format by hand — the mockup wins, not the platform default." `docs/best-practices/stack/expo-react-native.md` line 64's `[i18n.md](i18n.md)` link resolves correctly; it is not dangling |
+| Full-ICU confirmation for `Intl.DateTimeFormat(locale, …)` (the caveat `i18n.md` says to verify rather than assume) | `node -e "…new Intl.DateTimeFormat('es',{day:'numeric',month:'short'}).format(…)"` etc., run at plan time on this repo's Node runtime, cross-checked against the human's confirmed Hermes/RN-0.81.5/Expo-54 finding | `new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short' }).format(new Date('2025-01-24T12:00:00Z'))` → `'24 ene'`; `('2025-01-05')` → `'5 ene'` (no leading zero, matching Decision 8); `{ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }` on `'2025-01-24'` → `'viernes, 24 de enero de 2025'` (the exact mockup literal, already lowercase — no manual lowercasing needed); on `'2024-02-29'` → `'jueves, 29 de febrero de 2024'`; `{ month: 'short', year: 'numeric' }` → `'ene 2025'`. `en` locale produces `'Jan 24'` / `'Friday, January 24, 2025'`. Every value matches the mockup byte-for-byte with no hardcoded table, confirming the human's Hermes-has-full-ICU finding needs no `es` fallback table |
 | Bounded same-surface PR scope | `gh pr list --state open --json number` and `git worktree list` | `[]` — **no open pull requests in the repository**. Concurrent invocation items are `{#2, #3, #4}`, each in its own worktree (`item-2` on `implementation-plan/2-…`, `item-3` on `spec/3-…`, `item-4` on this branch) |
 | Design-asset discovery | Issue #4 body has no `## Design assets` section; no tracker attachments; no `<dev-folder>/assets/` directory | The authoritative visual reference is the repository's own UI contract, `design/mockups/mobile/index.html` (AGENTS.md non-negotiable 6). Fidelity steps in the runbook name it |
 | Nested-artifact guard | `run-nested-artifact-guard.sh --mode pre-create --issue 4 --expected-branch implementation-plan/4-shared-utils-clp-dates-rut --approved-base develop` (run by the parent orchestrator before dispatch) | `RESULT=clean`; `validate-branch-reuse.sh` → `RESULT=compatible`. The `pre-pr` run is Implementation-Order-independent and happens immediately before the plan PR is opened |
@@ -104,7 +114,7 @@ No `Conflict` rows. Nothing in this check blocks implementation.
 
 ### Known documentation drift (not an operational-assumption conflict)
 
-Three statements in `docs/best-practices/stack/expo-react-native.md` predate this package and
+Two statements in `docs/best-practices/stack/expo-react-native.md` predate this package and
 disagree with the issue brief and the mockup. Per protocol 02, architecture/documentation
 statements are **not** cross-cutting operational assumptions, so these are recorded here and
 scheduled as documentation updates rather than escalated:
@@ -121,8 +131,14 @@ scheduled as documentation updates rather than escalated:
    on `home`'s category rows (lines 1515-1518), so the abbreviation has two consumer shapes, not
    one. The mockup wins (AGENTS.md non-negotiable 6). The API supports both shapes; the *rule*
    is unchanged, only the enumeration of call sites.
-3. **Line 64 — `[i18n.md](i18n.md)` is a dangling link.** `docs/best-practices/stack/i18n.md`
-   does not exist.
+
+**Correction to an earlier draft of this plan**: that draft additionally claimed "Line 64 —
+`[i18n.md](i18n.md)` is a dangling link... does not exist." That was false even when written —
+`docs/best-practices/stack/i18n.md` landed in `ecf46ef`, before this plan branch was created —
+and it is re-verified false now (Verification Log). The link resolves correctly and is not
+listed here. That file's "Formatting" section is in fact the authoritative source this plan
+follows for the money/dates asymmetry (Decision 1) and for the date-label `Intl` seam
+(Decision 2).
 
 ---
 
@@ -131,28 +147,62 @@ scheduled as documentation updates rather than escalated:
 Each decision below is referenced by index from the Layer-by-Layer, Testing and Implementation
 Order sections. Indices are stable within this document.
 
-**Decision 1 — no `Intl` for any user-visible string.** Every Spanish label (month name, month
-abbreviation, weekday name) and every numeric separator is a hard-coded constant in this
-package. Rationale: `Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' })` returns
-`$1.200.000` on full-ICU Node but is not byte-stable across ICU versions, React Native's Hermes
-engine, and the Android/iOS system ICU that Hermes delegates to — it can emit a non-breaking
-space, `CLP` instead of `$`, or `U+00A0` between symbol and digits. It also takes a `number`,
-which is exactly the float surface AGENTS.md non-negotiable 2 forbids. Hand-built strings are the
-only way to guarantee the mockup literals byte-for-byte on every device. This also satisfies AC4
-in spirit, not just in letter.
+**Decision 1 — no `Intl` for currency/number formatting; every money string is hand-built and
+locale-invariant.** Every numeric separator, the currency symbol and the sign are hard-coded
+constants in `money.ts`. Rationale, scoped precisely: `Intl.NumberFormat('es-CL', { style:
+'currency', currency: 'CLP' })` returns `$1.200.000` on full-ICU Node, but its output for the
+locale tags this app actually renders under (`es`, `en` — not `es-CL`) is not guaranteed to match
+the mockup, and `Intl.NumberFormat.prototype.formatToParts` is unimplemented on iOS Hermes
+(`llvm_unreachable` — see Decision 5's neighboring note and the Risks table). `docs/best-practices/
+stack/i18n.md`'s own rule for this exact situation is: "If the platform output differs, format by
+hand — the mockup wins, not the platform default." That is the standard this decision applies,
+not a blanket claim that `Intl` is broken or unusable. `Intl.NumberFormat` also takes a `number`,
+which is exactly the float surface AGENTS.md non-negotiable 2 forbids. Hand-built strings are
+therefore the only way to guarantee the mockup's money literals byte-for-byte on every device,
+**and they are deliberately locale-invariant** — CLP has one accepted rendering (`$1.200.000`)
+regardless of whether the active app locale is `es` or `en`, so `formatClp` and
+`formatClpAbbreviated` take no `locale` parameter. This also satisfies AC4 in spirit, not just in
+letter.
 
-**Decision 2 — one narrow `Intl` seam, for timezone fields only.**
-`deriveZonedParts(instant, timeZone)` uses
-`Intl.DateTimeFormat(locale, { timeZone, year, month, day, hour, minute, hourCycle: 'h23' })
-.formatToParts(instant)` and reads the `year` / `month` / `day` / `hour` / `minute` parts **by
-`type`**, never by position and never by parsing a formatted string. It returns integers, not
-copy. Rationale: converting a UTC instant to a Chilean wall-clock date requires the IANA
-timezone database. Hand-rolling Chile's DST rules is not maintainable — the transition dates have
-been changed by decree repeatedly (2015, 2016, 2019, 2022) and the Magallanes region does not
-follow the continental rule at all. `formatToParts` is the standard, DST-database-backed way to
-do this and is the *only* API in the package that touches locale machinery. It is not
-`toLocaleString`, so AC4 is unaffected; the Implementation Order records the distinction so a
-reviewer does not read this as a violation.
+**This decision does not extend to dates.** `Intl.DateTimeFormat` does not disagree with the
+mockup (Decision 2 verifies this directly), so date labels are the opposite case: they use
+`Intl`, parameterised by locale, precisely because `i18n.md` forbids a hardcoded Spanish table
+("hardcoding one leaves Spanish dates under an English UI") and because Hermes on RN 0.81.5 /
+Expo 54 has been confirmed to carry full ICU, so no fallback table is needed. The asymmetry
+between money (hand-built, locale-invariant) and dates (`Intl`-built, locale-parameterised) is
+deliberate and is the point of this decision, not an inconsistency for a reviewer to flag.
+
+**Decision 2 — two narrow `Intl` seams: one for timezone fields, one for locale-parameterised
+date labels.** Both are cached, capability-checked, and read structured output by `type`/field
+rather than by parsing a rendered string, so neither is `toLocaleString` and AC4 is unaffected by
+either; the Implementation Order records the distinction so a reviewer does not read this as a
+violation.
+
+- **Timezone seam.** `deriveZonedParts(instant, timeZone)` uses
+  `Intl.DateTimeFormat('en-US', { timeZone, year, month, day, hour, minute, hourCycle: 'h23' })
+  .formatToParts(instant)` and reads the `year` / `month` / `day` / `hour` / `minute` parts **by
+  `type`**, never by position and never by parsing a formatted string. It returns integers, not
+  copy, and takes no `locale` parameter — the fixed `'en-US'` tag is an internal implementation
+  detail used only to get stable, ASCII, `2-digit`/`numeric` part values out of `formatToParts`;
+  it has no bearing on what the caller sees. Rationale: converting a UTC instant to a Chilean
+  wall-clock date requires the IANA timezone database. Hand-rolling Chile's DST rules is not
+  maintainable — the transition dates have been changed by decree repeatedly (2015, 2016, 2019,
+  2022) and the Magallanes region does not follow the continental rule at all. `formatToParts` is
+  the standard, DST-database-backed way to do this.
+- **Date-label seam.** `formatShortDate`, `formatLongDate`, `formatMonthYear` and
+  `formatMonthAbbreviation` each take `locale: SupportedLocale` (`'es' | 'en'`) as a required
+  parameter and call a cached `Intl.DateTimeFormat(locale, { day, month, weekday?, year?,
+  timeZone: 'UTC' }).format(civilDateAsUtcMidnightInstant)` directly — reading the **rendered
+  string**, not parts, because the whole rendered string (with its Spanish or English
+  month/weekday name) is the desired output, not a value to extract. `timeZone: 'UTC'` is
+  explicit and non-optional here: the underlying civil date is UTC-anchored (Decision 3), so the
+  instant handed to this formatter is `Date.UTC(year, month - 1, day)`, and without a pinned
+  `timeZone` the formatter would fall back to the *host* system timezone, which Group E's hostile
+  `Pacific/Kiritimati` test would then be able to shift onto an adjacent day. Pinning `'UTC'`
+  keeps this seam as deterministic under a hostile host timezone as the civil-date arithmetic it
+  formats. Verified at plan time (Verification Log) against both `es` and `en`: every mockup date
+  literal reproduces byte-for-byte, already lowercase for `es`, with no hardcoded month or
+  weekday table (Decision 7 replaces the earlier table-based design).
 
 **Decision 3 — all calendar arithmetic is UTC civil-date math, so period boundaries are
 DST-immune by construction.** Period boundaries are `YYYY-MM-DD` strings (`DateLocal`), matching
@@ -161,10 +211,13 @@ the `date_local` column that the app actually groups and filters on
 day-of-week and day addition are computed with `Date.UTC(...)` and `getUTCDay()` /
 `getUTCDate()`. UTC has no offset transitions, so no boundary computation can be perturbed by
 DST. This is what makes AC3 ("period boundaries correct across month ends and DST") provable
-rather than hopeful: month-end correctness is tested directly on civil dates, and DST exposure
-is confined to Decision 2's single function, which is tested at the exact 2025 transition
-instants. Consequence: `deriveDateLocal` is the **only** function in `dates.ts` whose output can
-depend on a timezone.
+rather than hopeful: month-end correctness is tested directly on civil dates, and DST exposure is
+confined to Decision 2's timezone seam (`deriveZonedParts`, and `deriveDateLocal` /
+`formatTimeOfDay` which call it), which is tested at the exact 2025 transition instants.
+Decision 2's date-label seam is `timeZone: 'UTC'`-pinned and therefore carries no DST exposure at
+all — it depends only on `locale`. Consequence: `deriveZonedParts`, `deriveDateLocal` and
+`formatTimeOfDay` are the **only** functions in `dates.ts` whose output can depend on a real
+(non-`'UTC'`) timezone; the date-label formatters depend only on `locale`.
 
 **Decision 4 — the money sign is one total rule, not three special cases.** For both
 `formatClp` and `formatClpAbbreviated`:
@@ -220,21 +273,43 @@ integers. Both operands stay well below `2^53`, and IEEE-754 division is correct
 quotient that is mathematically an integer is represented exactly and `Math.floor` cannot
 undershoot it. No `Math.round` on a float ratio, no `toFixed`.
 
-**Decision 7 — the label tables are uniform 3-letter lowercase abbreviations.**
-`MONTH_ABBREVIATIONS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']`.
-The mockup only exhibits `ene`, `nov` and `dic`, all three letters, lowercase, no trailing
-period. `sep` is chosen over the RAE-preferred `sept.` so that every month has identical width —
-the chart bar labels (`nov`, `dic`, `ene`) are laid out in a fixed-width row, and a four-letter
-outlier would shift one column. Full names
-(`enero`…`diciembre`) and weekdays (`domingo`…`sábado`, indexed by `getUTCDay()`) are likewise
-all-lowercase, matching `viernes, 24 de enero de 2025`.
+**Decision 7 — month, weekday and month-abbreviation names come from `Intl.DateTimeFormat(locale,
+…)`, not a hardcoded table.** There is no `MONTH_ABBREVIATIONS_ES` constant, no
+`MONTH_NAMES_ES`/`WEEKDAY_NAMES_ES` table, and no parallel mechanism next to Decision 2's
+timezone seam — the date-label formatters *are* the seam that produces these names, for whichever
+`locale` the caller passes. This directly follows `docs/best-practices/stack/i18n.md`'s rule
+against hand-writing a Spanish month table ("hardcoding one leaves Spanish dates under an English
+UI") and the human's confirmed finding that Hermes on RN 0.81.5 / Expo 54 carries full ICU, so no
+`es` fallback table is needed behind the locale-parameterised signature. Verified at plan time
+(Verification Log) against `es`: `Intl.DateTimeFormat('es', { month: 'short', timeZone: 'UTC' })`
+reproduces the mockup's three abbreviation samples exactly — `ene`, `nov`, `dic`, three letters,
+lowercase, no trailing period — and `Intl.DateTimeFormat('es', { weekday: 'long', month: 'long',
+… })` reproduces `viernes` / `enero` in `viernes, 24 de enero de 2025`, all lowercase, with no
+manual case transformation required.
+
+**Known width caveat, recorded rather than worked around.** The same plan-time probe shows
+`Intl.DateTimeFormat('es', { month: 'short' })` renders September as `sept` (four letters), not
+the three-letter `sep` a hand-built table might have chosen. The mockup contains no September
+sample, so this is not a byte-for-byte mismatch against a literal — but the superseded table-based
+design's rationale for choosing `sep` was "every month has identical width" in the `.mu-bars__lbl`
+chart-bar row. Re-checked against the mockup's own CSS: `.mu-bars__lbl { font-size: 10px; color:
+var(--t3); }` (`design/mockups/mobile/index.html` line 494) declares no fixed width, no
+`white-space: nowrap`, and no monospace font — it is a normal flow label, so a four-letter
+September abbreviation does not violate any layout constraint the mockup actually imposes. This
+item accepts `Intl`'s locale-provided abbreviation as-is rather than reintroducing a hardcoded
+table to force three-letter uniformity, which would recreate the defect this correction removes.
 
 **Decision 8 — days are rendered without a leading zero.** `formatShortDate('2025-01-05')` →
 `5 ene`, and `formatLongDate('2025-01-05')` → `domingo, 5 de enero de 2025`. The mockup contains
-no single-digit-day sample (Verification Log), so this is a decision, not an observation: Spanish
-convention writes `5 de enero`, not `05 de enero`, and `formatLongDate`'s only sample
-(`24 de enero`) is consistent with either reading. Recorded explicitly so a reviewer can
-challenge it cheaply.
+no single-digit-day sample (Verification Log), so this is a decision, not an observation from the
+mockup — but with Decision 7's move to `Intl.DateTimeFormat(locale, { day: 'numeric', … })`, it is
+no longer a hand-picked convention either: `day: 'numeric'` (as opposed to `day: '2-digit'`) is
+what produces no leading zero, and the plan-time probe (Verification Log) confirms
+`'2025-01-05'` → `'5 ene'` under that option directly. Spanish convention writes `5 de enero`, not
+`05 de enero`, and `formatLongDate`'s only mockup sample (`24 de enero`) is consistent with either
+reading. Recorded explicitly, with the exact `Intl` option that produces it, so a reviewer can
+challenge it cheaply by naming the one option to flip (`day: '2-digit'`) rather than by editing a
+hardcoded table.
 
 **Decision 9 — the RUT helpers are non-persisting, non-logging, and value-free in errors.** All
 four RUT functions are pure `string -> string | boolean`. They perform no I/O, keep no
@@ -344,13 +419,14 @@ All source changes are inside `packages/shared-utils/`.
   | Export | Signature | Returns |
   | --- | --- | --- |
   | `DateLocal` | `type DateLocal = string` (documented as `YYYY-MM-DD`) | — |
+  | `SupportedLocale` | `type SupportedLocale = 'es' \| 'en'` | The app's two supported locales (`docs/best-practices/stack/i18n.md`); no formatter accepts a wider string |
   | `CivilDate` | `interface CivilDate { year: number; month: number; day: number }` (`month` is 1-12) | — |
   | `ZonedParts` | `interface ZonedParts { year: number; month: number; day: number; hour: number; minute: number }` | — |
   | `Period` | `interface Period { start: DateLocal; end: DateLocal }` (both **inclusive**) | — |
   | `SANTIAGO_TIME_ZONE` | `const SANTIAGO_TIME_ZONE = 'America/Santiago'` | — |
-  | `deriveZonedParts` | `(instant: Date, timeZone?: string) => ZonedParts` | The only `Intl` call site |
+  | `deriveZonedParts` | `(instant: Date, timeZone?: string) => ZonedParts` | The timezone `Intl` call site (Decision 2) |
   | `deriveDateLocal` | `(instant: Date, timeZone?: string) => DateLocal` | `2025-01-24` |
-  | `formatTimeOfDay` | `(instant: Date, timeZone?: string) => string` | `14:32` (24-hour, zero-padded) |
+  | `formatTimeOfDay` | `(instant: Date, timeZone?: string) => string` | `14:32` (24-hour, zero-padded). Numeric only, so it takes no `locale` |
   | `isValidDateLocal` | `(value: string) => boolean` | Shape **and** calendar validity |
   | `parseDateLocal` | `(dateLocal: DateLocal) => CivilDate` | Throws `RangeError` on an invalid date |
   | `toDateLocal` | `(civil: CivilDate) => DateLocal` | Zero-pads month and day |
@@ -359,15 +435,20 @@ All source changes are inside `packages/shared-utils/`.
   | `getWeekPeriod` | `(dateLocal: DateLocal) => Period` | Monday-start. `2025-01-24` (Fri) → `{ start: '2025-01-20', end: '2025-01-26' }` |
   | `shiftMonthPeriod` | `(period: Period, months: number) => Period` | Drives the mockup's `‹ ›` month nav |
   | `shiftWeekPeriod` | `(period: Period, weeks: number) => Period` | Drives the `S-1` / `S-2` chart columns |
-  | `formatShortDate` | `(dateLocal: DateLocal) => string` | `24 ene` |
-  | `formatLongDate` | `(dateLocal: DateLocal) => string` | `viernes, 24 de enero de 2025` |
-  | `formatMonthYear` | `(dateLocal: DateLocal) => string` | `ene 2025` |
-  | `formatMonthAbbreviation` | `(dateLocal: DateLocal) => string` | `ene` |
+  | `formatShortDate` | `(dateLocal: DateLocal, locale: SupportedLocale) => string` | `24 ene` (`es`) / `Jan 24` (`en`) — the label `Intl` seam (Decision 2) |
+  | `formatLongDate` | `(dateLocal: DateLocal, locale: SupportedLocale) => string` | `viernes, 24 de enero de 2025` (`es`) / `Friday, January 24, 2025` (`en`) |
+  | `formatMonthYear` | `(dateLocal: DateLocal, locale: SupportedLocale) => string` | `ene 2025` (`es`) / `Jan 2025` (`en`) |
+  | `formatMonthAbbreviation` | `(dateLocal: DateLocal, locale: SupportedLocale) => string` | `ene` (`es`) / `Jan` (`en`) |
 
-  `timeZone` defaults to `SANTIAGO_TIME_ZONE` in all three instant-taking functions. Internal,
-  not exported: the `Map<string, Intl.DateTimeFormat>` formatter cache, and the
-  `MONTH_ABBREVIATIONS_ES` / `MONTH_NAMES_ES` / `WEEKDAY_NAMES_ES` tables (Decision 7).
-  `shiftMonthPeriod` throws `RangeError` if `period.start` is not the first of a month; because
+  `timeZone` defaults to `SANTIAGO_TIME_ZONE` in the three instant-taking functions
+  (`deriveZonedParts`, `deriveDateLocal`, `formatTimeOfDay`); `locale` has **no default** on the
+  four date-label formatters — every call site (item #2's UI layer, driven by
+  `apps/mobile/src/i18n/`) must pass it explicitly, so a future call site cannot silently render
+  Spanish under an English UI or vice versa. Internal, not exported: the
+  `Map<string, Intl.DateTimeFormat>` formatter cache (keyed on the full options set, so the
+  timezone seam and the four label formatters do not collide in the same cache entry), and
+  nothing else — there is no hardcoded month, day or weekday table (Decision 7). `shiftMonthPeriod`
+  throws `RangeError` if `period.start` is not the first of a month; because
   it always anchors on day 1 it needs no end-of-month clamping.
 
 - [ ] `src/rut.ts` — normalization, modulo-11 validation, display formatting
@@ -674,17 +755,29 @@ rather than ignored. A capability-failure test stubs `Intl.DateTimeFormat` so `f
 returns parts without a `year` entry, and asserts a descriptive `Error` naming the timezone —
 never a silently wrong date.
 
-**Group G — Spanish labels, exact against the mockup (Decision 7, 8).**
-`formatShortDate('2025-01-24')` → `24 ene`; `('2024-12-11')` → `11 dic`; `('2024-12-29')` →
-`29 dic`; `('2025-01-05')` → `5 ene` (**no leading zero**, Decision 8).
-`formatLongDate('2025-01-24')` → `viernes, 24 de enero de 2025` (the exact mockup literal);
-`('2025-01-05')` → `domingo, 5 de enero de 2025`; `('2024-02-29')` → `jueves, 29 de febrero de
-2024` (leap day and an accent-free weekday); `('2025-03-01')` → `sábado, 1 de marzo de 2025`
-(asserts `á` is U+00E1, not a decomposed sequence). `formatMonthYear('2025-01-24')` → `ene 2025`;
-`('2024-12-01')` → `dic 2024`. `formatMonthAbbreviation` for all twelve months returns the
-Decision 7 table, and a test asserts every abbreviation is exactly three characters and fully
-lowercase. A weekday sweep over seven consecutive dates asserts the full
+**Group G — locale-parameterised labels, exact against the mockup for `es` and honoured for `en`
+(Decision 7, 8).** Every call below passes `locale` explicitly — there is no default.
+`formatShortDate('2025-01-24', 'es')` → `24 ene`; `('2024-12-11', 'es')` → `11 dic`;
+`('2024-12-29', 'es')` → `29 dic`; `('2025-01-05', 'es')` → `5 ene` (**no leading zero**,
+Decision 8). `formatLongDate('2025-01-24', 'es')` → `viernes, 24 de enero de 2025` (the exact
+mockup literal); `('2025-01-05', 'es')` → `domingo, 5 de enero de 2025`; `('2024-02-29', 'es')` →
+`jueves, 29 de febrero de 2024` (leap day and an accent-free weekday); `('2025-03-01', 'es')` →
+`sábado, 1 de marzo de 2025` (asserts `á` is U+00E1, not a decomposed sequence).
+`formatMonthYear('2025-01-24', 'es')` → `ene 2025`; `('2024-12-01', 'es')` → `dic 2024`.
+`formatMonthAbbreviation(..., 'es')` for all twelve months is asserted against the exact
+`Intl.DateTimeFormat('es', { month: 'short' })` output pinned at plan time (Verification Log):
+`ene, feb, mar, abr, may, jun, jul, ago, sept, oct, nov, dic`. **`sept` (four letters) is
+asserted, not `sep`** — this is `Intl`'s own `es` CLDR data, re-verified rather than assumed
+uniform-width (see Decision 7's width caveat); the mockup has no September sample to contradict
+it. A weekday sweep over seven consecutive dates with `locale: 'es'` asserts the full
 `domingo`…`sábado` cycle in order.
+
+**`en` locale, honoured rather than assumed.** One representative case per formatter with
+`locale: 'en'`: `formatShortDate('2025-01-24', 'en')` → `Jan 24`; `formatLongDate('2025-01-24',
+'en')` → `Friday, January 24, 2025`; `formatMonthYear('2025-01-24', 'en')` → `Jan 2025`;
+`formatMonthAbbreviation('2025-01-24', 'en')` → `Jan`. These four assertions are the direct proof
+that the `locale` parameter is read and honoured, not merely accepted and ignored (mirroring the
+existing `deriveDateLocal(instant, 'UTC')` non-default-timezone proof in Group F).
 
 ### AC4 — No `toLocaleString` calls remain in app code
 
@@ -822,24 +915,25 @@ clock in") plus the ban on I/O means it cannot acquire one without an explicit A
 
 To be executed by the developer during implementation (not now).
 
-- [ ] `docs/best-practices/stack/expo-react-native.md` — three corrections, all recorded under
+- [ ] `docs/best-practices/stack/expo-react-native.md` — two corrections, both recorded under
       "Known documentation drift" above. (a) In **Copy and formatting**, replace "Formatting
       lives in `lib/format.ts` and is unit-tested. No inline `toLocaleString` calls." with a
       statement that money, date and RUT formatting live in `@finanzas/shared-utils` (because
       `@finanzas/bank-scraper` consumes them and cannot import from `apps/mobile`), that
       `apps/mobile/src/lib/format.ts` — if it is ever created — is a thin composition layer that
-      delegates, and that `toLocale*` is now an ESLint error rather than a convention.
-      (b) Change "Abbreviate (`3.7M`) **only** in the stat tiles on `home`" to also cover the
-      `home` category rows, which the mockup renders as `$279K`. (c) Fix the dangling
-      `[i18n.md](i18n.md)` link in that file — either retarget it at
-      `docs/best-practices/STACK-SPECIFIC.md` (written from
-      `docs/best-practices/stack/` as `../STACK-SPECIFIC.md`) or create the missing
-      `docs/best-practices/stack/i18n.md`; do not leave it dangling.
+      delegates, and that `toLocale*` is now an ESLint error rather than a convention. Also add
+      one clause noting that the date labels in the "Dates" bullet immediately below are produced
+      by `Intl.DateTimeFormat(locale, …)` inside `@finanzas/shared-utils`, per
+      [`i18n.md`](i18n.md) — not by a hardcoded table. (b) Change "Abbreviate (`3.7M`) **only** in
+      the stat tiles on `home`" to also cover the `home` category rows, which the mockup renders
+      as `$279K`. The `[i18n.md](i18n.md)` link at line 64 already resolves correctly (the file
+      exists — Verification Log) and needs no change.
 - [ ] `docs/best-practices/STACK-SPECIFIC.md` — in **Quick Reference**, extend the money bullet
       to name `formatClp` / `formatClpAbbreviated` as the only sanctioned CLP formatters and
       state that a hand-built amount string is a review blocker; extend the "Spanish (es-CL) in
       user-facing copy" bullet to say that Spanish **date labels** come from
-      `@finanzas/shared-utils`'s hard-coded tables (Decision 1), while **copy** comes from
+      `@finanzas/shared-utils`'s `Intl.DateTimeFormat(locale, …)`-based formatters — locale-
+      parameterised, no hardcoded table (Decisions 1, 2, 7) — while **copy** comes from
       `apps/mobile/src/i18n/`, and that the two surfaces do not overlap.
 - [ ] `docs/best-practices/stack/sqlite-drizzle.md` — in **Dates**, name `deriveDateLocal` as the
       one sanctioned way to produce a `date_local` value from an instant, and reference
@@ -1029,15 +1123,21 @@ AC4 lint ban (root `eslint.config.mjs`, Decision 11) — additive entry in the s
    `1352470 → 1.4M` and `999500 → 1.0M` cases are present and passing — those two are the
    rounding and tier-promotion guarantees.
 
-3. **`src/dates.ts`.** Create the module in two clearly separated halves: the pure civil-date
-   half (`parseDateLocal`, `toDateLocal`, `isValidDateLocal`, `addDays`, the four period
-   functions, the four label formatters, the three label tables) and the single timezone seam
-   (`deriveZonedParts`, `deriveDateLocal`, `formatTimeOfDay`, `SANTIAGO_TIME_ZONE`, the formatter
-   cache). Add a file-header comment stating Decision 3 — that `deriveZonedParts` is the only
-   function permitted to consult a timezone — so a later contributor does not scatter `Intl`
-   through the file.
-   *Verify*: `pnpm --filter @finanzas/shared-utils typecheck` passes; `grep -c 'Intl' src/dates.ts`
-   confirms `Intl` appears only inside `deriveZonedParts`.
+3. **`src/dates.ts`.** Create the module in three clearly separated sections: the pure civil-date
+   arithmetic (`parseDateLocal`, `toDateLocal`, `isValidDateLocal`, `addDays`, the four period
+   functions — no `Intl`, no table); the timezone seam (`deriveZonedParts`, `deriveDateLocal`,
+   `formatTimeOfDay`, `SANTIAGO_TIME_ZONE`, the formatter cache — Decision 2's first seam); and
+   the locale-label seam (`SupportedLocale`, `formatShortDate`, `formatLongDate`,
+   `formatMonthYear`, `formatMonthAbbreviation` — Decision 2's second seam, sharing the same
+   formatter cache, keyed so the two seams' entries cannot collide). Add a file-header comment
+   stating Decision 2 — that these five functions (`deriveZonedParts` plus the four label
+   formatters) are the **only** functions permitted to call `Intl`, and that no month, day or
+   weekday name may be hardcoded (Decision 7) — so a later contributor does not scatter `Intl`
+   through the file or reintroduce a label table.
+   *Verify*: `pnpm --filter @finanzas/shared-utils typecheck` passes; `grep -n 'Intl' src/dates.ts`
+   confirms every match is inside `deriveZonedParts`, `formatShortDate`, `formatLongDate`,
+   `formatMonthYear` or `formatMonthAbbreviation`, and that `parseDateLocal`, `toDateLocal`,
+   `isValidDateLocal`, `addDays` and the four period functions contain none.
 
 4. **`src/dates.test.ts`.** Write Groups A-G from the AC3 section, with `process.env.TZ` forced to
    `Pacific/Kiritimati` for the whole file (Group E).
