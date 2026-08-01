@@ -52,8 +52,11 @@ No user accounts, no seeded rows.
    `--switch-track-off` and `--r-control` with the same values.
 3. Run `pnpm --filter @finanzas/mobile test`.
 
-**Expected result**: `theme-tokens-parity.test.ts` passes in both directions — no token missing
-from `apps/mobile/src/theme.ts`, no extra key in `theme` that is absent from `design/tokens.json`.
+**Expected result**: `theme-tokens-parity.test.ts` passes all three of its assertions — every
+mirrored group deep-equals its `design/tokens.json` counterpart, `theme` carries no key outside
+the ten mirrored groups, and the mirrored groups plus the named exclusion (`categoryLabels`,
+which is category display copy, not a visual token) account for every non-`$` top-level key in
+`design/tokens.json`.
 
 ### Step 2: The mockup still renders unchanged after the `:root` rewrite
 
@@ -249,6 +252,7 @@ No database. No SQLite in this item.
 | The gallery route renders a blank screen | The app is running in a production/release configuration, so `__DEV__` is `false` | Restart with `pnpm dev:mobile`; this is the gate working as designed |
 | The deep link does nothing | The `(dev)` group parentheses were not escaped in the shell | Quote the whole URL: `npx uri-scheme open "finanzas://(dev)/gallery" --ios` |
 | `theme-tokens-parity.test.ts` fails with an extra key | `componentMetrics` was merged into `theme` instead of exported separately | Keep the two exports separate — the parity test runs against `theme` only |
+| `theme-tokens-parity.test.ts` fails on an unaccounted top-level group | A new group was added to `design/tokens.json` upstream | Decide whether it is a visual token (mirror it into `theme`) or not (add it to the named exclusion list with a rationale). Do not delete the assertion |
 | `no-style-literals.test.ts` flags a legitimate value | The value belongs in `theme.ts` | Move it to `componentMetrics` under the right primitive. Use a `style-literal-allow: <reason>` suppression only when the value genuinely cannot be a token, and expect it to be questioned in review |
 | `route-manifest-parity.test.ts` fails on set equality | `DEV_ONLY_ROUTES` was not subtracted, or the gallery route file was renamed | Keep the route at `app/(dev)/gallery.tsx` and the allowlist entry at `/(dev)/gallery` |
 | Colours look washed out on the simulator | Display colour profile, not the theme | Compare against the mockup in the same browser/display; note it as a known acceptable difference |

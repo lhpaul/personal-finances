@@ -95,6 +95,9 @@ cross-file consistency requirements put it over 3 days.
 | Component-render test tier | `docs/project/3-software-architecture.md` → Testing Strategy; `apps/mobile/package.json` | Jest + Maestro only; **no** `@testing-library/react-native`. Drives [Decision 8](#decision-8-no-new-test-dependency) |
 | No i18n catalogue owner | `gh issue list --state all --limit 40` | 25 issues; none owns `apps/mobile/src/i18n/`. Drives [Decision 9](#decision-9-gallery-copy-and-the-i18n-catalogue) |
 | Concurrent same-surface work | `gh pr list --state open --json number,title,headRefName,baseRefName --limit 50` | `[]` — no open PRs |
+| **Re-verification after `develop` moved** | `git fetch origin && git log --oneline HEAD..origin/develop` | `a993245 design: add categoryLabels so the seed has a real source for en names` — a direct push to `develop` that edits `design/tokens.json`. Merged into this branch; plan re-verified at SHA `f566722` |
+| Token state after that merge | `python3 -c "import json; d=json.load(open('design/tokens.json')); print(d['\$version'], [k for k in d if not k.startswith('\$')])"` | `1.0.0` and 11 groups: `colors`, `gradients`, `chart`, `typography`, `space`, `radius`, `shadow`, `layout`, `touchTarget`, `categoryIcons`, **`categoryLabels`** (new) |
+| All seven token gaps still absent | same script, checking `colors.switchTrackOff`, `radius.control`, `typography.scale.amount` keys | `switchTrackOff` absent; `radius` = `sm md lg xl card button pill` (no `control`); `amount` = `hero lg md` (no `stat`). Every gap in [Token gaps](#token-gaps-found-must-land-in-step-1) still applies |
 
 ---
 
@@ -106,14 +109,32 @@ cross-file consistency requirements put it over 3 days.
 | --- | --- | --- | --- | --- | --- |
 | Repository mode / artifact owner | `single_repo` (no `mode:` key) — this repository owns the plan and the plan PR | `.ai-dev-workflow.yaml` (no top-level `mode:`); `docs/workflow/development-workflow/repository-modes.md` | 2026-08-01, SHA `ecf46ef` | Current invocation only (item #2) | `Verified` |
 | Approved artifact base branch | `develop` | Parent orchestrator handoff; `AGENTS.md` → Git & Branching | 2026-08-01, SHA `ecf46ef` | Current invocation only (item #2) | `Verified` |
-| Canonical design-token source | `design/tokens.json` `$version 1.0.0` — **this plan mutates it** (Step 1) | `design/tokens.json` `$description`; `docs/best-practices/stack/design-tokens.md`; `design/README.md` → Token workflow | 2026-08-01, SHA `ecf46ef` | Open PRs touching `design/tokens.json`, `design/mockups/mobile/index.html`, `apps/mobile/src/theme.ts`, `apps/mobile/package.json`, or `apps/mobile/src/__tests__/route-manifest-parity.test.ts` → `gh pr list --state open` returned `[]` | `Verified` |
+| Canonical design-token source | `design/tokens.json` `$version 1.0.0`, **11** top-level groups including the new `categoryLabels` — **this plan mutates the file** (Step 1) | `design/tokens.json` `$description`; `docs/best-practices/stack/design-tokens.md`; `design/README.md` → Token workflow | Re-verified 2026-08-01 at SHA `f566722` (first checked at `ecf46ef`) | Open PRs touching `design/tokens.json`, `design/mockups/mobile/index.html`, `apps/mobile/src/theme.ts`, `apps/mobile/package.json`, or `apps/mobile/src/__tests__/route-manifest-parity.test.ts` → `gh pr list --state open` returned `[]`; **plus** direct pushes to `develop` on those paths | `Resolved` |
 | Ownership of `apps/mobile/src/db/` and `packages/shared-utils/` | Owned by concurrent items #3 and #4; **out of bounds for this plan** | Parent orchestrator handoff; `docs/project/2-repo-architecture.md` | 2026-08-01, SHA `ecf46ef` | Items #2, #3, #4 in the current batch; no open PRs on those paths | `Verified` |
 | Route/manifest parity contract owned by merged item #1 | Derived route set must equal the 25 manifest MVP routes | `apps/mobile/src/__tests__/route-manifest-parity.test.ts` (merged in #1) | 2026-08-01, SHA `ecf46ef` | No open PR modifies this file | `Verified` — this plan extends it with an explicit dev-only allowlist ([Decision 6](#decision-6-gallery-route-path-and-production-gating)) |
 
-No `Conflict` rows. Implementation-start re-verification: before the first file edit, the
-developer re-reads `design/tokens.json` `$version` and re-runs the open-PR query above; a
-changed `$version` or a new PR touching those paths is `Stale or conflicting` and must be
-returned to the parent orchestrator before any edit.
+**`Resolved` row — canonical design-token source.** The bounded check found competing evidence
+after the plan was first written: commit `a993245` ("design: add categoryLabels so the seed has
+a real source for en names") was pushed directly to `develop` and added a new top-level
+`categoryLabels` group to `design/tokens.json`. It was not visible to the open-PR query because
+it never was a PR.
+
+- **Affected plan statements**: [Decision 1](#decision-1-themets-is-generated-by-hand-parity-tested-by-machine)
+  (which token groups `theme.ts` mirrors) and the parity test's "no token missing from `theme`"
+  direction.
+- **Resolution**: `develop` was merged into this branch and the plan re-verified at SHA
+  `f566722`. `categoryLabels` is **excluded** from the `theme.ts` mirror — it is es/en display
+  copy for the seeded categories, consumed by the #3 seed and (later) the i18n catalogue, not a
+  visual token. Decision 1 now names the mirrored groups explicitly and adds a guard so a future
+  unknown group cannot be silently dropped.
+- **Decision owner**: tech-lead (this plan). All seven token gaps were re-confirmed still
+  absent, so no other plan statement changed.
+
+Implementation-start re-verification: before the first file edit, the developer re-reads
+`design/tokens.json` `$version` **and its top-level group list**, and re-runs both the open-PR
+query and `git log --oneline HEAD..origin/develop` for direct pushes. A changed `$version`, a
+new or removed top-level group, or a new same-surface change is `Stale or conflicting` and must
+be returned to the parent orchestrator before any edit.
 
 ---
 
@@ -187,13 +208,33 @@ is simply not the source for these six classes. This is recorded as
 ### Decision 1: `theme.ts` is generated by hand, parity-tested by machine
 
 `apps/mobile/src/theme.ts` is a hand-written TypeScript module (`as const`), not a build
-artifact. `apps/mobile/src/__tests__/theme-tokens-parity.test.ts` reads
-`design/tokens.json` at test time and asserts deep equality against the exported `theme`
-object for every group named in the brief (`colors`, `gradients`, `chart`, `typography`,
-`space`, `radius`, `shadow`, `layout`, `touchTarget`, `categoryIcons`), in **both** directions:
-no token missing from `theme`, no extra key in `theme` that is not in `tokens.json`. Keys
-beginning with `$` (`$description`, `$version`, `$source`) are excluded. This is what makes
-"typed mirror" enforceable rather than aspirational.
+artifact. `apps/mobile/src/__tests__/theme-tokens-parity.test.ts` reads `design/tokens.json`
+at test time and asserts deep equality against the exported `theme` object, in **both**
+directions: no token missing from `theme`, no extra key in `theme` that is not in
+`tokens.json`. Keys beginning with `$` (`$description`, `$version`, `$source`) are excluded
+everywhere.
+
+The mirrored groups are named explicitly — the **10** groups from the brief:
+
+`colors`, `gradients`, `chart`, `typography`, `space`, `radius`, `shadow`, `layout`,
+`touchTarget`, `categoryIcons`.
+
+`categoryLabels` (added to `design/tokens.json` by `develop` commit `a993245`) is the one
+**intentional exclusion**: it is es/en display copy for the 16 seeded categories, consumed by
+the item #3 seed and, later, the i18n catalogue. Copy does not belong in the theme
+(see [Decision 3](#decision-3-primitives-are-presentational-and-copy-free)), and no primitive
+reads it.
+
+To keep that exclusion honest, the test asserts three things:
+
+1. every mirrored group deep-equals its `tokens.json` counterpart;
+2. `theme` has no key outside the mirrored-group list;
+3. the union of the mirrored groups and the named exclusion list (`['categoryLabels']`) equals
+   the set of non-`$` top-level keys in `tokens.json` — so a **new** token group added upstream
+   fails the test until someone decides whether it is mirrored or excluded.
+
+Assertion 3 is the mechanism that makes "typed mirror" hold over time rather than drift the
+first time `tokens.json` grows.
 
 ### Decision 2: `theme` vs `componentMetrics`
 
@@ -457,9 +498,10 @@ Both live in `apps/mobile/src/__tests__/mu-class-coverage.test.ts`.
 
 **New — theme (Step 1)**
 
-- [ ] `apps/mobile/src/theme.ts` — `export const theme` (verbatim token mirror, `as const`) and
-      `export const componentMetrics` (per-primitive geometry, each entry commented with its
-      `.mu-*` selector and `index.html` line).
+- [ ] `apps/mobile/src/theme.ts` — `export const theme` (`as const`, mirroring the 10 groups
+      named in [Decision 1](#decision-1-themets-is-generated-by-hand-parity-tested-by-machine);
+      `categoryLabels` excluded) and `export const componentMetrics` (per-primitive geometry,
+      each entry commented with its `.mu-*` selector and `index.html` line).
 
 **New — primitives (Steps 2–4), all under `apps/mobile/src/components/ui/`**
 
@@ -737,7 +779,7 @@ recoverable; do not batch.
 2. Mirror the 6 mirrorable tokens into the mockup `:root`; rewrite the 6 named rules to use
    them; update the mirror comment at L9; add the "Superposiciones y controles" swatch group to
    `s-ds-colors`; update `design/mockups/mobile/INVENTORY.md` L3.
-3. Write `apps/mobile/src/theme.ts` — `theme` (verbatim mirror) and `componentMetrics`
+3. Write `apps/mobile/src/theme.ts` — `theme` (the 10 mirrored groups) and `componentMetrics`
    (per-primitive geometry with `.mu-*` + line-number comments).
 4. Write `apps/mobile/src/test-utils/mu-class-inventory.ts` and its unit test covering E1–E10.
 5. Write `apps/mobile/src/test-utils/mu-class-map.ts` with all 162 classes classified
