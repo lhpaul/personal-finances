@@ -275,11 +275,22 @@ the mockup, not invented: `$279K` (`279_000`), `$235K`, `$193K`, `$156K` carry n
   ambiguity is inherited from the UI contract, not introduced here.
 
 Rounding is half-up on the **magnitude**, so overall it is half-away-from-zero. It is computed by
-an internal `divideRoundHalfUp(numerator, denominator)` =
-`Math.floor((numerator + Math.floor(denominator / 2)) / denominator)` over non-negative safe
-integers. Both operands stay well below `2^53`, and IEEE-754 division is correctly rounded, so a
-quotient that is mathematically an integer is represented exactly and `Math.floor` cannot
-undershoot it. No `Math.round` on a float ratio, no `toFixed`.
+an internal `divideRoundHalfUp(numerator, denominator)` that stays **exact across the full
+safe-integer range**, not just "well below `2^53`": `formatClpAbbreviated` accepts every
+`amountMinorUnits` that `formatClp` does (Decision 5), so `numerator` can reach
+`Number.MAX_SAFE_INTEGER`, and at that magnitude `numerator + Math.floor(denominator / 2)` (with
+`denominator = 100_000` for the `M` tier) already exceeds `Number.MAX_SAFE_INTEGER` — confirmed at
+plan time (Verification Log): `Number.MAX_SAFE_INTEGER * 10` as a plain `Number` is stored as
+`90071992547409900`, not the exact `90071992547409910`, so a naive `Number`-only implementation is
+not guaranteed correct at the top of the range. `divideRoundHalfUp` is therefore implemented over
+`BigInt`: `Number((BigInt(numerator) + BigInt(denominator) / 2n) / BigInt(denominator))`.
+`denominator` is always one of the two compile-time constants used by this item — `1_000` (`K`
+tier) or `100_000` (`M` tier), both even, so `BigInt(denominator) / 2n` is itself exact integer
+division with no remainder to lose — and `BigInt` division on non-negative operands truncates
+toward zero, which is floor for non-negative values, matching the original `Math.floor` semantic
+exactly. The final `BigInt` quotient is always far below `2^53` (at most `90_071_992_547` for the
+largest possible `M`-tier input), so converting it back with `Number(...)` is exact too. No
+`Math.round` on a float ratio, no `toFixed`.
 
 **Decision 7 — month, weekday and month-abbreviation names come from
 `Intl.DateTimeFormat(locale, …)`, not a hardcoded table.** There is no `MONTH_ABBREVIATIONS_ES` constant, no
@@ -654,6 +665,7 @@ ever contains a `,` or a `U+00A0` — the two characters an `Intl` fallback woul
 | `-1500` | — | `−2K` | half-**away-from-zero** on the magnitude; U+2212 asserted by codepoint |
 | `-3700000` | `{ withCurrencySymbol: true }` | `−$3.7M` | sign precedes the symbol |
 | `1000000000` | — | `1000.0M` | ungrouped whole part (Decision 6) |
+| `Number.MAX_SAFE_INTEGER` (`9007199254740991`) | — | `9007199254.7M` | proves `divideRoundHalfUp` stays exact past `2^53` (Decision 6) — verified at plan time via exact `BigInt` arithmetic, not `Number.MAX_SAFE_INTEGER * 10` |
 
 Plus: `formatClpAbbreviated` rejects the same invalid inputs as Group D.
 
