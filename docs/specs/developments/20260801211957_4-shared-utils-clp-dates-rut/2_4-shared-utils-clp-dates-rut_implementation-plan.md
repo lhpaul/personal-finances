@@ -856,19 +856,50 @@ a classic off-by-one that must be pinned). `formatTimeOfDay` at local midnight r
 and never `24:00` (this is what `hourCycle: 'h23'` buys; `hour12: false` is a known source of
 `24:00` on some ICU builds). An explicit non-default timezone
 (`deriveDateLocal(instant, 'UTC')`) returns the UTC civil date, proving the parameter is honoured
-rather than ignored. A capability-failure test stubs `Intl.DateTimeFormat` so `formatToParts`
+rather than ignored. **A valid IANA alias round-trips**: `deriveZonedParts(instant, 'US/Eastern')`
+returns normally (does not throw) and its fields match `deriveZonedParts(instant,
+'America/New_York')` exactly — proving the canonicalization step (Code Samples,
+`deriveZonedParts`) accepts an alias that resolves to a *different* canonical string
+(`Intl.DateTimeFormat(undefined, { timeZone: 'US/Eastern' }).resolvedOptions().timeZone` is
+`'America/New_York'`, confirmed at plan time, Verification Log) instead of misreading it as an
+unhonoured zone. A capability-failure test stubs `Intl.DateTimeFormat` so `formatToParts`
 returns parts without a `year` entry, and asserts a descriptive `Error` naming the timezone —
 never a silently wrong date. A second, independent test exercises the **silent-ignore** failure
-mode, not just the missing-part one: it stubs `Intl.DateTimeFormat` so `resolvedOptions().timeZone`
-reports a different zone (e.g. `'UTC'`, standing in for a device's host zone) than the requested
+mode, not just the missing-part one: it stubs `Intl.DateTimeFormat` so that the fully-configured
+formatter (the one built with `hourCycle: 'h23'` and the five field options — the shape that only
+the *real* wall-clock formatter, never the bare canonicalization probe, ever requests) resolves to
+a different zone (e.g. `'UTC'`, standing in for a device's host zone) than the requested
 `'America/Santiago'`, while `formatToParts` still returns every required part type — the exact
 shape a Hermes build that accepts but silently ignores the `timeZone` option would produce, and
-the case the missing-part check alone would pass straight through. The test asserts the
-honoured-zone cross-check (Code Samples, `deriveZonedParts`) throws a descriptive `Error` naming
-both the requested and the resolved zone, never a silently wrong date. A third test asserts the
+the case the missing-part check alone would pass straight through. Critically, the stub leaves the
+*bare* canonicalization probe (the plain `Intl.DateTimeFormat(undefined, { timeZone })` call, no
+other options) honest — it is keyed off the presence of `hourCycle` in the constructor options, not
+off which `timeZone` string was passed — because the reduced-ICU builds this failure mode models
+ship a timezone *name* table (small, always present) separately from full offset/DST *rule* data
+(large, sometimes missing per zone); a stub that also broke the bare probe would test nothing, since
+it would make the canonicalization step and the honoured-zone check agree with each other for the
+wrong reason (Decision 3-style reviewer note: this alignment was independently verified while
+designing this addendum, not assumed). The test asserts the honoured-zone cross-check (Code
+Samples, `deriveZonedParts`) throws a descriptive `Error` naming both the requested and the resolved
+zone, never a silently wrong date. Because the module-level `formatterCache` is keyed by the
+*canonical* `timeZone`, and this mocked scenario and the happy-path scenario below both use the key
+`'America/Santiago'`, whichever scenario's `deriveZonedParts` call runs first in the same module
+instance populates the cache for that key and the second scenario's construction (and therefore its
+honoured-zone check) is skipped entirely on a cache hit — the check runs only once per distinct
+canonical `timeZone`, by design (Code Samples). Each mocked capability scenario in this group
+(missing-part, silent-ignore, and the alias round-trip above) must therefore call
+`jest.resetModules()` and re-`require`/re-`import` `dates.ts` before installing its `Intl` stub and
+invoking `deriveZonedParts`, so each scenario starts from an empty `formatterCache` and the
+construction branch — where the check actually runs — is guaranteed to execute; asserting on a
+second scenario without this reset risks a false pass from a cache hit that never re-enters the
+construction branch at all. (`dates.ts` does not export a test-only cache-clear function — no
+public surface in this package exists solely for tests, per the Layer-by-Layer table — so
+`jest.resetModules()` is the mechanism, not an exported reset hook.) A fourth test asserts the
 happy path is unaffected: when `resolvedOptions().timeZone` matches the requested zone exactly
 (the real behaviour of every runtime this item ships against — Node in Jest, and Hermes with full
-ICU, per the plan-time verification), `deriveZonedParts` returns normally with no extra cost.
+ICU, per the plan-time verification), `deriveZonedParts` returns normally with no extra cost; this
+test also resets modules first so it is not merely observing the silent-ignore test's cached
+formatter.
 
 **Group G — locale-parameterised labels, exact against the mockup for `es` and honoured for `en`
 (Decision 7, 8).** Every call below passes `locale` explicitly — there is no default.
@@ -1081,7 +1112,7 @@ To be executed by the developer during implementation (not now).
 | Risk | Likelihood | Impact | Mitigation |
 | --- | --- | --- | --- |
 | **Hermes does not support `Intl.DateTimeFormat` with a real IANA `timeZone` option (e.g. `America/Santiago`) on some target device and throws**, while every Node-based Jest test passes | Medium | High | Decision 2 isolates the whole risk in the timezone seam (`deriveZonedParts`) with an explicit capability check that throws a descriptive error instead of returning a silently wrong date. This risk does **not** extend to the date-label seam, which is pinned to `timeZone: 'UTC'` — a built-in identifier every ICU implementation supports without timezone-database lookups — so `formatShortDate` et al. are not exposed to this failure mode even if the timezone seam is. Runbook Step 6 is a device/simulator check that is marked **human-verification-required** and must not be claimed as passing from a Node run. If it fails on device, the fallback is a caller-supplied `utcOffsetMinutes` parameter — but do **not** pre-build that fallback; confirm the failure first |
-| **A Hermes build accepts the `timeZone` option but silently substitutes the device zone instead of throwing**, so `deriveDateLocal` quietly places a transaction on the wrong day/month when the device is outside Chile — the failure the original missing-part capability check could not catch, because a substituted zone still yields a complete, plausible-looking set of parts | Low-Medium | High | `deriveZonedParts` (Code Samples) also compares `formatter.resolvedOptions().timeZone` against the requested `timeZone` and throws if the runtime resolved to a different zone; Group F's mocked-`Intl` test exercises exactly this substitution, not just the missing-part case. This closes the gap for any runtime whose `resolvedOptions()` honestly reports the zone it actually used — which a spec-conformant engine must (ECMA-402 §12.1.3). **Residual risk, explicitly accepted rather than claimed closed**: this cannot be *fully* proven in Jest, because Node's ICU is fully spec-compliant and cannot be made to genuinely mis-resolve a zone without mocking `Intl` itself; a runtime so non-conformant that `resolvedOptions()` *also* misreports the zone it used would defeat this guard too. Runbook Step 6 now includes a device-only check (change the simulator's system timezone away from both UTC and `America/Santiago`, then re-run the fixed-instant assertion) that would visibly catch this exact substitution on a real device even in that worst case, because it observes the *actual* computed wall-clock value rather than trusting any in-process report |
+| **A Hermes build accepts the `timeZone` option but silently substitutes the device zone instead of throwing**, so `deriveDateLocal` quietly places a transaction on the wrong day/month when the device is outside Chile — the failure the original missing-part capability check could not catch, because a substituted zone still yields a complete, plausible-looking set of parts | Low-Medium | High | `deriveZonedParts` (Code Samples) also compares `formatter.resolvedOptions().timeZone` against the canonicalized requested `timeZone` (a valid IANA alias is resolved before this comparison, so it does not false-positive) and throws if the runtime resolved to a different zone; Group F's mocked-`Intl` test exercises exactly this substitution, not just the missing-part case. This closes the gap for any runtime whose `resolvedOptions()` honestly reports the zone it actually used — which a spec-conformant engine must (ECMA-402 §12.1.3). **Residual risk, explicitly accepted rather than claimed closed**: this cannot be *fully* proven in Jest, because Node's ICU is fully spec-compliant and cannot be made to genuinely mis-resolve a zone without mocking `Intl` itself; a runtime so non-conformant that `resolvedOptions()` *also* misreports the zone it used would defeat this guard too. Runbook Step 6 now includes a device-only check (change the simulator's system timezone away from both UTC and `America/Santiago`, then re-run the fixed-instant assertion) that would visibly catch this exact substitution on a real device even in that worst case, because it observes the *actual* computed wall-clock value rather than trusting any in-process report |
 | A future ICU/Hermes upgrade changes `formatToParts` output shape and dates silently shift | Low | High | Parts are read by `type`, never by position or by parsing a formatted string (Decision 2), and Group F pins the exact `ZonedParts` contract including the 1-based month. The capability check fails loudly on a missing part |
 | `Intl.NumberFormat.prototype.formatToParts` is unimplemented on iOS Hermes (throws `llvm_unreachable` at call time) — a device-verified finding from this item's brief | N/A (already confirmed, not hypothetical) | High if the design had relied on it | This is precisely why Decision 1 hand-builds every money string from integer arithmetic rather than assembling one from `Intl.NumberFormat.formatToParts` parts (the pattern Decision 2 uses safely for *dates*, where the equivalent `Intl.DateTimeFormat.formatToParts` call is well-supported). `money.ts` therefore has zero `Intl` call sites of any kind |
 | `Intl.DateTimeFormat('es', { month: 'short' })` renders September as `sept` (four letters), not a hand-picked three-letter `sep` | Low | Low | Decision 7's width caveat: the mockup's `.mu-bars__lbl` CSS declares no fixed width or monospace font (`design/mockups/mobile/index.html` line 494), so this does not break the chart-bar layout the superseded table-based design was protecting. Accepted as-is rather than reintroducing a hardcoded table to force uniform width |
@@ -1127,18 +1158,28 @@ function resolveSign(value: number, direction: MoneyDirection, signDisplay: Mone
 }
 ```
 
-The timezone seam (`src/dates.ts`, Decision 2) — note that parts are read by `type`, and the
-*resolved* zone is cross-checked against the *requested* one before the parts are trusted:
+The timezone seam (`src/dates.ts`, Decision 2) — note that parts are read by `type`, the
+*requested* zone is canonicalized before the cache lookup so a valid alias round-trips instead of
+false-positiving, and the *resolved* zone is cross-checked against the *canonical requested* one
+before the parts are trusted:
 
 ```ts
 // Illustrative — adapt during implementation
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
 export function deriveZonedParts(instant: Date, timeZone: string = SANTIAGO_TIME_ZONE): ZonedParts {
-  let formatter = formatterCache.get(timeZone);
+  // Canonicalize first: valid IANA aliases ('US/Eastern', 'Etc/UTC', a lowercase identifier)
+  // resolve to a *different* canonical string than the literal input (e.g. 'US/Eastern' ->
+  // 'America/New_York', confirmed at plan time, Verification Log). This bare probe — no
+  // hourCycle, no field options — only exercises the timezone *name* table, a small resource every
+  // ICU build ships even when it lacks full offset/DST *rule* data for a given zone, so it is not
+  // where a reduced-ICU device's silent-substitution bug lives; that bug is isolated to the
+  // fully-configured formatter built below.
+  const canonicalTimeZone = new Intl.DateTimeFormat(undefined, { timeZone }).resolvedOptions().timeZone;
+  let formatter = formatterCache.get(canonicalTimeZone);
   if (!formatter) {
     formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone,
+      timeZone: canonicalTimeZone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -1151,14 +1192,16 @@ export function deriveZonedParts(instant: Date, timeZone: string = SANTIAGO_TIME
     // silently substitutes a different zone for an unsupported/ignored `timeZone` option, this is
     // what catches it. formatToParts's presence-only check below cannot: a silently-substituted
     // zone still yields a complete, plausible-looking set of parts (Group F exercises exactly this
-    // case with a mocked Intl.DateTimeFormat, not just the missing-part case).
+    // case with a mocked Intl.DateTimeFormat, not just the missing-part case). The comparison is
+    // against `canonicalTimeZone`, not the raw `timeZone` parameter, so a valid alias that the
+    // runtime honours correctly no longer throws (Group F's alias round-trip vector).
     const resolvedTimeZone = formatter.resolvedOptions().timeZone;
-    if (resolvedTimeZone !== timeZone) {
+    if (resolvedTimeZone !== canonicalTimeZone) {
       throw new Error(
-        `deriveZonedParts: runtime resolved time zone "${resolvedTimeZone}" instead of the requested "${timeZone}" — this device's Intl implementation is not honoring the requested time zone`,
+        `deriveZonedParts: runtime resolved time zone "${resolvedTimeZone}" instead of the requested "${timeZone}" (canonical "${canonicalTimeZone}") — this device's Intl implementation is not honoring the requested time zone`,
       );
     }
-    formatterCache.set(timeZone, formatter);
+    formatterCache.set(canonicalTimeZone, formatter);
   }
   const found: Partial<Record<Intl.DateTimeFormatPartTypes, string>> = {};
   for (const part of formatter.formatToParts(instant)) {
