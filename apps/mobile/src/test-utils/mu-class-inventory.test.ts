@@ -76,4 +76,13 @@ describe('muClassInventory (Scanner A — Parser-risk addendum E1-E10)', () => {
   it('E10: throws a descriptive error when the <style> block is empty', () => {
     expect(() => muClassInventory(wrapStyle(''))).toThrow(/<style>/);
   });
+
+  it('E10: throws a descriptive error when the <style> block is whitespace-only', () => {
+    expect(() => muClassInventory(wrapStyle('   \n\t  '))).toThrow(/<style>/);
+  });
+
+  it('is safe to call repeatedly in the same process (module-level regexes reset lastIndex on every call)', () => {
+    const html = wrapStyle('.mu-btn { color: red; } .mu-card { color: blue; }');
+    expect(muClassInventory(html)).toEqual(muClassInventory(html));
+  });
 });

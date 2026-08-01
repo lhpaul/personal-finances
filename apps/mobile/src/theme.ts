@@ -297,6 +297,13 @@ export const componentMetrics = {
     control: 1.5,
   },
 
+  /** Shared shadow colour — React Native's shadow API takes a flat `shadowColor` plus a
+   * separate `shadowOpacity`, so a CSS `rgba(0, 0, 0, α)` shadow layer (e.g. `theme.shadow.sm`,
+   * used by `.mu-tx`) decomposes to this pure-black constant + the layer's own opacity. */
+  shadow: {
+    black: '#000000',
+  },
+
   text: {
     /** `.mu-h1` (L322): letterSpacing -.7px; lineHeight 28 * 1.18 = 33.04 → 33. */
     h1: { letterSpacing: -0.7, lineHeight: 33 },
@@ -336,6 +343,12 @@ export const componentMetrics = {
     subMarginTop: 2,
     /** `.mu-card__title` (L301) letter-spacing. */
     titleLetterSpacing: -0.2,
+    /** `theme.shadow.card`'s first layer (`0 1px 3px rgba(26, 29, 41, 0.06)`), decomposed for
+     * React Native's single-shadow API: offset-y, blur radius, opacity. The rgba tint
+     * (26, 29, 41) is `theme.colors.textPrimary`. */
+    shadowOffsetY: 1,
+    shadowRadius: 3,
+    shadowOpacity: 0.06,
   },
 
   hero: {
@@ -351,6 +364,10 @@ export const componentMetrics = {
     titleLetterSpacing: -0.4,
     /** `.mu-hero__sub` (L319) margin-top. */
     subMarginTop: 2,
+    /** `.mu-hero` (L305-308) has no explicit CSS height — it is content-driven. Conservative
+     * touch-target estimate for `TOUCH_METRICS`: 2 × vertical padding (`--sp5` = 20) + the
+     * icon size (52) = 92. */
+    minTouchHeight: 92,
   },
 
   badge: {
@@ -365,6 +382,8 @@ export const componentMetrics = {
   categoryChip: {
     /** `.mu-chip` (L380) min-height. */
     minHeight: 74,
+    /** `.mu-chip` (L379) inner (emoji/label/hint) gap. */
+    gap: 3,
     /** `.mu-chip__emoji` (L384) font-size. */
     emojiSize: 22,
     /** `.mu-chip__emoji` (L384): unitless line-height 1 → equal to font-size. */
@@ -408,6 +427,17 @@ export const componentMetrics = {
     metaMarginTop: 1,
     /** `.mu-tx--excluded` (L477) opacity. */
     excludedOpacity: 0.55,
+    /** `.mu-tx` (L469-474) has no explicit CSS height — it is content-driven. Conservative
+     * touch-target estimate for `TOUCH_METRICS`: 2 × vertical padding (`--sp3` = 12) + the
+     * name line (19) + `metaMarginTop` (1) + the meta line (`--sm` 12 × the inherited 1.5
+     * line-height = 18) = 62. */
+    minTouchHeight: 62,
+    /** `.mu-tx`'s `box-shadow: var(--sh-sm)` → `theme.shadow.sm` (`0 1px 2px 0 rgba(0, 0, 0,
+     * 0.05)`), decomposed for React Native's single-shadow API. Unlike `card`'s shadow, this
+     * one really is a pure-black tint in the token. */
+    shadowOffsetY: 1,
+    shadowRadius: 2,
+    shadowOpacity: 0.05,
   },
 
   textField: {
