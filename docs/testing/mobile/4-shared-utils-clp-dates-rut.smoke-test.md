@@ -235,7 +235,7 @@ This step covers **two** distinct device failure modes, not one:
   computes with the *device's own* zone instead, without throwing. This is the failure mode a
   reviewer flagged as not provably caught by a Node-only Jest run: Node's ICU is fully
   spec-compliant, so this specific misbehaviour cannot be *literally* reproduced in a Jest test —
-  only simulated via a mocked `Intl.DateTimeFormat`. Steps 5-6 below are what actually exercise it
+  only simulated via a mocked `Intl.DateTimeFormat`. Steps 5-8 below are what actually exercise it
   on a real device.
 
 1. Launch `apps/mobile` on an iOS Simulator or device dev build (`pnpm dev:mobile`), with the
@@ -249,11 +249,21 @@ This step covers **two** distinct device failure modes, not one:
    under Node. If the call throws the capability error instead, record the exact message and stop:
    the fallback is a caller-supplied UTC offset parameter, and that is an implementation-plan
    change, not a quick fix.
-5. **Silent-ignore check.** Change the simulator/device's **system timezone** to something distinct
-   from both `UTC` and `America/Santiago` — for example `America/New_York` (iOS Simulator:
-   Settings app > General > Date & Time > Time Zone, or `xcrun simctl` with a timezone override) —
-   and repeat step 2 with the same fixed instant, `2025-04-06T03:00:00Z`.
-6. **Expected result for step 5**: unchanged from step 4 — `2025-04-05` and `23:00`. If the values
+5. Change the simulator/device's **system timezone** to something distinct from both `UTC` and
+   `America/Santiago` — for example `America/New_York` (iOS Simulator: Settings app > General >
+   Date & Time > Time Zone, or `xcrun simctl` with a timezone override).
+6. **Reload/restart the app now, before repeating step 2.** `deriveZonedParts` keeps a
+   module-level formatter cache keyed by the canonical `timeZone` it was called with
+   (`'America/Santiago'` in this test); step 2 already populated that cache entry while the device
+   was on its default timezone, and merely changing the device's system timezone does not clear an
+   already-running JS process's in-memory cache. Reloading (shake gesture > Reload, or `r` in the
+   Metro terminal) or fully restarting the dev build forces `dates.ts`'s module state — and
+   therefore the formatter cache — to reinitialize, so the next call actually reconstructs the
+   formatter and re-runs the honoured-zone check under the new device timezone. Skipping this
+   reload would silently reuse the step-2 formatter and make step 8 pass even on a device that is
+   not honouring the requested zone, masking the exact bug this check exists to catch.
+7. **Silent-ignore check.** Repeat step 2 with the same fixed instant, `2025-04-06T03:00:00Z`.
+8. **Expected result for step 7**: unchanged from step 4 — `2025-04-05` and `23:00`. If the values
    instead shift to match the device's *new* local time (e.g. drift toward the device's
    `America/New_York` wall clock rather than staying pinned to `America/Santiago`),
    `deriveZonedParts` is silently substituting the device zone for the requested one — the exact
@@ -262,12 +272,12 @@ This step covers **two** distinct device failure modes, not one:
    a note: it means the runtime's `Intl.DateTimeFormat.resolvedOptions()` itself misreports the
    zone it used, so the code-level guard cannot distinguish the substitution from success, and the
    only defense left is this device check.
-7. Restore the simulator/device's system timezone to its default before continuing.
-8. Remove the temporary logging before committing.
+9. Restore the simulator/device's system timezone to its default before continuing.
+10. Remove the temporary logging before committing.
 
 If this step cannot be executed in the current environment, mark it **pending human
 verification** in the pull request description. Do not claim it as passing — this applies to both
-the baseline check (steps 1-4) and the silent-ignore check (steps 5-6) independently; a device run
+the baseline check (steps 1-4) and the silent-ignore check (steps 5-8) independently; a device run
 that only exercises the baseline device timezone has not verified the silent-ignore failure mode.
 
 ### Step 7: `toLocaleString` is banned, not merely absent
