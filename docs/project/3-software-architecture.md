@@ -118,7 +118,7 @@ screen → feature hook (TanStack Query) → src/db repository → Drizzle → S
 | Credentials in logs | The scraper's trace log redacts credential fields before any `console` call. `no-console` is enabled; traces go through a logger that strips known secret keys |
 | Database | SQLite in the app sandbox. Not encrypted at rest in the MVP — the OS sandbox plus device passcode is the boundary. **SQLCipher is a fast follow, tracked in the backlog** |
 | Auth | Identity only; no authorization surface exists |
-| Network | The app makes no requests to first-party servers. The WebView is restricted to the target bank's origin |
+| Network | No financial data ever leaves the device. The WebView is restricted to the target bank's origin. The only candidate first-party call is sign-in code delivery — an open decision, see above |
 | Deletion | "Eliminar cuenta" wipes the SQLite file and every `expo-secure-store` key, irreversibly and locally |
 
 Threat model note: an attacker with an unlocked device has the data. That is the same exposure
@@ -142,7 +142,12 @@ There are no server environments. "Environment" means **build profile**, via EAS
 | `main` | `production` (EAS store submit) | `.github/workflows/deploy.yml` | required reviewers + environment protection |
 
 Environment-specific secrets, **names only**: `EXPO_TOKEN`, `EAS_PROJECT_ID`,
-`GOOGLE_OAUTH_CLIENT_ID_IOS`, `GOOGLE_OAUTH_CLIENT_ID_ANDROID`, `APPLE_TEAM_ID`.
+`APPLE_TEAM_ID`.
+
+> **Open decision — sign-in delivery.** Email + one-time code needs something to send the mail
+> and hold the code, which a no-backend product does not have. Until this is resolved, no
+> secret for it is listed. See [1-business-domain.md](1-business-domain.md#business-rules)
+> rule 0 and issue #7.
 No bank-related secret exists at build time — credentials only ever come from the user.
 
 ## External Integrations
