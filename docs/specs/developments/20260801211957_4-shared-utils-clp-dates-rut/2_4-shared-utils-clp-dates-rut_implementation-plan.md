@@ -1242,7 +1242,8 @@ AC4 lint ban (root `eslint.config.mjs`, Decision 11) — additive entry in the s
 
 11. **Project docs.** Execute every item in the **Documentation Updates** section above.
     *Verify*: `npx markdownlint-cli2 "docs/**/*.md"` reports no new violation on the files you
-    touched, and the previously dangling `i18n.md` link now resolves.
+    touched. The `[i18n.md](i18n.md)` link at `docs/best-practices/stack/expo-react-native.md`
+    line 64 already resolves correctly (Verification Log) and is unaffected by this step.
 
 12. **CHANGELOG.** Add this entry under `[Unreleased]` → `### Added` in `CHANGELOG.md`, verbatim:
 
