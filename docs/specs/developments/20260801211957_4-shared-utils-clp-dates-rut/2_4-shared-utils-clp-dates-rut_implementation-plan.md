@@ -227,6 +227,25 @@ all — it depends only on `locale`. Consequence: `deriveZonedParts`, `deriveDat
 `formatTimeOfDay` are the **only** functions in `dates.ts` whose output can depend on a real
 (non-`'UTC'`) timezone; the date-label formatters depend only on `locale`.
 
+**Supported year range, and why `Date.UTC`'s legacy two-digit-year remap does not corrupt it.**
+`Date.UTC(year, …)` (and `new Date(year, …)`) has a well-known ECMA-262 legacy behaviour: any
+`year` from `0` to `99` is silently remapped to `1900 + year` — confirmed at plan time
+(Verification Log): `Date.UTC(50, 0, 1)` produces the instant for `1950-01-01`, not `0050-01-01`.
+This item calls `Date.UTC` in `formatShortDate`, `formatLongDate`, `getMonthPeriod` and
+`getWeekPeriod` (Code Samples, below), so an unvalidated two-digit `DateLocal` year would silently
+render or bucket transactions under the wrong century. The fix is validation, not a `Date.UTC`
+workaround: `isValidDateLocal` (and therefore `parseDateLocal`, which throws `RangeError` on
+anything `isValidDateLocal` rejects) restricts the supported `DateLocal` year to **`0100`-`9999`**,
+which subsumes the existing rejection of `'0000'` and additionally rejects every two-digit year
+`'0001'`-`'0099'` that `Date.UTC` would remap. Years `100`-`9999` are unaffected by the remap —
+confirmed at plan time that `Date.UTC(100, 0, 1)` through `Date.UTC(9999, 0, 1)` all round-trip to
+the literal year passed in — so no correction to any `Date.UTC` call site is needed; the guard
+lives entirely at the shared `DateLocal` parsing boundary, once, rather than duplicated at every
+call site. This is also the correct scope for the domain: bank transactions the app ever ingests
+carry a real, recent calendar year, so restricting `DateLocal` to a four-digit year in the
+`100`-`9999` range is simpler and safer than teaching every `Date.UTC` call site to correct for a
+quirk no real transaction date will ever trigger.
+
 **Decision 4 — the money sign is one total rule, not three special cases.** For both
 `formatClp` and `formatClpAbbreviated`:
 
@@ -438,7 +457,7 @@ All source changes are inside `packages/shared-utils/`.
 
   | Export | Signature | Returns |
   | --- | --- | --- |
-  | `DateLocal` | `type DateLocal = string` (documented as `YYYY-MM-DD`) | — |
+  | `DateLocal` | `type DateLocal = string` (documented as `YYYY-MM-DD`, supported year range `0100`-`9999` — Decision 3) | — |
   | `SupportedLocale` | `type SupportedLocale = 'es' \| 'en'` | The app's two supported locales (`docs/best-practices/stack/i18n.md`); no formatter accepts a wider string |
   | `CivilDate` | `interface CivilDate { year: number; month: number; day: number }` (`month` is 1-12) | — |
   | `ZonedParts` | `interface ZonedParts { year: number; month: number; day: number; hour: number; minute: number }` | — |
@@ -447,7 +466,7 @@ All source changes are inside `packages/shared-utils/`.
   | `deriveZonedParts` | `(instant: Date, timeZone?: string) => ZonedParts` | The timezone `Intl` call site (Decision 2) |
   | `deriveDateLocal` | `(instant: Date, timeZone?: string) => DateLocal` | `2025-01-24` |
   | `formatTimeOfDay` | `(instant: Date, timeZone?: string) => string` | `14:32` (24-hour, zero-padded). Numeric only, so it takes no `locale` |
-  | `isValidDateLocal` | `(value: string) => boolean` | Shape **and** calendar validity |
+  | `isValidDateLocal` | `(value: string) => boolean` | Shape, calendar validity, **and** the `0100`-`9999` year range (Decision 3 — rejects the two-digit years `Date.UTC` would remap) |
   | `parseDateLocal` | `(dateLocal: DateLocal) => CivilDate` | Throws `RangeError` on an invalid date |
   | `toDateLocal` | `(civil: CivilDate) => DateLocal` | Zero-pads month and day |
   | `addDays` | `(dateLocal: DateLocal, days: number) => DateLocal` | Signed |
@@ -878,7 +897,9 @@ column names the group above that owns it):
 | `'20250124'` | `false` | Separator-free |
 | `'2025/01/24'` | `false` | Wrong separator |
 | `'-2025-01-24'` | `false` | Leading sign |
-| `'0000-01-01'` | `false` | Year zero |
+| `'0000-01-01'` | `false` | Year zero — inside the rejected two-digit-year range (Decision 3) |
+| `'0099-12-31'` | `false` | Two-digit year — the top of `Date.UTC`'s legacy remap range (Decision 3) |
+| `'0100-01-01'` | `true` | First year **outside** the remap range — the year-range floor (Decision 3) |
 | `''` | `false` | Empty string |
 
 `parseDateLocal` throws `RangeError` for every `false` row above, and the thrown message names
