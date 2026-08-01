@@ -139,6 +139,21 @@ column in `schema.ts` uses `real()`. `src/db/money.ts` exports
 `/real|float|double|numeric/i`; the other feeds a fractional balance into the product-metadata
 guard and asserts rejection (AC4).
 
+`assertMinorUnits` alone does not enforce spec Business Rule 4 ("amounts are stored unsigned;
+direction comes from the movement type") — `Number.isInteger(-1000)` is `true`, so a negative
+bank-supplied amount would pass it silently and a negative `amount` would then read as a larger
+credit or a reversed debit depending on how a later item interprets sign. `src/db/money.ts`
+therefore also exports `assertPositiveMinorUnits(value: number, field: string): number`, which
+calls `assertMinorUnits` and additionally throws unless `value > 0`. `upsertBankTransactions`
+(Decision 15) calls `assertPositiveMinorUnits` for `transactions.amount` specifically — the one
+field the data model documents as always positive — while every other money field above keeps the
+sign-tolerant `assertMinorUnits`, because `user_financial_products.metadata.balance` and
+`available_credit` are read-only presentational values this item does not attempt to constrain
+(a negative balance is a legitimate overdraft state; promoting or validating it is out of scope,
+per the data model's own "read one row at a time" rationale). A test in
+`transactions.test.ts` feeds a fabricated bank response with `amount: -1000` into
+`upsertBankTransactions` and asserts it throws before any row is written.
+
 **Decision 5 — `PRAGMA foreign_keys = ON` is set on every connection, in both environments.**
 SQLite disables foreign-key enforcement by default. Without this pragma every
 `ON DELETE CASCADE` in [`docs/project/4-database-model.md`](../../../project/4-database-model.md)
@@ -438,10 +453,16 @@ listed in Documentation Updates so the two documents do not disagree.
     index `(transaction_category_id)`; index `(merchant_id)`; and the partial index on
     `(transaction_category_id)` `where transaction_category_id is null and excluded_at is null`
     — the "por categorizar" count on `home` that runs on every app open (AC23).
-  - `transaction_categories`: unique `(slug)`.
+  - `transaction_categories`: unique `(slug)`; index `(income, sort_order)` — backs
+    `listCategories(db, { income })`'s per-direction ordering (spec "What are my categories, in
+    my chosen order, for this direction?").
   - `merchant_aliases`: unique `(raw_pattern)`, index `(merchant_id)`.
   - `user_financial_institutions`: unique `(financial_institution_id)`.
   - `user_financial_products`: unique `(user_financial_institution_id, external_id)`.
+  - `financial_institutions`: index `(scraper_status)` — backs `listConnectableInstitutions`
+    (spec "Which banks can be connected right now?"). Without it, `indexes.test.ts`'s
+    `EXPLAIN QUERY PLAN` assertion for that question would see `SCAN financial_institutions`
+    and AC23 would fail on a table this item itself declares as filtered.
   - `users`: unique expression index on `sql\`1\`` (exactly one profile).
 - [ ] `src/db/fragments.ts` — `isIncluded` and `includedAmount`, and nothing else (Decision 9).
 - [ ] `src/db/json.ts` — guards for every JSON column: `parseAssets`, `parseInstitutionMetadata`,
@@ -452,7 +473,7 @@ listed in Documentation Updates so the two documents do not disagree.
       that is not an integer (Decision 4), and preserves unrecognised keys on write by merging
       rather than replacing. No `JSON.parse(...) as Shape` anywhere
       ([`docs/best-practices/stack/typescript.md`](../../../best-practices/stack/typescript.md)).
-- [ ] `src/db/money.ts` — `assertMinorUnits`.
+- [ ] `src/db/money.ts` — `assertMinorUnits`, `assertPositiveMinorUnits` (Decision 4).
 - [ ] `src/db/types.ts` — the domain types the repositories return, so a caller never sees a
       Drizzle row type
       ([`docs/best-practices/stack/typescript.md`](../../../best-practices/stack/typescript.md)).
@@ -478,14 +499,28 @@ listed in Documentation Updates so the two documents do not disagree.
 - [ ] `src/db/repositories/categories.ts` — `listCategories(db, { income, locale })` (ordered by
       `sort_order`, names resolved through `resolveLabel`), `deleteCategory(db, id)` (the
       transactional cascade of Business Rules 17-18 and AC8-AC10), `createCategory`,
-      `updateCategory`.
+      `updateCategory(db, id, input: UpdateCategoryInput)` where `UpdateCategoryInput` is a
+      TypeScript type that structurally **omits** `income` (`Omit<CategoryWritable, 'income'>`)
+      — a category's direction is set once at creation and every later edit (rename, re-emoji,
+      reorder) goes through this narrower type, so there is no repository call shape that can
+      change an existing category's direction. Enforced at two levels: the type omission makes
+      passing `income` a compile error, and a repository-level test asserts that a raw call
+      spreading `{ income: 1 }` into the update (bypassing the type via `as any`, simulating a
+      caller that ignores TypeScript) is stripped before the `UPDATE` statement is built, so the
+      column is never written by this function under any call shape (spec Seed Data Contract
+      Categories note — "a category's direction never changes after it is created" — and AC29).
 - [ ] `src/db/repositories/transactions.ts` — `upsertBankTransactions` (Decision 15),
       `countUncategorized` (reads through `isIncluded`, matching the partial index predicate
       exactly), `listMonth`, `totalForCategoryInPeriod` (reads through `includedAmount` and
       `isIncluded`), `listByMerchant`.
 - [ ] `src/db/repositories/institutions.ts` — `listConnectableInstitutions`,
-      `disconnectInstitution` (marks `status = 'disconnected'`, clears `credentials_key`, deletes
-      nothing — Business Rule 20, AC22).
+      `disconnectInstitution` (marks `status = 'disconnected'` only; **never touches
+      `credentials_key`**, deletes nothing — Business Rule 20, AC22). `credentials_key` is the
+      secure-store *key name*, not the credential value — the value is what the separate
+      secure-store item removes on disconnect — and the column is `TEXT NOT NULL`, so clearing it
+      to `NULL` would itself violate the declared schema; a disconnected row keeps its key name
+      unchanged so a later reconnect can reuse the same deterministic key. A test asserts
+      `disconnectInstitution` changes only `status` and leaves `credentials_key` byte-identical.
 - [ ] `src/db/repositories/merchants.ts` — `deleteMerchant` (aliases cascade, movements survive
       and lose `merchant_id` — Business Rule 21, AC22).
 - [ ] `src/db/checks/additivity.ts` — Decision 7's pure analyser.
@@ -565,7 +600,9 @@ AC24 requires the suite to need no simulator and no device.
    least one alias and a default category referencing a starter category by slug (AC2).
 3. No category row has slug `uncategorized`, and no category carries the `❓` glyph (AC3).
 4. `PRAGMA table_info` over every table of the migrated store reports no `real`/`float`/`double`
-   declared type; a product `metadata` carrying `1842300.5` is rejected by the guard (AC4).
+   declared type; a product `metadata` carrying `1842300.5` is rejected by the guard (AC4). A
+   fabricated bank response with `amount: -1000` is rejected by `upsertBankTransactions` before
+   any row is written, and no row exists afterwards (Business Rule 4, Decision 4).
 5. Grep every committed fixture and every seed catalogue entry for RUT-shaped strings
    (`/\b\d{7,8}-[\dkK]\b/`), `password`, `clave`, `token`, `secret`, `rut`; a bank connection row
    holds only `credentials_key` (AC5).
@@ -618,7 +655,8 @@ AC24 requires the suite to need no simulator and no device.
     repository: two connections to one bank; two products with one external id in one connection;
     two categories with one slug; two aliases with one pattern; two movements with one
     `(product, external_id)`; two movements with one `dedup_hash`; two `users` rows (AC21).
-22. Deletion behaviour: disconnect deletes nothing; removing a connection cascades to its products
+22. Deletion behaviour: disconnect deletes nothing **and leaves `credentials_key`
+    byte-identical** (only `status` changes); removing a connection cascades to its products
     and their movements; deleting a merchant removes its aliases and leaves its movements with
     `merchant_id` null; there is no `deleteTransaction` export at all (AC22).
 23. `EXPLAIN QUERY PLAN` for each of the six questions in the spec's *Questions the store must be
@@ -636,7 +674,9 @@ AC24 requires the suite to need no simulator and no device.
     `docs/project/4-database-model.md` fails loudly rather than silently (AC28).
 29. Every category has exactly one direction; the ten spending and six income starter categories
     carry the directions and per-direction orders of the Seed Data Contract; a seed refresh never
-    writes `income` (AC29).
+    writes `income`; `UpdateCategoryInput` omits `income` at the type level, and a raw call that
+    forces `income` into the update via `as any` is stripped before the `UPDATE` statement is
+    built, so no repository call shape can change an existing category's direction (AC29).
 
 **Test files** (paths relative to `apps/mobile/`). The smoke runbook filters the suite by these
 names, so they are fixed here rather than left to the implementer:
@@ -645,11 +685,11 @@ names, so they are fixed here rather than left to the implementer:
 | --- | --- |
 | `src/db/__tests__/schema.test.ts` | 4 (declared types), 21 (seven raw-insert identity tests), 28 (table-and-column census) |
 | `src/db/__tests__/migrations.test.ts` | 12, 16 |
-| `src/db/__tests__/seeds.test.ts` | 1, 2, 3, 17, 18, 19, 29 |
-| `src/db/__tests__/transactions.test.ts` | 6, 7, 20 (result-level `totalForCategoryInPeriod` / `countUncategorized` values) |
-| `src/db/__tests__/categories.test.ts` | 8, 9, 10 |
+| `src/db/__tests__/seeds.test.ts` | 1, 2, 3, 17, 18, 19, 29 (seed-refresh-never-writes-`income` half) |
+| `src/db/__tests__/transactions.test.ts` | 4 (negative-amount rejection), 6, 7, 20 (result-level `totalForCategoryInPeriod` / `countUncategorized` values) |
+| `src/db/__tests__/categories.test.ts` | 8, 9, 10, 29 (`updateCategory` direction-immutability half) |
 | `src/db/__tests__/merchants.test.ts` | 22 (merchant half) |
-| `src/db/__tests__/institutions.test.ts` | 22 (disconnect and cascade halves) |
+| `src/db/__tests__/institutions.test.ts` | 22 (disconnect, `credentials_key` preservation, and cascade halves) |
 | `src/db/__tests__/indexes.test.ts` | 23 (the six `EXPLAIN QUERY PLAN` assertions) |
 | `src/db/__tests__/labels.test.ts` | 11 |
 | `src/db/__tests__/json-guards.test.ts` | 4 (JSON money half) |
@@ -1097,7 +1137,7 @@ description must record:
 | AC1 | Steps 3, 6 | Bootstrap test on an empty store: every table exists, all starter content applied, no error thrown, no set-up input required |
 | AC2 | Step 6 | Seed test asserting the six institutions with exactly one `available`, the sixteen slugs of the Seed Data Contract, and every starter merchant having ≥1 alias and a default category |
 | AC3 | Step 6 | Test asserting no category row has slug `uncategorized` and no category carries `❓` |
-| AC4 | Steps 3, 6 | `PRAGMA table_info` scan for `real`/`float`/`double`/`numeric` over every table; `parseProductMetadata` rejects a fractional balance (Decision 4) |
+| AC4 | Steps 3, 6, 7 | `PRAGMA table_info` scan for `real`/`float`/`double`/`numeric` over every table; `parseProductMetadata` rejects a fractional balance; `assertPositiveMinorUnits` rejects a negative `transactions.amount` before any row is written (Decision 4) |
 | AC5 | Steps 8, 12 | Secrets test over every committed fixture and every catalogue entry; `user_financial_institutions` holds only `credentials_key`; full-diff review pass |
 | AC6 | Step 7 | Replay both recorded responses twice; row count unchanged in both the external-id and the fingerprint route (Decision 15) |
 | AC7 | Step 7 | Replay over a store with all nine person-owned columns set; assert each is byte-identical and the bank-owned columns are refreshed |
@@ -1115,11 +1155,11 @@ description must record:
 | AC19 | Step 6 | Seed run forced to throw part-way; store byte-identical afterwards (single transaction) |
 | AC20 | Steps 3, 5, 7, 9 | `fragments.ts` is the only statement; the scanner runs over the whole tree in CI; the Step 9 negative control proves the scanner is live; `transactions.test.ts` asserts `totalForCategoryInPeriod` and `countUncategorized` compute the correct value over a fixed full/partial/excluded fixture, not merely that they read through the fragment |
 | AC21 | Steps 3, 7 | Seven raw-insert tests that bypass the repository, one per identity guarantee, each expecting a constraint violation |
-| AC22 | Step 7 | Deletion-behaviour tests: disconnect deletes nothing; connection removal cascades; merchant removal keeps movements; no `deleteTransaction` export exists |
+| AC22 | Step 7 | Deletion-behaviour tests: disconnect deletes nothing and leaves `credentials_key` unchanged (only `status` is written); connection removal cascades; merchant removal keeps movements; no `deleteTransaction` export exists |
 | AC23 | Steps 3, 7 | `EXPLAIN QUERY PLAN` assertions for all six questions, requiring an index and forbidding `SCAN transactions`; the partial index predicate matches the `countUncategorized` predicate exactly |
 | AC24 | Steps 1, 2, 12 | Two-project Jest config (Decision 3); the `db` project runs on Node with `better-sqlite3` in memory; no test imports `expo-sqlite`; the whole suite runs under `pnpm test` in the existing CI `test` job |
 | AC25 | Steps 1, 10, 14 | `db:generate`, `db:check` and `db:seed` on `@finanzas/mobile`; the `db-check` CI job; the command lists in `AGENTS.md`, `docs/project/2-repo-architecture.md` and `docs/project/4-database-model.md` corrected |
 | AC26 | Step 9 | `dbAccessBoundary` lint rule plus the companion import-scan test; the lint negative control proves it fires |
 | AC27 | Steps 1, 12 | Only five dependencies added, none of them a network client; full-diff review for `fetch`, `XMLHttpRequest`, analytics and crash reporting |
 | AC28 | Steps 3, 14 | Side-by-side read in Step 3; the table-and-column census test; every intentional difference (the `seed_ledger` table, the `dedup_hash` input, the ✨ Otros trigger, the budget/recurring column lists) written back to `docs/project/4-database-model.md` in the same change |
-| AC29 | Steps 3, 6 | `income` is `NOT NULL` and is deliberately excluded from the seed update statement (Decision 10); a test asserts a catalogue change to a direction does not alter an existing category; the sixteen starter directions and per-direction orders are asserted against the Seed Data Contract |
+| AC29 | Steps 3, 6, 7 | `income` is `NOT NULL` and is deliberately excluded from the seed update statement (Decision 10); `UpdateCategoryInput` omits `income` at the type level and a forced raw update strips it before the `UPDATE` is built; a test asserts a catalogue change to a direction does not alter an existing category; the sixteen starter directions and per-direction orders are asserted against the Seed Data Contract |
