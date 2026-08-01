@@ -603,7 +603,17 @@ AC24 requires the suite to need no simulator and no device.
 18. Re-running the seeds with one extra catalogue entry inserts exactly that one row (AC18).
 19. A seed run forced to throw part-way leaves the store exactly as before (AC19).
 20. The inclusion-rule scanner over the real tree finds nothing, and its unit suite covers every
-    row of the edge-case table below (AC20).
+    row of the edge-case table below. This proves there is no *second* statement of the rule, but
+    not that the *one* statement computes the right number — agreement between two consumers of
+    one wrong fragment is not evidence, exactly the failure mode the troubleshooting table in
+    `AGENTS.md` describes. `transactions.test.ts` therefore adds a result-level assertion,
+    independent of the scanner: over a fixture of one full movement (`amount` 42000, not
+    excluded), one partially included movement (`amount` 42000, `included_amount` 21000, not
+    excluded) and one excluded movement (`amount` 15000, `excluded_at` set), `totalForCategoryInPeriod`
+    for that category and period returns `63000` (`42000 + 21000`), with the excluded movement's
+    amount absent from the sum; and `countUncategorized` over a fixture with a known number of
+    uncategorized, non-excluded movements returns that exact count, unaffected by categorized or
+    excluded rows in the same fixture (AC20).
 21. Every identity guarantee rejected at the store level by a raw insert that bypasses the
     repository: two connections to one bank; two products with one external id in one connection;
     two categories with one slug; two aliases with one pattern; two movements with one
@@ -636,7 +646,7 @@ names, so they are fixed here rather than left to the implementer:
 | `src/db/__tests__/schema.test.ts` | 4 (declared types), 21 (seven raw-insert identity tests), 28 (table-and-column census) |
 | `src/db/__tests__/migrations.test.ts` | 12, 16 |
 | `src/db/__tests__/seeds.test.ts` | 1, 2, 3, 17, 18, 19, 29 |
-| `src/db/__tests__/transactions.test.ts` | 6, 7 |
+| `src/db/__tests__/transactions.test.ts` | 6, 7, 20 (result-level `totalForCategoryInPeriod` / `countUncategorized` values) |
 | `src/db/__tests__/categories.test.ts` | 8, 9, 10 |
 | `src/db/__tests__/merchants.test.ts` | 22 (merchant half) |
 | `src/db/__tests__/institutions.test.ts` | 22 (disconnect and cascade halves) |
@@ -1103,7 +1113,7 @@ description must record:
 | AC17 | Step 6 | Seed-refresh test over a store with a renamed, re-emojied, reordered starter category, a deleted starter merchant, and person-created rows (Decision 10, cases 2 and 4) |
 | AC18 | Step 6 | Seed-refresh test with one extra catalogue entry; exactly one row inserted (Decision 10, case 1) |
 | AC19 | Step 6 | Seed run forced to throw part-way; store byte-identical afterwards (single transaction) |
-| AC20 | Steps 3, 5, 9 | `fragments.ts` is the only statement; the scanner runs over the whole tree in CI; the Step 9 negative control proves the scanner is live |
+| AC20 | Steps 3, 5, 7, 9 | `fragments.ts` is the only statement; the scanner runs over the whole tree in CI; the Step 9 negative control proves the scanner is live; `transactions.test.ts` asserts `totalForCategoryInPeriod` and `countUncategorized` compute the correct value over a fixed full/partial/excluded fixture, not merely that they read through the fragment |
 | AC21 | Steps 3, 7 | Seven raw-insert tests that bypass the repository, one per identity guarantee, each expecting a constraint violation |
 | AC22 | Step 7 | Deletion-behaviour tests: disconnect deletes nothing; connection removal cascades; merchant removal keeps movements; no `deleteTransaction` export exists |
 | AC23 | Steps 3, 7 | `EXPLAIN QUERY PLAN` assertions for all six questions, requiring an index and forbidding `SCAN transactions`; the partial index predicate matches the `countUncategorized` predicate exactly |
