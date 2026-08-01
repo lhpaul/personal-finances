@@ -431,6 +431,41 @@ The seam contract this item guarantees:
 
 ---
 
+## Files to Create
+
+| File | Purpose |
+| --- | --- |
+| `packages/shared-utils/src/money.ts` | CLP formatting (Decisions 4, 5, 6) |
+| `packages/shared-utils/src/money.test.ts` | AC1 — Groups A-E |
+| `packages/shared-utils/src/dates.ts` | `date_local` derivation, period boundaries, es-CL labels (Decisions 2, 3, 7, 8, 12) |
+| `packages/shared-utils/src/dates.test.ts` | AC3 — Groups A-G, plus the `DateLocal` parser-risk enumeration |
+| `packages/shared-utils/src/rut.ts` | Normalization, modulo-11 validation, display formatting (Decisions 9, 10) |
+| `packages/shared-utils/src/rut.test.ts` | AC2 — Groups A-F, plus the RUT parser-risk enumeration |
+| `docs/testing/mobile/4-shared-utils-clp-dates-rut.smoke-test.md` | Smoke runbook (created by this plan PR) |
+
+## Files to Modify
+
+| File | Change | Owner check |
+| --- | --- | --- |
+| `packages/shared-utils/src/index.ts` | Add three `export *` lines; keep `PACKAGE_NAME` byte-identical | This item |
+| `packages/shared-utils/src/index.test.ts` | Add the barrel-surface test (Implementation Order Step 7) | This item |
+| `packages/shared-utils/eslint.config.mjs` | Apply `sharedUtilsPurity`; raise `no-console` to `'error'` (Decision 11) | This item |
+| `eslint.config.mjs` (root) | **Additive only** — one `no-restricted-properties` entry and one new named export (Decision 11) | Shared file; no open PR touches it (Verification Log) |
+| `CHANGELOG.md` | One `[Unreleased]` → `### Added` entry (Implementation Order Step 12) | Shared file; merge conflicts are resolved by protocol 94 |
+| The five docs in **Documentation Updates** | See that section | This item |
+
+**Explicitly not modified**: `apps/mobile/src/theme.ts` and `apps/mobile/src/components/`
+(owned by concurrently running item #2), `apps/mobile/src/db/` (owned by item #3),
+`packages/shared-domain/eslint.config.mjs` and the `sharedDomainPurity` export (Decision 11
+deliberately leaves them alone), `packages/shared-utils/package.json` (no dependency is added),
+and `design/mockups/` (the UI contract is read, never edited — including its intentionally
+invalid RUT check digits).
+
+`apps/mobile/src/__tests__/workspace-wiring.test.ts` is touched **only** by the temporary,
+never-committed lint probes in Implementation Order Step 6.
+
+---
+
 ## Testing Strategy
 
 **Test types**: Unit (Jest + ts-jest, `packages/shared-utils`) only, plus a command-line smoke
