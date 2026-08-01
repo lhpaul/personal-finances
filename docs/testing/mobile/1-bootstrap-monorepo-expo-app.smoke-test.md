@@ -15,7 +15,7 @@ Before running this smoke test:
 - [ ] A **fresh clone** of the branch under test, in a directory that has never had
       `node_modules` installed (Steps 1-3 test clean-clone behaviour and cannot be trusted in a
       dirty tree).
-- [ ] The Node version named in `.nvmrc` is active (`nvm use`), and pnpm 10 or newer is
+- [ ] The Node version named in `.nvmrc` is active (`nvm use`), and pnpm 11.12.0 or newer is
       available (`pnpm --version`).
 - [ ] macOS with Xcode and an iOS Simulator installed — required for Steps 4-8 and for nothing
       else.
@@ -76,7 +76,9 @@ unchanged afterwards (`git status` reports a clean tree).
 **Maps to**: AC3
 
 1. Run `pnpm --filter @finanzas/shared-domain build`, then `dev` (start and stop it), then
-   `clean`, then `lint`.
+   `run clean` (the `run` is required — pnpm 11's own built-in `clean`/`purge` command
+   otherwise intercepts a bare `pnpm --filter <pkg> clean` and rejects `--filter`), then
+   `lint`.
 2. Repeat for `@finanzas/shared-utils` and `@finanzas/bank-scraper`.
 3. Run `pnpm --filter @finanzas/mobile test`.
 
@@ -285,6 +287,7 @@ the architecture document is reflected in that document in the same change.
 | A route opens the unmatched-route screen unexpectedly | The route file name does not match the manifest path exactly | Fix the file name; never rename a route without changing the manifest in the same change |
 | The parity test passes but a route is visibly missing | The manifest loader returned an empty screen set | Confirm the loader throws when `window.__MOCKUP_MANIFEST__` is undefined |
 | `pnpm format` rewrites non-markdown files | The root `format` glob was widened | Restore `prettier --write "**/*.md"` and use `format:code` for source |
+| `pnpm --filter <pkg> clean` errors with `Unknown option: 'recursive'` | pnpm 11 ships its own built-in `clean`/`purge` command, which `--filter clean` invoked from the repo root reaches instead of the workspace's `clean` script | Use `pnpm --filter <pkg> run clean` (the explicit `run` selects the package script); unaffected: root `pnpm clean` (no `--filter`), which runs via Turbo |
 
 ---
 

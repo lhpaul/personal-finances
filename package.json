@@ -1,14 +1,37 @@
 {
-  "name": "ai-dev-framework-template",
-  "version": "0.40.0",
+  "name": "finanzas",
+  "version": "0.0.0",
   "private": true,
-  "description": "Root package for markdown lint tooling",
+  "description": "Finanzas — personal-finance app for Chile. Turborepo + pnpm workspace root.",
+  "packageManager": "pnpm@11.12.0",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=11"
+  },
   "scripts": {
-    "format": "prettier --write \"**/*.md\""
+    "dev": "turbo run dev",
+    "dev:mobile": "pnpm --filter @finanzas/mobile dev",
+    "dev:mobile:ios": "pnpm --filter @finanzas/mobile dev:ios",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "format": "prettier --write \"**/*.md\"",
+    "format:code": "prettier --write \"{apps,packages}/**/*.{ts,tsx,js,jsx,json}\"",
+    "mockups:mobile": "open design/mockups/mobile/index.html",
+    "mobile:build:dev-store": "pnpm --dir apps/mobile dlx eas-cli build --profile development",
+    "mobile:build:production-store": "pnpm --dir apps/mobile dlx eas-cli build --profile production"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.8.0",
     "markdownlint-cli2": "0.22.0",
     "markdownlint-rule-relative-links": "5.1.0",
-    "prettier": "^3.8.3"
+    "prettier": "3.8.3",
+    "turbo": "^2.10.8",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.65.0"
   }
 }
