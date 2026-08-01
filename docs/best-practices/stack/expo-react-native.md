@@ -15,7 +15,7 @@ Groups in use: `(auth)`, `(onboarding)`, `(tabs)`. Everything else is a stack ro
 app/(tabs)/home.tsx          # route: layout + composition only
 features/home/
 ├── components/              # presentational, no data access
-├── queries.ts               # TanStack Query hooks over @finanzas/db repositories
+├── queries.ts               # TanStack Query hooks over apps/mobile/src/db repositories
 └── strings.ts               # es-CL copy, matching the mockup
 ```
 
@@ -69,7 +69,7 @@ implemented in the description.
 ## TypeScript
 
 - `strict: true`, no `any`, no non-null assertions on data crossing a module boundary.
-- Domain types come from `@finanzas/db`; components never redeclare a shape that already exists.
+- Domain types come from `apps/mobile/src/db`; components never redeclare a shape that already exists.
 - `no-console` is on. Use the logger, which redacts.
 
 ## Accessibility

@@ -36,13 +36,13 @@ The rules most likely to be violated in this codebase. Detail lives in the `stac
 
 - **The inclusion rule is written once.** Totals and charts count a transaction when
   `excluded_at IS NULL`, at `COALESCE(included_amount, amount)`. Import the shared query
-  fragment from `@finanzas/db`. A hand-rolled `WHERE` that forgets exclusions is a review
+  fragment from `apps/mobile/src/db`. A hand-rolled `WHERE` that forgets exclusions is a review
   blocker, not a nit.
 
-- **Screens never import Drizzle.** `screen → feature hook (TanStack Query) → @finanzas/db
-  repository`. A `db.select()` inside `app/` fails review.
+- **Screens never import Drizzle.** `screen → feature hook (TanStack Query) →
+  src/db repository`. A `db.select()` inside `app/` fails review.
 
-- **`@finanzas/core` stays pure.** No React, no SQL, no `expo-*`, no `Date.now()` — pass the
+- **`@finanzas/shared-domain` stays pure.** No React, no SQL, no `expo-*`, no `Date.now()` — pass the
   clock in. This is what makes the domain rules testable in milliseconds.
 
 - **Every screen state in the manifest is a real render branch.** A screen is not done until
@@ -52,7 +52,7 @@ The rules most likely to be violated in this codebase. Detail lives in the `stac
 
 - **Tokens come from `design/tokens.json`.** No hardcoded hex, no magic spacing. If a value is
   missing, add it to `tokens.json`, mirror it in the mockup `:root`, and consume it from
-  `@finanzas/ui` — in the same commit.
+  `apps/mobile/src/theme.ts` — in the same commit.
 
 - **Migrations are additive and irreversible in the field.** New tables and new nullable
   columns only. A migration ships with a test that opens a fixture DB from the previous version.

@@ -41,20 +41,33 @@ mockups (flagged `mvp: false`) and are **out** of implementation scope.
 Turborepo + pnpm workspaces. Full detail in
 [`docs/project/2-repo-architecture.md`](docs/project/2-repo-architecture.md).
 
+Conventions follow [`zeki-platform`](https://github.com/lhpaul/zeki-platform): `apps/*` +
+`packages/*` workspaces, scoped names, ESLint/Prettier at the repo root, theme and repositories
+inside the app.
+
 ```
-apps/mobile/            # Expo SDK 54 app — the only shippable artifact
+apps/mobile/                # @finanzas/mobile — the only shippable artifact
+  app/                      # Expo Router routes, mirroring the mockup manifest
+  src/
+    components/ui/          # Design-system primitives mirroring design/tokens.json
+    db/                     # Drizzle schema, migrations, seeds, repositories — the only SQL
+    features/               # One folder per domain area
+    lib/ · hooks/ · i18n/ · types/ · test-utils/
+    theme.ts                # Mirror of design/tokens.json
 packages/
-  bank-scraper/         # On-device WebView scraping + per-bank script configs
-  db/                   # Drizzle schema, migrations, seeds, repositories — the only SQL
-  core/                 # Pure domain logic: no React, no SQL, no I/O
-  ui/                   # Primitives mirroring design/tokens.json
-  configs/              # Shared ESLint / TS / Prettier / Jest
-design/                 # Tokens + HTML mockups (the UI contract)
-docs/                   # Specs, best practices, AI workflow protocols
+  shared-domain/            # Pure rules & domain types: no React, no SQL, no I/O
+  shared-utils/             # CLP money, dates, RUT
+  bank-scraper/             # On-device WebView scraping + per-bank script configs
+design/                     # Tokens + HTML mockups (the UI contract)
+docs/                       # Specs, best practices, AI workflow protocols
+.maestro/                   # Device E2E flows
 ```
 
-Layering: `app/ → feature hooks → @finanzas/db → SQLite`. Screens never import Drizzle.
-`@finanzas/core` never imports from `apps/` or `@finanzas/ui`.
+There is **no `packages/configs`** and **no UI package** — root ESLint config with per-app
+overrides, and the theme lives at `apps/mobile/src/theme.ts`.
+
+Layering: `app/ → feature hooks → src/db → SQLite`. Screens never import Drizzle.
+`@finanzas/shared-domain` never imports from `apps/`, from `expo-*`, or from any SQL library.
 
 Local, gitignored reference: `bank-scrapper-app/` (source for `packages/bank-scraper`;
 Banco de Chile already implemented) and `personal-finances-app-mockups-v0/` (superseded).
@@ -168,16 +181,16 @@ pnpm build
 
 # Test
 pnpm test
-pnpm --filter @finanzas/core test          # domain rules, fastest loop
-pnpm --filter @finanzas/db test            # repositories, migrations, dedup
+pnpm --filter @finanzas/shared-domain test          # domain rules, fastest loop
+pnpm --filter @finanzas/mobile test            # repositories, migrations, dedup
 pnpm --filter @finanzas/bank-scraper test  # injected scripts vs HTML fixtures
 
 # Type check
 pnpm typecheck
 
 # Database
-pnpm --filter @finanzas/db db:generate     # generate a Drizzle migration
-pnpm --filter @finanzas/db db:check        # apply migrations to a fixture DB
+pnpm --filter @finanzas/mobile db:generate     # generate a Drizzle migration
+pnpm --filter @finanzas/mobile db:check        # apply migrations to a fixture DB
 
 # Lint / Format
 pnpm lint
@@ -263,7 +276,7 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 |---------|--------------|
 | Scraper hangs on `LOGIN_START` | The bank changed a selector. Run `pnpm --filter @finanzas/bank-scraper test` — the fixture tests fail before the app does. Re-capture and scrub a fixture, then fix the script |
 | Duplicate movements after a sync | A write bypassed the repository upsert. All sync writes go through `(account_id, external_id)` / `dedup_hash` |
-| `home` and `dashboard` totals disagree | Someone hand-wrote an exclusion filter. Both must use the shared `isIncluded` / `includedAmount` fragments from `@finanzas/db` |
+| `home` and `dashboard` totals disagree | Someone hand-wrote an exclusion filter. Both must use the shared `isIncluded` / `includedAmount` fragments from `apps/mobile/src/db` |
 | Amounts off by a factor of 100, or with decimals | Something treated CLP as having cents. Minor unit is the peso; amounts are `INTEGER` |
 | Native module missing at runtime | Needs a dev build, not Expo Go |
 | App crashes on launch after an update | A migration threw. This is unrecoverable in the field — that is why `db:check` is a required check |

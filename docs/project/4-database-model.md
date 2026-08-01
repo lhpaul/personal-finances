@@ -256,8 +256,8 @@ Drizzle migrations bundled with the app, run on first launch after an update.
 `app_settings.schema_version` records the applied version.
 
 ```bash
-pnpm --filter @finanzas/db db:generate   # generate a migration from the schema
-pnpm --filter @finanzas/db db:check      # verify migrations apply to a fixture DB
+pnpm --filter @finanzas/mobile db:generate   # generate a migration from the schema
+pnpm --filter @finanzas/mobile db:check      # verify migrations apply to a fixture DB
 ```
 
 Because the database is on-device, **a bad migration is unrecoverable for that user**. Every
@@ -280,7 +280,7 @@ Shipped with the app, applied on first launch:
    suggestions.
 
 ```bash
-pnpm --filter @finanzas/db db:seed       # regenerate the bundled seed fixtures
+pnpm --filter @finanzas/mobile db:seed       # regenerate the bundled seed fixtures
 ```
 
 ## Open questions

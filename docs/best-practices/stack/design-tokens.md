@@ -1,7 +1,7 @@
 # Design tokens & UI
 
 [`design/tokens.json`](../../../design/tokens.json) is canonical. The mockup `:root` block and
-`@finanzas/ui`'s theme are both mirrors of it.
+`apps/mobile/src/theme.ts` are both mirrors of it.
 
 ## The rule
 
@@ -9,7 +9,7 @@ No hardcoded colour, spacing, radius, font size or shadow in app code. If a valu
 
 1. Add it to `design/tokens.json`
 2. Mirror it in `design/mockups/mobile/index.html` `:root`
-3. Expose it in `@finanzas/ui`'s theme
+3. Expose it in `apps/mobile/src/theme.ts`
 
 All three in the **same commit**. A drifting token file is worse than no token file.
 
@@ -22,7 +22,7 @@ All three in the **same commit**. A drifting token file is worse than no token f
 
 ## Component layer
 
-`@finanzas/ui` mirrors the `mu-*` primitives in the mockups one-to-one. Building a screen means
+`apps/mobile/src/components/ui/` mirrors the `mu-*` primitives in the mockups one-to-one. Building a screen means
 composing these, not restyling from scratch:
 
 | Mockup class | Component |
@@ -38,7 +38,7 @@ composing these, not restyling from scratch:
 | `.mu-tabbar` | `<TabBar>` |
 
 A one-off style inside a feature is a signal the primitive is missing. Add it to
-`@finanzas/ui` and to `#screen=ds-components`.
+`src/components/ui/` and to `#screen=ds-components`.
 
 ## Colour semantics
 

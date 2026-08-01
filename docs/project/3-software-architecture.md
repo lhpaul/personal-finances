@@ -40,7 +40,7 @@ change: one directory, unit-tested script generators, no app code touched.
 
 ### 3. Domain logic is pure and separate
 
-`@finanzas/core` holds merchant matching, category suggestion, the inclusion rule and period
+`@finanzas/shared-domain` holds merchant matching, category suggestion, the inclusion rule and period
 aggregates as pure functions over plain data. No React, no SQL, no I/O.
 
 **Why:** these are the rules most likely to be wrong and the cheapest to test. They run in
@@ -48,7 +48,7 @@ milliseconds in Jest without a simulator.
 
 ### 4. The mockups are the UI contract
 
-`design/mockups/mobile/` is the source of truth for flow, layout and copy. `@finanzas/ui`
+`design/mockups/mobile/` is the source of truth for flow, layout and copy. `src/components/ui`
 mirrors `design/tokens.json`. Every backlog item names the `#screen=` / `state=` it implements.
 
 **Why:** it removes the "what should this look like?" round-trip from the implementation agent
@@ -80,8 +80,8 @@ apps/mobile/
 └── lib/                        # Query client, db provider, formatters, i18n
 ```
 
-- **Components** are presentational; primitives come from `@finanzas/ui`.
-- **Hooks** in `features/*/queries.ts` wrap TanStack Query over `@finanzas/db` repositories.
+- **Components** are presentational; primitives come from `src/components/ui`.
+- **Hooks** in `features/*/queries.ts` wrap TanStack Query over `apps/mobile/src/db` repositories.
   Screens never call Drizzle directly.
 - **Screen states** in the mockups (`empty`, `error`, `filters`…) are real render branches.
   A screen is not done until every state in its manifest entry renders.
@@ -99,11 +99,11 @@ dependency, and must never receive credentials.
 ## Data Access Layer
 
 ```
-screen → feature hook (TanStack Query) → @finanzas/db repository → Drizzle → SQLite
-                                       ↘ @finanzas/core (pure rules)
+screen → feature hook (TanStack Query) → src/db repository → Drizzle → SQLite
+                                       ↘ @finanzas/shared-domain (pure rules)
 ```
 
-- `@finanzas/db` is the only module that emits SQL. Repository functions return domain types.
+- `src/db` is the only module that emits SQL. Repository functions return domain types.
 - Aggregates used by `home` and `dashboard` are SQL, not JS loops over the full table.
 - The inclusion rule (`excluded_at IS NULL`, `COALESCE(included_amount, amount)`) is
   implemented **once**, in a shared query fragment. Duplicating it is a review blocker.
@@ -164,10 +164,10 @@ arithmetic). Testing weight goes there.
 
 | Tier | Tool | Location | When to use |
 |------|------|----------|-------------|
-| **Unit — domain** | Jest | `packages/core/**/*.test.ts` | Every rule in [1-business-domain.md](1-business-domain.md#business-rules). Mandatory |
-| **Unit — data** | Jest + in-memory SQLite | `packages/db/**/*.test.ts` | Repositories, migrations, dedup on re-sync. Mandatory |
+| **Unit — domain** | Jest | `packages/shared-domain/**/*.test.ts` | Every rule in [1-business-domain.md](1-business-domain.md#business-rules). Mandatory |
+| **Unit — data** | Jest + in-memory SQLite | `apps/mobile/src/db/**/*.test.ts` | Repositories, migrations, dedup on re-sync. Mandatory |
 | **Unit — scraper** | Jest over jsdom | `packages/bank-scraper/**/*.test.js` | Injected script generators against captured HTML fixtures. Pattern already exists in `bank-scrapper-app` |
-| **Device E2E** | Maestro | `apps/mobile/.maestro/` | Happy paths only: onboarding, categorization, exclusion |
+| **Device E2E** | Maestro | `.maestro/` | Happy paths only: onboarding, categorization, exclusion |
 
 The automated suite is the canonical record of what works.
 
@@ -175,7 +175,7 @@ The automated suite is the canonical record of what works.
 
 ```bash
 pnpm test                                   # all unit tiers
-pnpm --filter @finanzas/core test           # fastest feedback loop
+pnpm --filter @finanzas/shared-domain test           # fastest feedback loop
 pnpm --filter mobile exec maestro test .maestro/   # device flows, requires a booted simulator
 ```
 

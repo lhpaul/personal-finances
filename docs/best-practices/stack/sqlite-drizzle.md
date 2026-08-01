@@ -25,7 +25,7 @@ it('migrates 0003 → 0004 without data loss', async () => {
 ```
 
 A migration that throws on a user's device leaves the app permanently unusable for them.
-`pnpm --filter @finanzas/db db:check` runs this suite; it is a required check.
+`pnpm --filter @finanzas/mobile db:check` runs this suite; it is a required check.
 
 ## Money
 
@@ -41,7 +41,7 @@ amount: real('amount'),
 Amounts are stored **positive**; direction comes from `type` (`debit` | `credit`). A negative
 value in `amount` means a parser bug upstream.
 
-Format only at the edge, in `@finanzas/ui`. A formatted string never travels back into a
+Format only at the edge, in `src/components/ui`. A formatted string never travels back into a
 calculation.
 
 ## The inclusion rule
@@ -50,7 +50,7 @@ Totals and charts count a transaction when `excluded_at IS NULL`, at
 `COALESCE(included_amount, amount)`. This exists exactly once:
 
 ```ts
-// packages/db/src/fragments.ts
+// apps/mobile/src/db/fragments.ts
 export const includedAmount = sql`COALESCE(${transactions.includedAmount}, ${transactions.amount})`;
 export const isIncluded = sql`${transactions.excludedAt} IS NULL`;
 ```
