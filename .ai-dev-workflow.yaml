@@ -51,6 +51,10 @@ review:
   on_ready:
     # Ordered list of GitHub/App/CLI reviewers that run only after draft gates
     # are clean and the PR has been converted with `gh pr ready`.
+    #
+    # CodeRabbit was enabled for this repository on 2026-08-01. Before that it
+    # was not installed here, and the loop polled it for ~80 minutes per PR for
+    # zero comments on #26, #27 and #28.
     github:
       - coderabbit
   #

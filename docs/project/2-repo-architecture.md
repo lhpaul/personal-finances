@@ -159,6 +159,24 @@ pnpm mobile:build:production-store
 
 Stack details and rationale: [3-software-architecture.md](3-software-architecture.md).
 
+## Backlog routing
+
+Not every item earns the full pipeline. The `Type` field on the project board decides the path:
+
+| Type | Path | Items |
+|------|------|-------|
+| `Feature` | spec → plan → implementation | #3 schema, #6 scraper, #9 credentials, #10 sync, #13 categorization |
+| `Refactor` | plan → implementation (no spec) | everything else |
+
+The `Refactor` items are not refactors in the literal sense — the label is how this framework
+routes work that does not need a written spec. Their specification already exists: the mockup
+screen and state list plus the issue body. A 450-line spec restating the mockup adds ceremony,
+not signal.
+
+`Feature` is reserved for the five places where being wrong is expensive: an irreversible
+migration, third-party HTML we do not control, credential handling, sync idempotency, and the
+core interaction loop.
+
 ## A note on `e2e/`
 
 The template ships a Playwright placeholder. This product has no web surface, so the
