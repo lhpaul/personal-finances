@@ -37,10 +37,14 @@ database seed data is required.
 | Money vector (zero) | `0` → `$0` |
 | Money vector (negative balance) | `-500000` → `−$500.000` (U+2212) |
 | Abbreviation vector (stat tile) | `3700000` → `3.7M` |
-| Abbreviation vector (category row) | `279000` → `$279K` |
+| Abbreviation vector (category row) | `279000` / `235000` / `193000` / `156000` → `$279K` / `$235K` / `$193K` / `$156K` |
+| Abbreviation vector (stat tile, half-up rounding) | `1352470` → `1.4M` |
+| Abbreviation vector (balance row, signed) | `2347530` with `{ direction: 'in' }` → `+2.3M` |
 | Date vector (short) | `2025-01-24` → `24 ene` |
 | Date vector (long) | `2025-01-24` → `viernes, 24 de enero de 2025` |
 | Date vector (month badge) | `2025-01-24` → `ene 2025` |
+| Date vector (chart-bar month abbreviations) | `2024-11-24` / `2024-12-24` / `2025-01-24` → `nov` / `dic` / `ene` |
+| Time-of-day vector (transaction meta `26 ene · 14:32`) | `formatShortDate('2025-01-26', 'es')` → `26 ene`; `formatTimeOfDay(new Date('2025-01-26T17:32:00Z'))` → `14:32` (`17:32Z` is `14:32` in `America/Santiago`, UTC−03, DST in effect in January) |
 | DST instant (repeated hour) | `2025-04-06T03:00:00Z` → `2025-04-05` / `23:00` |
 | DST instant (skipped hour) | `2025-09-07T04:00:00Z` → `2025-09-07` / `01:00` |
 | RUT (valid, `K` check digit) | `18.456.789-K` |
@@ -81,30 +85,84 @@ database seed data is required.
 between any two runs means a code path is reading the host clock or the host zone instead of the
 instant and time zone passed in.
 
-### Step 3: The formatted strings match the mockup, checked by hand
+### Step 3: The formatted strings match the mockup, via a temporary Jest test
 
 **Maps to**: AC1, AC3
 
-1. From the repository root, start a Node REPL that can load the package source, or add a
-   throwaway script — whichever the implementer prefers — and evaluate each of these:
+`@finanzas/shared-utils` already configures Jest (`ts-jest`, `packages/shared-utils/jest.config.js`)
+and exposes every helper from `src/index.ts` — use that harness, not an ad hoc Node REPL or
+throwaway script, so the smoke check runs under the same module resolution and TypeScript
+settings as the real test suite.
 
-   - `formatClp(42000, { direction: 'out' })`
-   - `formatClp(1200000, { direction: 'in' })`
-   - `formatClp(0)`
-   - `formatClp(-500000)`
-   - `formatClpAbbreviated(3700000)`
-   - `formatClpAbbreviated(279000, { withCurrencySymbol: true })`
-   - `formatShortDate('2025-01-24', 'es')`
-   - `formatLongDate('2025-01-24', 'es')`
-   - `formatMonthYear('2025-01-24', 'es')`
-   - `formatShortDate('2025-01-24', 'en')` (expect `Jan 24` — confirms `locale` is honoured, not
-     just accepted)
-   - `formatRut('18456789K')`
+1. Create a temporary test file, `packages/shared-utils/src/smoke-runbook.test.ts`, that imports
+   from `./index` and asserts every value in the Test Data table above with `expect(...).toBe(...)`:
 
-2. Compare each result against the Test Data table above, character by character.
-3. Confirm no non-abbreviated money string contains a comma or a non-breaking space.
+   ```ts
+   // Temporary — delete before committing (smoke-test runbook Step 3). Not part of the permanent
+   // suite: money.test.ts / dates.test.ts / rut.test.ts already cover this behaviour exhaustively.
+   import {
+     formatClp,
+     formatClpAbbreviated,
+     formatShortDate,
+     formatLongDate,
+     formatMonthYear,
+     formatMonthAbbreviation,
+     formatTimeOfDay,
+     formatRut,
+   } from './index';
 
-**Expected result**: every value matches exactly. Delete the throwaway script before committing.
+   describe('smoke-test runbook Step 3 — mockup fidelity', () => {
+     it('money vectors match the mockup', () => {
+       expect(formatClp(42000, { direction: 'out' })).toBe('$42.000');
+       expect(formatClp(1200000, { direction: 'in' })).toBe('+$1.200.000');
+       expect(formatClp(0)).toBe('$0');
+       expect(formatClp(-500000)).toBe('−$500.000');
+     });
+
+     it('abbreviation vectors match the mockup, including half-up rounding and the signed balance row', () => {
+       expect(formatClpAbbreviated(3700000)).toBe('3.7M');
+       expect(formatClpAbbreviated(1352470)).toBe('1.4M');
+       expect(formatClpAbbreviated(2347530, { direction: 'in' })).toBe('+2.3M');
+       expect(formatClpAbbreviated(279000, { withCurrencySymbol: true })).toBe('$279K');
+       expect(formatClpAbbreviated(235000, { withCurrencySymbol: true })).toBe('$235K');
+       expect(formatClpAbbreviated(193000, { withCurrencySymbol: true })).toBe('$193K');
+       expect(formatClpAbbreviated(156000, { withCurrencySymbol: true })).toBe('$156K');
+     });
+
+     it('date-label vectors match the mockup, and locale is honoured, not just accepted', () => {
+       expect(formatShortDate('2025-01-24', 'es')).toBe('24 ene');
+       expect(formatLongDate('2025-01-24', 'es')).toBe('viernes, 24 de enero de 2025');
+       expect(formatMonthYear('2025-01-24', 'es')).toBe('ene 2025');
+       expect(formatShortDate('2025-01-24', 'en')).toBe('Jan 24');
+     });
+
+     it('chart-bar month abbreviations match the mockup', () => {
+       expect(formatMonthAbbreviation('2024-11-24', 'es')).toBe('nov');
+       expect(formatMonthAbbreviation('2024-12-24', 'es')).toBe('dic');
+       expect(formatMonthAbbreviation('2025-01-24', 'es')).toBe('ene');
+     });
+
+     it("matches the mockup's transaction meta \"26 ene · 14:32\"", () => {
+       // 2025-01-26T17:32:00Z is 2025-01-26 14:32 in America/Santiago (UTC-03, DST in effect in
+       // January — see AC3's Group D in the implementation plan).
+       expect(formatShortDate('2025-01-26', 'es')).toBe('26 ene');
+       expect(formatTimeOfDay(new Date('2025-01-26T17:32:00Z'))).toBe('14:32');
+     });
+
+     it('formatRut matches the mockup', () => {
+       expect(formatRut('18456789K')).toBe('18.456.789-K');
+     });
+   });
+   ```
+
+2. Run `pnpm --filter @finanzas/shared-utils test -- smoke-runbook` and read the summary.
+3. Every `expect(...).toBe(...)` above already fails on a stray comma or non-breaking space in a
+   non-abbreviated money string, since string equality is exact — no separate manual check is
+   needed.
+4. Delete `packages/shared-utils/src/smoke-runbook.test.ts` before committing.
+
+**Expected result**: `pnpm --filter @finanzas/shared-utils test -- smoke-runbook` reports every
+`it` in the temporary file passing. The temporary test file is never committed.
 
 ### Step 4: RUT behaviour and privacy
 
@@ -137,9 +195,10 @@ message, and no module-level mutable state in `rut.ts`.
    - the category row amounts `$279K`, `$235K`, `$193K`, `$156K`;
    - the transaction row amounts `+$1.200.000` and `$42.000`;
    - the badge `ene 2025` and the chart bar labels `nov`, `dic`, `ene`;
-   - the transaction meta `26 ene · 14:32` — confirm your `formatShortDate('...', 'es')` output is
-     the `26 ene` portion and your `formatTimeOfDay` output is the `14:32` portion, with the ` · `
-     supplied by the caller, not by this package.
+   - the transaction meta `26 ene · 14:32` — confirm Step 3's
+     `formatShortDate('2025-01-26', 'es')` result is the `26 ene` portion and Step 3's
+     `formatTimeOfDay(new Date('2025-01-26T17:32:00Z'))` result is the `14:32` portion, with the
+     ` · ` supplied by the caller, not by this package.
 4. Navigate to `#screen=bank-credentials` and `#screen=settings-account`. Confirm the RUT is
    rendered as `12.345.678-9` (placeholder) and `18.456.789-0` (filled), matching
    `formatRut`'s grouping and dash placement.
