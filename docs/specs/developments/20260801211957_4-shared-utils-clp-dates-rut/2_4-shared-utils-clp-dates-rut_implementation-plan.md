@@ -153,7 +153,11 @@ constants in `money.ts`. Rationale, scoped precisely: `Intl.NumberFormat('es-CL'
 'currency', currency: 'CLP' })` returns `$1.200.000` on full-ICU Node, but its output for the
 locale tags this app actually renders under (`es`, `en` — not `es-CL`) is not guaranteed to match
 the mockup, and `Intl.NumberFormat.prototype.formatToParts` is unimplemented on iOS Hermes
-(`llvm_unreachable` — see Decision 5's neighboring note and the Risks table). `docs/best-practices/
+(`llvm_unreachable` at call time) — a device-verified finding from this correction's brief, not
+reproducible from this plan's Node-based verification environment, and recorded as its own row in
+the Risks table below because it rules out one specific alternative design (assembling a money
+string from `Intl.NumberFormat.formatToParts` output instead of hand-building it) rather than
+merely motivating the chosen one. `docs/best-practices/
 stack/i18n.md`'s own rule for this exact situation is: "If the platform output differs, format by
 hand — the mockup wins, not the platform default." That is the standard this decision applies,
 not a blanket claim that `Intl` is broken or unusable. `Intl.NumberFormat` also takes a `number`,
@@ -299,8 +303,8 @@ September abbreviation does not violate any layout constraint the mockup actuall
 item accepts `Intl`'s locale-provided abbreviation as-is rather than reintroducing a hardcoded
 table to force three-letter uniformity, which would recreate the defect this correction removes.
 
-**Decision 8 — days are rendered without a leading zero.** `formatShortDate('2025-01-05')` →
-`5 ene`, and `formatLongDate('2025-01-05')` → `domingo, 5 de enero de 2025`. The mockup contains
+**Decision 8 — days are rendered without a leading zero.** `formatShortDate('2025-01-05', 'es')` →
+`5 ene`, and `formatLongDate('2025-01-05', 'es')` → `domingo, 5 de enero de 2025`. The mockup contains
 no single-digit-day sample (Verification Log), so this is a decision, not an observation from the
 mockup — but with Decision 7's move to `Intl.DateTimeFormat(locale, { day: 'numeric', … })`, it is
 no longer a hand-picked convention either: `day: 'numeric'` (as opposed to `day: '2-digit'`) is
@@ -1005,7 +1009,7 @@ function resolveSign(value: number, direction: MoneyDirection, signDisplay: Mone
 }
 ```
 
-The one timezone seam (`src/dates.ts`, Decision 2) — note that parts are read by `type`:
+The timezone seam (`src/dates.ts`, Decision 2) — note that parts are read by `type`:
 
 ```ts
 // Illustrative — adapt during implementation
@@ -1042,6 +1046,41 @@ export function deriveZonedParts(instant: Date, timeZone: string = SANTIAGO_TIME
     hour: Number(found.hour),
     minute: Number(found.minute),
   };
+}
+```
+
+The locale-label seam (`src/dates.ts`, Decision 2 and 7) — no hardcoded table, `timeZone: 'UTC'`
+pinned so a host timezone cannot shift the day, `locale` has no default:
+
+```ts
+// Illustrative — adapt during implementation
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function getLabelFormatter(locale: SupportedLocale, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const cacheKey = `${locale}:${JSON.stringify(options)}`;
+  let formatter = formatterCache.get(cacheKey);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' });
+    formatterCache.set(cacheKey, formatter);
+  }
+  return formatter;
+}
+
+export function formatShortDate(dateLocal: DateLocal, locale: SupportedLocale): string {
+  const { year, month, day } = parseDateLocal(dateLocal);
+  const instant = new Date(Date.UTC(year, month - 1, day));
+  return getLabelFormatter(locale, { day: 'numeric', month: 'short' }).format(instant);
+}
+
+export function formatLongDate(dateLocal: DateLocal, locale: SupportedLocale): string {
+  const { year, month, day } = parseDateLocal(dateLocal);
+  const instant = new Date(Date.UTC(year, month - 1, day));
+  return getLabelFormatter(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(instant);
 }
 ```
 
