@@ -30,6 +30,10 @@ delegated `/run-epic` human-checkpoint behavior, use
 [`workflow/1024-human-checkpoint-lifecycle.smoke-test.md`](workflow/1024-human-checkpoint-lifecycle.smoke-test.md)
 as the end-to-end lifecycle runbook.
 
+Product smoke runbooks live under `docs/testing/mobile/` (e.g.
+[`mobile/1-bootstrap-monorepo-expo-app.smoke-test.md`](mobile/1-bootstrap-monorepo-expo-app.smoke-test.md)),
+separate from the workflow-framework runbooks above.
+
 ---
 
 ## 2. Choose Execution Approach

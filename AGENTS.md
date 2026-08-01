@@ -173,9 +173,9 @@ For normal Codex usage, use `/run-work` to scan the portfolio and discover what 
 
 <!-- workflow-shell-contract: bash -->
 ```bash
-# Development
+# Development (Node 22 via .nvmrc, pnpm 11.12.0 via packageManager)
 pnpm install
-pnpm --filter mobile exec expo start
+pnpm dev:mobile
 
 # Mockups (the UI contract — open before implementing any screen)
 open design/mockups/mobile/index.html
@@ -192,7 +192,7 @@ pnpm --filter @finanzas/bank-scraper test  # injected scripts vs HTML fixtures
 # Type check
 pnpm typecheck
 
-# Database
+# Database (arrives with the database item, #3)
 pnpm --filter @finanzas/mobile db:generate     # generate a Drizzle migration
 pnpm --filter @finanzas/mobile db:check        # apply migrations to a fixture DB
 

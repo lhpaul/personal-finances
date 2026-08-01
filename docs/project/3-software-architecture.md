@@ -76,21 +76,25 @@ never sees financial data. `users.id` and stable UUID keys already exist as anch
 ```
 apps/mobile/
 ├── app/                        # Expo Router — routes mirror the manifest
-│   ├── (auth)/sign-in.tsx · verify-code.tsx
 │   ├── (onboarding)/…          # intro → value → connect-bank → … → ready
-│   ├── (tabs)/home.tsx · transactions.tsx · budgets.tsx · benefits.tsx
+│   ├── (tabs)/home.tsx · transactions.tsx
 │   ├── categorize/…            # intro · index · merchant/[merchantId] · complete
 │   ├── transactions/[transactionId].tsx
 │   ├── dashboard.tsx
 │   └── settings/…
-├── features/                   # One folder per domain area
-│   └── <feature>/{components,hooks,queries}.ts
-└── lib/                        # Query client, db provider, formatters, i18n
+├── src/
+│   ├── features/                # One folder per domain area
+│   │   └── <feature>/{components,hooks,queries}.ts
+│   └── lib/                     # Query client, db provider, formatters, i18n
 ```
 
+There is no `(auth)` route group — this product has no sign-in. The tab bar renders exactly
+two tabs in the MVP, Inicio and Transacciones; Presupuestos and Beneficios are not tab
+destinations until those sections ship.
+
 - **Components** are presentational; primitives come from `src/components/ui`.
-- **Hooks** in `features/*/queries.ts` wrap TanStack Query over `apps/mobile/src/db` repositories.
-  Screens never call Drizzle directly.
+- **Hooks** in `src/features/*/queries.ts` wrap TanStack Query over `apps/mobile/src/db`
+  repositories. Screens never call Drizzle directly.
 - **Screen states** in the mockups (`empty`, `error`, `filters`…) are real render branches.
   A screen is not done until every state in its manifest entry renders.
 - **Copy is Spanish (es-CL)** and lives with the component. No i18n framework in the MVP; a
@@ -185,7 +189,7 @@ The automated suite is the canonical record of what works.
 ```bash
 pnpm test                                   # all unit tiers
 pnpm --filter @finanzas/shared-domain test           # fastest feedback loop
-pnpm --filter mobile exec maestro test .maestro/   # device flows, requires a booted simulator
+pnpm --filter @finanzas/mobile exec maestro test .maestro/   # device flows, requires a booted simulator
 ```
 
 Non-negotiable cases:

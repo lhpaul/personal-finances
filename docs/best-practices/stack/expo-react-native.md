@@ -7,7 +7,8 @@ Expo Router, file-based. Routes mirror `route` in
 exactly — the manifest is the routing spec, so `/(tabs)/home` in the manifest is
 `app/(tabs)/home.tsx` in the app. Changing a route means changing both, in the same commit.
 
-Groups in use: `(auth)`, `(onboarding)`, `(tabs)`. Everything else is a stack route.
+Groups in use: `(onboarding)`, `(tabs)`. There is no `(auth)` group — this product has no
+sign-in. Everything else is a stack route.
 
 ## Screen structure
 

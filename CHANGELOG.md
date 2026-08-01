@@ -16,3 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stack-specific best practices for Expo/React Native, SQLite + Drizzle, the bank scraper and
   design tokens
 - AI development workflow from the `ai-dev-framework-template`
+- **Bootstrap the monorepo and the Expo app** (#1): Turborepo + pnpm workspace with the Expo
+  SDK 54 app (`apps/mobile`, Expo Router, strict TypeScript), the `shared-domain`,
+  `shared-utils` and `bank-scraper` packages, placeholder routes for every MVP mockup screen,
+  an enforced shared-domain import restriction, and lint / type-check / test checks on pull
+  requests

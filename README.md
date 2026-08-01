@@ -11,8 +11,8 @@ everything in a local SQLite database. There is no backend.
 
 ## Status
 
-Pre-implementation. Design, data model, architecture and backlog are done; the app is not
-built yet.
+The monorepo and the Expo app skeleton exist: every MVP route renders a placeholder naming
+the mockup screen it stands for. No screen is implemented yet.
 
 | Artifact | Where |
 |----------|-------|
@@ -31,11 +31,11 @@ open design/mockups/mobile/index.html
 The mockups are the UI contract — flow, layout, copy and every screen state. Read
 [`docs/project/1-business-domain.md`](docs/project/1-business-domain.md) next.
 
-Once the app exists:
+Run the app:
 
 ```bash
 pnpm install
-pnpm --filter mobile exec expo start
+pnpm dev:mobile
 ```
 
 ## How it works
@@ -64,8 +64,8 @@ Turborepo + pnpm. Details in
 
 ## MVP scope
 
-In: sign-in, Banco de Chile connection, sync, categorization, transactions, dashboard,
-settings, local reminders.
+In: Banco de Chile connection, sync, categorization, transactions, dashboard, settings, local
+reminders. There is no sign-in — the profile is the device.
 
 Out (present in the mockups, flagged `mvp: false`): presupuestos, planificación, beneficios,
 banks other than Banco de Chile, multi-device sync.
