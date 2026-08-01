@@ -16,7 +16,13 @@ const sharedConfig = tseslint.config(
     ignores: ['**/dist/**', '**/.turbo/**', '**/.expo/**', '**/node_modules/**'],
   },
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  {
+    // Scoped to TypeScript files only: `tseslint.configs.recommended` sets rules such as
+    // `@typescript-eslint/no-require-imports` that are wrong for the plain CommonJS `.js`
+    // config files every workspace has (jest.config.js, metro.config.js, babel.config.js).
+    files: ['**/*.{ts,tsx}'],
+    extends: [...tseslint.configs.recommended],
+  },
   {
     // Every workspace's own config file (jest.config.js, eslint.config.mjs, metro.config.js,
     // babel.config.js) runs under Node, not a bundler or browser — without this, ESLint's
