@@ -116,3 +116,4 @@ Cambios deliberados al reconstruir desde `personal-finances-app-mockups-v0`:
 | Login social | Fuera. Ver diferencias arriba |
 | Auth en el MVP | Fuera. El perfil es el dispositivo; `auth` y `verify-code` quedan `mvp: false` |
 | Tab bar | Los mockups dibujan 4 tabs. **El MVP renderiza solo Inicio y Transacciones**; Presupuestos y Beneficios aparecen cuando esas secciones se implementen |
+| Toggle de sincronización automática en `bank-review` | Removido. El modelo de datos no lleva `auto_sync` por ahora: el sync es implícito (al abrir la app, si pasaron más de 6 h). El toggle vuelve si se agrega la columna |

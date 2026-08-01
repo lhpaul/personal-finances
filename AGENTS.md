@@ -279,7 +279,7 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 | Symptom | Likely cause |
 |---------|--------------|
 | Scraper hangs on `LOGIN_START` | The bank changed a selector. Run `pnpm --filter @finanzas/bank-scraper test` — the fixture tests fail before the app does. Re-capture and scrub a fixture, then fix the script |
-| Duplicate movements after a sync | A write bypassed the repository upsert. All sync writes go through `(account_id, external_id)` / `dedup_hash` |
+| Duplicate movements after a sync | A write bypassed the repository upsert. All sync writes go through `(user_financial_product_id, external_id)` / `dedup_hash` |
 | `home` and `dashboard` totals disagree | Someone hand-wrote an exclusion filter. Both must use the shared `isIncluded` / `includedAmount` fragments from `apps/mobile/src/db` |
 | Amounts off by a factor of 100, or with decimals | Something treated CLP as having cents. Minor unit is the peso; amounts are `INTEGER` |
 | Native module missing at runtime | Needs a dev build, not Expo Go |

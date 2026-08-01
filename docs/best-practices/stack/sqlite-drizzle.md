@@ -66,13 +66,14 @@ repository upsert:
 ```ts
 await db.insert(transactions).values(rows)
   .onConflictDoUpdate({
-    target: [transactions.accountId, transactions.externalId],
+    target: [transactions.userFinancialProductId, transactions.externalId],
     set: { balanceFields… },      // never overwrite user decisions
   });
 ```
 
-**Never overwrite user-owned columns on conflict**: `category_id`, `category_source`, `note`,
-`excluded_at`, `exclusion_reason`, `included_amount`, `review_flag`, `merchant_id`. The bank
+**Never overwrite user-owned columns on conflict**: `transaction_category_id`,
+`category_source`, `note`, `excluded_at`, `exclusion_reason`, `included_amount`,
+`review_flag`, `merchant_id`. The bank
 owns `raw_description`, `amount`, `type`, `occurred_at`; the user owns everything else.
 
 ## Queries
@@ -83,8 +84,8 @@ owns `raw_description`, `amount`, `type`, `occurred_at`; the user owns everythin
   predicate matching it exactly (`category_id IS NULL AND excluded_at IS NULL`).
 - Repository functions return domain types, not Drizzle rows. Screens must not know a column
   name.
-- Wrap multi-table writes (a sync run touches `accounts`, `transactions`, `bank_connections`)
-  in a transaction.
+- Wrap multi-table writes (a sync run touches `user_financial_products`, `transactions`,
+  `user_financial_institutions`) in a transaction.
 
 ## Dates
 
@@ -94,5 +95,8 @@ time reintroduces the timezone bug the column exists to prevent.
 
 ## What never goes in the database
 
-Credentials. Not encrypted, not hashed, not "just the RUT plus a token". `bank_connections`
-stores a keychain **key**; the value lives in `expo-secure-store`.
+Credentials — including **the RUT**, which is half of what logs into the bank. Not encrypted,
+not hashed, not "just the RUT". `user_financial_institutions` stores a keychain **key**; every
+value lives in `expo-secure-store`. There is no `national_id_value` column, by design: with
+~30M valid Chilean RUTs and a derivable check digit, an unsalted hash is a rainbow table away
+from plaintext.

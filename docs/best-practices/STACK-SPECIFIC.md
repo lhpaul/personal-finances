@@ -59,7 +59,7 @@ The rules most likely to be violated in this codebase. Detail lives in the `stac
   There is no way to fix a bad migration on a user's phone.
 
 - **Re-syncing must be idempotent.** Every write path from the scraper goes through the
-  repository's upsert keyed on `(account_id, external_id)` / `dedup_hash`. Adding a direct
+  repository's upsert keyed on `(user_financial_product_id, external_id)` / `dedup_hash`. Adding a direct
   `insert` from sync code reintroduces the duplicate-movements bug.
 
 - **Bank scripts are isolated and fixture-tested.** Bank-specific selectors live only under
