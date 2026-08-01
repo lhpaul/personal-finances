@@ -387,8 +387,9 @@ Explicitly **not** in scope for the route skeleton:
 7. Brief-declared out of scope: screen implementations, database schema, scraper logic; routes
    render placeholders.
 8. Brief acceptance criteria: install/lint/type-check/test pass from a clean clone; the mobile
-   development command boots the app in the iOS Simulator; every route in the manifest exists
-   and is reachable; the import restriction fails a deliberate violation; automated checks are
+   development command boots the app in the iOS Simulator; every MVP route in the manifest
+   exists and is reachable, with no route for a screen flagged `mvp: false`; the tab bar renders
+   exactly two tabs; the import restriction fails a deliberate violation; automated checks are
    green on the pull request.
 
 ---
