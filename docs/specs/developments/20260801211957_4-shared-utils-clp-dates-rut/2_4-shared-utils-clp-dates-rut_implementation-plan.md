@@ -786,8 +786,17 @@ for the same underlying reason — its Monday-start would be `0099-12-28`. Symme
 `10000-01-01`), and `getWeekPeriod('9999-12-31')` throws `RangeError` because its Sunday-end would
 be `10000-01-02`. A guard-doesn't-misfire control case, `getWeekPeriod('0100-01-05')` (safely
 inside the range on both ends), still returns `{ '0100-01-01', '0100-01-07' }` normally. Every
-`RangeError` message in this addendum names the operation and the offending year (dates are not
-credential material, unlike RUTs — Decision 9's no-echo rule does not apply here).
+`RangeError` in this addendum names the offending year and the arithmetic operation whose guard
+actually fired (`toDateLocal`, the single construction-side guard — Decision 3) — not necessarily
+the public function the test called. `addDays`'s `RangeError` therefore names `addDays` (it fires
+the guard directly), but `getWeekPeriod` propagates that same `addDays` `RangeError` unchanged
+(Code Samples, `getWeekPeriod`; "Neither function catches or wraps..." below), so a
+`getWeekPeriod`-triggered failure carries a message naming `addDays`, not `getWeekPeriod`. This is
+intentional, not a bug: the year and the fact that a boundary was crossed are always present in the
+message, and callers are expected to detect the failure via `instanceof RangeError`, not by parsing
+the operation name out of the message text (dates are not credential material, unlike RUTs —
+Decision 9's no-echo rule does not apply here, so there is no privacy reason to wrap the message,
+only an ergonomics trade-off the plan accepts in favour of the "one guard, not many" principle).
 
 **Group C — `shiftMonthPeriod` / `shiftWeekPeriod`.** `shiftMonthPeriod({ '2025-01-01',
 '2025-01-31' }, -1)` → `{ '2024-12-01', '2024-12-31' }` (back across a year end);
@@ -1234,7 +1243,9 @@ export function getWeekPeriod(dateLocal: DateLocal): Period {
 Neither function catches or wraps the `RangeError` `addDays` / `toDateLocal` throw at the `0100`/`9999`
 boundary ("Arithmetic self-consistency at the range boundary", Decision 3) — it propagates to the
 caller unchanged, exactly like `parseDateLocal`'s existing `RangeError` for a directly out-of-range
-input.
+input. This is why the Testing Strategy's Group B addendum states the error-message contract as
+"names the operation whose guard fired, not necessarily the public function called" — a
+`getWeekPeriod` boundary failure surfaces `addDays`'s message unchanged, by design.
 
 RUT check digit and value-free errors (`src/rut.ts`, Decisions 9 and 10):
 
