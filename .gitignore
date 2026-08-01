@@ -19,6 +19,16 @@ Thumbs.db
 # Node
 node_modules/
 
+# Build / task-runner output
+dist/
+.turbo/
+*.tsbuildinfo
+
+# Expo
+.expo/
+apps/mobile/ios/
+apps/mobile/android/
+
 # Temp files
 .tmp/
 

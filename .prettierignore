@@ -1,0 +1,7 @@
+node_modules
+dist
+.expo
+.turbo
+pnpm-lock.yaml
+design/mockups/mobile/index.html
+e2e
