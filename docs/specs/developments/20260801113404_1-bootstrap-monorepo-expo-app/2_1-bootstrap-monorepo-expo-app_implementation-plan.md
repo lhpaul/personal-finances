@@ -168,6 +168,14 @@ the routing contract (Business Rule 3); a reviewer should not have to count file
 loads `design/mockups/mobile/mockup-manifest.js` and asserts set equality against the route files
 under `apps/mobile/app/`. This is the enforcement mechanism behind AC5, AC6 and AC14.
 
+The manifest lives **outside** the `apps/mobile` workspace, so Turborepo's default task inputs
+(the workspace's own files) would not see a manifest edit and could serve a stale cached `test`
+result — the parity guard would silently stop guarding. The `test` task in `turbo.json` therefore
+declares `design/mockups/mobile/mockup-manifest.js` as an explicit global dependency
+(`globalDependencies`), so editing the routing contract invalidates the cache. Implementation
+Order Step 7 verifies this by editing the manifest, re-running `pnpm test`, and confirming the
+run is not reported as a cache hit.
+
 **Decision 12 — no end-to-end tier is wired in this item.** The web Playwright placeholder in
 `e2e/` stays disabled and untouched: no Playwright dependency is added, `e2e-regression.yml` is
 not edited, and the `ENABLE_TEMPLATE_PLACEHOLDER_REGRESSION` repository variable is not set, so
@@ -175,36 +183,37 @@ the `E2E regression (placeholder)` check keeps reporting as skipped (AC10, Busin
 Device end-to-end coverage through Maestro is **item #22's** scope; `.maestro/` is not created
 here.
 
----
+### Unverified external-behaviour claims
 
-## Root Command Surface
+The decisions above rest on framework behaviour that **cannot be verified from this repository**,
+because no application code exists yet. Each is marked *unverified — the implementer must confirm
+it before relying on it*, and each has a stated response if it turns out to be false. None of
+them is a blocking unknown: every one has a bounded fallback or an explicit escalation.
 
-The root `package.json` scripts below are the surface AC13 measures against
-[`docs/project/2-repo-architecture.md`](../../../project/2-repo-architecture.md) → *Common
-Commands*. Anything that document lists but this table omits is reconciled in the same change
-through the [Documentation Updates](#documentation-updates) section, as Business Rule 1 requires.
+| Claim | Used by | Confirm with | If false |
+| --- | --- | --- | --- |
+| Expo SDK 54 / React Native 0.81 accept Node 20 and document `20.19.4` as the floor | Decision 6 | The `engines` field of the installed `expo` package plus the SDK 54 release notes | Raise the patch **within** Node 20 and record it; a major change is an escalation (Business Rule 11) |
+| Expo tooling needs a flat `node_modules` (`node-linker=hoisted`) under pnpm | Decision 1 | Boot the app in Implementation Order Step 6 | Escalate with the resolver error; do not switch package manager silently |
+| ESLint 9 flat config performs no nested config discovery, and `files` globs resolve relative to the loaded config file | Decision 3 | `pnpm lint` from the root **and** from inside `packages/shared-domain`; both must report the deliberate violation in Step 3 | Fall back to defining `sharedDomainPurity` with a root-relative glob in a single root-run `eslint .`, and record the change in `docs/project/2-repo-architecture.md` |
+| `expo install --fix` resolves every dependency to the SDK 54 compatibility table | Step 4 | The reported versions after the command | Pin the versions manually from the SDK 54 release notes |
+| Expo Router accepts `app/(tabs)/transactions.tsx` alongside `app/transactions/[transactionId].tsx` | Route skeleton | Metro output during Step 6 | Escalate the exact conflict message; never rename a manifest route (Business Rule 3) |
+| Bundled Corepack versions fail signature verification with pnpm 10 | Risks table (why `pnpm/action-setup` is used) | Not applicable — this is the reason an alternative was **not** chosen; if `pnpm/action-setup` is unacceptable, re-evaluate Corepack on the CI runner | Use Corepack in CI and drop the third-party action |
 
-| Script | Value | Backing criterion |
-| --- | --- | --- |
-| `dev` | `turbo run dev` | Arch doc *Common Commands* |
-| `dev:mobile` | `pnpm --filter @finanzas/mobile dev` | AC4, issue #1 acceptance criteria |
-| `dev:mobile:ios` | `pnpm --filter @finanzas/mobile dev:ios` | AC4, arch doc |
-| `build` | `turbo run build` | AC3 (packages build; Decision 10) |
-| `lint` | `turbo run lint` | AC2, AC7 |
-| `typecheck` | `turbo run typecheck` | AC2 |
-| `test` | `turbo run test` | AC2, AC5, AC6, AC14 |
-| `clean` | `turbo run clean` | AC3 |
-| `format` | `prettier --write "**/*.md"` | **Byte-identical to today** (AC11, Decision 4) |
-| `format:code` | `prettier --write "**/*.{ts,tsx,js,mjs,json,yaml,yml}"` | Decision 4 — new, separate from `format` |
-| `mockups:mobile` | `open design/mockups/mobile/index.html` | Arch doc |
-| `mobile:build:dev-store` | `pnpm --filter @finanzas/mobile build:dev-store` | Arch doc; thin delegation to EAS, never run in this item |
-| `mobile:build:production-store` | `pnpm --filter @finanzas/mobile build:production-store` | Arch doc; thin delegation to EAS, never run in this item |
+### Toolchain dependencies to add
 
-Deliberately **not** created here, because their subject does not exist yet: `mockups:verify`
-(manifest-versus-HTML verification, a later design item — route/manifest parity is covered
-instead by the Jest test of Decision 11) and `db:generate` / `db:check` (no database — spec Out
-of Scope). Both are marked as arriving later in the architecture document by the Documentation
-Updates step.
+So the implementer does not have to guess the dependency set:
+
+- **Root `devDependencies`**: `turbo`, `typescript`, `eslint`, `typescript-eslint`, plus the
+  existing `markdownlint-cli2`, `markdownlint-rule-relative-links` and `prettier` (Decision 5).
+- **`apps/mobile` `devDependencies`**: `jest`, `jest-expo`, `@types/jest`, `eslint-config-expo`,
+  `@types/react`, `typescript`.
+- **Each package's `devDependencies`**: `jest`, `ts-jest`, `@types/jest`, `typescript`.
+- **`apps/mobile` `dependencies`**: resolved by `expo install` in Step 4 — `expo`, `expo-router`,
+  `expo-constants`, `expo-linking`, `expo-status-bar`, `react`, `react-native`,
+  `react-native-safe-area-context`, `react-native-screens`, plus the three `workspace:*` packages.
+- **Deliberately absent**: `expo-sqlite`, `drizzle-orm`, `expo-secure-store`,
+  `react-native-webview`, `@tanstack/react-query`, `react-native-svg`, `expo-notifications`,
+  `eas-cli`, and any analytics or crash-reporting SDK (AC12, Business Rules 7 and 8).
 
 ---
 
@@ -295,7 +304,7 @@ Updates step.
 | File | Purpose |
 | --- | --- |
 | `pnpm-workspace.yaml` | Declares `apps/*` and `packages/*` |
-| `turbo.json` | `build` (`dependsOn: ["^build"]`, `outputs: ["dist/**"]`), `dev` (persistent, uncached), `lint`, `typecheck`, `test`, `clean` (uncached) |
+| `turbo.json` | `build` (`dependsOn: ["^build"]`, `outputs: ["dist/**"]`), `dev` (persistent, uncached), `lint`, `typecheck`, `test`, `clean` (uncached); plus `globalDependencies` listing `design/mockups/mobile/mockup-manifest.js` so a routing-contract edit invalidates the cached `test` result (Decision 11) |
 | `.npmrc` | `node-linker=hoisted` (Decision 1) |
 | `.nvmrc` | `20.19.4` (Decision 6) |
 | `tsconfig.base.json` | `strict: true`, `target`/`lib` ES2022, `moduleResolution: bundler`, `noUncheckedIndexedAccess`, `skipLibCheck` |
@@ -312,8 +321,8 @@ the **Documentation Updates** section — the two must not disagree.
 | Script | Value | Notes |
 | --- | --- | --- |
 | `dev` | `turbo run dev` | All workspaces |
-| `dev:mobile` | `pnpm --filter @finanzas/mobile exec expo start` | |
-| `dev:mobile:ios` | `pnpm --filter @finanzas/mobile exec expo start --ios` | AC4 |
+| `dev:mobile` | `pnpm --filter @finanzas/mobile dev` | Delegates to the app's own `dev` script |
+| `dev:mobile:ios` | `pnpm --filter @finanzas/mobile dev:ios` | AC4; delegates to the app's `dev:ios` script |
 | `build` | `turbo run build` | Packages only (Decision 10) |
 | `test` | `turbo run test` | AC2 |
 | `lint` | `turbo run lint` | AC2, AC7 (Decision 3) |
@@ -330,14 +339,15 @@ store build, so CI never pays for it. Both commands require EAS authentication, 
 scope here.
 
 Not shipped by this item and therefore reconciled in the architecture document instead:
-`mockups:verify` (needs the manifest-verification script under `scripts/design/`), and
-`db:generate` / `db:check` (need Drizzle, which AC12 forbids here).
+`mockups:verify` (needs the manifest-verification script under `scripts/design/`; the
+route-versus-manifest half of that job is covered here by the Jest parity test of Decision 11),
+and `db:generate` / `db:check` (need Drizzle, which AC12 forbids here).
 
 ### `apps/mobile`
 
 | File | Purpose |
 | --- | --- |
-| `package.json` | `@finanzas/mobile`; scripts `dev` (`expo start`), `lint`, `typecheck`, `test`, `clean`; no `build` (Decision 10) |
+| `package.json` | `@finanzas/mobile`; scripts `dev` (`expo start`), `dev:ios` (`expo start --ios`), `lint`, `typecheck`, `test`, `clean`; no `build` (Decision 10) |
 | `app.config.js` | App name `Finanzas`, slug, scheme `finanzas`, iOS/Android identifiers, no env var reads |
 | `eas.json` | `development`, `preview`, `production` build profiles (declared only) |
 | `metro.config.js` | Monorepo `watchFolders` + `nodeModulesPaths` + `disableHierarchicalLookup` |
@@ -682,9 +692,11 @@ export default function TabsLayout() {
 
 3. **Domain-purity rule.** Add `sharedDomainPurity` to the root `eslint.config.mjs` and apply it
    in `packages/shared-domain/eslint.config.mjs` (Decision 3).
-   *Verify*: temporarily add `import 'expo-constants';` to `packages/shared-domain/src/index.ts`,
-   run `pnpm lint`, confirm the output names the restriction message from the sample above, then
-   remove the import and confirm `pnpm lint` passes again. Do not commit the violation (AC7).
+   *Verify*: temporarily add `import Constants from 'expo-constants';` to
+   `packages/shared-domain/src/index.ts`, run `pnpm lint`, confirm the output names the restriction
+   message from the sample above, then remove the import and confirm `pnpm lint` passes again. Do
+   not commit the violation (AC7). Capture both outputs for the pull request description — Use
+   Case 4 requires a reviewer to be able to see the failure demonstrated on demand.
 
 4. **Expo app scaffold.** Create `apps/mobile` on Expo SDK 54: manifest with `"expo": "~54.0.0"`,
    then `pnpm --filter @finanzas/mobile exec expo install expo-router expo-constants expo-linking
@@ -717,13 +729,20 @@ export default function TabsLayout() {
    `pnpm --filter @finanzas/mobile exec uri-scheme open "finanzas://transactions/any-id" --ios`.
    The agent-runnable substitutes for this step are Step 5's route enumeration and Step 7's parity
    test; they establish that the route *files* are correct, not that the app *boots*.
+   **This step does not block Steps 7-12.** An agent that cannot run it proceeds, and the pull
+   request carries AC4 as pending human verification until a human completes it.
 
 7. **Parity and wiring tests.** Add `src/test-utils/route-inventory.ts`,
    `src/test-utils/mockup-manifest.ts`, `src/test-utils/route-inventory.test.ts`,
    `src/__tests__/route-manifest-parity.test.ts` and `src/__tests__/workspace-wiring.test.ts`.
-   *Verify*: `pnpm test` passes across all four workspaces. Then prove the parity test is not
-   vacuous: temporarily create `apps/mobile/app/(tabs)/budgets.tsx`, confirm `pnpm test` fails
-   naming that route, and delete it.
+   *Verify*: `pnpm test` passes across all four workspaces. Then run two negative controls that
+   prove the guard is live rather than vacuous, and record both in the pull request description:
+   - temporarily create `apps/mobile/app/(tabs)/budgets.tsx`, confirm `pnpm test` fails naming
+     that route, and delete it;
+   - temporarily edit `design/mockups/mobile/mockup-manifest.js` (for example, change one MVP
+     route string), re-run `pnpm test`, and confirm the `test` task re-ran instead of reporting a
+     cache hit — this proves the `globalDependencies` wiring of Decision 11. Revert the manifest
+     afterwards.
 
 8. **CI.** Add `.github/workflows/ci.yml` with the `lint`, `typecheck` and `test` jobs
    (Decision 9), pinning every action by commit SHA — reuse the SHAs already used in this
@@ -741,8 +760,9 @@ export default function TabsLayout() {
    scraping logic — there must be none.
 
 10. **Smoke runbook.** Execute
-    `docs/testing/mobile/1-bootstrap-monorepo-expo-app.smoke-test.md` end to end and record the
-    result in the PR description.
+    `docs/testing/mobile/1-bootstrap-monorepo-expo-app.smoke-test.md` and record the result in the
+    PR description. Its Steps 4-8 require the iOS Simulator and are recorded as `PENDING HUMAN`,
+    not PASS, when an agent runs the runbook; Steps 1-3 and 9-13 are agent-runnable.
 
 11. **Documentation.** Apply every item in the **Documentation Updates** section above.
 
@@ -768,8 +788,12 @@ This is a pattern-completeness item ("every MVP route in the manifest"). Before 
 - **Residual list**: the out-of-MVP manifest screens deliberately left without a route (the eight
   `mvp: false` screens and the three design-system screens), quoted from the spec's MVP Route
   Scope exclusion table with the reason "out of MVP / not an app destination".
-- **Negative-control evidence**: the Step 7 verification that a deliberately added out-of-MVP
-  route file makes the parity test fail, proving the guard is live rather than vacuous.
+- **Negative-control evidence**: both Step 7 negative controls — the deliberately added
+  out-of-MVP route file that makes the parity test fail, and the manifest edit that busts the
+  Turbo cache — proving the guard is live rather than vacuous or cached.
+- **Human-verification residual**: AC4, plus the flow-walk portions of AC5 and AC14, recorded as
+  `PENDING HUMAN` with the reason "requires an interactive macOS session with Xcode", never as
+  agent-verified PASS.
 
 ---
 
@@ -780,7 +804,7 @@ This is a pattern-completeness item ("every MVP route in the manifest"). Before 
 | AC1 | Steps 1, 9 | `pnpm install` from a clean clone, no manual repair, no environment variable |
 | AC2 | Steps 1–8, 9 | `pnpm lint` / `pnpm typecheck` / `pnpm test` are `turbo run` tasks; every one of the four workspaces defines all three scripts |
 | AC3 | Step 2 | Per-package `build` / `dev` / `clean` / `lint` scripts; `workspace-wiring.test.ts` proves the app consumes all three |
-| AC4 | Step 6 | Simulator boot via `pnpm dev:mobile:ios`; smoke runbook Step 4 |
+| AC4 | Step 6 — **human verification required** | Simulator boot via `pnpm dev:mobile:ios`; smoke runbook Step 4. Not verifiable in the automated agent environment |
 | AC5 | Steps 5, 6, 7 | `route-manifest-parity.test.ts` set equality + smoke runbook flow walk and deep-link steps |
 | AC6 | Step 7 | Parity test's absence assertions for the eight `mvp: false` routes and the three design-system screens |
 | AC7 | Step 3 | `sharedDomainPurity` `no-restricted-imports` block; smoke runbook Step 9 demonstrates failure and recovery |
