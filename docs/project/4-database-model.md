@@ -54,7 +54,7 @@ and five entities are correct but out of MVP scope.
 | `currency_code` FKs to a `currencies` table absent from the diagram. | **Kept as a plain `TEXT` code**, `'CLP'` for the MVP. No lookup table until a second currency exists |
 | `TransactionCategories` has no ordering and no "cannot delete" marker. | Added `sort_order` (the ☰ drag handles in `settings-categories`) and `is_system` (the ✨ Otros fallback) |
 | `Transactions.type` is `debit`/`credit` (bank vocabulary). | **Kept** — it is what the scraper emits. The UI's income/expense reads from the category's `is_income` together with `type` |
-| `AuthenticationMethods` is a separate table. | **Folded into `users.auth_provider`.** One local profile has exactly one provider on-device |
+| `AuthenticationMethods` is a separate table. | **Dropped.** Sign-in is email + one-time code only, so there is nothing to model beyond `users.email` |
 
 ### Correct but out of MVP scope
 
@@ -92,13 +92,12 @@ Exactly one row. Exists so a future server sync has an anchor, and so the RUT is
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `TEXT PK` | UUID |
-| `email` | `TEXT NOT NULL` | From SSO or email-code sign-in |
-| `first_name` | `TEXT` | |
-| `last_name` | `TEXT` | |
+| `email` | `TEXT NOT NULL` | The profile's identity. Verified by one-time code |
+| `first_name` | `TEXT` | Not collected at sign-in; reserved |
+| `last_name` | `TEXT` | Not collected at sign-in; reserved |
 | `national_id_type` | `TEXT NOT NULL DEFAULT 'rut'` | |
 | `national_id_value` | `TEXT` | RUT, normalized without dots, check digit included |
 | `country_code` | `TEXT NOT NULL DEFAULT 'CL'` | |
-| `auth_provider` | `TEXT NOT NULL` | `google` \| `apple` \| `email` |
 | `created_at` | `TEXT NOT NULL` | |
 
 ### `financial_institutions`

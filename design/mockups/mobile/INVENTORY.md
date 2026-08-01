@@ -97,6 +97,7 @@ Cambios deliberados al reconstruir desde `personal-finances-app-mockups-v0`:
 | "Eliminar transacción" → "Excluir del análisis" | Nunca se borra un movimiento del banco; se excluye del cálculo. Alinea copy, modelo de datos y comportamiento |
 | Se unificaron `transaction-categorization` y `ongoing-categorization` en `categorize` | Son la misma pantalla con distinto punto de entrada |
 | Se descartó `onboarding` vs `welcome` duplicados | El v0 tenía dos pantallas de bienvenida solapadas |
+| Se sacó el login con Google y Apple | El MVP parte solo con email + código. Menos superficie de auth, una dependencia nativa menos, y el correo es lo único que identifica el perfil |
 | Se agregaron `ds-*` | El framework los exige y no existían |
 
 ## Preguntas abiertas

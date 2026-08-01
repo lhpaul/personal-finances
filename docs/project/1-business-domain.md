@@ -50,6 +50,9 @@ and cannot be deleted.
 
 ## Business Rules
 
+0. **There is no password.** Sign-in is an email address plus a one-time code.
+   The only secret the product ever handles is the user's *bank* credential, and that never
+   leaves the device.
 1. **Credentials never leave the device.** They are written to `expo-secure-store` and read
    only by the scraper. They are never logged, never serialized into the database, and never
    sent over the network to anything but the bank's own site.

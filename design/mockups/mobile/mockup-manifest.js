@@ -131,7 +131,7 @@ window.__MOCKUP_MANIFEST__ = {
     {
       screen_id: 'auth',
       route: '/(auth)/sign-in',
-      title: 'Ingreso · SSO o email',
+      title: 'Ingreso · email + código',
       kind: 'html',
       state_label: 'Estados del formulario',
       states: [

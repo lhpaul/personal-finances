@@ -613,28 +613,23 @@
     <div class="mu-card mu-mt6">
       <div class="mu-center">
         <div class="mu-h3">Comienza ahora</div>
-        <p class="mu-small mu-mt1">Elige cómo quieres acceder</p>
+        <p class="mu-small mu-mt1">Te enviaremos un código a tu correo</p>
       </div>
 
-      <div class="mu-btn-stack mu-mt5">
-        <button class="mu-btn mu-btn--outline">🇬 Continuar con Google</button>
-        <button class="mu-btn mu-btn--outline">🍎 Continuar con Apple</button>
-      </div>
-
-      <div class="mu-row mu-mt5" style="gap:var(--sp3)">
-        <div style="flex:1;height:1px;background:var(--border)"></div>
-        <span class="mu-xs">O con tu email</span>
-        <div style="flex:1;height:1px;background:var(--border)"></div>
-      </div>
-
-      <div class="mu-mt4">
+      <div class="mu-field">
+        <label class="mu-label">Correo electrónico</label>
         <div class="mu-input mu-input--ph" data-states="empty">✉️ tu@email.com</div>
         <div class="mu-input is-focus" data-states="email-typed">✉️ laura@ejemplo.cl</div>
       </div>
 
-      <div class="mu-mt4">
+      <div class="mu-mt5">
         <button class="mu-btn mu-btn--muted" data-states="empty">Enviar código de verificación →</button>
         <button class="mu-btn" data-states="email-typed" onclick="go('verify-code')">Enviar código de verificación →</button>
+      </div>
+
+      <div class="mu-note mu-note--ok mu-mt5">
+        <span class="mu-note__icon">🔒</span>
+        <span>Sin contraseñas. Tu correo solo identifica este perfil — tus datos financieros nunca salen del teléfono.</span>
       </div>
     </div>
 
@@ -2221,9 +2216,8 @@
   <div class="mu-scroll mu-pad mu-pad-b">
     <div class="mu-card mu-mt4 mu-center">
       <div style="width:64px;height:64px;border-radius:999px;background:var(--info-bg);display:grid;place-items:center;font-size:28px;margin:0 auto">👤</div>
-      <div class="mu-h3 mu-mt3">Laura Herrera</div>
-      <p class="mu-small">laura@ejemplo.cl</p>
-      <span class="mu-badge mu-badge--info mu-mt3">Ingreso con Google</span>
+      <div class="mu-h3 mu-mt3">laura@ejemplo.cl</div>
+      <span class="mu-badge mu-badge--info mu-mt3">Ingreso con código por correo</span>
     </div>
 
     <div class="mu-card mu-mt4">

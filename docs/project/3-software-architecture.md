@@ -56,12 +56,13 @@ and makes visual review diffable.
 
 ### 5. Auth is identity-only
 
-Google/Apple/email sign-in establishes *who the profile belongs to*, stored locally. It gates
-nothing, because there is no server to gate.
+Sign-in is **email plus a one-time code**, and establishes *who the profile belongs to*,
+stored locally. It gates nothing, because there is no server to gate. There is no password and
+no social sign-in.
 
 **Why:** it lets the sign-in flow ship as designed and leaves the door open for sync later
-without reworking the UX. The MVP may stub the providers behind a single `AuthProvider`
-interface.
+without reworking the UX. The code delivery sits behind a single `AuthProvider`
+interface so social sign-in can be added later without reworking the UX.
 
 ## Frontend Architecture
 
@@ -91,7 +92,7 @@ apps/mobile/
 ## Backend / API Architecture
 
 **None.** The only network traffic the app makes is the WebView loading the bank's own site,
-plus SSO provider endpoints at sign-in.
+plus the transactional email service that delivers the one-time code.
 
 Any future backend must be introduced as an *optional sync target*, never as a required
 dependency, and must never receive credentials.
@@ -149,7 +150,7 @@ No bank-related secret exists at build time — credentials only ever come from 
 | Service | Purpose | Notes |
 |---------|---------|-------|
 | Banco de Chile online banking | Source of products and movements | Scraped on-device. **Unversioned third-party HTML — expect breakage.** Scripts are isolated per bank and unit-tested |
-| Google / Apple sign-in | Identity | `expo-auth-session` / `expo-apple-authentication` |
+| Transactional email | Delivers the one-time sign-in code | The only first-party network call. Carries an email address and a code — never financial data |
 | Expo EAS | Builds and submissions | |
 
 No analytics or crash reporting in the MVP. Adding either requires an explicit decision about
