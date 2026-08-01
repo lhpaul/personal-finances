@@ -196,8 +196,8 @@ Follows the original model, so names can be per-locale.
 | `id` | `TEXT PK` | |
 | `slug` | `TEXT NOT NULL UNIQUE` | `comida`, `otros-gasto`, `otros-ingreso`. Stable identity across seed updates, and how the ✨ Otros fallback is found |
 | `income` | `INTEGER NOT NULL` | 0 = expense, 1 = income. Drives the tabs in `settings-categories` |
-| `labels` | `TEXT NOT NULL` (JSON) | Name per locale: `{"es":"Comida","en":"Food"}`. The app reads the device locale and falls back to `es` |
-| `assets` | `TEXT` (JSON) | `{"emoji":"🍔"}` today; an icon URL can join it without a migration |
+| `labels` | `TEXT NOT NULL` (JSON) | Name per locale: `{"es":"Comida","en":"Food"}`, seeded from `tokens.json → categoryLabels`. The app reads the device locale and falls back to `es` |
+| `assets` | `TEXT` (JSON) | `{"emoji":"🍔"}` from `tokens.json → categoryIcons`; an icon URL can join it without a migration |
 | `user_id` | `TEXT REFERENCES users(id)` | **Null = system category.** System categories cannot be deleted; the ✨ Otros pair are system |
 | `parent_category_id` | `TEXT REFERENCES transaction_categories(id)` | Reserved for subcategories; unused in MVP |
 | `sort_order` | `INTEGER NOT NULL` | Drag handles in `settings-categories`. A real column because it is an `ORDER BY` |
@@ -336,9 +336,10 @@ Shipped with the app, applied on first launch:
 1. `financial_institutions` — Banco de Chile (`available`), plus Santander, BCI, BancoEstado,
    Falabella and Itaú as `coming_soon` (the `bank-picker` list), each with `assets` and
    `metadata` populated.
-2. `transaction_categories` — 10 expense + 6 income from `design/tokens.json → categoryIcons`,
-   `user_id` null, `labels` carrying `es` (and `en` where known), with the ✨ Otros pair under
-   the `otros-gasto` / `otros-ingreso` slugs.
+2. `transaction_categories` — 10 expense + 6 income, `user_id` null, seeded from
+   **`design/tokens.json`**: the emoji from `categoryIcons` into `assets`, and the names from
+   **`categoryLabels`** into `labels`, which carries both `es` and `en` for all 16. Both files
+   are keyed by the same slug, and ✨ Otros appears in each direction.
 3. `merchants` + `merchant_aliases` — a starter list of common Chilean merchants
    (Líder, Jumbo, Uber, Copec, Netflix…) so the first categorization session already has
    suggestions. `country_code` is `CL` for local chains, null for international ones.

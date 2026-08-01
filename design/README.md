@@ -55,6 +55,7 @@ design/
 
 1. Edit [`tokens.json`](./tokens.json)
 2. Mirror the values in each mockup `index.html` `:root` block **in the same commit**
+   (`categoryIcons` and `categoryLabels` are content, not CSS — they have no `:root` mirror)
 3. The Expo theme (`apps/mobile/src/theme.ts`) follows the JSON
 
 ### Source-of-truth hierarchy
