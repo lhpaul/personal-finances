@@ -155,14 +155,14 @@ template:
   # tooling to be consumed by downstream projects). When true, Protocol 02 Step 0
   # (Template-Fit Check) is mandatory before writing any implementation plan.
   # Leave false or omit for downstream consumer repositories.
-  is_template: true
+  is_template: false
 
   # Optional: upstream template repository reference (owner/repo format for GitHub).
   # When set, the retrospective protocol (Step 3b) cross-references each finding
   # against the specified template repository's issue tracker. Leave empty or omit to skip.
   # Note: this is set by DOWNSTREAM repos pointing back to their template origin —
   # the template repo itself leaves this empty.
-  repository: ""
+  repository: "lhpaul/ai-dev-framework-template"
 
   # Optional: the template version last applied by the sync-template skill.
   # Written automatically by sync-template after a successful sync.
@@ -191,6 +191,14 @@ template:
 guardrails:
   # mode: delegated — agents may merge within per-stage permissions and risk limits.
   mode: delegated
+
+  # parallelism — how many items may sit in the implementation stage at once.
+  # Raised from the default of 1: after the monorepo bootstrap lands, backlog items
+  # touch largely disjoint areas (scraper, db, individual screens), so serializing
+  # implementation is a large throughput cost for a bounded conflict risk.
+  parallelism:
+    max_concurrent_by_stage:
+      implementation: 3
 
   # backlog_start — agents may start eligible Backlog work without an additional
   # policy confirmation.
