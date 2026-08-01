@@ -52,11 +52,17 @@ review:
     # Ordered list of GitHub/App/CLI reviewers that run only after draft gates
     # are clean and the PR has been converted with `gh pr ready`.
     #
-    # CodeRabbit was enabled for this repository on 2026-08-01. Before that it
-    # was not installed here, and the loop polled it for ~80 minutes per PR for
-    # zero comments on #26, #27 and #28.
+    # Switched from `coderabbit` on 2026-08-01: the CodeRabbit organization hit
+    # its usage spending cap on the third PR of the session, which is not
+    # self-resolving and would gate all ~40 remaining PRs.
+    #
+    # REQUIRES: the Codex GitHub App must be installed on this repository. As of
+    # the switch, no codex bot had ever commented on any repo in this org — if it
+    # is not installed, pr-review-loop.sh polls it and reports skipped/no_review
+    # after burning its timeout. That is not a merge blocker (the internal
+    # code-reviewer at Step 7a is the gate that matters) but it is wasted time.
     github:
-      - coderabbit
+      - codex-github
   #
   # CodeRabbit CLI platform options (local CLI reviewer; place "coderabbit-cli"
   # in on_draft.github or on_ready.github to opt in; independent from the
