@@ -94,9 +94,11 @@ instant and time zone passed in.
    - `formatClp(-500000)`
    - `formatClpAbbreviated(3700000)`
    - `formatClpAbbreviated(279000, { withCurrencySymbol: true })`
-   - `formatShortDate('2025-01-24')`
-   - `formatLongDate('2025-01-24')`
-   - `formatMonthYear('2025-01-24')`
+   - `formatShortDate('2025-01-24', 'es')`
+   - `formatLongDate('2025-01-24', 'es')`
+   - `formatMonthYear('2025-01-24', 'es')`
+   - `formatShortDate('2025-01-24', 'en')` (expect `Jan 24` — confirms `locale` is honoured, not
+     just accepted)
    - `formatRut('18456789K')`
 
 2. Compare each result against the Test Data table above, character by character.
@@ -135,8 +137,8 @@ message, and no module-level mutable state in `rut.ts`.
    - the category row amounts `$279K`, `$235K`, `$193K`, `$156K`;
    - the transaction row amounts `+$1.200.000` and `$42.000`;
    - the badge `ene 2025` and the chart bar labels `nov`, `dic`, `ene`;
-   - the transaction meta `26 ene · 14:32` — confirm your `formatShortDate` output is the
-     `26 ene` portion and your `formatTimeOfDay` output is the `14:32` portion, with the ` · `
+   - the transaction meta `26 ene · 14:32` — confirm your `formatShortDate('...', 'es')` output is
+     the `26 ene` portion and your `formatTimeOfDay` output is the `14:32` portion, with the ` · `
      supplied by the caller, not by this package.
 4. Navigate to `#screen=bank-credentials` and `#screen=settings-account`. Confirm the RUT is
    rendered as `12.345.678-9` (placeholder) and `18.456.789-0` (filled), matching
@@ -154,9 +156,15 @@ counterpart. Differences that matter for the acceptance criteria are absent.
 
 **Maps to**: AC3
 
-`deriveZonedParts` is the only function that depends on the JavaScript engine's `Intl`
-implementation. Jest runs on Node, which ships full ICU; React Native runs on Hermes, which
-delegates to the platform. A Node-only pass does not prove device behaviour.
+`deriveZonedParts` (and `deriveDateLocal` / `formatTimeOfDay`, which call it) is the function that
+resolves a **real IANA timezone** (`America/Santiago`) via `Intl`. Jest runs on Node, which ships
+full ICU; React Native runs on Hermes, which delegates to the platform. A Node-only pass does not
+prove device behaviour for this specific seam. The four date-label formatters
+(`formatShortDate`, `formatLongDate`, `formatMonthYear`, `formatMonthAbbreviation`) also call
+`Intl`, but are pinned to `timeZone: 'UTC'` — a built-in identifier every ICU implementation
+supports without a timezone-database lookup — and the human confirmed empirically that Hermes on
+RN 0.81.5 / Expo 54 carries full ICU (locale data included), so this device check is scoped to
+the IANA-timezone seam only and does not need to be repeated for the label seam.
 
 1. Launch `apps/mobile` on an iOS Simulator or device dev build (`pnpm dev:mobile`).
 2. From any temporary entry point in the app (for example a `useEffect` in
@@ -251,7 +259,8 @@ Each checkbox maps to an acceptance criterion from
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| An amount renders with a comma, a space before the digits, or `CLP` instead of `$` | An `Intl.NumberFormat` crept in, or the string is being built by the caller instead of by `formatClp` | Remove it. Decision 1 in the plan: user-visible strings are hand-built precisely because `Intl` output is not byte-stable across ICU builds |
+| An amount renders with a comma, a space before the digits, or `CLP` instead of `$` | An `Intl.NumberFormat` crept in, or the string is being built by the caller instead of by `formatClp` | Remove it. Decision 1 in the plan: money strings are hand-built and locale-invariant because platform `Intl.NumberFormat` output does not match the mockup — this does **not** apply to dates, which do use `Intl` (Decision 2) |
+| A date label renders in the wrong language (e.g. Spanish under an English UI, or vice versa) | The caller did not pass the active app `locale` to `formatShortDate` / `formatLongDate` / `formatMonthYear` / `formatMonthAbbreviation`, or passed a stale one | These formatters have no default `locale` by design (Decision 2, 7) — fix the call site to pass the current locale from `apps/mobile/src/i18n/`. Do not "fix" this by adding a hardcoded Spanish table |
 | An amount renders with a decimal point in the non-abbreviated form | A float entered the money pipeline upstream. CLP has no cents | Do not add rounding to the formatter. Find the caller that produced the float; `formatClp` throwing a `TypeError` here is the intended alarm (Decision 5) |
 | A transaction appears in the wrong month | The local day was derived from the UTC timestamp instead of via `deriveDateLocal` | Use `deriveDateLocal(instant)` and group on the resulting `date_local` — this is exactly the bug the column exists to prevent |
 | Step 2 gives different results under different `TZ` values | A code path reads the host zone (a no-argument `new Date()`, `getMonth()` instead of `getUTCMonth()`, or a missing `timeZone` option) | Pass the clock in; use `Date.UTC` / `getUTC*` for all civil arithmetic (Decision 3) |
