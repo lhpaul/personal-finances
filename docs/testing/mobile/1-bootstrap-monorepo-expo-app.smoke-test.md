@@ -17,12 +17,18 @@ Before running this smoke test:
       dirty tree).
 - [ ] The Node version named in `.nvmrc` is active (`nvm use`), and pnpm 10 or newer is
       available (`pnpm --version`).
-- [ ] macOS with Xcode and an iOS Simulator installed — required only for Steps 4, 5, 7 and 8.
+- [ ] macOS with Xcode and an iOS Simulator installed — required for Steps 4-8 and for nothing
+      else.
 - [ ] `design/mockups/mobile/index.html` can be opened in a browser (the UI contract, used in
-      Step 7).
+      Step 8).
 
 There is **no login step and no seeded database** in this runbook: the product has no sign-in
 and this item introduces no database.
+
+> **Human verification required for Steps 4-8.** Those steps need an interactive macOS session
+> with Xcode and the iOS Simulator, which an implementation agent does not have. An agent
+> executing this runbook must record Steps 4-8 as `PENDING HUMAN` rather than PASS, and must say
+> so in the pull request description. Steps 1-3 and 9-13 are agent-runnable.
 
 ---
 
