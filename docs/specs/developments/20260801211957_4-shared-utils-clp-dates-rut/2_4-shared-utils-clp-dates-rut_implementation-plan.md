@@ -246,6 +246,31 @@ carry a real, recent calendar year, so restricting `DateLocal` to a four-digit y
 `100`-`9999` range is simpler and safer than teaching every `Date.UTC` call site to correct for a
 quirk no real transaction date will ever trigger.
 
+**Arithmetic self-consistency at the range boundary.** The `0100`-`9999` floor above is a
+*parsing*-boundary guard on a directly-constructed or parsed `DateLocal`; it does not, by itself,
+guarantee that a *derived* `DateLocal` — the result of `addDays`, `getWeekPeriod`,
+`getMonthPeriod`, `shiftMonthPeriod` or `shiftWeekPeriod` — stays inside that same range.
+`getWeekPeriod('0100-01-01')` (a Friday) must walk back to the preceding Monday-start, which lands
+on `0099-12-28`; `addDays('0100-01-01', -1)` has the identical problem. Symmetrically,
+`addDays('9999-12-31', 1)` and `getWeekPeriod('9999-12-31')` cross into the five-digit year
+`10000`. Without a fix, each of these would return a `DateLocal` string that `isValidDateLocal`
+itself rejects — a function documented to return `DateLocal` silently breaking its own contract.
+The fix reuses the same one-guard-not-many principle as the parsing side: `toDateLocal` — the
+single construction point every `DateLocal`-returning function in this file routes through —
+throws `RangeError` if the year it is asked to render falls outside `0100`-`9999`. `addDays`,
+`getWeekPeriod`, `shiftMonthPeriod` and `shiftWeekPeriod` therefore all throw `RangeError` (never
+silently clamp, wrap or return an out-of-range string) whenever the arithmetic would cross either
+edge; `getMonthPeriod` cannot cross the boundary on its own because it never changes the input's
+year. This is the correct behaviour for the domain, not merely the cheapest one: bank transactions
+the app ever ingests carry a real, recent calendar year, so a caller reaching either edge (a period
+computation anchored on a `0100` or `9999` transaction date) already indicates a bug upstream, and
+failing loudly there is strictly better than silently returning a value the package's own validator
+would reject. The Testing Strategy's AC3 Group B addendum and `dates.test.ts` cover both edges
+explicitly (`addDays('0100-01-01', -1)`, `getWeekPeriod('0100-01-01')`, `addDays('9999-12-31', 1)`,
+`getWeekPeriod('9999-12-31')`), alongside an in-range low-year case
+(`getWeekPeriod('0100-01-05')` → `{ '0100-01-01', '0100-01-07' }`) proving the guard fires only at
+the actual boundary, not for every low-year input.
+
 **Decision 4 — the money sign is one total rule, not three special cases.** For both
 `formatClp` and `formatClpAbbreviated`:
 
@@ -471,12 +496,12 @@ All source changes are inside `packages/shared-utils/`.
   | `formatTimeOfDay` | `(instant: Date, timeZone?: string) => string` | `14:32` (24-hour, zero-padded). Numeric only, so it takes no `locale` |
   | `isValidDateLocal` | `(value: string) => boolean` | Shape, calendar validity, **and** the `0100`-`9999` year range (Decision 3 — rejects the two-digit years `Date.UTC` would remap) |
   | `parseDateLocal` | `(dateLocal: DateLocal) => CivilDate` | Throws `RangeError` on an invalid date |
-  | `toDateLocal` | `(civil: CivilDate) => DateLocal` | Zero-pads month and day |
-  | `addDays` | `(dateLocal: DateLocal, days: number) => DateLocal` | Signed |
-  | `getMonthPeriod` | `(dateLocal: DateLocal) => Period` | `2025-01-24` → `{ start: '2025-01-01', end: '2025-01-31' }` |
-  | `getWeekPeriod` | `(dateLocal: DateLocal) => Period` | Monday-start. `2025-01-24` (Fri) → `{ start: '2025-01-20', end: '2025-01-26' }` |
-  | `shiftMonthPeriod` | `(period: Period, months: number) => Period` | Drives the mockup's `‹ ›` month nav |
-  | `shiftWeekPeriod` | `(period: Period, weeks: number) => Period` | Drives the `S-1` / `S-2` chart columns |
+  | `toDateLocal` | `(civil: CivilDate) => DateLocal` | Zero-pads month and day. Throws `RangeError` if `civil.year` falls outside `0100`-`9999` — the single construction-side guard every `DateLocal`-returning function in this file routes through (Decision 3) |
+  | `addDays` | `(dateLocal: DateLocal, days: number) => DateLocal` | Signed. Throws `RangeError` (via `toDateLocal`) if the result's year would fall outside `0100`-`9999` (Decision 3) |
+  | `getMonthPeriod` | `(dateLocal: DateLocal) => Period` | `2025-01-24` → `{ start: '2025-01-01', end: '2025-01-31' }`. Never crosses the `0100`-`9999` boundary on its own — it never changes the input's year (Decision 3) |
+  | `getWeekPeriod` | `(dateLocal: DateLocal) => Period` | Monday-start. `2025-01-24` (Fri) → `{ start: '2025-01-20', end: '2025-01-26' }`. Throws `RangeError` (via `addDays`) if walking back to Monday or forward to Sunday would cross `0100`-`9999` (Decision 3) |
+  | `shiftMonthPeriod` | `(period: Period, months: number) => Period` | Drives the mockup's `‹ ›` month nav. Throws `RangeError` (via `toDateLocal`) if the shifted month's year would fall outside `0100`-`9999` (Decision 3) |
+  | `shiftWeekPeriod` | `(period: Period, weeks: number) => Period` | Drives the `S-1` / `S-2` chart columns. Throws `RangeError` (via `addDays`) if the shifted week would cross `0100`-`9999` (Decision 3) |
   | `formatShortDate` | `(dateLocal: DateLocal, locale: SupportedLocale) => string` | `24 ene` (`es`) / `Jan 24` (`en`) — the label `Intl` seam (Decision 2) |
   | `formatLongDate` | `(dateLocal: DateLocal, locale: SupportedLocale) => string` | `viernes, 24 de enero de 2025` (`es`) / `Friday, January 24, 2025` (`en`) |
   | `formatMonthYear` | `(dateLocal: DateLocal, locale: SupportedLocale) => string` | `ene 2025` (`es`) / `Jan 2025` (`en`) |
@@ -751,6 +776,17 @@ the end) → the same; `2025-01-27` (the next Mon) → `{ '2025-01-27', '2025-02
 that **crosses a month end**; `2024-12-30` (Mon) → `{ '2024-12-30', '2025-01-05' }` — a week that
 **crosses a year end**; `2025-03-03` → `{ '2025-03-03', '2025-03-09' }`.
 
+**Group B addendum — the `0100`/`9999` arithmetic boundary (Decision 3, "Arithmetic
+self-consistency").** `addDays('0100-01-01', -1)` throws `RangeError` (the naive result,
+`0099-12-31`, is outside the supported range); `getWeekPeriod('0100-01-01')` throws `RangeError`
+for the same underlying reason — its Monday-start would be `0099-12-28`. Symmetrically,
+`addDays('9999-12-31', 1)` throws `RangeError` (the naive result is the five-digit year
+`10000-01-01`), and `getWeekPeriod('9999-12-31')` throws `RangeError` because its Sunday-end would
+be `10000-01-02`. A guard-doesn't-misfire control case, `getWeekPeriod('0100-01-05')` (safely
+inside the range on both ends), still returns `{ '0100-01-01', '0100-01-07' }` normally. Every
+`RangeError` message in this addendum names the operation and the offending year (dates are not
+credential material, unlike RUTs — Decision 9's no-echo rule does not apply here).
+
 **Group C — `shiftMonthPeriod` / `shiftWeekPeriod`.** `shiftMonthPeriod({ '2025-01-01',
 '2025-01-31' }, -1)` → `{ '2024-12-01', '2024-12-31' }` (back across a year end);
 `shiftMonthPeriod({ '2025-01-01', '2025-01-31' }, 1)` → `{ '2025-02-01', '2025-02-28' }` (31-day
@@ -1015,6 +1051,7 @@ To be executed by the developer during implementation (not now).
 | The `$279K` category rows contradict "abbreviate only in stat tiles", and a reviewer reads the wider API as scope creep | High | Low | Recorded up front under "Known documentation drift" with the mockup line numbers (1515-1518), and the doc is scheduled for correction. The mockup is the UI contract (AGENTS.md non-negotiable 6) |
 | `formatClp` throwing on invalid input crashes a screen in production | Medium | Medium | `isValidMoneyMinorUnits` is exported specifically as the non-throwing boundary guard, and the consumption seam above tells item #2 to use it at the prop boundary (Decision 5). The alternative — silently rounding a float — is worse: it produces a plausible wrong amount in a finance app |
 | Decision 8 (no leading zero on single-digit days) is wrong, because the mockup has no sample to confirm it | Medium | Low | Called out explicitly as a decision rather than an observation, with the Spanish-convention rationale stated and the exact `Intl` option (`day: 'numeric'`) named, so a reviewer can overturn it by flipping one formatter option (to `day: '2-digit'`) and one test. The cost of being wrong is a one-line fix |
+| A `DateLocal`-returning arithmetic function (`addDays`, `getWeekPeriod`, `shiftMonthPeriod`, `shiftWeekPeriod`) crosses the `0100`/`9999` year floor/ceiling from Decision 3's parsing-boundary guard and returns a string `isValidDateLocal` itself rejects | Low | Medium | "Arithmetic self-consistency at the range boundary" (Decision 3) closes this: `toDateLocal`, the single construction point every one of these functions routes through, throws `RangeError` at either edge instead of returning an out-of-range string. The Testing Strategy's AC3 Group B addendum pins both edges (`addDays('0100-01-01', -1)`, `getWeekPeriod('0100-01-01')`, `addDays('9999-12-31', 1)`, `getWeekPeriod('9999-12-31')`) plus an in-range control case so the guard is proven to fire only at the actual boundary. No real transaction date reaches either edge, so throwing (rather than silently widening the supported range) is the correct, narrowly-scoped fix |
 | Decision 10's 6-8 digit body range rejects a real user's RUT and blocks them from connecting their bank | Low | High | The range is deliberately permissive on the low end (6 digits covers legacy RUTs) and leading zeros are stripped rather than rejected. The rationale — a validator stricter than reality is worse than a lenient one, because the bank rejects bad values anyway — is recorded in Decision 10 so it is not silently tightened later |
 | The root `eslint.config.mjs` edit conflicts with a concurrent item | Low | Low | The edit is additive only: one new entry in the shared rules array and one new named export. Nothing is renamed, removed or reordered, and `sharedDomainPurity` and `packages/shared-domain/eslint.config.mjs` are deliberately left alone (Decision 11). No open PR touches the file (Verification Log) |
 | `eslint-config-expo`, which `apps/mobile/eslint.config.mjs` spreads **after** the root config, resets `no-restricted-properties` and silently disables the AC4 ban in the app | Low | Medium | Implementation Order Step 6 verifies the ban by an actual negative probe inside `apps/mobile`, not by reading the config. If the probe does not fail, the rule must be re-applied in `apps/mobile/eslint.config.mjs` after the Expo spread |
@@ -1142,10 +1179,15 @@ export function getWeekPeriod(dateLocal: DateLocal): Period {
   const { year, month, day } = parseDateLocal(dateLocal);
   const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay(); // 0 = domingo
   const daysSinceMonday = (weekday + 6) % 7;
-  const start = addDays(dateLocal, -daysSinceMonday);
-  return { start, end: addDays(start, 6) };
+  const start = addDays(dateLocal, -daysSinceMonday); // propagates addDays' RangeError at the year floor
+  return { start, end: addDays(start, 6) }; // propagates addDays' RangeError at the year ceiling
 }
 ```
+
+Neither function catches or wraps the `RangeError` `addDays` / `toDateLocal` throw at the `0100`/`9999`
+boundary ("Arithmetic self-consistency at the range boundary", Decision 3) — it propagates to the
+caller unchanged, exactly like `parseDateLocal`'s existing `RangeError` for a directly out-of-range
+input.
 
 RUT check digit and value-free errors (`src/rut.ts`, Decisions 9 and 10):
 
