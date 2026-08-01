@@ -27,7 +27,9 @@ Before running this smoke test:
 
 | Item | Value |
 | --- | --- |
-| Gallery route | `/(dev)/gallery` |
+| Gallery route file | `apps/mobile/app/(dev)/gallery.tsx` |
+| Gallery runtime URL | `finanzas://gallery` — Expo Router group segments such as `(dev)` do not appear in the URL |
+| Gallery derived path (parity test only) | `/(dev)/gallery` — `toRoutePath` keeps group parentheses verbatim |
 | Gallery copy source | `apps/mobile/src/dev/gallery.strings.ts` |
 | Primary reference screen | `design/mockups/mobile/index.html#screen=ds-components` |
 | Typography / amounts reference | `design/mockups/mobile/index.html#screen=ds-typography` |
@@ -83,8 +85,8 @@ unchanged.
 
 **Expected result**:
 
-- `no-style-literals.test.ts` reports zero violations across
-  `apps/mobile/src/components/ui/`, `apps/mobile/src/dev/` and `apps/mobile/app/(dev)/`
+- `no-style-literals.test.ts` reports zero violations across all of `apps/mobile/app/` and
+  `apps/mobile/src/`, excluding `apps/mobile/src/theme.ts` and test files
 - `mu-class-coverage.test.ts` passes both assertions, and its reported class count equals the
   number of entries in `apps/mobile/src/test-utils/mu-class-map.ts`
 - `touch-targets.test.ts` passes for every entry in `TOUCH_METRICS`
@@ -97,8 +99,9 @@ unchanged.
 **Maps to**: AC3, and the dev-only gating decision
 
 1. With the app running in development, open the gallery deep link:
-   `npx uri-scheme open finanzas://\(dev\)/gallery --ios`
-   (or type the path into the Expo Router dev menu).
+   `npx uri-scheme open finanzas://gallery --ios`
+   (or type `/gallery` into the Expo Router dev menu). The `(dev)` group is organizational
+   and is **not** part of the URL.
 
 **Expected result**: the design-system gallery renders, with a top bar reading
 `DS · Componentes` and a scrolling list of sections.
@@ -107,7 +110,10 @@ unchanged.
 
 **Maps to**: AC2, AC3
 
-Scroll the gallery top to bottom and confirm each of the 23 primitives appears at least once:
+The gallery's section order is defined by the implementation plan's canonical table. The list
+below is a **coverage checklist in component order**, not the render order — tick each item off
+wherever it appears. Scroll the gallery top to bottom and confirm each of the 23 primitives
+appears at least once:
 
 1. `Text` — the Tipografía section shows h1, h2, h3, body, body-lead, small, xs, eyebrow,
    label, hint and mono variants
@@ -156,11 +162,11 @@ the modal appears centred over it; both dismiss. Nothing crashes.
 **Maps to**: AC4
 
 1. Using a fingertip on a physical device (or the simulator with a deliberately imprecise
-   click), tap **just outside** the visible box of: the small button, a `Pill`, a
-   `Segment` option, a `Checkbox`, a `Radio` and the `Switch` — roughly 8–10 pt beyond the
-   drawn edge.
+   click), tap **just outside** the visible box of each of these six controls — the small
+   button, a `Pill`, a `Segment` option, a `Checkbox`, a `Radio` and the `Switch` — roughly
+   8–10 pt beyond the drawn edge.
 
-**Expected result**: each control still activates. These five are drawn smaller than 44 pt in
+**Expected result**: each control still activates. All six are drawn smaller than 44 pt in
 the mockup on purpose; `hitSlop` expands the effective target to at least
 `theme.touchTarget.min`. `touch-targets.test.ts` (Step 3) is the authoritative check; this step
 confirms it feels right in the hand.
@@ -216,7 +222,8 @@ route renders `null` in a release build.
 ## Assertions Checklist
 
 - [ ] **AC1** — `theme-tokens-parity.test.ts` passes and `no-style-literals.test.ts` reports
-      zero violations outside `apps/mobile/src/theme.ts` (Steps 1, 3)
+      zero violations across all of `apps/mobile/app/` and `apps/mobile/src/`, excluding
+      `theme.ts` and test files (Steps 1, 3)
 - [ ] **AC1** — the seven new tokens exist in `design/tokens.json`, are mirrored in the mockup
       `:root`, and are consumed from `theme.ts` (Steps 1, 2)
 - [ ] **AC2** — every `mu-*` class in the mockup stylesheet is classified, and every
@@ -225,7 +232,7 @@ route renders `null` in a release build.
 - [ ] **AC2** — all 23 primitives render in the gallery (Step 5)
 - [ ] **AC3** — the gallery's seven mirrored sections match `#screen=ds-components` (Step 8)
 - [ ] **AC3** — every additional gallery section matches its named reference screen (Step 8)
-- [ ] **AC4** — `touch-targets.test.ts` passes, and the five sub-44 pt controls activate from
+- [ ] **AC4** — `touch-targets.test.ts` passes, and all six sub-44 pt controls activate from
       outside their drawn box (Steps 3, 7)
 - [ ] Existing route/manifest parity is preserved: 25 manifest MVP routes, no `design-system`
       route, no `(auth)` group (Step 3)
@@ -249,12 +256,12 @@ No database. No SQLite in this item.
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| The gallery route renders a blank screen | The app is running in a production/release configuration, so `__DEV__` is `false` | Restart with `pnpm dev:mobile`; this is the gate working as designed |
-| The deep link does nothing | The `(dev)` group parentheses were not escaped in the shell | Quote the whole URL: `npx uri-scheme open "finanzas://(dev)/gallery" --ios` |
+| The gallery route renders a blank screen | The app is running in a production/release configuration, so `__DEV__` is `false` | Confirm the guard in `apps/mobile/app/(dev)/gallery.tsx`, then restart with `pnpm dev:mobile`; a blank screen in a release build is the gate working as designed |
+| The deep link does nothing | The URL included the `(dev)` group segment | Use `finanzas://gallery` — Expo Router group segments are organizational and never appear in the URL |
 | `theme-tokens-parity.test.ts` fails with an extra key | `componentMetrics` was merged into `theme` instead of exported separately | Keep the two exports separate — the parity test runs against `theme` only |
 | `theme-tokens-parity.test.ts` fails on an unaccounted top-level group | A new group was added to `design/tokens.json` upstream | Decide whether it is a visual token (mirror it into `theme`) or not (add it to the named exclusion list with a rationale). Do not delete the assertion |
 | `no-style-literals.test.ts` flags a legitimate value | The value belongs in `theme.ts` | Move it to `componentMetrics` under the right primitive. Use a `style-literal-allow: <reason>` suppression only when the value genuinely cannot be a token, and expect it to be questioned in review |
-| `route-manifest-parity.test.ts` fails on set equality | `DEV_ONLY_ROUTES` was not subtracted, or the gallery route file was renamed | Keep the route at `app/(dev)/gallery.tsx` and the allowlist entry at `/(dev)/gallery` |
+| `route-manifest-parity.test.ts` fails on set equality | `DEV_ONLY_ROUTES` was not subtracted, or the gallery route file was renamed | Keep the route file at `apps/mobile/app/(dev)/gallery.tsx` and the allowlist entry at the derived path `/(dev)/gallery` |
 | Colours look washed out on the simulator | Display colour profile, not the theme | Compare against the mockup in the same browser/display; note it as a known acceptable difference |
 | Shadows look flat on Android | React Native maps `shadow*` to `elevation` on Android | Expected. Record as a known acceptable difference; do not add a literal to compensate |
 

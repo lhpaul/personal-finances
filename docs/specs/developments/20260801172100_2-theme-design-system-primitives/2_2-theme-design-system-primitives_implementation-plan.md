@@ -53,8 +53,8 @@ one type-scale entry) and mirror them into the mockup `:root` in the same commit
 `apps/mobile/src/theme.ts` as a typed, parity-tested mirror of that file plus a separate
 `componentMetrics` namespace holding the component geometry read off the `mu-*` CSS. Build 23
 presentational primitives under `apps/mobile/src/components/ui/` in four commit-sized groups,
-each composing only `theme` / `componentMetrics`. Close with a `__DEV__`-gated gallery route at
-`/(dev)/gallery` that renders every primitive. Three machine checks hold the acceptance
+each composing only `theme` / `componentMetrics`. Close with a `__DEV__`-gated gallery route in
+`apps/mobile/app/(dev)/gallery.tsx` — runtime URL `/gallery` — that renders every primitive. Three machine checks hold the acceptance
 criteria: a theme↔tokens parity test (AC1), a `mu-*` class-coverage scan over the mockup
 stylesheet (AC2), a style-literal scan over `src/components/ui/**` (AC1), and a touch-target
 test over a single shared metrics module (AC4). AC3 is verified manually against
@@ -84,12 +84,13 @@ cross-file consistency requirements put it over 3 days.
 | Check | Command / query | Result |
 | --- | --- | --- |
 | Repo revision | `git rev-parse --short HEAD` | `ecf46ef` (branch `implementation-plan/2-theme-design-system-primitives`, base `develop`) |
-| Distinct `mu-*` classes in the mockup stylesheet | `grep -o '\.mu-[a-zA-Z0-9_-]*' design/mockups/mobile/index.html \| sort -u \| wc -l` | `162` — drives the [mu-class classification](#mu-class-classification-ac2) and the coverage test |
+| Distinct `mu-*` classes in **selector position inside the `<style>` block** | `python3 -c "import re; t=open('design/mockups/mobile/index.html').read(); s=t.split('<style>',1)[1].split('</style>',1)[0]; print(len({m for sel,_ in re.findall(r'([^{}]+)\{([^{}]*)\}',s) for m in re.findall(r'\.(mu-[a-zA-Z0-9_-]+)',sel)}))"` | `162` — drives the [mu-class classification](#mu-class-classification-ac2) and the coverage test. This is the definition `muClassInventory()` implements. A naive whole-file `grep -o '\.mu-[a-zA-Z0-9_-]*' … \| sort -u \| wc -l` happens to return `162` too, but it also reads markup and declaration bodies, so it cannot substantiate the stylesheet-only claim and is not the authority here |
 | Stylesheet boundaries | `grep -n '<style\|</style' design/mockups/mobile/index.html` | lines `7`–`582`; the `mu-*` product-UI block starts at line `229` |
 | `ds-*` screen markup | `grep -n 'id="screen-ds-\|id="s-ds-' design/mockups/mobile/index.html` | `s-ds-colors` L2492, `s-ds-typography` L2541, `s-ds-components` L2573 |
 | `ds-*` manifest entries | `grep -n "ds-colors\|ds-typography\|ds-components" design/mockups/mobile/mockup-manifest.js` | L516–518, routes `design-system/{colors,typography,components}`, `kind: html`, no `states` — the gallery must render one flat screen, not state variants |
 | Literal audit of the `mu-*` rules | Python scan of the `<style>` block, cross-joined against `design/tokens.json` | 1 untokenized hex (`#e5e7eb`), 4 untokenized `rgba()` values, 1 untokenized radius (`6`) reachable from an in-scope primitive, 1 untokenized amount size (`26`). Full table: [Token gaps](#token-gaps-found-must-land-in-step-1) |
 | Route files present | `find apps/mobile/app -name '*.tsx' \| wc -l` | `29` = 25 manifest MVP routes + `index.tsx` entry shim + 3 `_layout.tsx` |
+| Existing app source is already style-literal free | `grep -rnE "#[0-9a-fA-F]{3,8}\b\|rgba?\(\|(padding\|margin\|borderRadius\|borderWidth\|fontSize\|lineHeight\|letterSpacing\|gap)\s*:\s*-?[0-9]" apps/mobile/app apps/mobile/src` | no matches — so `no-style-literals.test.ts` can scan **all** of `apps/mobile/app` and `apps/mobile/src` from day one rather than only this item's directories |
 | Target directories absent | `test -d apps/mobile/src/components/ui`, `test -f apps/mobile/src/theme.ts` | both **absent** — this item creates them |
 | Existing route/manifest parity contract | `apps/mobile/src/__tests__/route-manifest-parity.test.ts` | asserts derived route set **equals** the 25 manifest MVP routes and that no route contains `design-system`. Drives [Decision 6](#decision-6-gallery-route-path-and-production-gating) |
 | Component-render test tier | `docs/project/3-software-architecture.md` → Testing Strategy; `apps/mobile/package.json` | Jest + Maestro only; **no** `@testing-library/react-native`. Drives [Decision 8](#decision-8-no-new-test-dependency) |
@@ -291,7 +292,15 @@ components.**
 
 ### Decision 6: gallery route path and production gating
 
-- **Route path**: `apps/mobile/app/(dev)/gallery.tsx` → derived route `/(dev)/gallery`.
+- **Route file**: `apps/mobile/app/(dev)/gallery.tsx`.
+- **Two different path strings, do not confuse them**:
+  - **Derived manifest-style path** — `/(dev)/gallery`. This is what
+    `toRoutePath` in `apps/mobile/src/test-utils/route-inventory.ts` produces; that helper
+    documents "Manifest routes keep their group parentheses (`/(tabs)/home`) — groups are
+    preserved verbatim, not stripped". This is the string that goes in `DEV_ONLY_ROUTES`.
+  - **Runtime URL** — `/gallery`, i.e. `finanzas://gallery`. Expo Router group segments are
+    organizational and do not appear in the URL, exactly as `(tabs)/home` is reachable at
+    `/home`. This is the string the smoke runbook opens.
 - **Why not `design-system/components`**: the merged parity test asserts
   `no route contains "design-system"` (AC6 of item #1) because those three manifest entries
   are reference screens, not product screens. That assertion stays literally true and
@@ -315,7 +324,7 @@ components.**
 
   Because the component uses no hooks before the guard, `DevGalleryRoute()` can be called
   directly in a plain Jest test with `__DEV__` forced to `false` — no renderer needed.
-  There is no link to `/(dev)/gallery` from any product screen, so a release build has no
+  There is no link to `/gallery` from any product screen, so a release build has no
   reachable entry point and the guard renders nothing if one is manufactured.
 - **Parity-test change**: `apps/mobile/src/test-utils/route-inventory.ts` gains
   `export const DEV_ONLY_ROUTES = ['/(dev)/gallery'] as const;`.
@@ -412,24 +421,44 @@ into exactly one of three statuses, held in
 export type MuClassStatus = 'primitive' | 'utility' | 'deferred';
 export type MuClassEntry = {
   status: MuClassStatus;
-  /** Required when status === 'primitive': the exported component name. */
-  component?: string;
+  /**
+   * Required (non-empty) when status === 'primitive'.
+   * A class may have more than one owner: `.mu-overlay` is rendered by both `Sheet`
+   * and `Modal`, so both are listed.
+   */
+  owners?: readonly string[];
+  /**
+   * Components that implement the class but are deliberately not part of the public
+   * barrel (today: only `_internal/Overlay`, shared by `Sheet` and `Modal`).
+   * Listed by module path relative to `src/components/ui/`.
+   */
+  internalOwners?: readonly string[];
   /** Required when status !== 'primitive': why, and which item owns it. */
   note?: string;
 };
 export const MU_CLASS_MAP: Record<string, MuClassEntry> = { /* 162 entries */ };
 ```
 
+`owners` is an array rather than a single `component` string precisely because
+`.mu-overlay` and `.mu-overlay--center` have two public owners. `internalOwners` exists so
+`_internal/Overlay` can be recorded without being forced into the public barrel — the
+resolution test below treats the two lists differently.
+
 - **`primitive`** — covered by one of the 23 components built here. Includes every modifier and
-  BEM element of a covered block (`.mu-btn--danger-soft` → `Button`, `.mu-tx__amount--in` →
-  `TransactionRow`, `.mu-overlay` → `Sheet`/`Modal` via the shared `_internal/Overlay`).
-- **`utility`** — a layout, spacing or typography helper with no component of its own; the
-  consumer applies `theme` / `componentMetrics` directly. Covers `.mu-scroll`, `.mu-pad`,
-  `.mu-pad-b`, `.mu-safe-top`, `.mu-row`, `.mu-row--between`, `.mu-grid-2`, `.mu-grid-3`,
-  `.mu-spacer`, `.mu-center`, `.mu-mt1`…`.mu-mt6`, `.mu-btn-row`, `.mu-btn-stack`,
-  `.mu-pill-row`, `.mu-tx-group`. Typography helpers (`.mu-h1`…`.mu-xs`, `.mu-eyebrow`,
-  `.mu-label`, `.mu-hint`, `.mu-mono`) are `primitive` → `Text` per
-  [Decision 5](#decision-5-text-is-added-to-the-briefs-component-list).
+  BEM element of a covered block (`.mu-btn--danger-soft` → `owners: ['Button']`,
+  `.mu-tx__amount--in` → `owners: ['TransactionRow']`, `.mu-overlay` and `.mu-overlay--center` →
+  `owners: ['Sheet', 'Modal']` with `internalOwners: ['_internal/Overlay']`).
+- **`utility`** — a layout or spacing helper with no component of its own; the consumer applies
+  `theme` / `componentMetrics` directly. Covers `.mu-scroll`, `.mu-pad`, `.mu-pad-b`,
+  `.mu-safe-top`, `.mu-row`, `.mu-row--between`, `.mu-grid-2`, `.mu-grid-3`, `.mu-spacer`,
+  `.mu-mt1`…`.mu-mt6`, `.mu-btn-row`, `.mu-btn-stack`, `.mu-pill-row`, `.mu-tx-group`.
+
+  Typography helpers are **not** utilities: `.mu-h1`…`.mu-xs`, `.mu-eyebrow`, `.mu-label`,
+  `.mu-hint`, `.mu-hint--error`, `.mu-mono` **and `.mu-center`** are `primitive` → `Text`,
+  because `Text` implements each of them as a `variant`, a `tone` or the `center` prop
+  (see [Decision 5](#decision-5-text-is-added-to-the-briefs-component-list)). Every class has
+  exactly one status — `.mu-center` in particular belongs to `Text` only, never to the utility
+  list, since `MU_CLASS_MAP` stores one entry per class.
 - **`deferred`** — a real primitive that is **not** in this item's scope, with the owning
   backlog item named in `note`. The complete deferred set:
 
@@ -449,8 +478,12 @@ Two Jest assertions enforce this:
    class in the stylesheet. A new `mu-*` class in the mockup fails the build until someone
    classifies it. This is the residual-verification mechanism for the pattern-completeness
    claim.
-2. **Component resolution** (lands in Step 5): every entry with `status: 'primitive'` names a
-   `component` that is exported from `apps/mobile/src/components/ui/index.ts`.
+2. **Component resolution** (lands in Step 5): every entry with `status: 'primitive'` has a
+   non-empty `owners` array, every name in `owners` is exported from
+   `apps/mobile/src/components/ui/index.ts`, and every path in `internalOwners` resolves to an
+   existing module under `apps/mobile/src/components/ui/` **without** being exported from the
+   barrel. `internalOwners` is intentionally exempt from the barrel requirement — that is what
+   makes it internal.
 
 Both live in `apps/mobile/src/__tests__/mu-class-coverage.test.ts`.
 
@@ -477,7 +510,8 @@ Both live in `apps/mobile/src/__tests__/mu-class-coverage.test.ts`.
 ### Design assets (`design/`)
 
 - [ ] `design/tokens.json` — add the 7 tokens in [Token gaps](#token-gaps-found-must-land-in-step-1); bump `$version` to `1.1.0`.
-- [ ] `design/mockups/mobile/index.html` — mirror the 7 tokens into `:root` (L12–109) as
+- [ ] `design/mockups/mobile/index.html` — mirror the **6 mirrorable** tokens into `:root`
+      (L12–109) as
       `--overlay-scrim`, `--focus-ring`, `--on-grad-surface`, `--on-grad-decoration`,
       `--switch-track-off`, `--r-control`; replace the corresponding literals in `.mu-overlay`
       (L515), `.mu-input.is-focus` (L412), `.mu-hero__icon` (L309), `.mu-hero::after` (L304),
@@ -581,8 +615,8 @@ and never appears in a user journey.
 **Key scenarios**:
 
 1. `theme` deep-equals `design/tokens.json` in both directions — **AC1**, Decision 1
-2. No hex, `rgb()`/`rgba()`, or numeric style-property literal in `src/components/ui/**`,
-   `src/dev/**` or `app/(dev)/**` — **AC1**
+2. No hex, `rgb()`/`rgba()`, or numeric style-property literal anywhere under
+   `apps/mobile/app/**` or `apps/mobile/src/**`, excluding `theme.ts` and test files — **AC1**
 3. Every one of the 162 stylesheet classes is classified in `MU_CLASS_MAP` — **AC2**
 4. Every `status: 'primitive'` entry resolves to an export of
    `src/components/ui/index.ts` — **AC2**
@@ -648,9 +682,19 @@ No suppression directives apply to Scanner A — it reports an inventory, not vi
 #### Scanner B — `findStyleLiterals(source: string): StyleLiteral[]`
 
 Flags hardcoded visual values in TypeScript/TSX source. A violation is `{ line, column, kind, text }`
-with `kind` in `'hex' | 'rgb' | 'style-number'`. Line and block comments are stripped before
-scanning. `style-number` matches only a numeric literal **directly assigned** to a key in a
-fixed property set: `padding*`, `margin*`, `gap`, `rowGap`, `columnGap`, `borderRadius`,
+with `kind` in `'hex' | 'rgb' | 'style-number'`.
+
+**Order of operations matters** and is part of the contract:
+
+1. Scan the **original** source for `style-literal-allow:` directives and build the set of
+   exempt line numbers. This must happen *before* comment stripping, because the directive
+   itself lives inside a line comment — stripping first would delete every suppression.
+2. Strip line and block comments.
+3. Scan the comment-free source for violations.
+4. Drop violations whose line is in the exempt set.
+
+`style-number` matches only a numeric literal **directly assigned** to a key in a fixed
+property set: `padding*`, `margin*`, `gap`, `rowGap`, `columnGap`, `borderRadius`,
 `border*Radius`, `borderWidth`, `border*Width`, `fontSize`, `lineHeight`, `letterSpacing`,
 `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `top`, `right`, `bottom`,
 `left`.
@@ -666,7 +710,9 @@ Edge cases (unit tests in `apps/mobile/src/test-utils/style-literal-scan.test.ts
 | L5 | Negative: `padding: theme.space[4]`, `borderRadius: theme.radius.card` | no violations — the value is not a numeric literal |
 | L6 | Negative in comments: `// padding: 16 — matches .mu-card` and `/* #6366f1 */` | no violations — comments are stripped first |
 | L7 | `padding: 0` | no violation — `0` is the only allowed numeric literal |
-| L8 | Suppression, see below | line exempt |
+| L8 | Trailing directive: `padding: 16, // style-literal-allow: mockup-only spacer` | no violation — the directive survives step 1 and exempts the line |
+| L9 | Preceding-line directive: `// style-literal-allow: mockup-only spacer` on its own line, `padding: 16,` on the next | no violation — the line below a directive is exempt |
+| L10 | Directive with an empty reason: `// style-literal-allow:` | one violation of kind `style-number` and text `missing suppression reason`, and the line is **not** exempt |
 
 **Suppression semantics** (Scanner B only):
 
@@ -676,7 +722,8 @@ Edge cases (unit tests in `apps/mobile/src/test-utils/style-literal-scan.test.ts
   never be used to silence the scanner without an explanation.
 - **Placement**: either trailing on the offending line (`padding: 16, // style-literal-allow: …`)
   or alone on the line immediately above it. Directives inside block comments and directives
-  more than one line above have no effect.
+  more than one line above have no effect. Directives are collected from the original source
+  before comment stripping (step 1 above) — otherwise they would be deleted before use.
 - **Scope**: one directive exempts **the entire line**, including multiple violations on it
   (the L4 case). A second directive on the same line is redundant and changes nothing — the
   line is already exempt, and the extra reason is ignored rather than concatenated.
@@ -686,10 +733,23 @@ Edge cases (unit tests in `apps/mobile/src/test-utils/style-literal-scan.test.ts
 
 - `apps/mobile/src/__tests__/mu-class-coverage.test.ts` runs Scanner A against
   `design/mockups/mobile/index.html` and compares it with `MU_CLASS_MAP`.
-- `apps/mobile/src/__tests__/no-style-literals.test.ts` runs Scanner B over every `.ts`/`.tsx`
-  file under `apps/mobile/src/components/ui/`, `apps/mobile/src/dev/` and
-  `apps/mobile/app/(dev)/`, and asserts zero violations. `apps/mobile/src/theme.ts` is the one
-  file exempt by design — it is where the literals belong.
+- `apps/mobile/src/__tests__/no-style-literals.test.ts` runs Scanner B over **every** `.ts` /
+  `.tsx` file under `apps/mobile/app/` and `apps/mobile/src/`, and asserts zero violations.
+  Scanning the whole app — not just the three directories this item creates — is what makes the
+  AC1 claim "no hex, spacing or radius literal outside `theme.ts`" actually true for
+  `apps/mobile`, and it keeps future screen items honest without anyone having to remember to
+  widen the glob.
+
+  Two exclusions, both deliberate:
+
+  - `apps/mobile/src/theme.ts` — this is where the literals belong.
+  - `**/*.test.ts` / `**/*.test.tsx` — a test asserting `hitSlop.top === 11` is not a style
+    literal, and the scanner's own fixtures are full of intentional violations.
+
+  This is verified to pass on the current tree before any of this item's code exists: a grep
+  for hex, `rgb(`/`rgba(` and numeric style-property assignments across
+  `apps/mobile/app` and `apps/mobile/src` returns nothing (see the
+  [Verification Log](#verification-log)).
 
 **Known limitation, documented in the scanner's doc comment**: Scanner B matches only a numeric
 literal *directly* assigned to a tracked key, so `padding: theme.space[4] + 2` escapes
@@ -719,7 +779,8 @@ To be executed by the developer **after** implementation (not during Plan Ready)
       AC4 from [Decision 4](#decision-4-one-shared-touch-target-module); add how to open the
       dev gallery.
 - [ ] `docs/best-practices/stack/mobile-ui-fidelity.md` — under "Implementation rules", point
-      at `/(dev)/gallery` as the place to check a primitive before writing a screen.
+      at the dev gallery (`finanzas://gallery`) as the place to check a primitive before
+      writing a screen.
 - [ ] `docs/project/2-repo-architecture.md` — add `src/dev/` (dev-only surfaces) to the
       `apps/mobile` tree (the `src/` block at L24–33).
 - [ ] `docs/project/3-software-architecture.md` — add `src/dev/` to the `apps/mobile` tree (the
@@ -734,7 +795,7 @@ To be executed by the developer **after** implementation (not during Plan Ready)
   - **Theme and design-system primitives** (#2): `apps/mobile/src/theme.ts` as a parity-tested
     mirror of `design/tokens.json`, 23 UI primitives under `apps/mobile/src/components/ui/`
     matching the mockup `mu-*` classes, seven new design tokens, and a dev-only design-system
-    gallery route at `/(dev)/gallery`
+    gallery route at `/gallery`
   ```
 
 `design/tokens.json` and `design/mockups/mobile/INVENTORY.md` are edited **in Step 1**, not in
@@ -832,16 +893,33 @@ recoverable; do not batch.
 ### Step 5 — Dev-only gallery route
 
 1. `apps/mobile/src/dev/gallery.strings.ts` (es-CL copy from the `ds-*` screens) and
-   `apps/mobile/src/dev/DesignSystemGallery.tsx`. Section order mirrors `#screen=ds-components`
-   exactly — Botones, Badges, Chips de categoría, Campos, Transacciones, Avisos, Stat tiles —
-   then the additional sections for primitives that screen omits, each labelled with its
-   reference screen: Tipografía y montos (`#screen=ds-typography`), Card
-   (`#screen=dashboard`), Hero (`#screen=home&state=pending`), Segment
-   (`#screen=notifications-schedule`), Pill (`#screen=transactions&state=filters`), Progress
-   (`#screen=bank-syncing&state=products`), Steps (`#screen=categorize`), Dots
-   (`#screen=onboarding-value&state=step-2`), EmptyState (`#screen=bank-picker&state=no-results`),
-   TabBar (`#screen=home`), Sheet (`#screen=categorize&state=exclude-sheet`), Modal
-   (`#screen=settings-account&state=delete-confirm`).
+   `apps/mobile/src/dev/DesignSystemGallery.tsx`.
+
+   **Canonical gallery section order** — this list is the single authority; the smoke
+   runbook's per-primitive list is a coverage checklist, not an order:
+
+   | # | Section (es-CL) | Primitives | Reference |
+   | --- | --- | --- | --- |
+   | 1 | Botones | `Button` (6 variants + `size="sm"`) | `#screen=ds-components` |
+   | 2 | Badges | `Badge` (6 tones) | `#screen=ds-components` |
+   | 3 | Chips de categoría | `CategoryChip` (3 states) | `#screen=ds-components` |
+   | 4 | Campos | `TextField`, `Checkbox`, `Radio`, `Switch` | `#screen=ds-components` |
+   | 5 | Transacciones | `TransactionRow` (3 states) | `#screen=ds-components` |
+   | 6 | Avisos | `Note` (4 tones) | `#screen=ds-components` |
+   | 7 | Stat tiles | `StatTile` (income, expense) | `#screen=ds-components` |
+   | 8 | Tipografía | `Text` (all variants) | `#screen=ds-typography` |
+   | 9 | Montos | `Amount` (3 sizes, 3 tones) | `#screen=ds-typography` |
+   | 10 | Cards | `Card` (3 variants) | `#screen=dashboard` |
+   | 11 | Hero | `Hero` | `#screen=home&state=pending` |
+   | 12 | Segmentos y pills | `Segment`, `Pill` | `#screen=notifications-schedule`, `#screen=transactions&state=filters` |
+   | 13 | Progreso | `Progress`, `Steps`, `Dots` | `#screen=bank-syncing&state=products`, `#screen=categorize`, `#screen=onboarding-value&state=step-2` |
+   | 14 | Estado vacío | `EmptyState` | `#screen=bank-picker&state=no-results` |
+   | 15 | Tab bar | `TabBar` | `#screen=home` |
+   | 16 | Sheet y modal | `Sheet`, `Modal` (opened by buttons) | `#screen=categorize&state=exclude-sheet`, `#screen=settings-account&state=delete-confirm` |
+
+   Sections 1–7 reproduce `#screen=ds-components` in its exact order, which is what AC3
+   compares against. Sections 8–16 are the primitives that screen omits; their order is this
+   plan's choice and is not itself an acceptance criterion.
 2. `apps/mobile/app/(dev)/gallery.tsx` with the `__DEV__` guard.
 3. Add `DEV_ONLY_ROUTES` to `apps/mobile/src/test-utils/route-inventory.ts`; update
    `apps/mobile/src/__tests__/route-manifest-parity.test.ts` (subtract the allowlist; add the
