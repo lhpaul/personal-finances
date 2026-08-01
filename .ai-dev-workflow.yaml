@@ -56,11 +56,16 @@ review:
     # its usage spending cap on the third PR of the session, which is not
     # self-resolving and would gate all ~40 remaining PRs.
     #
-    # REQUIRES: the Codex GitHub App must be installed on this repository. As of
-    # the switch, no codex bot had ever commented on any repo in this org — if it
-    # is not installed, pr-review-loop.sh polls it and reports skipped/no_review
-    # after burning its timeout. That is not a merge blocker (the internal
-    # code-reviewer at Step 7a is the gate that matters) but it is wasted time.
+    # This mirrors zeki-cl/zeki-platform, which runs `platforms: [pr-agent,
+    # codex-github]` — the same pair, split across the two stages of this newer
+    # schema. There, `chatgpt-codex-connector[bot]` posts real reviews, so the
+    # setup is proven rather than speculative.
+    #
+    # REQUIRES: the Codex GitHub App installed on THIS repository. It is
+    # installed on the zeki-cl org, not automatically here. Until it is,
+    # pr-review-loop.sh polls it and reports skipped/no_review after burning its
+    # timeout — not a merge blocker (the internal code-reviewer at Step 7a is the
+    # gate that matters), but wasted time on every PR.
     github:
       - codex-github
   #
