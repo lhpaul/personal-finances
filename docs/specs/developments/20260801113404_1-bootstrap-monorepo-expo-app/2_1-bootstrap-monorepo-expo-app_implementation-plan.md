@@ -59,7 +59,7 @@ on it.
 | Local runtime on the authoring machine | `node --version` | `v26.5.0` — differs from the Node 20 pin this item introduces. Recorded as a known risk requiring human verification, **not** as a reason to change the pin (spec Business Rule 11) |
 | Agent-commit hook coupling to the lockfile switch | `sed -n '35,50p' hooks/truncation-checker/index.ts` | Its skip list already contains both `/package-lock/` and `/pnpm-lock/`, so deleting `package-lock.json` and adding `pnpm-lock.yaml` needs no hook change |
 | Markdown files under `e2e/` (AC11 exposure of a new `.prettierignore`) | `find e2e -name "*.md"` | No matches — ignoring `e2e` in `.prettierignore` cannot change what `pnpm format` rewrites |
-| Nested-artifact guard | `run-nested-artifact-guard.sh --mode pre-create --issue 1 --expected-branch implementation-plan/1-bootstrap-monorepo-expo-app --approved-base develop` | `RESULT=clean`, `UNEXPECTED_COUNT=0` |
+| Nested-artifact guard | `run-nested-artifact-guard.sh --mode pre-pr --issue 1 --expected-branch implementation-plan/1-bootstrap-monorepo-expo-app --approved-base develop` (the `pre-create` run was performed by the parent orchestrator before this branch was dispatched) | `RESULT=clean`, `CANONICAL_COUNT=3`, `UNEXPECTED_COUNT=0` |
 
 ---
 
