@@ -256,7 +256,12 @@ components.**
   are reference screens, not product screens. That assertion stays literally true and
   untouched — this item creates none of the three `design-system/*` routes.
 - **Why not `app/_dev/…` or `app/+gallery.tsx`**: Expo Router ignores `_`-prefixed segments
-  entirely (they would never render) and reserves `+`-prefixed names for special files.
+  (they would never render as a route) and reserves `+`-prefixed names for special files such
+  as `+not-found`. **Unverified from this codebase** — this is Expo Router framework behavior,
+  not a repo file; the implementer must confirm it against the installed `expo-router` ~6.0.24
+  before relying on it. The repo's own `toRoutePath`
+  (`apps/mobile/src/test-utils/route-inventory.ts`) already excludes both prefixes, which is
+  consistent with the claim but does not prove the framework's behavior.
 - **Production gating**: the route file is hook-free and guards first:
 
   ```tsx
@@ -534,20 +539,22 @@ and never appears in a user journey.
 **Key scenarios**:
 
 1. `theme` deep-equals `design/tokens.json` in both directions — **AC1**, Decision 1
-2. `componentMetrics` is namespaced per primitive and contains no key absent from the
-   primitives that consume it — **AC1**
-3. No hex, `rgb()`/`rgba()`, or numeric style-property literal in `src/components/ui/**`,
+2. No hex, `rgb()`/`rgba()`, or numeric style-property literal in `src/components/ui/**`,
    `src/dev/**` or `app/(dev)/**` — **AC1**
-4. Every one of the 162 stylesheet classes is classified in `MU_CLASS_MAP` — **AC2**
-5. Every `status: 'primitive'` entry resolves to an export of
+3. Every one of the 162 stylesheet classes is classified in `MU_CLASS_MAP` — **AC2**
+4. Every `status: 'primitive'` entry resolves to an export of
    `src/components/ui/index.ts` — **AC2**
-6. Every entry in `TOUCH_METRICS` yields an effective target ≥ `theme.touchTarget.min` — **AC4**
-7. `DevGalleryRoute()` returns `null` when `__DEV__` is `false` — Decision 6
-8. The derived route set minus `DEV_ONLY_ROUTES` still equals the 25 manifest MVP routes, and
+5. Every entry in `TOUCH_METRICS` yields an effective target ≥ `theme.touchTarget.min` — **AC4**
+6. `DevGalleryRoute()` returns `null` when `__DEV__` is `false` — Decision 6
+7. The derived route set minus `DEV_ONLY_ROUTES` still equals the 25 manifest MVP routes, and
    no route contains `design-system` — item #1 AC5/AC6 regression
-9. Scanner edge cases — see the [Parser-risk addendum](#parser-risk-addendum)
-10. The gallery renders every primitive and matches `#screen=ds-components` — **AC3**, manual,
-    in the smoke runbook
+8. Scanner edge cases — see the [Parser-risk addendum](#parser-risk-addendum)
+9. The gallery renders every primitive and matches `#screen=ds-components` — **AC3**, manual,
+   in the smoke runbook
+
+`componentMetrics` has no dedicated test: nothing cheap can prove a geometry constant matches
+the mockup. Scenario 2 is what makes it load-bearing — a primitive cannot bypass it with a
+literal — and the mockup comparison in the runbook is what proves the values are right.
 
 **Smoke test runbook**:
 `docs/testing/mobile/2-theme-design-system-primitives.smoke-test.md`
@@ -672,9 +679,9 @@ To be executed by the developer **after** implementation (not during Plan Ready)
 - [ ] `docs/best-practices/stack/mobile-ui-fidelity.md` — under "Implementation rules", point
       at `/(dev)/gallery` as the place to check a primitive before writing a screen.
 - [ ] `docs/project/2-repo-architecture.md` — add `src/dev/` (dev-only surfaces) to the
-      `apps/mobile` tree at L25–33.
-- [ ] `docs/project/3-software-architecture.md` — add `src/dev/` to the tree at L88; note the
-      `__DEV__`-gated `(dev)` route group under Testing Strategy or the routing section.
+      `apps/mobile` tree (the `src/` block at L24–33).
+- [ ] `docs/project/3-software-architecture.md` — add `src/dev/` to the `apps/mobile` tree (the
+      `src/` block at L86–L90); note the `__DEV__`-gated `(dev)` route group.
 - [ ] `AGENTS.md` (and its `CLAUDE.md` symlink) — add `src/dev/` to the Repository Structure
       tree; add a Common Commands line for opening the gallery in the running app.
 - [ ] `design/README.md` — Token workflow section: note that `theme.ts` now exists and is
