@@ -125,7 +125,7 @@ issue_tracker:
   # Used by workflow-lib.sh as a fallback when GITHUB_PROJECT_NUMBER env var is not set.
   # Required for tracker status updates (update_tracker_status_best_effort) and status reads
   # (get_tracker_status_for_issue) to function without setting an environment variable.
-  project_number: 1
+  project_number: 9
   # custom_fields: flat key-value map of provider-specific fields.
   # Each integration doc defines which keys are recognised and their effect.
   # Unrecognised keys are silently ignored by scripts that do not consume them.
