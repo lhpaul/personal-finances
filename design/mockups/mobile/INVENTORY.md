@@ -1,6 +1,6 @@
 # Inventory — `mobile`
 
-36 screens · `$status: complete` · tokens v1.0.0
+36 screens · `$status: complete` · tokens v1.1.0
 
 Legend: **MVP** = part of the development MVP · **—** = mockup only (`mvp: false` in the manifest).
 
