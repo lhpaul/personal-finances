@@ -378,9 +378,12 @@ The check-digit algorithm: multiply the body digits right-to-left by the repeati
 
 **Decision 11 — AC4 becomes a lint rule, not a grep.** The root `eslint.config.mjs` shared array
 gains a `no-restricted-properties` entry banning `toLocaleString`, `toLocaleDateString` and
-`toLocaleTimeString` on any object, with a message pointing at `@finanzas/shared-utils`. Because
-every workspace config spreads `rootConfig` (verified above), the ban reaches `apps/mobile`,
-`shared-domain`, `shared-utils` and `bank-scraper` in one edit. The root file additionally gains a
+`toLocaleTimeString` on any object, with a message pointing at `@finanzas/shared-utils`. Its
+`files` glob is `**/*.{ts,tsx,js,jsx,mjs,cjs}`, not `**/*.{ts,tsx}` — narrower would leave the rule
+covering less than the AC4 residual scan and the changelog claim, both of which include `.js`
+(Testing Strategy `AC4 baseline` row), and the repo already has real, committed `.js` files this
+rule must reach. Because every workspace config spreads `rootConfig` (verified above), the ban
+reaches `apps/mobile`, `shared-domain`, `shared-utils` and `bank-scraper` in one edit. The root file additionally gains a
 new named export `sharedUtilsPurity` — a `no-restricted-imports` block mirroring the existing
 `sharedDomainPurity` shape and additionally banning `react`, `react-*` and the Node I/O builtins
 — which `packages/shared-utils/eslint.config.mjs` applies, mechanically enforcing brief rule 3
@@ -1166,7 +1169,16 @@ export function computeRutCheckDigit(bodyDigits: string): string {
 }
 ```
 
-AC4 lint ban (root `eslint.config.mjs`, Decision 11) — additive entry in the shared array:
+AC4 lint ban (root `eslint.config.mjs`, Decision 11) — additive entries in the shared array. The
+`toLocale*` ban is deliberately on its **own** entry with a wider `files` glob than the existing
+`no-console` entry: AC4's residual scan (Testing Strategy, `AC4 baseline` row) and the changelog
+claim both cover `.js` alongside `.ts`/`.tsx` — this repo already has real, committed `.js` files
+(`apps/mobile/{app.config,jest.config,metro.config,babel.config}.js`, every workspace's own
+`jest.config.js`; verified at plan time, Verification Log), and `packages/bank-scraper` is
+documented (AGENTS.md) as holding "per-bank script configs", which are a plausible home for a
+future plain-`.js` file. Scoping `no-restricted-properties` to `**/*.{ts,tsx}` only would leave the
+lint rule narrower than what AC4 and the residual scan claim to cover, so the rule's `files` glob
+adds `js`, `jsx`, `mjs` and `cjs`:
 
 ```js
 // Illustrative — adapt during implementation
@@ -1174,6 +1186,13 @@ AC4 lint ban (root `eslint.config.mjs`, Decision 11) — additive entry in the s
   files: ['**/*.{ts,tsx}'],
   rules: {
     'no-console': 'warn',
+  },
+},
+{
+  // Wider than the no-console entry above, on purpose (see prose above): AC4's residual scan and
+  // changelog claim cover `.js` too, so the toLocale* ban must not be TypeScript-only.
+  files: ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
+  rules: {
     'no-restricted-properties': [
       'error',
       ...['toLocaleString', 'toLocaleDateString', 'toLocaleTimeString'].map((property) => ({
@@ -1238,16 +1257,23 @@ AC4 lint ban (root `eslint.config.mjs`, Decision 11) — additive entry in the s
 6. **ESLint enforcement.** Add the `no-restricted-properties` `toLocale*` entry to the root
    `eslint.config.mjs` shared array and the `sharedUtilsPurity` named export (Decision 11); apply
    `sharedUtilsPurity` and `'no-console': 'error'` in `packages/shared-utils/eslint.config.mjs`.
-   *Verify*: run `pnpm lint` — it must pass. Then run the two negative probes, capturing both the
-   failing and the passing output for the PR description:
+   *Verify*: run `pnpm lint` — it must pass. Then run the three negative probes, capturing both
+   the failing and the passing output for the PR description:
    (a) temporarily add `(1200000).toLocaleString('es-CL');` to
    `apps/mobile/src/__tests__/workspace-wiring.test.ts`, run `pnpm lint`, confirm it fails with
    the message naming `@finanzas/shared-utils`, then remove it and confirm `pnpm lint` passes
    again — this is what proves `eslint-config-expo` does not reset the rule;
    (b) temporarily add `import { readFileSync } from 'node:fs';` to
    `packages/shared-utils/src/index.ts`, run `pnpm lint`, confirm it fails with the
-   `sharedUtilsPurity` message, then remove it and confirm `pnpm lint` passes again.
-   **Neither violation is committed** — a committed one would permanently break `pnpm lint`.
+   `sharedUtilsPurity` message, then remove it and confirm `pnpm lint` passes again;
+   (c) a **JavaScript** negative probe, proving the ban's `files` glob actually reaches `.js` (the
+   Testing Strategy's `AC4 baseline` residual scan and the changelog claim both cover `.js`, not
+   just `.ts`/`.tsx`): temporarily add `(1200000).toLocaleString('es-CL');` inside the function
+   body of `apps/mobile/babel.config.js` (a real, committed `.js` file `eslint .` already lints),
+   run `pnpm lint`, confirm it fails with the message naming `@finanzas/shared-utils`, then remove
+   it and confirm `pnpm lint` passes again.
+   **None of the three violations is committed** — a committed one would permanently break
+   `pnpm lint`.
 
 7. **`src/index.ts` and `src/index.test.ts`.** Add the three `export *` lines, keeping
    `PACKAGE_NAME` byte-identical. Extend `index.test.ts` with a surface test that imports
