@@ -269,7 +269,9 @@ would reject. The Testing Strategy's AC3 Group B addendum and `dates.test.ts` co
 explicitly (`addDays('0100-01-01', -1)`, `getWeekPeriod('0100-01-01')`, `addDays('9999-12-31', 1)`,
 `getWeekPeriod('9999-12-31')`), alongside an in-range low-year case
 (`getWeekPeriod('0100-01-05')` → `{ '0100-01-01', '0100-01-07' }`) proving the guard fires only at
-the actual boundary, not for every low-year input.
+the actual boundary, not for every low-year input. The Group C addendum covers the identical pair
+of edges for `shiftMonthPeriod` and `shiftWeekPeriod`, since these two functions can cross the same
+boundary through a different code path (a shifted period, not a shifted single date).
 
 **Decision 4 — the money sign is one total rule, not three special cases.** For both
 `formatClp` and `formatClpAbbreviated`:
@@ -795,6 +797,21 @@ month to a 28-day month, no clamping bug); `shiftMonthPeriod({ '2024-01-01', '20
 crosses more than a year. `shiftMonthPeriod({ '2025-01-15', '2025-01-31' }, 1)` throws
 `RangeError` (start is not the first of a month). `shiftWeekPeriod({ '2025-01-20',
 '2025-01-26' }, -6)` → the six-weeks-ago window that the `Últimas 6 semanas` chart needs.
+
+**Group C addendum — the `0100`/`9999` arithmetic boundary for the shift functions (Decision 3,
+"Arithmetic self-consistency"), symmetric to the Group B addendum below.** `shiftMonthPeriod`
+and `shiftWeekPeriod` both route their result through `toDateLocal`, so they are exposed to the
+identical boundary as `addDays` and `getWeekPeriod`, just reached by shifting a *period* instead
+of a single date. Lower edge: `shiftMonthPeriod({ '0100-01-01', '0100-01-31' }, -1)` throws
+`RangeError` (the naive result is `{ '0099-12-01', '0099-12-31' }`, outside the supported range);
+`shiftWeekPeriod({ '0100-01-04', '0100-01-10' }, -1)` throws `RangeError` for the same underlying
+reason — its shifted start would be `0099-12-28`. Upper edge, symmetrically:
+`shiftMonthPeriod({ '9999-12-01', '9999-12-31' }, 1)` throws `RangeError` (the naive result is
+`{ '10000-01-01', '10000-01-31' }`); `shiftWeekPeriod({ '9999-12-20', '9999-12-26' }, 1)` throws
+`RangeError` because its shifted end would be `10000-01-02`. Both `0100-01-04`-`0100-01-10` and
+`9999-12-20`-`9999-12-26` are themselves valid, in-range Monday-start weeks (control cases
+implicit in the vectors above), proving the guard fires only when the *shift* — not the input —
+crosses the boundary.
 
 **Group D — `deriveDateLocal` across the 2025 Chile DST transitions** (instants verified at plan
 time, all with the default `SANTIAGO_TIME_ZONE`):
