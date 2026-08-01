@@ -155,10 +155,12 @@ partial inclusion and manual-entry marker the person had set is exactly as they 
 
 - Both recognition routes must hold at once: a bank that supplies identifiers and a bank that
   does not must each be safe from duplicates.
-- A movement that the bank re-states with a different amount or description is a different
-  movement by fingerprint. That is accepted: banks do not silently rewrite settled movements,
-  and treating a rewrite as new is safer than overwriting a movement the person already
-  classified.
+- When the bank supplies an identifier, a movement it re-states with a different amount or
+  description is still the same movement, and its bank-owned values are refreshed in place.
+  When the bank supplies none, the same re-statement changes the fingerprint and is stored as a
+  new movement. That asymmetry is accepted: banks do not silently rewrite settled movements, and
+  with no identifier to match on, treating a rewrite as new is safer than guessing which stored
+  movement to overwrite and destroying the classification the person already gave it.
 - Nothing in this item performs a sync. This item defines the storage guarantee that the sync
   item relies on, and proves it against recorded bank responses.
 
@@ -296,9 +298,9 @@ person-owned value, or the check fails and names what would be lost.
 4. **Amounts are stored unsigned; direction comes from the movement type.** A movement's amount
    is always positive; whether it is money in or money out is read from the bank's debit/credit
    classification together with the category's direction.
-5. **Bank movements are never deleted.** They are excluded from analysis with a reason, and a
-   free-text explanation when the reason is "Otro". No operation in the product deletes a
-   movement except the person wiping all local data.
+5. **Bank movements are never deleted.** They are excluded from analysis with a reason, plus an
+   optional free-text explanation when the reason is "Otro". No operation in the product deletes
+   a movement except the person wiping all local data.
 6. **A movement counts toward totals and charts when it has not been excluded, at its partial
    amount when one is set and its full amount otherwise.** This rule exists in exactly one place
    and every aggregate reads through it. A second implementation of it is a review blocker.
@@ -510,7 +512,7 @@ category. `user` is never downgraded automatically.
 | `shared_expense` | Involucra a más personas | Paid for others; often paired with a partial inclusion instead. |
 | `not_relevant` | Gasto no relevante | Not part of what the person wants to track. |
 | `cash_withdrawal` | Retiro de efectivo | Counted where the cash is actually spent, not at the ATM. |
-| `other` | Otro | Requires the free-text explanation. |
+| `other` | Otro | The only reason that carries a free-text explanation, and the explanation is optional (`#screen=categorize&state=exclude-sheet` labels it "Explica brevemente (opcional)"). |
 
 ---
 
@@ -579,7 +581,11 @@ Income (order 1–6):
 - The tokens file also defines an `uncategorized` glyph (❓). That is the UI's marker for a
   movement with no category at all — it is **not** seeded as a category.
 - Display order is per direction, because the categories screen shows spending and income in
-  separate tabs.
+  separate tabs. Two categories in opposite directions may therefore share the same order
+  number; order is only ever meaningful within one direction.
+- Every starter category is expense or income, never both. A category's direction never changes
+  after it is created, because changing it would silently move the movements filed under it from
+  one side of every total to the other.
 
 ### Merchants
 
@@ -706,6 +712,10 @@ to the stored shape.
       which references are named after the record they point at, and which values live in
       shape-varying data. Any intentional difference is reflected in that document within the
       same change, so the two never disagree.
+- [ ] **AC29.** Every category has exactly one direction, expense or income, and no operation in
+      this item changes an existing category's direction. The ten spending and six income
+      starter categories carry the directions listed under [Categories](#categories), and their
+      display order is meaningful only within a direction.
 
 ---
 
