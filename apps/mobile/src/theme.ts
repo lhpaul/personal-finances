@@ -297,11 +297,19 @@ export const componentMetrics = {
     control: 1.5,
   },
 
-  /** Shared shadow colour — React Native's shadow API takes a flat `shadowColor` plus a
-   * separate `shadowOpacity`, so a CSS `rgba(0, 0, 0, α)` shadow layer (e.g. `theme.shadow.sm`,
-   * used by `.mu-tx`) decomposes to this pure-black constant + the layer's own opacity. */
+  /** Shared shadow decompositions. React Native's shadow API takes a flat `shadowColor` +
+   * `shadowOpacity` + `shadowRadius` + `shadowOffset`, so each `theme.shadow.*` CSS
+   * `box-shadow` string decomposes to its first layer's offset-y/radius/opacity here, reused by
+   * every primitive whose mockup rule reads the same `var(--sh-*)`. */
   shadow: {
+    /** Pure black — matches `theme.shadow.sm`'s `rgba(0, 0, 0, α)` tint. */
     black: '#000000',
+    /** `theme.shadow.sm` (`0 1px 2px 0 rgba(0, 0, 0, 0.05)`) — used by `.mu-tx`
+     * (`--sh-sm`, L472), `.mu-switch::after` (L447), `.mu-segment__item.is-active` (L408). */
+    sm: { offsetY: 1, radius: 2, opacity: 0.05 },
+    /** `theme.shadow.card`'s first layer (`0 1px 3px rgba(26, 29, 41, 0.06)`) — used by
+     * `.mu-card` (`--sh-card`, L296). The rgba tint (26, 29, 41) is `theme.colors.textPrimary`. */
+    card: { offsetY: 1, radius: 3, opacity: 0.06 },
   },
 
   text: {
@@ -343,12 +351,6 @@ export const componentMetrics = {
     subMarginTop: 2,
     /** `.mu-card__title` (L301) letter-spacing. */
     titleLetterSpacing: -0.2,
-    /** `theme.shadow.card`'s first layer (`0 1px 3px rgba(26, 29, 41, 0.06)`), decomposed for
-     * React Native's single-shadow API: offset-y, blur radius, opacity. The rgba tint
-     * (26, 29, 41) is `theme.colors.textPrimary`. */
-    shadowOffsetY: 1,
-    shadowRadius: 3,
-    shadowOpacity: 0.06,
   },
 
   hero: {
@@ -432,12 +434,6 @@ export const componentMetrics = {
      * name line (19) + `metaMarginTop` (1) + the meta line (`--sm` 12 × the inherited 1.5
      * line-height = 18) = 62. */
     minTouchHeight: 62,
-    /** `.mu-tx`'s `box-shadow: var(--sh-sm)` → `theme.shadow.sm` (`0 1px 2px 0 rgba(0, 0, 0,
-     * 0.05)`), decomposed for React Native's single-shadow API. Unlike `card`'s shadow, this
-     * one really is a pure-black tint in the token. */
-    shadowOffsetY: 1,
-    shadowRadius: 2,
-    shadowOpacity: 0.05,
   },
 
   textField: {
@@ -487,6 +483,10 @@ export const componentMetrics = {
     itemPaddingVertical: 6,
     /** `.mu-segment__item` (L405) horizontal padding. */
     itemPaddingHorizontal: 16,
+    /** `.mu-segment__item` (L404-406) has no explicit CSS height — it is content-driven.
+     * Conservative touch-target estimate for `TOUCH_METRICS`: 2 × `itemPaddingVertical` (6) +
+     * the label line (`--sm` 12 × the inherited 1.5 line-height = 18) = 30. */
+    itemMinTouchHeight: 30,
   },
 
   pill: {
@@ -494,6 +494,10 @@ export const componentMetrics = {
     paddingVertical: 7,
     /** `.mu-pill` (L395) horizontal padding. */
     paddingHorizontal: 14,
+    /** `.mu-pill` (L394-397) has no explicit CSS height — it is content-driven. Conservative
+     * touch-target estimate for `TOUCH_METRICS`: 2 × `paddingVertical` (7) + the label line
+     * (`--sm` 12 × the inherited 1.5 line-height = 18) = 32. */
+    minTouchHeight: 32,
   },
 
   overlay: {

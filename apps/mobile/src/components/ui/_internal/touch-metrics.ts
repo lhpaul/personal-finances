@@ -60,4 +60,18 @@ export const TOUCH_METRICS: Record<string, TouchMetrics> = {
   categoryChip: withMinTarget({ height: componentMetrics.categoryChip.minHeight }),
   transactionRow: withMinTarget({ height: componentMetrics.transactionRow.minTouchHeight }),
   hero: withMinTarget({ height: componentMetrics.hero.minTouchHeight }),
+  checkbox: withMinTarget({
+    width: componentMetrics.checkbox.size,
+    height: componentMetrics.checkbox.size,
+  }),
+  radio: withMinTarget({
+    width: componentMetrics.radio.size,
+    height: componentMetrics.radio.size,
+  }),
+  switch: withMinTarget({
+    width: componentMetrics.switchControl.width,
+    height: componentMetrics.switchControl.height,
+  }),
+  segmentItem: withMinTarget({ height: componentMetrics.segment.itemMinTouchHeight }),
+  pill: withMinTarget({ height: componentMetrics.pill.minTouchHeight }),
 };

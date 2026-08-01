@@ -1,0 +1,87 @@
+import { useState } from 'react';
+import { TextInput, View } from 'react-native';
+
+import { componentMetrics, theme } from '../../theme';
+import { Text } from './Text';
+
+export type TextFieldProps = {
+  label?: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  hint?: string;
+  /** A non-null string renders `.mu-input.is-error` + `.mu-hint--error`. */
+  error?: string | null;
+  /** `.mu-input.is-locked` — read-only display mode. */
+  locked?: boolean;
+  secureTextEntry?: boolean;
+};
+
+/** `.mu-field`, `.mu-label`, `.mu-input`, `--ph`, `.is-focus`, `.is-error`, `.is-locked`,
+ * `.mu-hint`, `.mu-hint--error`. Focus is tracked internally via `onFocus`/`onBlur`. */
+export function TextField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  hint,
+  error = null,
+  locked = false,
+  secureTextEntry = false,
+}: TextFieldProps) {
+  const [focused, setFocused] = useState(false);
+  const hasError = error !== null && error !== undefined;
+
+  return (
+    <View style={{ marginTop: theme.space['4'] }}>
+      {label !== undefined && <Text variant="label">{label}</Text>}
+      <View
+        style={[
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.space['3'],
+            minHeight: componentMetrics.textField.height,
+            paddingHorizontal: theme.space['4'],
+            borderRadius: theme.radius.button,
+            backgroundColor: theme.colors.surface1,
+            borderWidth: componentMetrics.borderWidth.control,
+            borderColor: theme.colors.borderInput,
+          },
+          focused &&
+            !hasError && {
+              borderColor: theme.colors.brandPrimary,
+              shadowColor: theme.colors.focusRing,
+              shadowOpacity: 1,
+              shadowRadius: componentMetrics.textField.focusRingWidth,
+              shadowOffset: { width: 0, height: 0 },
+            },
+          hasError && { borderColor: theme.colors.danger, backgroundColor: theme.colors.dangerBg },
+          locked && { backgroundColor: theme.colors.surface3 },
+        ]}
+      >
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={theme.colors.textTertiary}
+          editable={!locked}
+          secureTextEntry={secureTextEntry}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            flex: 1,
+            fontSize: componentMetrics.textField.fontSize,
+            color: locked ? theme.colors.textSecondary : theme.colors.textPrimary,
+          }}
+        />
+      </View>
+      {hint !== undefined && !hasError && <Text variant="hint">{hint}</Text>}
+      {hasError && (
+        <Text variant="hint" tone="danger">
+          {error}
+        </Text>
+      )}
+    </View>
+  );
+}

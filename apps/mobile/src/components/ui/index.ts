@@ -14,10 +14,16 @@ export {
   type CategoryChipProps,
   type CategoryChipState,
 } from './CategoryChip';
+export { Checkbox, type CheckboxProps } from './Checkbox';
 export { Hero, type HeroGradient, type HeroProps } from './Hero';
 export { Note, type NoteProps, type NoteTone } from './Note';
+export { Pill, type PillProps } from './Pill';
+export { Radio, type RadioProps } from './Radio';
+export { Segment, type SegmentOption, type SegmentProps } from './Segment';
 export { StatTile, type StatTileArrow, type StatTileProps, type StatTileTone } from './StatTile';
+export { Switch, type SwitchProps } from './Switch';
 export { Text, type TextProps, type TextTone, type TextVariant } from './Text';
+export { TextField, type TextFieldProps } from './TextField';
 export {
   TransactionRow,
   type TransactionRowDirection,

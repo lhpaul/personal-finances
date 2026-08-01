@@ -32,9 +32,9 @@ export function Card({ variant = 'default', title, subtitle, headerRight, childr
           ? { backgroundColor: theme.colors.surface2 }
           : {
               shadowColor: theme.colors.textPrimary,
-              shadowOpacity: componentMetrics.card.shadowOpacity,
-              shadowRadius: componentMetrics.card.shadowRadius,
-              shadowOffset: { width: 0, height: componentMetrics.card.shadowOffsetY },
+              shadowOpacity: componentMetrics.shadow.card.opacity,
+              shadowRadius: componentMetrics.shadow.card.radius,
+              shadowOffset: { width: 0, height: componentMetrics.shadow.card.offsetY },
               elevation: 1,
             },
       ]}
