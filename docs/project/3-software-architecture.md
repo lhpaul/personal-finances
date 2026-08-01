@@ -11,6 +11,7 @@
 | Scraping | **`react-native-webview`** + injected scripts (`@finanzas/bank-scraper`) | Ported from `bank-scrapper-app`. Banco de Chile is already implemented |
 | State | **TanStack Query** over repository functions + React Context for session state | Screens are read-heavy over SQLite; Query's cache/invalidate model fits better than a global store. No Redux |
 | Charts | Hand-rolled **`react-native-svg`** components | The dashboard needs five chart shapes, all already drawn in the mockups. A chart library would cost more than it saves |
+| i18n | **`i18next`** + `react-i18next` + `expo-localization`, enforced by `eslint-plugin-i18next` |
 | Notifications | **`expo-notifications`**, local scheduling only | Reminders are local; there is no push server |
 | Testing | **Jest** (unit) + **Maestro** (device E2E) | See [Testing Strategy](#testing-strategy) |
 | CI | **GitHub Actions**; builds via **EAS** | |
@@ -98,9 +99,9 @@ destinations until those sections ship.
   repositories. Screens never call Drizzle directly.
 - **Screen states** in the mockups (`empty`, `error`, `filters`…) are real render branches.
   A screen is not done until every state in its manifest entry renders.
-- **Copy lives in i18n catalogues** (`src/i18n/`), never inline in JSX. `es` is primary and
-  `en` is the fallback, matching `zeki-platform` and the per-locale
-  `transaction_categories.labels` in the data model.
+- **Copy lives in i18n catalogues** (`src/i18n/{es,en}.json`, flat keys), never inline in JSX.
+  `i18next` + `react-i18next` with `expo-localization` for detection, matching
+  `zeki-platform`. Enforced by `eslint-plugin-i18next/no-literal-string`.
 
 ## Backend / API Architecture
 

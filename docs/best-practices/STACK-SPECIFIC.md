@@ -71,7 +71,9 @@ The rules most likely to be violated in this codebase. Detail lives in the `stac
   against captured HTML. Never reach into a bank's DOM from app code.
 
 - **No user-facing literal strings in JSX.** Copy lives in the `src/i18n/` catalogues (`es`
-  primary, `en` fallback) and the Spanish string comes from the mockup. Identifiers, table and
+  primary, `en` fallback) and the Spanish string comes from the mockup. This is enforced by
+  `eslint-plugin-i18next/no-literal-string`, so a literal fails `pnpm lint` — do not
+  eslint-disable it to get a screen merged. Identifiers, table and
   column names, commit messages and comments stay English. Enum-like values are stored as
   stable codes and resolved to copy by the catalogue — never persist a translated string.
 
