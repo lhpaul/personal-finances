@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "@types/node": "26.1.2",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.12",
     "eslint-config-expo": "10.0.0",
