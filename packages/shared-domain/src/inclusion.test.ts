@@ -34,6 +34,12 @@ describe('inclusion — Business Rule 4, AC2', () => {
     expect(Object.isFrozen(INCLUSION_RULE_CASES)).toBe(true);
   });
 
+  it('every individual case object is also frozen, not just the outer array (CodeRabbit finding on PR #44)', () => {
+    for (const row of INCLUSION_RULE_CASES) {
+      expect(Object.isFrozen(row)).toBe(true);
+    }
+  });
+
   it('the blocking case (partial) is not the same number as the full case', () => {
     // Guards against a regression that silently makes `partial` collapse into `full`.
     const partial = INCLUSION_RULE_CASES.find((c) => c.key === 'partial');
@@ -70,6 +76,23 @@ describe('Business Rule 8 — amounts are integers in minor units', () => {
     expect(() => effectiveAmount({ amount: 1000, includedAmount: null, excludedAt: null })).not.toThrow();
   });
 
+  it('effectiveAmount throws RangeError when amount is a negative safe integer (CodeRabbit finding on PR #44)', () => {
+    // docs/project/4-database-model.md: transactions.amount is "always positive". Rejecting a
+    // negative amount here — rather than letting it silently reach apportionTenths's own
+    // negative-weight RangeError as a confusing downstream failure — makes the domain boundary
+    // the place the rejection happens.
+    expect(() => effectiveAmount({ amount: -1000, includedAmount: null, excludedAt: null })).toThrow(RangeError);
+  });
+
+  it('effectiveAmount throws RangeError when includedAmount is a negative safe integer', () => {
+    expect(() => effectiveAmount({ amount: 1000, includedAmount: -500, excludedAt: null })).toThrow(RangeError);
+  });
+
+  it('zero is not negative: amount 0 and includedAmount 0 both pass (the zero-amount and partial-zero cases)', () => {
+    expect(() => effectiveAmount({ amount: 0, includedAmount: null, excludedAt: null })).not.toThrow();
+    expect(() => effectiveAmount({ amount: 1000, includedAmount: 0, excludedAt: null })).not.toThrow();
+  });
+
   it('contributedAmount propagates the same guard when the movement is included', () => {
     expect(() => contributedAmount({ amount: 1.5, includedAmount: null, excludedAt: null })).toThrow(TypeError);
   });
@@ -101,6 +124,24 @@ describe('Business Rule 1 — no thrown message interpolates its input', () => {
         'effectiveAmount: includedAmount must be a safe-integer minor-unit value',
       );
       expect((error as Error).message).not.toContain(String(injectedValue));
+    }
+  });
+
+  it('the two RangeError messages for negative amounts are also fixed sentences that never echo the received value', () => {
+    const injectedNegativeAmount = -123456;
+    try {
+      effectiveAmount({ amount: injectedNegativeAmount, includedAmount: null, excludedAt: null });
+      throw new Error('expected effectiveAmount to throw');
+    } catch (error) {
+      expect((error as Error).message).toBe('effectiveAmount: amount must not be negative');
+      expect((error as Error).message).not.toContain(String(injectedNegativeAmount));
+    }
+    try {
+      effectiveAmount({ amount: 1000, includedAmount: injectedNegativeAmount, excludedAt: null });
+      throw new Error('expected effectiveAmount to throw');
+    } catch (error) {
+      expect((error as Error).message).toBe('effectiveAmount: includedAmount must not be negative');
+      expect((error as Error).message).not.toContain(String(injectedNegativeAmount));
     }
   });
 

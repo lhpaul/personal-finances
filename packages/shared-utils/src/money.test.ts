@@ -239,5 +239,26 @@ describe('money', () => {
       expect(formatClpAbbreviated(3_700_000)).toBe('3.7M');
       expect(formatClpAbbreviated(279_000, { withCurrencySymbol: true })).toBe('$279K');
     });
+
+    describe('the two contract boundaries the export widens (CodeRabbit finding on PR #44)', () => {
+      // The implementation body is intentionally unchanged by this promotion (see the doc
+      // comment on divideRoundHalfUp) — every existing call site (formatClpAbbreviated) already
+      // passes Math.abs(...) for the numerator and one of two positive compile-time-constant
+      // denominators, so neither boundary below was reachable before this export. Both are now
+      // reachable from any package that imports the promoted export, so this pins the current,
+      // actual behaviour rather than silently leaving it unspecified.
+      it('denominator 0 throws (native BigInt division-by-zero RangeError)', () => {
+        expect(() => divideRoundHalfUp(5, 0)).toThrow(RangeError);
+      });
+
+      it('a negative numerator does not throw — it silently computes using the same formula, which is only meaningful for a non-negative numerator (documented contract, not enforced)', () => {
+        // divideRoundHalfUp(-5, 3): (-5n + 1n) / 3n = -4n / 3n = -1n (BigInt division truncates
+        // toward zero). This is NOT "half-up rounding of |-5|/3 with the sign reapplied" (that
+        // would be -2) — it is whatever the unmodified formula produces for a negative input,
+        // which is why the doc comment requires callers to pass Math.abs(...) rather than the
+        // function guarding against a negative numerator itself.
+        expect(divideRoundHalfUp(-5, 3)).toBe(-1);
+      });
+    });
   });
 });

@@ -30,24 +30,17 @@ export function normalizeDescription(raw: string): string {
 }
 
 /**
- * Matches a raw bank description against one alias, with the given `matchType`. Both sides are
- * normalized (defensively — `merchant_aliases.raw_pattern` is documented as already normalized,
- * but a stored pattern containing a stray `*` must not silently fail to match).
- *
- * Token boundaries are enforced by space-padding both operands: `prefix` and `contains` compare
- * `` `${s} }` `` / `` ` ${s} ` `` forms so a match can only start/end at a token boundary. An
- * empty normalized pattern never matches anything, and an empty normalized description never
- * matches anything.
+ * Token-boundary comparison of two **already-normalized** strings (performance note on PR #44:
+ * `resolveMerchant` normalizes each side once per alias and reuses it here instead of every
+ * caller re-normalizing through `aliasMatches`). Token boundaries are enforced by space-padding
+ * both operands: `prefix` and `contains` compare `` `${s} }` `` / `` ` ${s} ` `` forms so a match
+ * can only start/end at a token boundary. An empty pattern never matches anything, and an empty
+ * description never matches anything.
  */
-export function aliasMatches(
-  rawDescription: string,
-  alias: Pick<MerchantAlias, 'rawPattern' | 'matchType'>,
-): boolean {
-  const description = normalizeDescription(rawDescription);
-  const pattern = normalizeDescription(alias.rawPattern);
+function matchesNormalized(description: string, pattern: string, matchType: MerchantMatchType): boolean {
   if (description === '' || pattern === '') return false;
 
-  switch (alias.matchType) {
+  switch (matchType) {
     case 'exact':
       return description === pattern;
     case 'prefix':
@@ -58,11 +51,26 @@ export function aliasMatches(
       // Fixed sentence, no interpolation of the input (Business Rule 1 — no thrown message in
       // this module ever echoes caller-supplied content, even for a value this defensive branch
       // cannot reach through the TypeScript-typed API).
-      const exhaustive: never = alias.matchType;
+      const exhaustive: never = matchType;
       void exhaustive;
       throw new RangeError('aliasMatches: unknown matchType');
     }
   }
+}
+
+/**
+ * Matches a raw bank description against one alias, with the given `matchType`. Both sides are
+ * normalized (defensively — `merchant_aliases.raw_pattern` is documented as already normalized,
+ * but a stored pattern containing a stray `*` must not silently fail to match). The public
+ * boundary that normalizes its raw inputs; `resolveMerchant` normalizes once per alias itself and
+ * calls `matchesNormalized` directly instead of going through this function, to avoid
+ * re-normalizing the same pattern twice per alias.
+ */
+export function aliasMatches(
+  rawDescription: string,
+  alias: Pick<MerchantAlias, 'rawPattern' | 'matchType'>,
+): boolean {
+  return matchesNormalized(normalizeDescription(rawDescription), normalizeDescription(alias.rawPattern), alias.matchType);
 }
 
 export interface MerchantMatch {
@@ -94,8 +102,8 @@ export function resolveMerchant(
   let best: { alias: MerchantAlias; normalizedPattern: string } | null = null;
 
   for (const alias of aliases) {
-    if (!aliasMatches(rawDescription, alias)) continue;
     const normalizedPattern = normalizeDescription(alias.rawPattern);
+    if (!matchesNormalized(description, normalizedPattern, alias.matchType)) continue;
     if (best === null) {
       best = { alias, normalizedPattern };
       continue;
