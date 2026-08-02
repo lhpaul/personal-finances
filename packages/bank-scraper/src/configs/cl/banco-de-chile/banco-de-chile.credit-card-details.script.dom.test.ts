@@ -110,3 +110,119 @@ describe('creditCardDetailsScript — against credit-card-details-international.
     expect(internationalMovement?.extras).toMatchObject({ country: 'Estados Unidos' });
   });
 });
+
+describe('creditCardDetailsScript — currency is not derived from column count (CodeRabbit finding #46)', () => {
+  it('does not mislabel an 8-column national table as international when it has no country column', async () => {
+    resetScriptGlobals();
+    renderFixture(loadFixtureHtml(FIXTURES_DIR, 'credit-card-details.html'));
+    // Add an extra, unrelated national-table column — the exact regression the old
+    // "more than 7 header cells" heuristic would have mislabeled as international.
+    const table = document.querySelector('.bch-table');
+    const headerRow = table?.querySelector('thead tr');
+    const extraHeader = document.createElement('th');
+    extraHeader.textContent = 'Referencia';
+    headerRow?.appendChild(extraHeader);
+    const bodyRow = table?.querySelector('tbody tr');
+    const extraCell = document.createElement('td');
+    extraCell.textContent = 'REF-001';
+    bodyRow?.appendChild(extraCell);
+    simulateInvoicedTab();
+
+    const { messages } = await runWithProduct(creditCardDetailsScript());
+    const { movements } = lastStateChangeData(messages);
+    const unbilledMovement = movements?.find((m) => m.rawDescription === 'Compra Farmacia');
+    expect(unbilledMovement?.currencyCode).toBe('CLP');
+  });
+});
+
+describe('creditCardDetailsScript — table selection when both tabs stay mounted (CodeRabbit finding #45)', () => {
+  it('reads the last .bch-table for the billed pass instead of re-reading the first (unbilled) one', async () => {
+    resetScriptGlobals();
+    renderFixture(loadFixtureHtml(FIXTURES_DIR, 'credit-card-details.html'));
+    // Simulate an Angular Material tab container that keeps the inactive tab's table mounted:
+    // append a second, distinct .bch-table (the billed one) instead of replacing the first.
+    const invoicedTab = document.querySelectorAll('.router-tab-link')[1];
+    invoicedTab?.addEventListener('click', () => {
+      const billedTable = document.createElement('table');
+      billedTable.className = 'bch-table';
+      billedTable.innerHTML = `
+        <thead>
+          <tr><th>Fecha</th><th>Tipo</th><th>Descripcion</th><th>Cuotas</th><th>Cargo</th><th>Abono</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>01/03/2026</td>
+            <td>Nacional</td>
+            <td>Compra Supermercado</td>
+            <td>3/6</td>
+            <td><span>$33.000</span></td>
+            <td><span></span></td>
+          </tr>
+        </tbody>
+      `;
+      document.body.appendChild(billedTable);
+    });
+
+    const { messages } = await runWithProduct(creditCardDetailsScript());
+    const { movements } = lastStateChangeData(messages);
+    const billedMovement = movements?.find((m) => m.extras && (m.extras as { billed?: string }).billed === 'true');
+    expect(billedMovement).toMatchObject({ rawDescription: 'Compra Supermercado', outgoingText: '$33.000' });
+    // The unbilled pass must still read the original (first) table, not the newly-appended one.
+    const unbilledMovement = movements?.find((m) => m.extras && (m.extras as { billed?: string }).billed === 'false');
+    expect(unbilledMovement).toMatchObject({ rawDescription: 'Compra Farmacia' });
+  });
+});
+
+describe('creditCardDetailsScript — no invoiced tab link (CodeRabbit finding #42)', () => {
+  it('traces that only unbilled transactions are being reported, instead of silently looking identical to "no billed movements"', async () => {
+    resetScriptGlobals();
+    renderFixture(loadFixtureHtml(FIXTURES_DIR, 'credit-card-details.html'));
+    document.querySelectorAll('.router-tab-link').forEach((el) => el.remove());
+
+    const { messages } = await runWithProduct(creditCardDetailsScript());
+    const traceMessages = messages.filter((m) => m.eventType === 'trace');
+    expect(
+      traceMessages.some((m) => JSON.stringify((m as { data?: unknown }).data).includes('No invoiced tab link found')),
+    ).toBe(true);
+  });
+});
+
+describe('creditCardDetailsScript — no fabricated balance (CodeRabbit finding #44, Critical)', () => {
+  it(
+    'posts a parse_failed ERROR instead of a fabricated $0 balance when the national summary is missing',
+    async () => {
+      resetScriptGlobals();
+      renderFixture(loadFixtureHtml(FIXTURES_DIR, 'credit-card-details.html'));
+      // Keep .bch-summary present (so the wait-for-element step still succeeds quickly) but
+      // rename the section away from "Nacional" — extractBalanceDetails's own loop then finds no
+      // matching section, which is the code path this finding targets.
+      const title = document.querySelector('.summary-header-title');
+      if (title) title.textContent = 'Internacional';
+      simulateInvoicedTab();
+
+      const { messages } = await runWithProduct(creditCardDetailsScript());
+      const errorMessages = messages.filter((m) => m.eventType === 'error');
+      expect(errorMessages.length).toBeGreaterThan(0);
+      expect(errorMessages.every((m) => (m as { data?: { code?: string } }).data?.code === 'parse_failed')).toBe(true);
+      const { products } = lastStateChangeData(messages);
+      expect(products ?? []).toEqual([]); // no product reported with a fabricated balance
+      expect(JSON.stringify(messages)).not.toContain('"balanceText":"$0"');
+    },
+    10000,
+  );
+});
+
+describe('creditCardDetailsScript — guarded extraction helpers (CodeRabbit finding #43)', () => {
+  it('reports parse_failed with a descriptive cause when the card header is missing, instead of a bare TypeError', async () => {
+    resetScriptGlobals();
+    renderFixture(loadFixtureHtml(FIXTURES_DIR, 'credit-card-details.html'));
+    document.querySelector('.card-header')?.remove();
+    simulateInvoicedTab();
+
+    const { messages, thrown } = await runWithProduct(creditCardDetailsScript());
+    expect(thrown).toBeNull();
+    const errorMessages = messages.filter((m) => m.eventType === 'error');
+    expect(errorMessages.length).toBeGreaterThan(0);
+    expect(JSON.stringify(messages)).toContain('.card-header not found');
+  });
+});
