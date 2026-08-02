@@ -52,7 +52,8 @@ describe('assertReportedProductShape', () => {
   });
 
   it('rejects a payload missing a required field', () => {
-    const { balanceText: _drop, ...missingBalance } = cleanPayload;
+    const missingBalance: Record<string, unknown> = { ...cleanPayload };
+    delete missingBalance.balanceText;
     const result = assertReportedProductShape(missingBalance);
     expect(result.ok).toBe(false);
   });

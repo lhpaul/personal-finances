@@ -54,13 +54,18 @@ export class MessageHandlerService {
         callbacks.onTrace(this.#redactor.redactTrace(this.#toTrace(message.data)));
         return;
       case ScraperEventType.STATE_CHANGE:
-        callbacks.onStateChange(
-          this.#redactor.redactErrorPayload({
-            stepId: message.stepId,
-            progress: message.progress,
-            data: message.data,
-          }) as StateChangePayload,
-        );
+        // Deliberately NOT redacted (unlike ERROR and TRACE): `stepId` is a small closed
+        // enum that the engine's state machine compares exactly, and `data` is bank-supplied
+        // product/movement text that the login script never touches — there is no legitimate
+        // path for a credential to reach this payload. Value-scanning it anyway would risk
+        // corrupting real financial data or protocol keywords on a coincidental short-value
+        // collision (e.g. a one- or two-digit password fragment appearing inside an amount or
+        // inside the literal string "get-products-start").
+        callbacks.onStateChange({
+          stepId: message.stepId as ScraperStepId,
+          progress: message.progress as number,
+          data: message.data as StateChangePayload['data'],
+        });
         return;
       default:
         callbacks.onTrace({
