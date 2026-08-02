@@ -107,6 +107,10 @@ apps/mobile → @finanzas/{shared-domain, shared-utils, bank-scraper}
 SQL library. Enforced by the `sharedDomainPurity` `no-restricted-imports` rule, defined in the
 root `eslint.config.mjs` and applied by `packages/shared-domain/eslint.config.mjs`.
 
+`@finanzas/shared-utils` purity (no React, no Expo/React Native modules, no SQL library, no
+Node I/O) is enforced the same way, by the `sharedUtilsPurity` `no-restricted-imports` rule,
+defined in the root `eslint.config.mjs` and applied by `packages/shared-utils/eslint.config.mjs`.
+
 ## Common Commands
 
 ```bash
