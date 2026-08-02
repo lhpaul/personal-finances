@@ -619,6 +619,70 @@ describe('ScrapeSession — Cancellation (Decision 9)', () => {
     session.cancel();
     expect(results).toHaveLength(1);
   });
+
+  it('a throwing teardown still produces a result instead of an uncaught exception (related to CodeRabbit finding #29)', () => {
+    const port = new FakeWebViewPort();
+    port.stopLoading = () => {
+      throw new Error('stopLoading failed');
+    };
+    const results: ScrapeResult[] = [];
+    const session = new ScrapeSession(buildConfig(), port, {
+      countryCode: 'cl',
+      credentials: { rut: 'r', password: 'p' },
+      onResult: (result) => results.push(result),
+    });
+    session.start();
+    expect(() => session.cancel()).not.toThrow();
+    expect(results).toHaveLength(1);
+    expect(results[0]?.outcome).toBe('cancelled');
+  });
+});
+
+describe('ScrapeSession — synchronous startup failure (CodeRabbit finding #29)', () => {
+  it('reports a failed outcome (not cancelled) when WebViewPort.navigateTo() throws during start()', () => {
+    const throwingPort: FakeWebViewPort = new FakeWebViewPort();
+    throwingPort.navigateTo = () => {
+      throw new Error('synchronous navigateTo failure');
+    };
+    const results: ScrapeResult[] = [];
+    const session = new ScrapeSession(buildConfig(), throwingPort, {
+      countryCode: 'cl',
+      credentials: { rut: 'r', password: 'p' },
+      onResult: (result) => results.push(result),
+    });
+
+    expect(() => session.start()).not.toThrow();
+    expect(results).toHaveLength(1);
+    expect(results[0]?.outcome).toBe('failed');
+    expect(results[0]?.readFailure).toEqual({ reasonCode: 'network' });
+    expect(session.isFinalized()).toBe(true);
+  });
+
+  it('clears the deadline timer even when start() throws synchronously (no dangling timer)', () => {
+    jest.useFakeTimers();
+    try {
+      const throwingPort: FakeWebViewPort = new FakeWebViewPort();
+      throwingPort.navigateTo = () => {
+        throw new Error('synchronous navigateTo failure');
+      };
+      let resultCount = 0;
+      const session = new ScrapeSession(buildConfig(), throwingPort, {
+        countryCode: 'cl',
+        credentials: { rut: 'r', password: 'p' },
+        onResult: () => {
+          resultCount += 1;
+        },
+      });
+      session.start();
+      expect(resultCount).toBe(1);
+      // If the deadline timer were left dangling, advancing past READ_DEADLINE_MS would call
+      // #handleDeadlineExpired() and post a second result.
+      jest.advanceTimersByTime(300_000);
+      expect(resultCount).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ScrapeSession — message-before-start and late-message handling', () => {

@@ -122,7 +122,23 @@ export class ScrapeSession {
     if (this.#started || this.#finalized) return;
     this.#started = true;
     this.#deadlineTimer = setTimeout(() => this.#handleDeadlineExpired(), this.#readDeadlineMs);
-    this.#driver.start();
+    try {
+      this.#driver.start();
+    } catch (error) {
+      // WebViewPort.navigateTo() can throw (CodeRabbit finding #29). Without this, the caller's
+      // exception propagates with no `onResult` ever called — the deadline timer just created
+      // above is also left dangling since #finalize() never runs. Route this through a `failed`
+      // result with normal cleanup, not cancel() (which reports `cancelled`, a materially
+      // different outcome for the same reason `readFailure` is null there).
+      this.#addTrace({
+        logGroup: 'engine',
+        type: 'error',
+        message: 'startup_failed: ' + (error instanceof Error ? error.message : 'unknown error'),
+        timestamp: Date.now(),
+      });
+      this.#readFailure = { reasonCode: 'network' };
+      this.#finalize();
+    }
   }
 
   cancel(): void {
@@ -419,7 +435,20 @@ export class ScrapeSession {
     }
     // ALWAYS clear before teardown (spec Cancellation) — never the reverse.
     this.#credentials.clear();
-    this.#driver.teardown();
+    try {
+      this.#driver.teardown();
+    } catch (error) {
+      // A throwing teardown (e.g. a WebViewPort whose navigateTo/stopLoading can fail) must
+      // never prevent onResult from firing below — this is the single terminal path every read
+      // outcome relies on (related to CodeRabbit finding #29: a synchronous WebViewPort failure
+      // must always still produce a result, whether it happens on start or on cleanup).
+      this.#addTrace({
+        logGroup: 'engine',
+        type: 'error',
+        message: 'teardown_failed: ' + (error instanceof Error ? error.message : 'unknown error'),
+        timestamp: Date.now(),
+      });
+    }
 
     const outcome = this.#deriveOutcome();
     const result: ScrapeResult = {
