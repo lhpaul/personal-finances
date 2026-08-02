@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mirror of `design/tokens.json`, 23 UI primitives under `apps/mobile/src/components/ui/`
   matching the mockup `mu-*` classes, seven new design tokens, and a dev-only design-system
   gallery route at `/gallery`
+- **i18n infrastructure: catalogues, resolver and the no-literal-string lint rule** (#34): `i18next` + `react-i18next` initialised in `apps/mobile/src/i18n/`, flat-key `es`/`en` catalogues, device-locale resolution via `expo-localization` defaulting to `es`, and `eslint-plugin-i18next/no-literal-string` enforcing, for JSX text covered by its `jsx-text-only` mode, that no user-facing literal string appears in JSX (known exception: the two tab-title literals in `apps/mobile/app/(tabs)/_layout.tsx`, which the rule's JSX-text-only mode cannot see). The design-system gallery now renders entirely from catalogue keys; `gallery.strings.ts` is removed.
 
 ### Fixed
 

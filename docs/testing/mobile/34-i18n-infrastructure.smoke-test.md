@@ -187,7 +187,7 @@ Each checkbox maps to an acceptance criterion from issue #34.
 
 | Entity | Scenario | How to load |
 | --- | --- | --- |
-| Catalogues | 121 migrated `ds.*` gallery keys plus 4 `dev.placeholder.*` keys, in both locales | Committed source: `apps/mobile/src/i18n/{es,en}.json`. Nothing to load at runtime |
+| Catalogues | 118 migrated `ds.*` gallery keys plus 4 `dev.placeholder.*` keys, in both locales (3 decorative `CategoryChip` demo emoji live as module-level constants in `DesignSystemGallery.tsx` instead, per Decision 10) | Committed source: `apps/mobile/src/i18n/{es,en}.json`. Nothing to load at runtime |
 
 No database seed data — this item touches no SQLite.
 

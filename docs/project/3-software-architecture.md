@@ -86,7 +86,7 @@ apps/mobile/
 │   └── settings/…
 ├── src/
 │   ├── components/ui/           # Design-system primitives (theme.ts-driven, mirrors mu-* mockup classes)
-│   ├── dev/                      # __DEV__-only surfaces (DesignSystemGallery, gallery.strings) — never ships
+│   ├── dev/                      # __DEV__-only surfaces (DesignSystemGallery) — never ships
 │   ├── features/                # One folder per domain area
 │   │   └── <feature>/{components,hooks,queries}.ts
 │   ├── i18n/                    # es / en catalogues — all user-facing copy

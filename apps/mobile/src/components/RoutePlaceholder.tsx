@@ -1,5 +1,6 @@
 import { Link } from 'expo-router';
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 export type RoutePlaceholderNextLink = {
   href: string;
@@ -22,16 +23,21 @@ export type RoutePlaceholderProps = {
  * Rules) — the theme and design-system primitives are mirrored into the app by a later item.
  * It renders only the mockup screen identifier, the route, and links to the manifest's next
  * destinations. No product data — real or sample — is ever shown.
+ *
+ * Copy comes from the `dev.placeholder.*` catalogue keys (implementation plan Decision 9) —
+ * this is disposable scaffolding from item #1, not screen copy sourced from a mockup, and is
+ * deleted along with this component when the last screen item lands.
  */
 export function RoutePlaceholder({ screenId, route, next = [] }: RoutePlaceholderProps) {
+  const { t } = useTranslation();
   return (
     <View>
-      <Text>PLACEHOLDER — not implemented</Text>
-      <Text>Mockup screen: {screenId}</Text>
-      <Text>Route: {route}</Text>
+      <Text>{t('dev.placeholder.title')}</Text>
+      <Text>{t('dev.placeholder.screen', { screenId })}</Text>
+      <Text>{t('dev.placeholder.route', { route })}</Text>
       {next.map((link) => (
         <Link key={link.href} href={link.href as never}>
-          <Text>Next: {link.label}</Text>
+          <Text>{t('dev.placeholder.next', { label: link.label })}</Text>
         </Link>
       ))}
     </View>

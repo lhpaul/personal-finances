@@ -4,6 +4,11 @@ import { componentMetrics, theme } from '../../theme';
 import { TOUCH_METRICS } from './_internal/touch-metrics';
 import { Text } from './Text';
 
+/** Decorative glyph, not user-facing copy: it is language-independent and must not enter the
+ *  i18n catalogues. Named so `i18next/no-literal-string` sees an expression, not JSX text
+ *  (implementation plan Decision 10). */
+const CHECK_GLYPH = '✓';
+
 export type CheckboxProps = {
   checked: boolean;
   /** Omit when this checkbox is rendered inside a pressable row that owns the press (e.g.
@@ -32,7 +37,7 @@ export function Checkbox({ checked, onChange, accessibilityLabel }: CheckboxProp
       tone="inverse"
       style={{ fontSize: componentMetrics.checkbox.checkGlyphFontSize }}
     >
-      ✓
+      {CHECK_GLYPH}
     </Text>
   ) : null;
 
