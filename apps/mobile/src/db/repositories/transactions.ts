@@ -1,12 +1,20 @@
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 
 import { buildDedupInput } from '../dedup';
 import { includedAmount, isIncluded } from '../fragments';
 import type { DbPorts } from '../ids';
-import { mergeTransactionMetadata } from '../json';
+import { mergeTransactionMetadata, parseAssets, parseCategoryLabels } from '../json';
+import type { SupportedLocale } from '../labels';
+import { resolveLabel } from '../labels';
 import { assertPositiveMinorUnits } from '../money';
-import { transactions } from '../schema';
-import type { AppDatabase, Transaction } from '../types';
+import { merchants, transactionCategories, transactions } from '../schema';
+import type {
+  AppDatabase,
+  DirectionCategoryTotal,
+  DirectionDayTotal,
+  RecentMovement,
+  Transaction,
+} from '../types';
 
 /**
  * `transactions` repository (implementation plan Decision 15, Layer-by-Layer; spec Business
@@ -261,4 +269,143 @@ export function listByMerchant(db: AppDatabase, merchantId: string): Transaction
     .orderBy(desc(transactions.dateLocal))
     .all() as TransactionRow[];
   return rows.map(mapTransactionRow);
+}
+
+/** A `home`/`dashboard` period boundary, expressed in `date_local` terms (implementation plan
+ * for issue #12, Decision 8 — never a UTC instant). */
+export interface DateLocalPeriod {
+  startDateLocal: string;
+  endDateLocal: string;
+}
+
+/**
+ * `home`'s two stat tiles, its balance line and its whole category card, and #17 dashboard's
+ * per-category report — the **same** function, not merely the same fragment (implementation plan
+ * Decision 1, Risks — "home and dashboard still diverge"). Reads through both shared fragments,
+ * so this is a consumer of the inclusion rule, never a second statement of it (item #3 Decision
+ * 9, Business Rule 4).
+ *
+ * The `null` `transaction_category_id` group is the "Sin categorizar" bucket and is returned like
+ * any other: categorization is never mandatory, so an uncategorized movement must never be
+ * silently dropped from a total (item #5 Decision 10).
+ */
+export function sumIncludedByDirectionAndCategory(
+  db: AppDatabase,
+  period: DateLocalPeriod,
+): DirectionCategoryTotal[] {
+  const rows = db
+    .select({
+      type: transactions.type,
+      transactionCategoryId: transactions.transactionCategoryId,
+      total: sql<number>`coalesce(sum(${includedAmount}), 0)`,
+      movementCount: sql<number>`count(*)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        isIncluded,
+        gte(transactions.dateLocal, period.startDateLocal),
+        lte(transactions.dateLocal, period.endDateLocal),
+      ),
+    )
+    .groupBy(transactions.type, transactions.transactionCategoryId)
+    .all() as { type: string; transactionCategoryId: string | null; total: number; movementCount: number }[];
+
+  return rows.map((row) => ({
+    type: row.type as DirectionCategoryTotal['type'],
+    transactionCategoryId: row.transactionCategoryId,
+    total: row.total,
+    movementCount: row.movementCount,
+  }));
+}
+
+/** `home`'s trend chart's source series (implementation plan for issue #12, Decision 1), called
+ * once per period (current, previous). Reads through both shared fragments, exactly like
+ * {@link sumIncludedByDirectionAndCategory}. */
+export function sumIncludedByDirectionAndDay(
+  db: AppDatabase,
+  period: DateLocalPeriod,
+): DirectionDayTotal[] {
+  const rows = db
+    .select({
+      dateLocal: transactions.dateLocal,
+      type: transactions.type,
+      total: sql<number>`coalesce(sum(${includedAmount}), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        isIncluded,
+        gte(transactions.dateLocal, period.startDateLocal),
+        lte(transactions.dateLocal, period.endDateLocal),
+      ),
+    )
+    .groupBy(transactions.dateLocal, transactions.type)
+    .orderBy(asc(transactions.dateLocal))
+    .all() as { dateLocal: string; type: string; total: number }[];
+
+  return rows.map((row) => ({
+    dateLocal: row.dateLocal,
+    type: row.type as DirectionDayTotal['type'],
+    total: row.total,
+  }));
+}
+
+interface RecentMovementRow {
+  id: string;
+  amount: number;
+  type: string;
+  dateLocal: string;
+  rawDescription: string;
+  excludedAt: string | null;
+  merchantName: string | null;
+  merchantAssets: string | null;
+  categoryLabels: string | null;
+  categoryAssets: string | null;
+}
+
+/**
+ * `home`'s "Transacciones recientes" (implementation plan for issue #12, Decision 2). `limit`-
+ * bounded, backed by `transactions_date_local_idx` (`date_local desc`) — the screen never reduces
+ * a table in JavaScript. **No inclusion filter**: an excluded movement still appears, dimmed
+ * (Assumption A8) — this reads no money value through a fragment, so it is not a restatement of
+ * the inclusion rule.
+ */
+export function listRecentMovements(
+  db: AppDatabase,
+  params: { limit: number; locale: SupportedLocale },
+): RecentMovement[] {
+  const rows = db
+    .select({
+      id: transactions.id,
+      amount: transactions.amount,
+      type: transactions.type,
+      dateLocal: transactions.dateLocal,
+      rawDescription: transactions.rawDescription,
+      excludedAt: transactions.excludedAt,
+      merchantName: merchants.name,
+      merchantAssets: merchants.assets,
+      categoryLabels: transactionCategories.labels,
+      categoryAssets: transactionCategories.assets,
+    })
+    .from(transactions)
+    .leftJoin(merchants, eq(transactions.merchantId, merchants.id))
+    .leftJoin(transactionCategories, eq(transactions.transactionCategoryId, transactionCategories.id))
+    .orderBy(desc(transactions.dateLocal))
+    .limit(params.limit)
+    .all() as RecentMovementRow[];
+
+  return rows.map((row) => ({
+    id: row.id,
+    amount: row.amount,
+    type: row.type as RecentMovement['type'],
+    dateLocal: row.dateLocal,
+    rawDescription: row.rawDescription,
+    excluded: row.excludedAt !== null,
+    merchantName: row.merchantName ?? undefined,
+    merchantEmoji: row.merchantName === null ? undefined : parseAssets(row.merchantAssets).emoji,
+    categoryName:
+      row.categoryLabels === null ? undefined : resolveLabel(parseCategoryLabels(row.categoryLabels), params.locale),
+    categoryEmoji: row.categoryLabels === null ? undefined : parseAssets(row.categoryAssets).emoji,
+  }));
 }
