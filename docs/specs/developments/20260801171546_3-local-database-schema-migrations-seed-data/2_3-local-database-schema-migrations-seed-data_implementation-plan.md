@@ -193,16 +193,16 @@ lost:
 | `column_type_changed` | `prev.type` differs from `next.type` (case-insensitively) | SQLite rebuilds the table and coerces every value |
 | `column_made_mandatory` | `notNull` goes `false` → `true` | Fails on the first existing row holding `NULL` |
 | `column_pk_changed` | `primaryKey` differs | Table rebuild |
-| `new_mandatory_column` | A column added to a **pre-existing** table with `notNull: true` and no `default` | `ALTER TABLE ADD COLUMN NOT NULL` without a default is rejected outright by SQLite when rows exist |
+| `new_mandatory_column` | A column added to a **pre-existing** table with `notNull: true`, regardless of whether a `default` is present | Spec Business Rule 9 forbids "a new mandatory field on an existing kind of record" unconditionally — it is a product-policy line, not only a SQLite-safety one. A default makes `ALTER TABLE ADD COLUMN NOT NULL DEFAULT x` mechanically succeed, but the analyser must fail it anyway, or `db:check` would approve a change the spec says must fail |
 | `new_unique_on_existing_table` | A `uniqueConstraints` entry or an index with `isUnique: true` added to a pre-existing table | Tightening a constraint on data already on the phone; throws on the first duplicate |
 | `check_added_or_changed_on_existing_table` | A `checkConstraint` added to or changed on a pre-existing table | Same class: a constraint tightened over existing rows |
 | `fk_added_to_existing_table` | A `foreignKeys` entry added to a pre-existing table | SQLite has no `ADD CONSTRAINT`; drizzle-kit emits a copy-and-rename table rebuild, which is exactly the unrecoverable pattern |
 | `default_removed_from_mandatory_column` | A `notNull` column loses its `default` | Turns a later `ADD COLUMN` recipe into a rejected one |
 
 Explicitly **allowed**, and asserted as allowed by unit tests: a new table (with any constraints,
-because it has no existing rows), a new nullable column on an existing table, a new `notNull`
-column **with** a default on an existing table, a new non-unique index, and the removal of a
-non-unique index.
+because it has no existing rows), a new nullable column on an existing table, a new non-unique
+index, and the removal of a non-unique index. A new `notNull` column on an existing table is
+**never** allowed, even with a `default` — see `new_mandatory_column` above.
 
 **Decision 8 — there is no suppression directive for a non-additive finding, by design.** The
 recovery path for a rejected change is the one
@@ -224,10 +224,16 @@ export const includedAmount = sql`coalesce(${transactions.includedAmount}, ${tra
 `src/db/checks/inclusion-rule-scan.ts` exports a pure
 `findInclusionRuleRestatements(source: string, filePath: string): Finding[]`, and
 `src/db/__tests__/inclusion-rule-single-definition.test.ts` runs it over every `.ts`/`.tsx` file
-under `apps/mobile/src/` and `apps/mobile/app/`, allowlisting only `src/db/fragments.ts` (the
-definition) and `src/db/schema.ts` (the column declaration). This is the enforcement mechanism
-behind AC20 and Business Rule 6; the scanner's edge cases and unit tests are enumerated in the
-Testing Strategy's parser-risk addendum.
+under `apps/mobile/src/` and `apps/mobile/app/`, allowlisting `src/db/fragments.ts` (the
+definition), `src/db/schema.ts` (the column declaration), `src/db/checks/inclusion-rule-scan.ts`
+itself (its own rule definitions necessarily contain the literal spellings `excluded_at` and
+`included_amount` it is written to detect — rule C would otherwise flag its own source), and
+`src/db/checks/__tests__/inclusion-rule-scan.test.ts` (whose edge-case table below deliberately
+feeds it inputs like `sql.raw('excluded_at IS NULL')` as scanner *input*, not application code —
+without this allowlist entry the whole-tree run would flag the scanner's own test fixtures and
+AC20's "the scanner over the real tree finds nothing" could never pass). This is the enforcement
+mechanism behind AC20 and Business Rule 6; the scanner's edge cases and unit tests are enumerated
+in the Testing Strategy's parser-risk addendum.
 
 **Decision 10 — starter content is driven by a `seed_ledger` table.** `user_id IS NULL` cannot
 distinguish "never seeded on this device" from "starter row the person deleted", which is exactly
@@ -343,11 +349,23 @@ idempotent (AC15, AC16).
 **Decision 18 — a store snapshot is committed as deterministic SQL text, not as a binary
 `.db`.** `src/db/__fixtures__/store-v1.sql` is produced by `pnpm --filter @finanzas/mobile
 db:seed`, which builds a store at the current version containing all starter content plus a
-representative set of person-owned data, then dumps it with a deterministic dumper (tables sorted
-by name, rows sorted by primary key, one `INSERT` per row, `__drizzle_migrations` included).
-Rationale: a text snapshot is diffable in review, greppable by the credential-scan test that
-AC5 requires over "every committed snapshot", and free of the binary-blob-in-git problem. `db:check`
-mode 3 loads it by executing the file against an empty in-memory store.
+representative set of person-owned data, then dumps it with a deterministic dumper: **tables in a
+fixed dependency order, not alphabetical** — `users`, `financial_institutions`,
+`user_financial_institutions`, `transaction_categories`, `user_financial_products`, `merchants`,
+`merchant_aliases`, `transactions`, `app_settings`, `user_budgets`,
+`user_recurring_transactions`, `seed_ledger` — every parent table before any table whose foreign
+key references it, rows sorted by primary key within each table, one `INSERT` per row,
+`__drizzle_migrations` included. This matters because Decision 5 enables
+`PRAGMA foreign_keys = ON` on every connection, including the in-memory client `db:check` mode 3
+restores this file into: an alphabetical dump would insert `merchant_aliases` before `merchants`
+and `transactions` before `user_financial_products`, and the restore would fail on the first
+foreign-key violation before mode 3 could test anything. The dependency order is a fixed constant
+in `scripts/db/dump.ts`, not derived at dump time, so it cannot silently drift if a table is added
+— `db:check` mode 1's schema-introspection already catches a genuinely new table, and adding one
+to `dump.ts`'s constant order is a one-line reviewable change alongside it. Rationale for text over
+binary: a text snapshot is diffable in review, greppable by the credential-scan test that AC5
+requires over "every committed snapshot", and free of the binary-blob-in-git problem. `db:check`
+mode 3 loads it by executing the file, in this fixed order, against an empty in-memory store.
 
 **Decision 19 — the SQL access boundary is enforced by lint and by a test.** Item #1's root
 `eslint.config.mjs` already named-exports `sharedDomainPurity`; this item adds a second named
@@ -604,8 +622,12 @@ AC24 requires the suite to need no simulator and no device.
    fabricated bank response with `amount: -1000` is rejected by `upsertBankTransactions` before
    any row is written, and no row exists afterwards (Business Rule 4, Decision 4).
 5. Grep every committed fixture and every seed catalogue entry for RUT-shaped strings
-   (`/\b\d{7,8}-[\dkK]\b/`), `password`, `clave`, `token`, `secret`, `rut`; a bank connection row
-   holds only `credentials_key` (AC5).
+   (`/\b\d{7,8}-[\dkK]\b/`), `password`, `clave`, `token`, `secret` — **not** the bare substring
+   `rut`, because the fixture legitimately contains `users.national_id_type = 'rut'`, a required
+   type discriminator with no credential value behind it, and a bare-word check would make the
+   secrets test fail on a row this item is required to seed. This matches the smoke runbook's
+   existing grep exactly (`password|clave|token|secret|[0-9]{7,8}-[0-9kK]\b`, no `rut` term); a
+   bank connection row holds only `credentials_key` (AC5).
 6. Replaying the same recorded bank response twice leaves the row count unchanged — once with a
    response that carries external ids, once with a response that carries none (AC6).
 7. Replay over movements that have been categorized, noted, review-flagged, excluded with reason
@@ -724,8 +746,11 @@ line and block comments, extracts every `` sql`…` `` tagged-template body (inc
 of its `${…}` interpolations, and including nested `sql` tags), and applies three rules — **A**:
 a `sql` template body mentioning `excluded`, `included_amount` or `includedAmount`; **B**:
 `isNull(` or `isNotNull(` applied to any expression ending in `.excludedAt`; **C**: the snake_case
-literals `excluded_at` or `included_amount` anywhere in the file. `src/db/fragments.ts` and
-`src/db/schema.ts` are allowlisted by `filePath`.
+literals `excluded_at` or `included_amount` anywhere in the file. `src/db/fragments.ts`,
+`src/db/schema.ts`, `src/db/checks/inclusion-rule-scan.ts` itself, and
+`src/db/checks/__tests__/inclusion-rule-scan.test.ts` are allowlisted by `filePath` — the last two
+so the scanner's own rule definitions and its deliberately-restating test inputs (below) do not
+flag themselves when the whole-tree run scans `src/db/checks/`.
 
 | Input | Expected | Why it matters |
 | --- | --- | --- |
@@ -747,6 +772,8 @@ literals `excluded_at` or `included_amount` anywhere in the file. `src/db/fragme
 | Source using CRLF line endings | Identical findings to the LF form | Boundary-character variant: line-ending normalisation must not change the result |
 | `filePath` = `src/db/fragments.ts` containing all three forms | 0 findings | The allowlist is the definition itself |
 | `filePath` = `src/db/schema.ts` containing `integer('included_amount')` | 0 findings | The allowlist is the column declaration |
+| `filePath` = `src/db/checks/inclusion-rule-scan.ts` containing the string `'excluded_at'` as part of its own rule C | 0 findings | The scanner's own rule definitions must not flag themselves |
+| `filePath` = `src/db/checks/__tests__/inclusion-rule-scan.test.ts` containing every row of this table, including `sql.raw('excluded_at IS NULL')` | 0 findings | The scanner's own test fixtures are scanner *input*, not application code, and must not fail the whole-tree run |
 
 #### Edge-case enumeration — `findNonAdditiveChanges`
 
@@ -759,7 +786,7 @@ literals `excluded_at` or `included_amount` anywhere in the file. `src/db/fragme
 | `transactions.amount` `INTEGER` → `integer` | 0 findings | Boundary variant: type comparison is case-insensitive, so a serializer casing change is not a false alarm |
 | `transactions.note` `notNull` `false` → `true` | `column_made_mandatory` | Fails on the first row holding `NULL` |
 | New column `transactions.foo` with `notNull: true`, no default, on the existing table | `new_mandatory_column` | SQLite rejects the `ALTER TABLE` outright |
-| New column `transactions.foo` with `notNull: true` **and** a default | 0 findings | The one mandatory addition that is safe |
+| New column `transactions.foo` with `notNull: true` **and** a default | `new_mandatory_column` | Mechanically safe in SQLite, but spec Business Rule 9 forbids any new mandatory field on an existing record kind unconditionally — the analyser enforces product policy, not merely SQLite's constraint semantics |
 | New column `transactions.foo`, nullable | 0 findings | The canonical additive change |
 | Brand-new table with `notNull` columns, uniques, checks and foreign keys | 0 findings | A new table has no existing rows, so nothing can be tightened |
 | New unique index on the existing `transactions` table | `new_unique_on_existing_table` | Throws on the first duplicate already on the phone |
