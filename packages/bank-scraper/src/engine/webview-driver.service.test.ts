@@ -119,6 +119,34 @@ describe('WebViewDriverService', () => {
     }
   });
 
+  it('a second delayed inject() clears the first pending timer instead of leaking it past teardown (CodeRabbit finding #28)', () => {
+    jest.useFakeTimers();
+    try {
+      const port = new FakeWebViewPort();
+      const driver = new WebViewDriverService(port, buildConfig());
+      let firstBuilt = false;
+      let secondBuilt = false;
+      driver.inject(() => {
+        firstBuilt = true;
+        return 'first-script';
+      }, 5000);
+      // A second inject() call before the first timer fires — without clearing the first
+      // handle, #pendingInjectionTimer is simply overwritten and the first timer is lost, so
+      // teardown() (which only clears the *current* value) cannot stop it.
+      driver.inject(() => {
+        secondBuilt = true;
+        return 'second-script';
+      }, 1000);
+      driver.teardown();
+      jest.advanceTimersByTime(10000);
+      expect(firstBuilt).toBe(false); // the lost first timer must not still fire after teardown
+      expect(secondBuilt).toBe(false);
+      expect(port.injectedSources).toEqual([]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('teardown() clears a pending injection timer, stops loading, and navigates to about:blank', () => {
     jest.useFakeTimers();
     try {

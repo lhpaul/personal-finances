@@ -81,6 +81,15 @@ export class WebViewDriverService {
    * without this service ever seeing, storing, or tracing the source (Decision 5, control 2).
    */
   inject(buildSource: () => string, delay?: number): void {
+    // `#pendingInjectionTimer` holds only one handle. Without clearing it first, a second call
+    // to `inject()` with `delay` before the first scheduled timeout fires would overwrite the
+    // field and lose the first handle — `teardown()` can then only clear the *second* timer, so
+    // the first keeps running after teardown and still calls `buildSource()` and
+    // `injectJavaScript()` on a session that has already finalized (CodeRabbit finding #28).
+    if (this.#pendingInjectionTimer !== null) {
+      clearTimeout(this.#pendingInjectionTimer);
+      this.#pendingInjectionTimer = null;
+    }
     if (delay) {
       this.#pendingInjectionTimer = setTimeout(() => {
         this.#pendingInjectionTimer = null;
