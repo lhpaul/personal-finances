@@ -598,7 +598,7 @@ assert on ciphertext, and #22 owns the E2E suite.
 | --- | --- | --- |
 | **AC1** — a new install creates an encrypted database | `state.test.ts` → `fresh_install` resolves with no legacy probe file surviving; `open-encrypted-store.test.ts` → the keyed open path is taken and `PRAGMA key` is the first statement recorded | Runbook Step 2 (fresh install) + probe: `cipher_version` non-empty, open-without-key rejected |
 | **AC2** — an existing unencrypted database migrates without data loss | `migrate-to-encrypted.test.ts` over the `better-sqlite3` double, seeded from `src/db/__fixtures__/store-v1.sql`: census before/after is violation-free; every crash point of Decision 6's table resumes to the correct state | Runbook Step 3 (upgrade over a synced store): row counts per table identical before and after; a movement, a category edit and a merchant alias all survive |
-| **AC3** — the file is unreadable without the key, verified by test | `statement-contract.test.ts` (exact SQL text); `header-signature.test.ts` (the plaintext-magic detector, positive and negative) | Runbook Step 5 + probe: open with no key → `SQLITE_NOTADB`; open with a wrong key → `SQLITE_NOTADB`; open with the stored key → succeeds |
+| **AC3** — the file is unreadable without the key, verified by test | `statement-contract.test.ts` (the exact `PRAGMA key` text the device will execute) and `capability.test.ts` (a non-SQLCipher build never opens the store). **Node cannot assert unreadability itself** — see below | Runbook Step 5 + probe: open with no key → `SQLITE_NOTADB`; open with a wrong key → `SQLITE_NOTADB`; open with the stored key → succeeds. This is AC3's real assertion |
 
 ### Node-tier unit tests
 
