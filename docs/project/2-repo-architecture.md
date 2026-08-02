@@ -206,7 +206,16 @@ running the app — not merely asserted. Tool versions used: Node `v26.5.0` (sat
 
    ```bash
    lsof "$HOME/Library/Developer/Xcode/DerivedData/Finanzas-*/Build/Intermediates.noindex/XCBuildData/build.db"
-   kill -9 <pid from lsof>
+   ```
+
+   `kill -9` terminates immediately and without cleanup, and `lsof` can also return the PID of a
+   build that is still legitimately running. **Verify the reported PID belongs to a stale,
+   interrupted process (check `ps -p <pid>` and how long it has been idle) before terminating it,
+   and confirm with whoever owns the machine before running `kill -9` on it** — do not run it
+   automatically from a script or agent session:
+
+   ```bash
+   kill -9 <pid from lsof, verified stale>
    ```
 7. Once a dev build exists on the simulator, `pnpm dev:mobile:ios` (equivalently
    `pnpm dev:mobile`, then `i`) starts Metro only and reopens the existing build — it does not
