@@ -329,10 +329,10 @@ export function validateFidelityContract({ root = REPO_ROOT, contract, manifest 
 
 function parseCli(argv) {
   const args = new Set(argv.slice(2));
-  const allowed = new Set(['--check-docs', '--help', '-h']);
+  const allowed = new Set(['--help', '-h']);
   for (const arg of args) if (!allowed.has(arg)) fail(`Unknown argument: ${arg}`);
   if (args.has('--help') || args.has('-h')) {
-    console.log('Usage: node scripts/mobile-ui/fidelity-contract.mjs [--check-docs]');
+    console.log('Usage: node scripts/mobile-ui/fidelity-contract.mjs');
     return null;
   }
   return {};
