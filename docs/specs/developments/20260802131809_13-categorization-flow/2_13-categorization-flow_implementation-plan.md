@@ -2,7 +2,7 @@
 
 **Spec**: [`1_13-categorization-flow_specs.md`](1_13-categorization-flow_specs.md)
 **Smoke test runbook**: [`../../../testing/mobile/13-categorization-flow.smoke-test.md`](../../../testing/mobile/13-categorization-flow.smoke-test.md)
-**Work item**: #13 · **Depends on**: #2 (merged), #5 (PR #44, open), #10 (spec merged, not implemented), #47 (plan merged, implementation on another lane)
+**Work item**: #13 · **Depends on**: #2 (merged), #8 (plan merged, implementation pending), #5 (PR #44, open), #10 (spec merged, not implemented), #47 (plan merged, implementation on another lane)
 
 ---
 
@@ -13,8 +13,9 @@
 thin compositions over a new `apps/mobile/src/features/categorization/` folder. The feature
 folder holds the pure stage logic (batch selection, chip ordering, progress, completion
 counters), the presentational components composed from the shipped `src/components/ui`
-primitives, and the TanStack Query hooks that are the only thing allowed to touch
-`apps/mobile/src/db`. Seven new functions land in `src/db` — one queue read, one usage read,
+primitives, and the feature hooks — which reach the store through item #8's
+`getAppDatabase()` and `src/db` repository functions, the pattern every screen item in this
+campaign follows (Decision 16). Seven new functions land in `src/db` — one queue read, one usage read,
 one aggregate read, one counter, and three person-owned writes (category, deferral mark,
 exclusion). Every user-facing string moves into the `es` / `en` catalogues under three new key
 namespaces. All seven MVP states of the three screens render; `categorize&state=advanced` is
@@ -27,17 +28,18 @@ absent, and a guard test proves it, together with the fact that no path in this 
 keys, a device fixture, and the first flip of fidelity targets from `planned` to `wired`. No
 single piece is hard; the volume and the number of contracts that have to stay simultaneously
 true (mockup fidelity, inclusion rule, layering lint, i18n lint, `mu-class` ownership) is what
-makes it large. It is also the first item that renders real device data through React, so it
-inherits the provider seam described in Decision 16.
+makes it large. It is the first item that **writes** through the data-access seam item #8
+established, but it introduces no new seam of its own (Decision 16).
 
 **Dependencies**:
 
 | Item | What this plan needs from it | State at plan time |
 | --- | --- | --- |
 | #2 — design system | `Steps`, `CategoryChip`, `Sheet`, `Radio`, `Progress`, `Card`, `Button`, `Note`, `TextField`, `Amount`, `Badge`, `Text` | Merged |
+| #8 — onboarding | `apps/mobile/src/db/runtime.ts` → `getAppDatabase(): Promise<AppDatabase>`, the async-`migrate` widening of `bootstrap.ts`, the `screenMetrics` export in `theme.ts`, and the launch gate. This item consumes all of them and creates none (Decision 16) | Plan merged; implementation pending — **hard blocker** |
 | #5 — shared-domain | `suggestCategory({ currentCategorySource, merchant })` from `@finanzas/shared-domain` | PR #44 open — **hard blocker** |
 | #10 — sync engine | Real movements on the device; the guarantee that a re-sync never overwrites a person-owned column | Spec merged only. The persistence guarantee already exists in shipped code — see Decision 5 |
-| #12 — home screen | `src/providers/DatabaseProvider.tsx`, `src/providers/QueryProvider.tsx`, `@tanstack/react-query`, the `app/_layout.tsx` wrap | PR #56 (plan) open — see Decision 16 for the precedence rule |
+| #12 — home screen | Nothing this item blocks on. #12 owns the `/(dev)/sample-data` route and the two additive `jest.config.js` lines that route a `*.db.test.ts` file to the Node project; both are consumed if present (Decision 15, Decision 16) | Plan merged (`f1fc56e`); implementation pending — **not blocking** |
 | #47 — design-fidelity gate | `scripts/mobile-ui/fidelity-targets.json`, `apps/mobile/src/lib/fidelity-preview.ts`, `pnpm fidelity` | Plan merged; implementation on another lane — see Decision 14 |
 
 ---
@@ -45,11 +47,17 @@ inherits the provider seam described in Decision 16.
 ## Verification Log
 
 Every command below was run in the worktree `.claude/worktrees/item-13` on branch
-`implementation-plan/13-categorization-flow`.
+`implementation-plan/13-categorization-flow`. The first block was run at `4fc495a`; the
+data-access rows were added during the realignment described in Decision 16 and were run at
+`origin/develop` = `0b28103`.
 
 | Check | Command / query | Result |
 | --- | --- | --- |
-| Repo revision | `git rev-parse --short HEAD` | `4fc495a` (identical to `origin/develop` at plan time) |
+| Repo revision (original pass) | `git rev-parse --short HEAD` | `4fc495a` (identical to `origin/develop` at that time) |
+| Repo revision (realignment pass) | `git rev-parse --short origin/develop` | `0b28103` — now carries #8's merged plan, #12's realigned plan (`f1fc56e`) and #10's merged plan |
+| **The established screen data-access pattern** | `git show origin/develop:docs/specs/developments/20260802132343_8-onboarding-intro-value-ready/2_8-onboarding-intro-value-ready_implementation-plan.md` | Item #8 creates `apps/mobile/src/db/runtime.ts` exporting a memoized `getAppDatabase(): Promise<AppDatabase>` that wraps `openAppDatabase()` + `ensureDatabaseReady(...)` and clears its memo on failure, and states: *"`getAppDatabase()` is the single app-tier entry point to the store. Feature hooks call it and then call repository functions; screens call neither directly."* It adds **no** query library and queues the `expo-react-native.md` correction as its own documentation update |
+| That the pattern is campaign-wide, not #8-local | `git show f1fc56e` (`docs(plan): align home-screen data access with item #8's pattern (#12)`) | #12's merged plan Decision 7 now reads *"No TanStack Query"* and removes `DatabaseProvider`, `QueryProvider` and the `app/_layout.tsx` change; its assumption check records the pattern as `Resolved`, decision owner the parent orchestrator |
+| The `*.db.test.ts` Jest convention | Same commit, Infrastructure block | #12 adds two lines to `apps/mobile/jest.config.js`: the `db` project's `testMatch` gains `'<rootDir>/src/features/**/*.db.test.ts'`, and the `app` project's `testPathIgnorePatterns` gains `'\\.db\\.test\\.ts$'`. Stated there as *"the convention every later screen item reuses"* |
 | `mu-*` classes each screen draws, and their ownership status | Python scan of `design/mockups/mobile/index.html` sections `s-stage-intro`, `s-categorize`, `s-categorize-complete`, cross-referenced against `apps/mobile/src/test-utils/mu-class-map.ts` | `stage-intro` 26 classes, 3 `deferred` (`mu-topbar`, `mu-topbar__btn`, `mu-topbar__title`); `categorize` 56 classes, 10 `deferred` (the three topbar classes plus `mu-list`, `mu-item`, `mu-item__icon`, `mu-item__txt`, `mu-item__title`, `mu-item__sub`, `mu-item__chev`); `categorize-complete` 24 classes, 0 `deferred` |
 | Existing `transactions` repository surface | `grep -n "^export function\|^export async function" apps/mobile/src/db/repositories/transactions.ts` | 5 exports: `upsertBankTransactions`, `countUncategorized`, `listMonth`, `totalForCategoryInPeriod`, `listByMerchant`. No pending-queue read and no person-owned write exists yet |
 | Whether anything writes `included_amount` today | `grep -rn "includedAmount\|included_amount" apps/mobile/src/db` (excluding `__tests__/` and `checks/`) | Read-only: the column declaration (`schema.ts:212`), the `includedAmount` SQL fragment (`fragments.ts:21`), the row mapping (`repositories/transactions.ts:51,77`), the domain type (`types.ts:60`). It never appears in a Drizzle `.set()` or `.values()` object |
@@ -70,13 +78,16 @@ Every command below was run in the worktree `.claude/worktrees/item-13` on branc
 | --- | --- | --- | --- | --- | --- |
 | Plan artifact base branch and artifact owner | `develop`; this repository owns the plan (`mode` absent in `.ai-dev-workflow.yaml` ⇒ `single_repo`) | `.ai-dev-workflow.yaml` (no `mode` key, no `workflow_hub` block); `AGENTS.md` → Git & Branching | 2026-08-02, repo `4fc495a` | This invocation only; no other open PR changes the base-branch contract | `Verified` |
 | Fidelity contract path, lifecycle vocabulary, preview helpers, and the #13 coverage set | `scripts/mobile-ui/fidelity-targets.json`; `status: "planned" \| "wired"`; a `wired` target must carry `app_file`, `deep_link`, `ready_test_id`; `apps/mobile/src/lib/fidelity-preview.ts` exports `useFidelityPreview()` and `fidelityTestId()`; #13 owns 7 targets | #47 implementation plan, merged on `develop` (Decisions 2, 6, 9 and the coverage-set table) | 2026-08-02, repo `4fc495a` | Same-surface open PRs: #55 (#8 coverage set) and #56 (#12 coverage set). Both touch `fidelity-targets.json` but own **disjoint** `screen_id` sets from #13's three screens | `Verified` |
-| Ownership of the `__DEV__` sample-data route | `/(dev)/sample-data` and `src/dev/SampleDataPanel.tsx` belong to **#12** | #12 implementation plan, Decision 11 (PR #56) | 2026-08-02, repo `4fc495a` | Same-surface open PRs: #56 only | `Verified` — this plan neither creates nor modifies that route (Decision 15) |
-| Ownership of the app-level database/query provider seam | `apps/mobile/src/providers/DatabaseProvider.tsx` (`useDatabase()`), `QueryProvider.tsx`, `index.ts`, `@tanstack/react-query`, and the `app/_layout.tsx` wrap belong to **#12** | #12 implementation plan, Decision 7 and its Layer-by-Layer "`apps/mobile/src/providers/`" block (PR #56) | 2026-08-02, repo `4fc495a` | Same-surface open PRs: #56 only. #55 (#8) builds static onboarding screens and declares no provider | `Verified` — precedence rule recorded in Decision 16; both plans name identical paths and symbols, so whichever lands first owns the files and the other consumes them unchanged |
+| Ownership of the `__DEV__` sample-data route | `/(dev)/sample-data` and `src/dev/SampleDataPanel.tsx` belong to **#12** | #12's merged implementation plan, Decision 11 | 2026-08-02, `origin/develop` = `0b28103` | Same-surface siblings: #12 only | `Verified` — this plan neither creates nor modifies that route (Decision 15) |
+| **Screen data-access pattern (cross-item consistency)** | `getAppDatabase()` from `apps/mobile/src/db/runtime.ts` plus repository functions, behind feature hooks. **No TanStack Query, no `DatabaseProvider`, no `QueryProvider`, no `app/_layout.tsx` change** | Item #8's **merged** plan (which establishes the pattern and queues the `expo-react-native.md` correction), applied to #12's merged plan in `f1fc56e`; parent orchestrator's binding campaign-wide decision | 2026-08-02, `origin/develop` = `0b28103` | Current invocation item `{#13}`; same-surface siblings are #8 (plan merged, implementation pending) and #12 (plan merged, implementation pending). Both are on this pattern; no open PR proposes a competing one | `Resolved` — decision owner: parent orchestrator, on the authority of #8's merged plan. **An earlier revision of this plan (`641a536`) introduced TanStack Query and a shared `src/providers/` seam with a first-lander-wins rule; that revision is superseded and this row is the record of the correction** |
 | `mu-class` ownership for the classes these screens draw but no primitive owns | `mu-topbar*` stays `deferred` (note corrected to #8 by #12's plan); `mu-list` / `mu-item*` stay `deferred` to #19 | `apps/mobile/src/test-utils/mu-class-map.ts` at `4fc495a`; #8 plan Decision 12; #12 plan Decision 5 | 2026-08-02, repo `4fc495a` | Same-surface open PRs: #55 and #56, both of which explicitly leave these entries `deferred` | `Verified` — this plan leaves `MU_CLASS_MAP` unchanged (Decision 13) |
 | `@finanzas/shared-domain` suggestion API | `suggestCategory({ currentCategorySource, merchant }): CategorySuggestion \| null`, returning `null` when `currentCategorySource === 'user'`, when there is no merchant, or when the merchant has no default category | `packages/shared-domain/src/category-suggestion.ts` on `origin/feature/5-shared-domain-rules-matching-aggregates` (PR #44, open) | 2026-08-02, PR #44 head | Same-surface open PRs: #44 only | `Verified` at plan time against an **open** branch. Implementation Order Step 0 re-verifies the signature after #44 merges and stops on a mismatch |
+| Ownership of the `*.db.test.ts` Jest routing | The two additive lines in `apps/mobile/jest.config.js` belong to **#12**; this item reuses the convention and adds the lines only if #12's implementation has not landed them | #12's merged implementation plan, Infrastructure block (`f1fc56e`) | 2026-08-02, `origin/develop` = `0b28103` | Same-surface siblings: #12 only. The two lines are byte-identical in both plans, so the later lander is a no-op | `Verified` |
 
-No conflict was found. Implementation Order Step 0 repeats the last three rows before any file
-edit and records `Still valid` or `Stale or conflicting` in the implementation PR.
+No conflict remains. One row is `Resolved` rather than `Verified`, and it records the
+superseded revision explicitly. Implementation Order Step 0 repeats the data-access, fidelity
+and `shared-domain` rows before any file edit and records `Still valid` or
+`Stale or conflicting` in the implementation PR.
 
 ---
 
@@ -321,20 +332,42 @@ The file is applied in two places, and a test keeps them honest:
   movements in the expected order (Scenario 12). A drift between the fixture and the queue rule
   fails the suite.
 
-### Decision 16 — The provider seam is shared with #12, first-lander wins
+### Decision 16 — Data access follows item #8's pattern: `getAppDatabase()` plus repository functions, behind feature hooks. **No TanStack Query.**
 
-Neither `@tanstack/react-query` nor `src/providers/` exists at `4fc495a`; #12's open plan
-introduces both, with the exact paths and symbols recorded in the Cross-Cutting Operational
-Assumption Check. This plan consumes them and does not redesign them.
+`docs/best-practices/stack/expo-react-native.md` → *Data fetching* prescribes *"TanStack Query
+over repository functions"* and sketches a `queries.ts`. **That library is not installed**
+(Verification Log), and item #8 — the first item to read the database from React — deliberately
+did not add it. It created `apps/mobile/src/db/runtime.ts` with a memoized
+`getAppDatabase(): Promise<AppDatabase>` and established *"feature hooks call it and then call
+repository functions; screens call neither directly"*, queueing the `expo-react-native.md`
+correction as its own documentation update. #12's plan was realigned onto the same pattern in
+`f1fc56e`, and the parent orchestrator has made it binding for every screen item.
 
-**Precedence rule** (deterministic, no human decision needed): at Step 0 the implementer checks
-whether `apps/mobile/src/providers/DatabaseProvider.tsx` exists. If it does, this item imports
-`useDatabase()` and adds nothing. If it does not, this item creates
-`src/providers/DatabaseProvider.tsx`, `src/providers/QueryProvider.tsx`, `src/providers/index.ts`
-and the `app/_layout.tsx` wrap **using the same file names, symbol names and shape #12's plan
-specifies**, and adds `@tanstack/react-query`. Because both plans name the same files and
-symbols, whichever lands first owns them and the other consumes them unchanged; the second lane
-resolves at most a `package.json` conflict.
+This plan follows it. Concretely:
+
+- **No** `@tanstack/react-query`, **no** `src/providers/DatabaseProvider.tsx`, **no**
+  `QueryProvider.tsx`, **no** change to `apps/mobile/app/_layout.tsx`. This item adds no
+  runtime dependency at all.
+- **Two hooks**, both in `src/features/categorization/`, each awaiting `getAppDatabase()` once
+  behind a cancellation guard:
+  - `useStageData(params)` in `use-stage-data.ts` — the read side, over the pure composition
+    `readStageData(db, params)`.
+  - `useStageActions()` in `use-stage-actions.ts` — the write side, exposing
+    `confirmCategory`, `markReviewLater`, `markUncertain` and `excludeMovement`, each of which
+    awaits the same memoized handle and calls one repository function.
+- **Freshness after a write** is not a cache-invalidation problem here, because the stage owns
+  its own in-memory batch (Decision 2) and each write targets the movement currently on screen.
+  The two figures that are read rather than held — the pending count on `stage-intro` and the
+  completion counters — are re-read on screen focus: `useFocusEffect` bumps a `reloadToken`
+  that is a dependency of the hook's effect. That is the same shape #12's `useHomeData` uses.
+- Because the driver is synchronous (`BaseSQLiteDatabase<'sync', …>`), every call after the
+  handle resolves is a plain function call. `readStageData` therefore returns one snapshot taken
+  in a single uninterrupted pass, so the queue, the pending count and the taxonomy can never
+  describe different store states.
+
+An earlier revision of this plan (`641a536`) introduced TanStack Query and a shared
+`src/providers/` seam with a first-lander-wins rule. That revision is superseded; the
+Cross-Cutting Operational Assumption Check records the correction and its decision owner.
 
 ### Decision 17 — Three catalogue namespaces, one key per drawn string
 
@@ -369,17 +402,25 @@ precedent — an emoji is copy, and hard-coding one in JSX would trip
       `formatShortDate`, `formatTimeOfDay`, `getMonthPeriod`, `shiftMonthPeriod`,
       `deriveDateLocal`.
 
-### Providers — `apps/mobile/src/providers/` (conditional, Decision 16)
+### Providers, query layer, `app/_layout.tsx`
 
-- [ ] `DatabaseProvider.tsx`, `QueryProvider.tsx`, `index.ts` and the `app/_layout.tsx` wrap —
-      **only if #12 has not already landed them**, in which case this item creates nothing here.
+**None.** Decision 16: no `src/providers/`, no `@tanstack/react-query`, no root-layout change.
+`apps/mobile/package.json` gains no dependency.
 
 ### Frontend / UI — `apps/mobile/src/features/categorization/` (new)
 
-- [ ] `queries.ts` — `categorizationKeys` plus the hooks: `usePendingCount`, `useStageQueue`,
-      `useCategoryCatalogue`, `useCategoryUsage`, `useStageSummary`, and the three mutations
-      `useSetCategory`, `useSetReviewFlag`, `useExcludeTransaction`. Each mutation invalidates
-      precisely the keys it affects (`pendingCount`, `stageQueue`, `summary`) and nothing else.
+- [ ] `read-stage-data.ts` — `readStageData(db, params)`, the pure composition of four
+      repository functions in five calls (`listPendingBatch`, `countUncategorized`,
+      `listCategories` once per direction, `listMostUsedCategories`) into one snapshot. No
+      React, no SQL of its own (Decision 16).
+- [ ] `use-stage-data.ts` — `useStageData(params)`: awaits `getAppDatabase()` once behind a
+      `cancelled` guard, calls `readStageData`, and re-reads when a `useFocusEffect`-driven
+      `reloadToken` changes. Returns `{ status: 'pending' | 'ready' | 'error', … }`.
+- [ ] `use-stage-actions.ts` — `useStageActions()`: `confirmCategory`, `markReviewLater`,
+      `markUncertain`, `excludeMovement`. Each awaits the same memoized handle and calls exactly
+      one repository write; each is guarded by the single-flight ref of Decision 7.
+- [ ] `stage-summary.ts` — `readStageSummary(db, { period, previousPeriod })` over
+      `countCategorized` and `sumIncludedExpensesInPeriod`, for the completion tiles.
 - [ ] `stage-batch.ts` — `STAGE_BATCH_SIZE`, `SECONDS_PER_MOVEMENT`, `buildStageBatch(pending,
       options)`, `estimateStageMinutes(batchSize)`. Pure.
 - [ ] `category-choices.ts` — `MAX_CATEGORY_CHIPS`, `buildCategoryChoices(input)`. Pure.
@@ -413,8 +454,13 @@ precedent — an emoji is copy, and hard-coding one in JSX would trip
       with `app_file`, `deep_link`, `ready_test_id` and `fixture: "stage-queue"`; add the
       `stage-queue` entry to the contract's `fixtures` map with a one-line description
       (Decision 14).
-- [ ] `apps/mobile/package.json` — no new script. The fixture is applied by `sqlite3` in the
-      runbook and by `loadFixture()` in tests; nothing generates it.
+- [ ] `apps/mobile/jest.config.js` — the two additive lines #12's plan specifies, **only if
+      #12's implementation has not already landed them**: `'<rootDir>/src/features/**/*.db.test.ts'`
+      appended to the `db` project's `testMatch`, and `'\\.db\\.test\\.ts$'` appended to the
+      `app` project's `testPathIgnorePatterns`. Byte-identical in both plans, so the later lander
+      is a no-op. Needed by Scenario 21.
+- [ ] `apps/mobile/package.json` — no new script and **no new dependency**. The fixture is
+      applied by `sqlite3` in the runbook and by `loadFixture()` in tests; nothing generates it.
 
 ---
 
@@ -546,11 +592,14 @@ all reversible:
 
 ## Testing Strategy
 
-**Test types**: unit (pure functions, `app` Jest project), integration (repository functions
-against `better-sqlite3` in memory, `db` Jest project), static source scans, smoke (device).
+**Test types**: unit (pure functions and hook callbacks, `app` Jest project), integration
+(repository functions and the feature-layer read composition against `better-sqlite3` in memory,
+`db` Jest project via the `*.db.test.ts` convention), static source scans, smoke (device).
 
 No React renderer is available (Verification Log), so screens are verified through their pure
 inputs and outputs, static scans, and the device runbook — the precedent items #34 and #8 set.
+The two hooks are exercised as plain functions over a stubbed `getAppDatabase`, the shape #12's
+plan uses for `useHomeData`.
 
 **Key scenarios**:
 
@@ -576,6 +625,9 @@ inputs and outputs, static scans, and the device runbook — the precedent items
 | 18 | Every `t('…')` key used by the three screens exists in `es.json` and `en.json`, and every Spanish value matches the Copy contract table character for character | AC33 | `src/features/categorization/__tests__/copy-contract.test.ts` (`app`, new) — reuses the shipped `catalogue-key-scan.ts` |
 | 19 | Guard: no advanced-panel copy in either catalogue, and no `includedAmount` / `included_amount` identifier in the feature or its routes | AC23, AC24 | `src/features/categorization/__tests__/advanced-absent.test.ts` (`app`, new) |
 | 20 | The shipped repository-wide scans stay green with the new files: `no-naked-text`, `no-style-literals`, `touch-targets`, `mu-class-coverage`, `route-manifest-parity`, `db-access-boundary`, `inclusion-rule-single-definition` | AC32, layering, AC34 | existing tests, no edits expected |
+| 21 | `readStageData` composes its five repository calls over a **real** in-memory store and returns one internally consistent snapshot: the batch, the pending count and the chip inputs describe the same set of movements | Decision 16 | `src/features/categorization/__tests__/read-stage-data.db.test.ts` — the `.db.test.ts` suffix routes it to the Node/`better-sqlite3` project (Tooling / configuration above) | `db` |
+| 22 | `useStageData` discards a resolved read after unmount and does not `setState`; a second focus event supersedes an in-flight read rather than racing it; a rejected `getAppDatabase()` becomes `status: 'error'` | Concurrency addendum, Decision 16 | `src/features/categorization/__tests__/use-stage-data.test.ts` — exercised as a plain function over a stubbed `getAppDatabase`, following item #2's no-renderer precedent | `app` |
+| 23 | `useStageActions` rejects a second confirm while the first is in flight, and does not advance twice | AC12, Decision 7 | `src/features/categorization/__tests__/use-stage-actions.test.ts` (`app`, new) | `app` |
 
 **Smoke test runbook**:
 [`docs/testing/mobile/13-categorization-flow.smoke-test.md`](../../../testing/mobile/13-categorization-flow.smoke-test.md)
@@ -618,33 +670,55 @@ the exact acceptance criterion (AC23, AC24) it exists to hold.
 
 ### Concurrent-event-source addendum
 
-The screen has three interleaving asynchronous sources — a mutation promise, a TanStack Query
-refetch triggered by that mutation's invalidation, and navigation focus/unmount events from the
-merchant-editor round trip — all reading the same session state, so the checklist is answered in
-full rather than skipped.
+Three asynchronous sources interleave over the same session state: the `getAppDatabase()` await
+inside `useStageData`, the write promises in `useStageActions`, and navigation focus/unmount
+events from the merchant-editor round trip. The checklist is answered in full rather than
+skipped.
 
-- **Shared mutable state guards**: the session (batch, index, selection, resolved counter) is
-  React state owned by `CategorizeScreen` and mutated only through its own setters, always from
-  the React event loop. The batch array is read once and never mutated in place; advancing
-  replaces the index.
+- **Shared mutable state guards**: the handle is not this feature's state to guard — item #8's
+  `getAppDatabase()` is a module-level memoized `Promise<AppDatabase>` written once before any
+  `await`, wrapping `ensureDatabaseReady`, which itself serialises through the module-level
+  single-flight promise in `apps/mobile/src/db/bootstrap.ts`. The session (batch, index,
+  selection, resolved counter) is React state owned by `CategorizeScreen`, mutated only through
+  its own setters from the React event loop, with the batch array replaced wholesale rather than
+  mutated in place.
 - **Re-entrancy / in-flight tracking**: yes, a second confirm can arrive before the first
-  resolves. A `writeInFlight` ref (Decision 7) rejects the second tap; "Siguiente →" also
-  renders `disabled` while a write is in flight. Deferral and exclusion writes share the guard.
-- **Event deduplication**: the mutation is keyed by movement id, and the index advances only
-  after the write resolves, so a duplicate confirm for the same movement cannot advance twice.
-  `setUserCategory` is itself idempotent — writing the same category twice is the same row.
-- **Listener and resource cleanup**: the feature registers no listener, timer, socket or
-  subscription. TanStack Query cancels its own in-flight queries on unmount. The SQLite handle
-  is process-lived and owned by `DatabaseProvider`, not by this feature.
-- **Race at initialization**: the screen renders nothing until `useDatabase()` reports ready and
-  the queue query resolves; per spec UX Rules → *Loading*, it never shows a half-populated card,
-  and the previous movement stays on screen until the next one can render completely.
-- **Race at teardown**: leaving mid-write is allowed. The mutation completes in the query client
-  (the decision is already committed — spec Business Rule 2), and the resolution callback is a
-  no-op because the component is unmounted. No state is set after unmount.
-- **Error propagation**: mutation errors surface through TanStack Query's `error` field and are
-  rendered as the `categorize.write_failed` note; the stage does not advance and the selection
-  is preserved (spec UX Rules → *Failure*). No `catch` swallows an error silently.
+  resolves. A `writeInFlight` ref in `useStageActions` (Decision 7) rejects the second tap;
+  "Siguiente →" also renders `disabled` while a write is in flight. Deferral and exclusion
+  writes share the same guard. On the read side, a second focus event bumps `reloadToken`, and
+  the superseded effect's cleanup sets `cancelled = true`, so the earlier read is discarded
+  rather than racing the later one into state — React runs the cleanup before the next effect,
+  so last-write-wins is deterministic (Scenario 22).
+- **Event deduplication**: each write targets the movement currently on screen and the index
+  advances only after it resolves, so a duplicate confirm cannot advance twice.
+  `setUserCategory` is itself idempotent — writing the same category twice produces the same
+  row. A duplicate focus event costs one extra set of `SELECT`s and cannot corrupt anything,
+  because every call in `readStageData` is a read and the whole snapshot is replaced in one
+  `setState`; no debounce is added.
+- **Listener and resource cleanup**: the feature registers no timer, socket or subscription.
+  `useFocusEffect` returns its own cleanup, and the data effect returns a cleanup that sets
+  `cancelled`, so unmounting mid-read cannot `setState` on an unmounted component. The SQLite
+  handle is process-lived and deliberately not closed: it is owned by `src/db/runtime.ts`, not
+  by any screen.
+- **Race at initialization**: a focus event can arrive before the handle resolves; it only bumps
+  `reloadToken`, and the effect still awaits the same memoized promise, so nothing reads an
+  unready database. The screen renders nothing while `status === 'pending'`, and per spec UX
+  Rules → *Loading* it never shows a half-populated card — the previous movement stays until the
+  next one can render completely.
+- **Race at teardown**: leaving mid-write is allowed. The write has already been issued against
+  the store (the decision is committed — spec Business Rule 2), and its resolution callback is a
+  no-op because the `cancelled` guard is set. Nothing needs draining, because every read is
+  side-effect-free.
+- **Error propagation**: `getAppDatabase()` rejects with the typed `DatabaseBootstrapError` from
+  `bootstrap.ts` and clears its own memo, so the next mount genuinely retries. `useStageData`
+  stores the rejection as `status: 'error'`; a write rejection is surfaced as the
+  `categorize.write_failed` note, the stage does not advance and the selection is preserved
+  (spec UX Rules → *Failure*). No `catch` swallows an error silently, and `no-console` keeps any
+  of it out of the log.
+
+**New concurrent patterns**: none. This mirrors the cancellation-guarded,
+`getAppDatabase()`-awaiting hook shape items #8 and #12 established, rather than inventing a
+second discipline (Decision 16).
 
 ---
 
@@ -675,9 +749,12 @@ To be executed by the developer during implementation, not now.
       when reason = `other`"*. The spec's Conflict 3 resolves the note as optional for **every**
       reason; correct that cell to say so, and note that this flow is the writer of
       `review_flag`, `excluded_at`, `exclusion_reason` and `exclusion_note`.
-- [ ] `docs/best-practices/stack/expo-react-native.md` — the *Screen structure* example uses
-      `src/i18n/{es,en}.ts`; the shipped files are `.json`. Correct it while touching the
-      feature-folder conventions this item is the first real consumer of.
+- [ ] `docs/best-practices/stack/expo-react-native.md` — **no edit from this item.** Item #8's
+      plan owns correcting the *Data fetching* and *Screen structure* blocks, which describe
+      TanStack Query and a `queries.ts` that do not exist (Decision 16). If #8's implementation
+      landed that correction, verify it also covers the `src/i18n/{es,en}.ts` / `.json` mismatch
+      in the same block; if it did not, raise a follow-up rather than editing the same block
+      twice.
 - [ ] `AGENTS.md` — add the categorization feature folder to the repository-structure block only
       if the developer adds a file type not already described there; otherwise "no change".
       Do **not** add a new command: this item adds none.
@@ -685,9 +762,12 @@ To be executed by the developer during implementation, not now.
       it: append nothing, but confirm the per-PR fidelity-evidence block it prescribes is what
       the implementation PR pastes. If #47 has not landed, this bullet is void and Step 0 will
       already have stopped the run.
-- [ ] `docs/project/1-business-domain.md`, `docs/project/2-repo-architecture.md`,
-      `docs/project/3-software-architecture.md` — no change required; the entities, packages and
-      layering this item uses are already described there.
+- [ ] `docs/project/3-software-architecture.md` — its *Hooks in `src/features/*/queries.ts` wrap
+      TanStack Query* line describes a layer that does not exist. Correct it **only if** neither
+      #8 nor #12 has already done so; if one of them has, verify the wording covers this item's
+      hooks and raise a follow-up instead of a second edit (Decision 16).
+- [ ] `docs/project/1-business-domain.md`, `docs/project/2-repo-architecture.md` — no change
+      required; the entities, packages and layering this item uses are already described there.
 
 ---
 
@@ -696,7 +776,8 @@ To be executed by the developer during implementation, not now.
 | Risk | Likelihood | Impact | Mitigation |
 | --- | --- | --- | --- |
 | #5 (PR #44) changes `suggestCategory`'s shape before merging | Med | Med | Step 0 re-verifies the exact signature and stops on a mismatch. Only `buildCategoryChoices` consumes it, behind a local adapter |
-| #12 and #13 both create `src/providers/` | Med | Low | Decision 16's precedence rule: identical paths and symbols in both plans; first lander owns them |
+| Item #8's implementation lands a different shape than its merged plan, invalidating Decision 16 | Med | High | Every symbol this plan consumes from #8 (`getAppDatabase`, and the absence of any query library) is re-verified by Step 0 against merged `develop`, not against #8's plan document. A mismatch stops the run before any edit and returns evidence to the parent |
+| A future item adopts a query library and this feature is left on the hook pattern | Low | Low | Decision 16 records the pattern and its authority. Migrating two hooks is a contained change; migrating half the screens is not, which is why this item does not fork the pattern |
 | #47 has not landed when implementation starts, so no target can be flipped | Med | High | Step 0 stops the run. Nothing in this item invents a parallel fidelity mechanism |
 | #10 has not landed, so no real bank movement exists on a device | High | Med | The runbook is driven by `stage-queue-v1.sql` (Decision 15), which is applied the same way whether or not a sync exists |
 | A fidelity capture fails because the fixture's numbers differ from the mockup's sample digits | Med | Low | The fixture reproduces the mockup's amounts, dates, merchant names and chip grids exactly. A residual failure is fixed in the screen or the fixture — **never** by raising a threshold (#47 Decision 4) |
@@ -760,6 +841,37 @@ export function excludeTransaction(
 }
 ```
 
+The read side — item #8's memoized handle, one cancellation guard, no query library
+(Decision 16):
+
+```ts
+// apps/mobile/src/features/categorization/use-stage-data.ts — Illustrative, adapt during implementation
+export function useStageData(params: StageDataParams): StageDataState {
+  const [state, setState] = useState<StageDataState>({ status: 'pending' });
+  const [reloadToken, setReloadToken] = useState(0);
+
+  useFocusEffect(useCallback(() => setReloadToken((token) => token + 1), []));
+
+  useEffect(() => {
+    let cancelled = false;
+    getAppDatabase()
+      .then((db) => {
+        if (cancelled) return; // teardown or a newer focus superseded this read
+        setState({ status: 'ready', data: readStageData(db, params) });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setState({ status: 'error', error });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [params, reloadToken]);
+
+  return state;
+}
+```
+
 ```ts
 // Illustrative — adapt during implementation.
 // apps/mobile/src/features/categorization/category-choices.ts
@@ -804,12 +916,19 @@ export function buildCategoryChoices(input: {
 
 Each step is independently committable and leaves the repository green.
 
-0. **Implementation-start re-verification.** Re-run the last three rows of the
+0. **Implementation-start re-verification.** Re-run the data-access, fidelity and
+   `shared-domain` rows of the
    [Cross-Cutting Operational Assumption Check](#cross-cutting-operational-assumption-check) and
-   record `Still valid` or `Stale or conflicting` in the PR body. **Stop before any file edit**
-   if: #5 (PR #44) has not merged or `suggestCategory`'s signature differs; or #47 has not
-   landed `scripts/mobile-ui/fidelity-targets.json` and `apps/mobile/src/lib/fidelity-preview.ts`.
-   Also record whether `apps/mobile/src/providers/DatabaseProvider.tsx` exists (Decision 16).
+   record `Still valid` or `Stale or conflicting` in the PR body. Concretely:
+   `grep -n 'getAppDatabase' apps/mobile/src/db/runtime.ts`;
+   `grep -c 'tanstack' apps/mobile/package.json` (expect `0`);
+   `grep -n 'db.test.ts' apps/mobile/jest.config.js`;
+   `grep -n 'suggestCategory' packages/shared-domain/src/index.ts packages/shared-domain/src/category-suggestion.ts`;
+   `ls scripts/mobile-ui/fidelity-targets.json apps/mobile/src/lib/fidelity-preview.ts`.
+   **Stop before any file edit** if: #8 has not merged or `getAppDatabase()` differs from the
+   recorded shape; or a query library has appeared in `apps/mobile/package.json`; or #5 (PR #44)
+   has not merged or `suggestCategory`'s signature differs; or #47 has not landed the fidelity
+   contract and the preview helpers.
 1. **Database layer.** The six new exports in `repositories/transactions.ts`, the one in
    `repositories/categories.ts`, and the two types in `types.ts`. Verify:
    `pnpm --filter @finanzas/mobile test` — read the output and confirm the `db` project runs
@@ -818,17 +937,20 @@ Each step is independently committable and leaves the repository green.
 2. **Fixture.** `src/db/__fixtures__/stage-queue-v1.sql` plus Scenario 12's test. Verify:
    `pnpm --filter @finanzas/mobile test` and confirm the new test names the four expected
    movements in order.
-3. **Providers (conditional).** Only when Step 0 recorded that `src/providers/` is absent:
-   create `DatabaseProvider.tsx`, `QueryProvider.tsx`, `index.ts`, wrap `app/_layout.tsx`, and
-   add `@tanstack/react-query`. Verify: `pnpm check:layout`, `pnpm --filter @finanzas/mobile
-   typecheck`, and the app boots on a dev build with no console error.
+3. **Jest routing for the `.db.test.ts` convention.** Only if Step 0 found the two lines absent
+   from `apps/mobile/jest.config.js`, add them exactly as #12's plan specifies. No other config
+   change, no dependency. Verify: `pnpm --filter @finanzas/mobile test` still runs both projects
+   and no existing test changed project.
 4. **Catalogues.** Every key in [Copy contract mapping](#copy-contract-mapping) added to
    `es.json` and `en.json`. Verify: `pnpm --filter @finanzas/mobile test` and confirm
    `catalogue-parity` passes with the new keys.
 5. **Pure feature logic.** `stage-batch.ts`, `category-choices.ts`, `completion.ts` with
    Scenarios 13–17. Verify: `pnpm --filter @finanzas/mobile test`.
-6. **Queries and session.** `queries.ts` and `StageSessionContext.tsx`. Verify:
-   `pnpm --filter @finanzas/mobile typecheck` and `pnpm lint`.
+6. **Data access and session.** `read-stage-data.ts`, `stage-summary.ts`, `use-stage-data.ts`,
+   `use-stage-actions.ts` and `StageSessionContext.tsx`, with Scenarios 21–23. Verify:
+   `pnpm --filter @finanzas/mobile test` — confirm `read-stage-data.db.test.ts` runs under the
+   `db` project and not under `app` — plus `pnpm --filter @finanzas/mobile typecheck`,
+   `pnpm lint`, and that `db-access-boundary` is still green with the new hooks in the scan.
 7. **Components.** The seven files in `components/`, including the two screen-local
    compositions of Decision 13. Verify: `pnpm --filter @finanzas/mobile test` and confirm
    `no-naked-text`, `no-style-literals`, `touch-targets` and `mu-class-coverage` are green —
@@ -862,6 +984,9 @@ Everything the spec lists under *Out of Scope (MVP)*, plus these plan-level boun
 
 - The merchant editor itself (#14): this item pushes the route and reads the round trip.
 - `home`, its pending call to action and its totals (#12).
+- Any query library, provider or `app/_layout.tsx` change. Whether this app ever adopts TanStack
+  Query is LH's open call, queued by #8 together with the `expo-react-native.md` correction
+  (Decision 16).
 - The `/(dev)/sample-data` panel (#12, Decision 15 here).
 - Promoting `mu-topbar*`, `mu-list` or `mu-item*` to design-system primitives (#8 / #19,
   Decision 13 here).
