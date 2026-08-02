@@ -5,6 +5,11 @@ import { fontWeight } from './_internal/font-weight';
 import { TOUCH_METRICS } from './_internal/touch-metrics';
 import { Text } from './Text';
 
+/** Decorative glyph, not user-facing copy: it is language-independent and must not enter the
+ *  i18n catalogues. Named so `i18next/no-literal-string` sees an expression, not JSX text
+ *  (implementation plan Decision 10). */
+const STAR_GLYPH = '★';
+
 export type CategoryChipState = 'default' | 'selected' | 'suggested';
 
 export type CategoryChipProps = {
@@ -91,7 +96,7 @@ export function CategoryChip({
             tone="inverse"
             style={{ fontSize: componentMetrics.categoryChip.starFontSize }}
           >
-            ★
+            {STAR_GLYPH}
           </Text>
         </View>
       )}

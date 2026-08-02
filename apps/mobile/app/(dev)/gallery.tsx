@@ -9,9 +9,9 @@
  *
  * `DesignSystemGallery` is `require()`d **inside** the `__DEV__` branch rather than imported
  * at the top of the module. A static top-level `import` would add `DesignSystemGallery` (and
- * `gallery.strings.ts`) to Metro's dependency graph unconditionally, so `src/dev/` would still
- * ship in a release bundle even though the route renders nothing — found in review. Metro's
- * dead-code elimination can drop an unreachable `require()` call at build time because
+ * everything it pulls in) to Metro's dependency graph unconditionally, so `src/dev/` would
+ * still ship in a release bundle even though the route renders nothing — found in review.
+ * Metro's dead-code elimination can drop an unreachable `require()` call at build time because
  * `__DEV__` is statically known; a static `import` cannot be eliminated the same way.
  */
 export default function DevGalleryRoute() {
