@@ -232,6 +232,8 @@
   "home.trend_segment_expense": "Expenses",
   "home.trend_segment_income": "Income",
   "home.trend_legend_current": "This month",
+  "home.trend_chart_label_expense": "This month's expense trend",
+  "home.trend_chart_label_income": "This month's income trend",
   "home.cta_view_full_analysis": "See full analysis →",
 
   "home.category_title": "Category breakdown",

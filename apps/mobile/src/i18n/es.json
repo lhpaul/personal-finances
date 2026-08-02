@@ -232,6 +232,8 @@
   "home.trend_segment_expense": "Gastos",
   "home.trend_segment_income": "Ingresos",
   "home.trend_legend_current": "Este mes",
+  "home.trend_chart_label_expense": "Tendencia de gastos del mes",
+  "home.trend_chart_label_income": "Tendencia de ingresos del mes",
   "home.cta_view_full_analysis": "Ver análisis completo →",
 
   "home.category_title": "Análisis por categorías",
