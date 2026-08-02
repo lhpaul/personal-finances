@@ -272,8 +272,13 @@ describe('dates', () => {
     });
 
     it('an explicit non-default timezone is honoured, not ignored', () => {
-      expect(deriveDateLocal(new Date('2025-01-24T23:30:00Z'), 'UTC')).toBe('2025-01-24');
-      expect(deriveDateLocal(new Date('2025-01-24T23:30:00Z'))).toBe('2025-01-24');
+      // 02:00Z is still 2025-01-23 23:00 in Santiago (UTC-03), so the two zones disagree on the
+      // civil date. An ignored `timeZone` argument would make both assertions return the same
+      // value, so this instant (unlike one where both zones happen to land on the same day) can
+      // actually distinguish "honoured" from "silently ignored".
+      const instant = new Date('2025-01-24T02:00:00Z');
+      expect(deriveDateLocal(instant, 'UTC')).toBe('2025-01-24');
+      expect(deriveDateLocal(instant)).toBe('2025-01-23');
     });
 
     it('a valid IANA alias round-trips to the same fields as its canonical zone', () => {
@@ -367,6 +372,14 @@ describe('dates', () => {
         expect(formatMonthYear(dateLocal, 'es')).toBe(expected);
       });
 
+      // ICU/CLDR baseline: these are the labels Node's bundled full-ICU CLDR data produces for
+      // the `es` locale at plan/implementation time (Decision 7's width caveat covers `sept`, the
+      // four-letter form CLDR uses for September). This suite runs on Node in CI and is expected
+      // to fail if a Node/ICU upgrade changes a CLDR label — that is a real signal, not test
+      // flakiness, and should be re-verified against the mockup rather than silenced. React
+      // Native inherits locale data from the device's platform ICU (Hermes has no bundled CLDR of
+      // its own), so this Node-only baseline does not by itself prove device parity; the smoke
+      // runbook's device step is the place that verifies on-device output.
       it.each([
         ['2025-01-24', 'ene'],
         ['2025-02-24', 'feb'],
@@ -491,6 +504,25 @@ describe('dates', () => {
       it.each(invalidCivilDates)('toDateLocal rejects %s', (overrides) => {
         const civil = { year: 2025, month: 1, day: 5, ...overrides };
         expect(() => toDateLocal(civil)).toThrow(RangeError);
+      });
+
+      // `day` is bounded by the actual length of `month`, not a fixed 31 — otherwise
+      // `toDateLocal` (the plan's single construction-side guard) could build a `DateLocal` that
+      // the module's own `isValidDateLocal`/`parseDateLocal` predicates reject.
+      it('toDateLocal rejects day 31 for a 30-day month (April)', () => {
+        expect(() => toDateLocal({ year: 2025, month: 4, day: 31 })).toThrow(RangeError);
+      });
+
+      it('toDateLocal rejects day 31 for February in a common year', () => {
+        expect(() => toDateLocal({ year: 2025, month: 2, day: 31 })).toThrow(RangeError);
+      });
+
+      it('toDateLocal rejects day 30 for February in a leap year', () => {
+        expect(() => toDateLocal({ year: 2024, month: 2, day: 30 })).toThrow(RangeError);
+      });
+
+      it('toDateLocal accepts day 29 for February in a leap year', () => {
+        expect(toDateLocal({ year: 2024, month: 2, day: 29 })).toBe('2024-02-29');
       });
     });
   });

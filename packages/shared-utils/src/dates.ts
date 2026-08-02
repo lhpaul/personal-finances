@@ -98,8 +98,11 @@ export function toDateLocal(civil: CivilDate): DateLocal {
   if (!Number.isInteger(month) || month < 1 || month > 12) {
     throw new RangeError(`toDateLocal: month ${month} must be an integer in the range 1-12`);
   }
-  if (!Number.isInteger(day) || day < 1 || day > 31) {
-    throw new RangeError(`toDateLocal: day ${day} must be an integer in the range 1-31`);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  if (!Number.isInteger(day) || day < 1 || day > daysInMonth) {
+    throw new RangeError(
+      `toDateLocal: day ${day} must be an integer in the range 1-${daysInMonth} for month ${month}`,
+    );
   }
   const yyyy = String(year).padStart(4, '0');
   const mm = String(month).padStart(2, '0');
@@ -202,6 +205,14 @@ export function shiftWeekPeriod(period: Period, weeks: number): Period {
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
 /**
+ * Caches the canonicalization probe used by `deriveZonedParts` (raw `timeZone` argument ->
+ * canonical IANA identifier). The canonical identifier for a given input string is stable for the
+ * process lifetime, so caching it only removes repeated `Intl.DateTimeFormat` construction and
+ * does not change semantics.
+ */
+const canonicalTimeZoneCache = new Map<string, string>();
+
+/**
  * Converts a UTC instant to Chilean (or any IANA-zone) wall-clock fields via
  * `Intl.DateTimeFormat(...).formatToParts`, read by `type`, never by position. This is the one
  * seam whose output can depend on a real, non-`'UTC'` timezone (Decision 3). Fails loudly rather
@@ -212,9 +223,14 @@ export function deriveZonedParts(instant: Date, timeZone: string = SANTIAGO_TIME
   // Canonicalize first: a valid IANA alias ('US/Eastern', a lowercase identifier, etc.) resolves
   // to a different canonical string than the literal input. This bare probe — no hourCycle, no
   // field options — only exercises the timezone *name* table, not the offset/DST *rule* data a
-  // reduced-ICU build might be missing for a given zone.
-  const canonicalTimeZone = new Intl.DateTimeFormat(undefined, { timeZone }).resolvedOptions()
-    .timeZone;
+  // reduced-ICU build might be missing for a given zone. The canonical result for a given input
+  // string is stable for the process lifetime, so it is cached to avoid constructing a second
+  // `Intl.DateTimeFormat` on every call (construction, not `formatToParts`, is the expensive part).
+  let canonicalTimeZone = canonicalTimeZoneCache.get(timeZone);
+  if (canonicalTimeZone === undefined) {
+    canonicalTimeZone = new Intl.DateTimeFormat(undefined, { timeZone }).resolvedOptions().timeZone;
+    canonicalTimeZoneCache.set(timeZone, canonicalTimeZone);
+  }
   let formatter = formatterCache.get(canonicalTimeZone);
   if (!formatter) {
     formatter = new Intl.DateTimeFormat('en-US', {
