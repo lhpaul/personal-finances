@@ -63,27 +63,14 @@ review:
     #
     # `auto_review.drafts: false` in .coderabbit.yaml means it correctly skips
     # draft PRs — that is not a failure, it is why it sits in on_ready.
+    #
+    #   4. A duplicate `github:` key survived that revert for several hours. YAML
+    #      is last-key-wins, so the file read `coderabbit` here and resolved to
+    #      `codex-github`, which then falsely applied `reviewer-failed` to #31.
+    #      If you edit this block, verify with a YAML parser — not with grep,
+    #      which finds the first key and stops.
     github:
       - coderabbit
-  # Ordered list of GitHub/App/CLI reviewers that run only after draft gates
-    # are clean and the PR has been converted with `gh pr ready`.
-    #
-    # Switched from `coderabbit` on 2026-08-01: the CodeRabbit organization hit
-    # its usage spending cap on the third PR of the session, which is not
-    # self-resolving and would gate all ~40 remaining PRs.
-    #
-    # This mirrors zeki-cl/zeki-platform, which runs `platforms: [pr-agent,
-    # codex-github]` — the same pair, split across the two stages of this newer
-    # schema. There, `chatgpt-codex-connector[bot]` posts real reviews, so the
-    # setup is proven rather than speculative.
-    #
-    # REQUIRES: the Codex GitHub App installed on THIS repository. It is
-    # installed on the zeki-cl org, not automatically here. Until it is,
-    # pr-review-loop.sh polls it and reports skipped/no_review after burning its
-    # timeout — not a merge blocker (the internal code-reviewer at Step 7a is the
-    # gate that matters), but wasted time on every PR.
-    github:
-      - codex-github
   #
   # CodeRabbit CLI platform options (local CLI reviewer; place "coderabbit-cli"
   # in on_draft.github or on_ready.github to opt in; independent from the
