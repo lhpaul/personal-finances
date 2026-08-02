@@ -1133,6 +1133,11 @@ infrastructure with no visible change; the screen appears at Step 8.
   documentation, protocol or decision gate. Its two multi-input decision tables
   (`resolveTransactionsState`, Decision 9; the filter matrix, Decision 7) are product behaviour
   and are enumerated exhaustively there and in Scenarios 16-17.
+- **Cross-cutting checklist**: Not applicable — this plan introduces no safety, quality or
+  compliance category that other feature implementations must satisfy. It changes no protocol, no
+  agent or skill guidance file and no `REVIEW.md` section; its only repository-wide obligations
+  (the inclusion rule, the SQL access boundary, the `mu-*` census) already exist and are consumed
+  unchanged.
 - **Parser/API/concurrency checklist**: Parser-risk — Not applicable, with the rationale in the
   Parser-risk addendum. Concurrent-event-source — **applicable and completed**: all seven
   checklist items are answered in the Concurrent-event-source addendum, including the one new
