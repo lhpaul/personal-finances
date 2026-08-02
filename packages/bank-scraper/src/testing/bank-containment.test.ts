@@ -37,6 +37,9 @@ const REGISTRY_FILES = new Set([join('src', 'configs', 'index.ts'), join('src', 
  *   4 drives a real read through the concretely registered bank's own config and fixtures —
  *   a synthetic bank-agnostic config would not exercise the real login routine this test exists
  *   to prove never leaks a credential.
+ * - `src/scripts/all-generated-scripts.ts`: imports every registered bank's reading routines so
+ *   `no-float-parsing.test.ts` / `no-network-egress.test.ts` scan every script this package can
+ *   actually inject (Decision 10's stated scope), not a selector or parsing rule of its own.
  * - `src/testing/bank-containment.test.ts` (this file): its own planted-violation proof
  *   deliberately contains a Banco de Chile-shaped string as *scanner test data*.
  */
@@ -44,6 +47,7 @@ const ALLOWED_EXCEPTION_FILES = new Set([
   'jest.config.js',
   join('src', 'configs', 'registry.test.ts'),
   join('src', 'testing', 'source-rut-scan.test.ts'),
+  join('src', 'scripts', 'all-generated-scripts.ts'),
   join('src', 'security', 'credential-leak.dom.test.ts'),
   join('src', 'testing', 'bank-containment.test.ts'),
 ]);
@@ -119,8 +123,8 @@ describe('bank-containment', () => {
     expect(CL_BANKS[0]?.id).toBe('banco-de-chile');
   });
 
-  it('the named exceptions are exactly the five documented files, not a widening set', () => {
-    expect(ALLOWED_EXCEPTION_FILES.size).toBe(5);
+  it('the named exceptions are exactly the six documented files, not a widening set', () => {
+    expect(ALLOWED_EXCEPTION_FILES.size).toBe(6);
   });
 
   describe('planted-violation proof (recorded in the PR)', () => {
