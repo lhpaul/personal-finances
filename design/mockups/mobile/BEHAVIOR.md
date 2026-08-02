@@ -39,16 +39,22 @@
 
 - **Ruta:** `/(onboarding)/intro` · **Mockup:** `#screen=onboarding-intro`
 - **Entrada:** primer arranque de la app, sin perfil creado (BR0: no hay sign-in; el perfil es el
-  dispositivo). 🟡 Si ya existe perfil, la app nunca vuelve a esta pantalla.
-- **Acciones:** 🟡 CTA único → `onboarding-value`.
+  dispositivo). Si ya existe perfil, la app nunca vuelve a esta pantalla — validado (issue #8):
+  el gate de arranque (`app/index.tsx`) lee `app_settings.onboarding_completed` a través de
+  `useLaunchDecision()` y redirige a `(tabs)/home` en cada relanzamiento posterior.
+- **Acciones:** CTA único → `onboarding-value` — validado (issue #8).
 - **Datos:** ninguno.
 
 ### onboarding-value
 
 - **Ruta:** `/(onboarding)/value` · **Mockup:** `#screen=onboarding-value&state=step-1`
 - **Estados:** `step-1` (Mejoras simples) → `step-2` (Privacidad) → `step-3` (A tu ritmo).
-  🟡 Avance por swipe o CTA; el paso 3 cambia el CTA a continuar → `connect-bank-intro`.
-- **Acciones:** 🟡 ¿existe "saltar"? El mockup no lo dibuja — si no está dibujado, no existe.
+  Avance por swipe o CTA — validado (issue #8, paged `ScrollView`); el paso 3 cambia el CTA a
+  continuar → `connect-bank-intro`.
+- **Acciones:** "Saltar" existe — validado (issue #8): se dibuja en `index.html:716` (top bar,
+  botón fantasma) y navega a `connect-bank-intro` desde cualquier paso, sin marcar el onboarding
+  como completo. La premisa anterior de este documento ("el mockup no lo dibuja") era incorrecta
+  a la revisión en que se escribió.
 - **Datos:** ninguno.
 
 ### connect-bank-intro
@@ -123,9 +129,18 @@
 ### onboarding-ready
 
 - **Ruta:** `/(onboarding)/ready` · **Mockup:** `#screen=onboarding-ready`
-- **Acciones:** 🟡 CTA → `stage-intro` si hay movimientos sin categorizar, o directo a
-  `home` si no. Fin del onboarding: no se vuelve a entrar a `(onboarding)` salvo para agregar
-  bancos desde settings.
+- **Acciones:** CTA → `stage-intro` si hay movimientos sin categorizar, o directo a `home` si
+  no — validado (issue #8, `countUncategorized(db)` leído al presionar, no al montar). Fin del
+  onboarding: no se vuelve a entrar a `(onboarding)` salvo para agregar bancos desde settings.
+- **Datos:** la card de resumen (banco conectado, recordatorios) muestra solo las filas con
+  estado real que reportar — validado (issue #8). El mockup dibuja exactamente una variante (un
+  banco conectado, recordatorios activos) y el manifest no declara estados para esta pantalla,
+  así que no se inventa una variante "0 bancos conectados" ni "notificaciones desactivadas": sin
+  ninguna fila que mostrar, la card completa no se dibuja. Con una conexión activa y N productos,
+  la fila de bancos usa `{{count}} banco(s) conectado(s)` / `{{names}} · {{count}} producto(s)`;
+  con `reminder_enabled = true` y `reminder_time`/`reminder_days` bien formados, la fila de
+  recordatorios agrega `{{time}} · {{days}}` — si el horario o los días faltan o están mal
+  formados, la fila se muestra solo con el título.
 
 ## Categorización
 

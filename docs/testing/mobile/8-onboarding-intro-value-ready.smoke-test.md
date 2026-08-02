@@ -139,9 +139,11 @@ Seeing either one with no real connection is an AC4 failure.
 **6b — the populated case (optional until #9/#18 land)**
 
 1. Using a SQLite client against the device database (see *Troubleshooting*), insert one
-   `user_financial_institutions` row with `status = 'connected'` pointing at `banco-de-chile`, three
-   `user_financial_products` rows for it, and the `app_settings` rows
-   `reminder_enabled = true`, `reminder_time = "09:00"`, `reminder_days = [1,2,3,4,5]`.
+   `user_financial_institutions` row with `status = 'active'` (not `'connected'` — that value
+   does not exist; `docs/project/4-database-model.md` enumerates `active | inactive |
+   disconnected`) pointing at `banco-de-chile`, three `user_financial_products` rows for it, and
+   the `app_settings` rows `reminder_enabled = true`, `reminder_time = "09:00"`,
+   `reminder_days = [1,2,3,4,5]`.
 2. Relaunch the app and return to `/(onboarding)/ready`.
 
 **Expected result**: The card shows two rows — 🏦 `1 banco conectado` / `Banco de Chile · 3 productos`,

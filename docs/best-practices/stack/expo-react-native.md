@@ -16,11 +16,22 @@ sign-in. Everything else is a stack route.
 app/(tabs)/home.tsx          # route: layout + composition only
 src/features/home/
 ├── components/              # presentational, no data access
-└── queries.ts               # TanStack Query hooks over src/db repositories
+└── use-home.ts              # feature hook: getAppDatabase() + repository functions
 src/i18n/{es,en}.ts          # all user-facing copy, keyed home.*
 ```
 
 A route file that contains business logic or a SQL query is in the wrong place.
+
+**Data-access pattern (established by issue #8's onboarding screens, the first real screens
+built)**: a feature hook calls `getAppDatabase()` (`apps/mobile/src/db/runtime.ts`) and then
+calls `src/db` repository functions directly — no TanStack Query, no `QueryProvider`, no
+`DatabaseProvider`, and no `app/_layout.tsx` change. `@tanstack/react-query` is not a dependency
+of `@finanzas/mobile`. See `use-launch-decision.ts`, `use-onboarding-summary.ts` and
+`use-complete-onboarding.ts` for the reference shape: a hook that awaits `getAppDatabase()`,
+reads/writes through repository functions, and returns a small discriminated-union status
+(`{ status: 'pending' } | { status: 'resolved'; ... }`). Whether the app adopts TanStack Query at
+all for caching/invalidation is a separate, not-yet-made decision — this pattern is what ships
+until that decision changes it.
 
 ## Screen states are not optional
 
@@ -31,8 +42,9 @@ implemented in the description.
 
 ## Data fetching
 
-- TanStack Query over repository functions. Query keys are structured
-  (`['transactions', { month }]`), never string-concatenated.
+- Feature hooks over repository functions (see "Screen structure" above) — `@tanstack/react-query`
+  is not installed today. Adopting it for caching/invalidation is a stated possible future
+  direction, not yet decided; do not write code against it until it is actually a dependency.
 - Invalidate precisely after a write. Categorizing one movement should not refetch the entire
   dashboard.
 - No global store. Session state (the current categorization run, the connect-bank wizard) is
