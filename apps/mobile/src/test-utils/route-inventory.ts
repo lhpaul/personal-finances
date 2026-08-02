@@ -7,7 +7,7 @@ import path from 'node:path';
  * set-equality assertion. Each entry must (a) resolve to an existing route file and (b) that
  * file's source must contain a `__DEV__` guard — see the implementation plan's Decision 6.
  */
-export const DEV_ONLY_ROUTES = ['/(dev)/gallery'] as const;
+export const DEV_ONLY_ROUTES = ['/(dev)/gallery', '/(dev)/sample-data'] as const;
 
 /**
  * Derives a manifest-style route path from a file path relative to `apps/mobile/app`.

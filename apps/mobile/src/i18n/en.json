@@ -164,6 +164,16 @@
   "dev.placeholder.route": "Route: {{route}}",
   "dev.placeholder.next": "Next: {{label}}",
 
+  "dev.sample_data.title": "Sample data",
+  "dev.sample_data.description": "Development tool to test the home screen's four states without a real sync (item #10 does not exist yet).",
+  "dev.sample_data.load_action": "Load sample data",
+  "dev.sample_data.load_success": "Sample data loaded.",
+  "dev.sample_data.simulate_error_action": "Simulate sync error",
+  "dev.sample_data.simulate_error_success": "Sync error simulated.",
+  "dev.sample_data.clear_action": "Clear sample data",
+  "dev.sample_data.clear_success": "Sample data cleared.",
+  "dev.sample_data.error": "Error: {{message}}",
+
   "onboarding_intro.title": "Welcome to Finanzas",
   "onboarding_intro.body": "We'll help you take control of your money — step by step, at your own pace.",
   "onboarding_intro.cta": "Get started",

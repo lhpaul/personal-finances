@@ -164,6 +164,16 @@
   "dev.placeholder.route": "Ruta: {{route}}",
   "dev.placeholder.next": "Siguiente: {{label}}",
 
+  "dev.sample_data.title": "Datos de ejemplo",
+  "dev.sample_data.description": "Herramienta de desarrollo para probar los cuatro estados de la pantalla de inicio sin una sincronización real (item #10 aún no existe).",
+  "dev.sample_data.load_action": "Cargar datos de ejemplo",
+  "dev.sample_data.load_success": "Datos de ejemplo cargados.",
+  "dev.sample_data.simulate_error_action": "Simular error de sincronización",
+  "dev.sample_data.simulate_error_success": "Error de sincronización simulado.",
+  "dev.sample_data.clear_action": "Vaciar datos de ejemplo",
+  "dev.sample_data.clear_success": "Datos de ejemplo eliminados.",
+  "dev.sample_data.error": "Error: {{message}}",
+
   "onboarding_intro.title": "Bienvenido a Finanzas",
   "onboarding_intro.body": "Te ayudaremos a tomar control de tu dinero — paso a paso, a tu propio ritmo.",
   "onboarding_intro.cta": "Comenzar",
