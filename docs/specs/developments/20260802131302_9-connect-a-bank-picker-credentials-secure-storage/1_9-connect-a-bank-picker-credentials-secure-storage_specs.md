@@ -420,8 +420,10 @@ untouched by this item.
     the password field is non-empty. Validity is decided by the shared RUT validation the app
     already owns, so that this screen and every other RUT surface agree.
 12. A RUT is accepted however the person types it — with or without dots, with or without the
-    dash, in upper or lower case for the `K` check digit — and is displayed and stored in the
-    canonical Chilean form, `12.345.678-9`.
+    dash, in upper or lower case for the `K` check digit — and is always shown back to them in
+    the canonical Chilean form, `12.345.678-9`. That is a rule about what the person sees; which
+    form is handed to the scraper is a matter for the implementation plan and the bank's own
+    sign-in form, not a product decision.
 13. From the moment any credential entry exists, the RUT field is pre-filled from it and cannot
     be edited (`BR2`). It becomes editable again only if no credential entry exists at all.
 14. Connecting a bank that already has a connection updates that connection and replaces its
