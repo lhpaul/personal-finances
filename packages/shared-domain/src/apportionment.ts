@@ -52,13 +52,16 @@ export function apportionTenths(entries: readonly ApportionmentEntry[]): Map<str
     return new Map();
   }
 
-  const total = entries.reduce((sum, e) => sum + e.weight, 0);
-  if (total === 0) {
+  // Accumulated in BigInt from the start (CodeRabbit finding on PR #44): each individual weight
+  // is a safe integer, but their Number sum is not bounded by Number.MAX_SAFE_INTEGER. Summing in
+  // Number first and converting to BigInt afterward would silently lose precision once the total
+  // crosses that bound, even though every input was exact.
+  const totalBig = entries.reduce((sum, e) => sum + BigInt(e.weight), 0n);
+  if (totalBig === 0n) {
     // Documented exception (Decision 5): nothing to apportion; every bucket is 0, sum 0.
     return new Map(entries.map((e) => [e.key, 0]));
   }
 
-  const totalBig = BigInt(total);
   const scale = BigInt(PERCENTAGE_TENTHS_TOTAL);
   const rows = entries.map((e) => ({
     key: e.key,

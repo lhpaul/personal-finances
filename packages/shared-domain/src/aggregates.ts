@@ -69,6 +69,11 @@ export interface PeriodDelta {
  * survive the `* PERCENTAGE_TENTHS_TOTAL` multiplication undetected when the fractional parts
  * happen to cancel out (e.g. `1000.5 - 2000` scaled by `1000` lands back on an integer), so this
  * is checked explicitly rather than left to `divideRoundHalfUp`'s internal `BigInt` conversion.
+ * Throws `RangeError` when the scaled numerator (`|absoluteDelta| * PERCENTAGE_TENTHS_TOTAL`)
+ * would exceed `Number.MAX_SAFE_INTEGER` (CodeRabbit finding on PR #44): the multiplication is
+ * performed in `BigInt` so the check itself is exact, turning what would otherwise be a silent
+ * precision loss (a `Number` multiplication overflowing before the later `BigInt` conversion)
+ * into a loud, explicit failure instead.
  */
 export function computePeriodDelta(currentTotal: number, previousTotal: number): PeriodDelta {
   if (!isValidMoneyMinorUnits(currentTotal)) {
@@ -82,10 +87,13 @@ export function computePeriodDelta(currentTotal: number, previousTotal: number):
     return { currentTotal, previousTotal, absoluteDelta, percentageTenths: null };
   }
   const ratioIsNegative = absoluteDelta < 0 !== previousTotal < 0;
-  const magnitude = divideRoundHalfUp(
-    Math.abs(absoluteDelta) * PERCENTAGE_TENTHS_TOTAL,
-    Math.abs(previousTotal),
-  );
+  const scaledNumeratorBig = BigInt(Math.abs(absoluteDelta)) * BigInt(PERCENTAGE_TENTHS_TOTAL);
+  if (scaledNumeratorBig > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError(
+      'computePeriodDelta: |currentTotal - previousTotal| * PERCENTAGE_TENTHS_TOTAL exceeds Number.MAX_SAFE_INTEGER',
+    );
+  }
+  const magnitude = divideRoundHalfUp(Number(scaledNumeratorBig), Math.abs(previousTotal));
   return {
     currentTotal,
     previousTotal,

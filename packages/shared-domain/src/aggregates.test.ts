@@ -8,6 +8,7 @@ import {
   summarizePeriod,
 } from './aggregates';
 import type { CategoryBreakdownInput } from './aggregates';
+import { PERCENTAGE_TENTHS_TOTAL } from './apportionment';
 import type { Movement } from './types';
 
 function movement(overrides: Partial<Movement> & Pick<Movement, 'id'>): Movement {
@@ -296,6 +297,21 @@ describe('Business Rule 8 — amounts are integers in minor units', () => {
     // shape that would otherwise slip past divideRoundHalfUp's internal BigInt conversion
     // undetected. The explicit isValidMoneyMinorUnits guard on currentTotal catches it up front.
     expect(() => computePeriodDelta(1000.5, 2000)).toThrow(TypeError);
+  });
+
+  it('CodeRabbit finding on PR #44: a scaled numerator that would exceed Number.MAX_SAFE_INTEGER throws RangeError instead of silently losing precision', () => {
+    // |currentTotal - previousTotal| * PERCENTAGE_TENTHS_TOTAL can exceed Number.MAX_SAFE_INTEGER
+    // even though both totals individually satisfy isValidMoneyMinorUnits. The multiplication is
+    // performed in BigInt so the check itself is exact (never silently truncated).
+    expect(() => computePeriodDelta(Number.MAX_SAFE_INTEGER, 1)).toThrow(RangeError);
+  });
+
+  it('a scaled numerator just at the Number.MAX_SAFE_INTEGER boundary does not throw', () => {
+    // Number.MAX_SAFE_INTEGER / PERCENTAGE_TENTHS_TOTAL, floored, keeps the scaled numerator
+    // within bounds — the negative control proving the guard does not over-fire.
+    const previousTotal = 1;
+    const currentTotal = previousTotal + Math.floor(Number.MAX_SAFE_INTEGER / PERCENTAGE_TENTHS_TOTAL);
+    expect(() => computePeriodDelta(currentTotal, previousTotal)).not.toThrow();
   });
 
   it('every numeric value in Fixture A and Fixture C summaries is a safe integer', () => {

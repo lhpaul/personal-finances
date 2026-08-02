@@ -101,14 +101,47 @@ describe('apportionment — AC4', () => {
 
   it('BigInt exactness: weights near Number.MAX_SAFE_INTEGER / 1000 still sum to exactly 1000', () => {
     // Each weight * PERCENTAGE_TENTHS_TOTAL individually exceeds Number.MAX_SAFE_INTEGER
-    // (3e15 * 1000 = 3e18), which a float-based (Number) implementation would compute with
+    // (3.1e15 * 1000 = 3.1e18), which a float-based (Number) implementation would compute with
     // precision loss. The BigInt path computes it exactly.
-    const bigWeight = 3_000_000_000_000_000;
+    const bigWeight = 3_100_000_000_000_000;
     expect(bigWeight * PERCENTAGE_TENTHS_TOTAL).toBeGreaterThan(Number.MAX_SAFE_INTEGER);
     const result = apportionTenths([
       { key: 'a', weight: bigWeight },
       { key: 'b', weight: bigWeight },
       { key: 'c', weight: bigWeight },
+    ]);
+    expect(Object.fromEntries(result)).toEqual({ a: 334, b: 333, c: 333 });
+    expect(sumOf(result)).toBe(1000);
+  });
+
+  it('CodeRabbit finding on PR #44: a Number sum of safe-integer weights is provably inexact once the total crosses Number.MAX_SAFE_INTEGER', () => {
+    // Standalone arithmetic fact (does not call apportionTenths): each individual weight below
+    // is a safe integer, but adding three of them as a JS Number rounds to the nearest
+    // representable double once the running total exceeds Number.MAX_SAFE_INTEGER — a genuinely
+    // different value than the exact sum. This is the structural gap CodeRabbit flagged ("each
+    // input is a safe integer, but the intermediate total is not"), and why apportionTenths
+    // accumulates its total directly in BigInt (see apportionment.ts) instead of summing in
+    // Number first. At the tenths-of-a-percent granularity this package apportions at (scale
+    // 1000), a total perturbation of a few units this far above Number.MAX_SAFE_INTEGER does not
+    // by itself flip any bucket's floor or leftover-tenth assignment for these specific weights —
+    // verified empirically, not assumed — so this test documents the fixed defect at the
+    // arithmetic level (the honest, provable claim) rather than asserting a specific
+    // apportionTenths output would have differed pre-fix (an unproven, and for this input,
+    // false, claim).
+    const weight = 3_100_000_000_000_001;
+    expect(Number.isSafeInteger(weight)).toBe(true);
+
+    const numberSum = weight + weight + weight; // JS Number (float64) addition
+    const exactBigIntSum = BigInt(weight) * 3n;
+    expect(numberSum).toBeGreaterThan(Number.MAX_SAFE_INTEGER);
+    expect(BigInt(numberSum)).not.toBe(exactBigIntSum); // the Number-summed total really is wrong
+
+    // apportionTenths still produces the correct, exact result at this scale (accumulating in
+    // BigInt from the start, per the fix), matching the hand-derived expected values.
+    const result = apportionTenths([
+      { key: 'a', weight },
+      { key: 'b', weight },
+      { key: 'c', weight },
     ]);
     expect(Object.fromEntries(result)).toEqual({ a: 334, b: 333, c: 333 });
     expect(sumOf(result)).toBe(1000);
