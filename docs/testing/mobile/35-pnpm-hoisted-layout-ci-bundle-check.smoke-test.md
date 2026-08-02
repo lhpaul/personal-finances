@@ -157,26 +157,17 @@ run was 1022 modules, 3.9 MB, 22 assets, and a large deviation is worth a look.
 **Expected result**: both run URLs exist and show what the plan claims. A green `iOS bundle` job
 with no recorded failing counterpart does not pass this step.
 
-> **Status at implementation time (2026-08-02)**: **pending** — this item's implementation agent
-> does not open the real implementation PR (the orchestrator does, after this handoff). Local
-> evidence for the same failure/pass behaviour is captured in Step 4 above using the
-> `pnpm-workspace.yaml`-edit methodology, which is the same mechanism this step's scratch commit
-> uses. Exact sequence to run once the real PR is open:
->
-> ```bash
-> # On the implementation PR branch, after it is open and CI has run once on the real head commit:
-> git checkout feature/35-pnpm-hoisted-layout-ci-bundle-check
-> sed -i '' 's/^nodeLinker: hoisted$/nodeLinker: isolated/' pnpm-workspace.yaml
-> git add pnpm-workspace.yaml
-> git commit -m "test: scratch commit — deliberately isolate the layout to prove the bundle job fires (E4)"
-> git push
-> # Wait for the 'iOS bundle' CI job to run and fail; record the failing run URL and failing step.
-> git revert --no-edit HEAD
-> git push
-> # Wait for the 'iOS bundle' CI job to run and pass; record the passing run URL.
-> ```
->
-> Record both run URLs in the implementation PR description under the `Evidence` heading (E4) and
+> **Status (2026-08-02)**: **RAN, PASS**, executed on implementation PR #39 after it opened.
+> Scratch commit set `pnpm-workspace.yaml: nodeLinker: isolated`, pushed, and the `iOS bundle`
+> job failed: [FAILURE run](https://github.com/lhpaul/personal-finances/actions/runs/30732643254/job/91455606495)
+> — failure occurred at the `Install dependencies` step, where the root `postinstall` layout
+> check refused the install itself (`FAIL: pnpm config get nodeLinker printed "isolated"`,
+> `[ELIFECYCLE] Command failed with exit code 1`), before the bundle step ever ran — an even
+> stronger proof than a resolver error mid-bundle. `Lint`/`Type check`/`Test` correctly failed the
+> same way on that commit, since `postinstall` runs on every `pnpm install --frozen-lockfile`.
+> The scratch commit was reverted (`git revert --no-edit HEAD`) and pushed; the `iOS bundle` job
+> then passed: [SUCCESS run](https://github.com/lhpaul/personal-finances/actions/runs/30732674784/job/91455674728).
+> Both URLs are also recorded in PR #39's description under the `Evidence` heading (E4).
 > tick this step's boxes in the Assertions Checklist once done.
 
 ### Step 6: The domain-purity ESLint rule is proved to fire
@@ -293,15 +284,15 @@ implementation, ahead of the implementation PR being opened.
       `pnpm check:layout`, for the negative case — pnpm's implicit pre-run sync otherwise heals
       the tree before the check runs). Step 3's `postinstall` enforcement reproduces genuinely
       through either invocation form (it is not affected by the same masking).
-- [ ] **AC3** — `expo export:embed --eager --platform ios --dev false` succeeds in CI (Steps 4, 5).
-      Step 4 (local) PASS: 992 modules, 3.8 MB, 22 assets on the hoisted tree. Step 5 (CI) is
-      **pending** — it needs the implementation PR to be open; see the note under Step 5 below for
-      the exact command sequence to run once it is.
-- [ ] **AC4** — The bundle job was *seen to fail* on a deliberately isolated tree, locally and in
+- [x] **AC3** — `expo export:embed --eager --platform ios --dev false` succeeds in CI (Steps 4, 5).
+      Step 4 (local) PASS: 992 modules, 3.8 MB, 22 assets on the hoisted tree. Step 5 (CI) PASS,
+      executed on implementation PR #39 — see the run URLs recorded under Step 5 below.
+- [x] **AC4** — The bundle job was *seen to fail* on a deliberately isolated tree, locally and in
       CI, before the green run was trusted (Steps 4, 5). Step 4 (local) PASS, using the
       `pnpm-workspace.yaml`-edit methodology noted above (a CLI-flag-only isolated install is
       silently healed by pnpm before `pnpm exec` runs, so it does not reproduce a failure — see
-      the Step 4 note). Step 5 (CI) **pending**, same as AC3.
+      the Step 4 note). Step 5 (CI) PASS: the scratch commit's failing run and the reverted
+      commit's passing run are both recorded under Step 5 below and in PR #39's description.
 - [x] **AC5** — A test proves `no-restricted-imports` rejects a deliberate violation from
       `@finanzas/shared-domain`, and the test itself fails when the rule is neutered (Step 6).
       PASS — emptying `sharedDomainPurity`'s `patterns` group triggers ESLint's own schema
