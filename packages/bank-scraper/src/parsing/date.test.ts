@@ -64,10 +64,24 @@ describe('parseBankDateLocal — throwing vectors', () => {
 });
 
 describe('parseBankDateLocal — never touches Date or the device timezone', () => {
-  it('produces the same calendar day regardless of which timezone tests run under', () => {
-    // See also Implementation Order Step 12 / Step 4: the whole package test run is additionally
-    // executed under TZ=Pacific/Kiritimati (UTC+14) and TZ=Pacific/Niue (UTC-11) — this
-    // in-process assertion is the fast, always-on half of AC8.
-    expect(parseBankDateLocal('01/03/2026')).toBe('2026-03-01');
+  // CodeRabbit finding #53: a single in-process assertion cannot demonstrate timezone
+  // independence by itself — this suite cannot change its own process timezone, and this
+  // repeats D1's exact vector. What this test actually proves in-process is that the function
+  // never constructs a Date object at all (so there is no timezone-dependent code path to
+  // exercise), including at the calendar boundaries a Date-based/UTC-normalized implementation
+  // is most likely to get wrong. The real cross-timezone guarantee (AC8) is verified by running
+  // this whole suite under TZ=Pacific/Kiritimati (UTC+14) and TZ=Pacific/Niue (UTC-11) —
+  // Implementation Order Step 12 / Step 4 — where a Date().toISOString()-based implementation
+  // would shift a local midnight to the previous UTC calendar day.
+  it.each([
+    ['01/03/2026', '2026-03-01'], // D1's own vector, for a stable baseline
+    ['31/12/2025', '2025-12-31'], // year-end boundary
+    ['01/01/2026', '2026-01-01'], // year-start boundary
+    ['29/02/2024', '2024-02-29'], // leap-year month-end boundary
+    ['28/02/2025', '2025-02-28'], // non-leap-year month-end boundary
+    ['30/04/2026', '2026-04-30'], // 30-day-month boundary
+    ['31/01/2026', '2026-01-31'], // 31-day-month boundary
+  ])('returns the same calendar day in-process for %s regardless of which timezone this run happens to use', (input, expected) => {
+    expect(parseBankDateLocal(input)).toBe(expected);
   });
 });

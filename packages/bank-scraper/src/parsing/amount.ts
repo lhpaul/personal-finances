@@ -52,7 +52,14 @@ const NONZERO_DIGIT_PATTERN = /[^0]/u;
  * that is not a single, exact amount in the requested currency.
  */
 export function parseMinorUnits(text: string, currencyCode: string): number {
-  const exponent = CURRENCY_MINOR_UNIT_EXPONENTS[currencyCode];
+  // Object.hasOwn guards against an inherited Object.prototype key (e.g. currencyCode ===
+  // 'constructor'): a plain bracket lookup would resolve through the prototype chain to an
+  // inherited function, skip the unknown_currency check below, and let `exponent` (now a
+  // function) coerce every later arithmetic use of it to 0 or NaN instead of throwing
+  // (CodeRabbit finding #52).
+  const exponent = Object.hasOwn(CURRENCY_MINOR_UNIT_EXPONENTS, currencyCode)
+    ? CURRENCY_MINOR_UNIT_EXPONENTS[currencyCode]
+    : undefined;
   if (exponent === undefined) {
     throw new AmountParseError('unknown_currency', `parseMinorUnits: unknown currency code "${currencyCode}"`);
   }

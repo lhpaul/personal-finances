@@ -1,8 +1,12 @@
 import { AmountParseError, parseMinorUnits, type AmountParseErrorCode } from './amount';
 
 const MINUS_SIGN = '−';
-const NBSP = ' ';
-const THIN_SPACE = ' ';
+// Escape sequences, not the raw characters (CodeRabbit finding #50): both are invisible in
+// review and in most editors, and a formatter or copy-paste could replace either with an ASCII
+// space without any visible change, silently disabling the A10 vector these constants exist to
+// test.
+const NBSP = '\u00a0';
+const THIN_SPACE = '\u2009';
 
 interface AcceptedCase {
   id: string;
@@ -75,8 +79,31 @@ describe('parseMinorUnits — throwing vectors', () => {
 });
 
 describe('parseMinorUnits — A15: English convention is rejected', () => {
-  it('throws on "$1,234.56" rather than silently misreading it as Chilean', () => {
-    expect(() => parseMinorUnits('$1,234.56', 'CLP')).toThrow(AmountParseError);
+  it('throws malformed_grouping on "$1,234.56" rather than silently misreading it as Chilean (CodeRabbit finding #51)', () => {
+    // Pinning the specific code (not just "throws AmountParseError") prevents a future change
+    // from reclassifying this vector under a different code — e.g. no_digits — without a test
+    // failure. Every other throwing vector already asserts a specific code (see throwingCases).
+    let thrown: unknown;
+    try {
+      parseMinorUnits('$1,234.56', 'CLP');
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(AmountParseError);
+    expect((thrown as AmountParseError).code).toBe('malformed_grouping');
+  });
+});
+
+describe('parseMinorUnits — inherited Object.prototype keys are not a valid currency (CodeRabbit finding #52)', () => {
+  it.each(['constructor', 'toString', 'hasOwnProperty', '__proto__'])('rejects %s as unknown_currency, rather than resolving through the prototype chain', (currencyCode) => {
+    let thrown: unknown;
+    try {
+      parseMinorUnits('$1.234', currencyCode);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(AmountParseError);
+    expect((thrown as AmountParseError).code).toBe('unknown_currency');
   });
 });
 
