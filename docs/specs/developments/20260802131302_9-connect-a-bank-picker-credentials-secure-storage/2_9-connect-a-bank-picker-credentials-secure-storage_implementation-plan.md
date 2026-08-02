@@ -127,6 +127,42 @@ is implemented before item #9, the implementer registers the four screens' targe
 
 ---
 
+## Assumptions
+
+Technical assumptions taken while writing this plan. The spec's own Assumptions, Decision Log and
+Open Questions (including the two reversible defaults — no "Sugerir un banco" control, no
+postpone path out of the introduction) are settled inputs and are **not** relitigated here.
+
+- **A1 — how AC14's two clauses fit together.** `12.345.678-9` is the mockup's placeholder and its
+  check digit is arithmetically wrong (the correct digit for body `12345678` is `5`). Item #4's
+  `formatRut` deliberately does not check the digit, because the mockup renders an invalid RUT in
+  the `error` state. So AC14 reads as two independent facts: `123456789` is *accepted as input and
+  displayed* as `12.345.678-9`, **and** it never enables *Conectar*. Enabling needs an
+  arithmetically valid RUT; the runbook uses `12.345.678-5`.
+- **A2 — this item adds no WebView dependency.** `react-native-webview` is a peer dependency of
+  the scraper's React component and is added by whichever item first mounts it (#11), not here.
+- **A3 — the read window is left at the scraper's default.** The sync spec assigns the history
+  window to the connect flow; the mockups draw no control for it, so `priorMonths` is not
+  overridden and the scraper's own default (current month plus one prior month) applies. Recorded
+  in the seam documentation so #11 does not invent a different value.
+- **A4 — Spanish plural keys use `_one` and `_other` only.** The counts drawn here (results,
+  productos, movimientos) never reach the magnitudes at which CLDR Spanish selects `many`, and
+  the catalogue-parity test requires `es` and `en` to carry identical key sets.
+- **A5 — no length limit on the password field.** The bank config declares `maxLength: 8` for its
+  own injected form; the mockup draws no limit, and a too-long password is indistinguishable on
+  this screen from a wrong one — it returns through the `error` state.
+- **A6 — the `multiple` fixture uses a coming-soon institution for its second connection.** That
+  is legitimate at the data layer (nothing constrains `financial_institution_id` to `available`)
+  and unreachable from the picker, which is exactly what makes it a safe fixture.
+- **A7 — bank marks are monograms, not images.** The seed writes
+  `assets.logo = 'asset://banks/<slug>.png'` and no such file ships. The mockup draws the
+  `short_name` monogram over `brand_color`, and `BankRow` does the same; no image is loaded and
+  no asset is added by this item.
+- **A8 — `app/index.tsx` and the launch gate are not touched.** Item #8 owns them. This item's
+  screens are reached by navigation, and the runbook navigates to the route directly.
+
+---
+
 ## Layer-by-Layer Changes
 
 ### Database / Data Layer
@@ -142,7 +178,8 @@ shape*), so non-negotiable 5 (additive migrations) is not engaged at all.
       `listInstitutions(db): PickerInstitution[]`: **every** row of `financial_institutions`,
       ordered `available` first and then by `name` (Business Rule 10), carrying `id`, `name`,
       `scraperStatus`, and the `short_name` / `brand_color` read out of `metadata` through the
-      existing `parseAssets` / JSON guards. `listConnectableInstitutions` is left byte-identical —
+      existing `parseInstitutionMetadata` guard (`src/db/json.ts`), whose interface already
+      declares both fields. `listConnectableInstitutions` is left byte-identical —
       it filters to `available` and is the wrong reader for a picker that must draw coming-soon
       banks (spec Decision 1).
 - [ ] `apps/mobile/src/db/repositories/connections.ts` — **verify first, add to it if item #8
@@ -366,9 +403,16 @@ and proven `dbAccessBoundary` pattern: an ESLint rule for the fast feedback loop
 scans source text for the specifier so the guarantee survives a lint-config regression.
 
 Writes use `keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY`. This is not a
-detail: the default keychain accessibility class is eligible for iCloud Keychain sync, which
-would carry a bank password off the device — precisely what non-negotiable 1 forbids. On Android
-the option is inert and the Keystore-backed store is already device-local.
+detail. iOS keychain items that are **not** in a `…ThisDeviceOnly` protection class are carried
+into encrypted device backups and can be restored onto a different device; the `ThisDeviceOnly`
+classes are excluded from backup and restore. A bank password reachable from a restored backup is
+a copy of the secret outside the phone it was typed on, which is what non-negotiable 1 forbids.
+On Android the option is inert and the Keystore-backed store is already device-local.
+**Unverified — the implementer must confirm before proceeding**: `expo-secure-store`'s *default*
+protection class when `keychainAccessible` is omitted. The decision above does not depend on the
+default (the option is always passed explicitly), but the doc update in *Documentation Updates*
+should state the default accurately, so read it from the installed
+`expo-secure-store` source rather than from this plan.
 
 The stored value is a JSON object, `{"rut":"…","password":"…"}`, under one key per bank.
 
@@ -580,9 +624,11 @@ smoke on a dev build.
    `Disponible`; coming-soon rows are not pressable, carry `Próximamente`, and announce as
    unavailable. Maps to AC7, AC8, AC9.
    *(`bank-picker.test.tsx`, renderer-free element-tree inspection)*
-9. **The password is masked in every state** — every `bank-credentials` state renders the
-   password field with `secureTextEntry`, and no source file under the flow renders a reveal
-   control. Maps to AC15. *(`bank-credentials.test.tsx`)*
+9. **The password is masked in every state, and never restored** — every `bank-credentials` state
+   renders the password field with `secureTextEntry`; no source file under the flow renders a
+   reveal control; and the password lives in component state only, so a fresh mount of the screen
+   starts empty (asserted by inspecting the initial state, and by the store-shape test of
+   scenario 13). Maps to AC6, AC15. *(`bank-credentials.test.tsx`)*
 10. **The rejection message is value-free** — the `error` state renders the catalogue message and
     nothing derived from input or from a failure payload. Maps to AC16.
     *(`bank-credentials.test.tsx`)*
