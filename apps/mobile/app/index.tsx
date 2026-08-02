@@ -1,17 +1,25 @@
 import { Redirect } from 'expo-router';
 
+import { useLaunchDecision } from '../src/features/onboarding/use-launch-decision';
+
+export { ErrorBoundary } from 'expo-router';
+
 /**
- * Entry shim (Decision 7, spec Business Rule 13). Expo Router needs a match for `/`.
+ * Real first-launch gate (implementation plan for issue #8, Decision 1, Decision 15; spec
+ * Business Rule 13, AC1). Reads `app_settings.onboarding_completed` through
+ * `useLaunchDecision()` and redirects to `/(onboarding)/intro` or `/(tabs)/home`.
  *
- * This unconditionally redirects to the onboarding entry until the launch-time gate that
- * reads `app_settings.onboarding_completed` — deciding between `(onboarding)/intro` and
- * `(tabs)/home` — is wired by a separate item (issue #8). There is no sign-in in this
- * product, so this shim never references any `(auth)` route.
+ * Renders `null` while `status === 'pending'` — on a warm launch this is imperceptible; on a
+ * first launch it is the database migration + seed window (Decision 15). No splash screen and
+ * no launch-failure screen are drawn in the mockups, so a bootstrap failure is surfaced through
+ * the re-exported `expo-router` `ErrorBoundary` above instead of invented branded copy
+ * (Assumption A3).
  *
- * It renders no UI, implements no mockup screen, and is excluded from route-parity counting:
- * Business Rule 3 ("a route exists only if the manifest declares it") is not weakened by
- * this file, because the shim adds no destination.
+ * There is no sign-in in this product (non-negotiable 7, BR0) — this file never redirects to an
+ * `(auth)` route, which does not exist anywhere in this app.
  */
 export default function Index() {
-  return <Redirect href="/(onboarding)/intro" />;
+  const decision = useLaunchDecision();
+  if (decision.status === 'pending') return null;
+  return <Redirect href={decision.href} />;
 }

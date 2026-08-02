@@ -137,5 +137,42 @@
   "dev.placeholder.title": "PLACEHOLDER — sin implementar",
   "dev.placeholder.screen": "Pantalla de maqueta: {{screenId}}",
   "dev.placeholder.route": "Ruta: {{route}}",
-  "dev.placeholder.next": "Siguiente: {{label}}"
+  "dev.placeholder.next": "Siguiente: {{label}}",
+
+  "onboarding_intro.title": "Bienvenido a Finanzas",
+  "onboarding_intro.body": "Te ayudaremos a tomar control de tu dinero — paso a paso, a tu propio ritmo.",
+  "onboarding_intro.cta": "Comenzar",
+
+  "onboarding_value.skip": "Saltar",
+  "onboarding_value.cta": "Continuar",
+  "onboarding_value.step_1_title": "Mejoras financieras simples",
+  "onboarding_value.step_1_body": "Organizamos tus gastos de forma automática sin abrumarte. Cada paso es claro y fácil de seguir.",
+  "onboarding_value.step_1_check_1": "Sin complicaciones técnicas",
+  "onboarding_value.step_1_check_2": "Proceso paso a paso",
+  "onboarding_value.step_1_check_3": "Interfaz intuitiva",
+  "onboarding_value.step_2_title": "Tus claves nunca salen del teléfono",
+  "onboarding_value.step_2_body": "Leemos tu banco desde tu propio dispositivo. Tus credenciales se guardan cifradas aquí, no en nuestros servidores.",
+  "onboarding_value.step_3_title": "A tu ritmo, unos minutos por semana",
+  "onboarding_value.step_3_body": "No es una app que te exige todos los días. Un par de sesiones cortas por semana bastan para mantener el control.",
+
+  "onboarding_ready.title": "¡Todo listo!",
+  "onboarding_ready.body": "Estás preparado para comenzar tu camino hacia el control financiero.",
+  "onboarding_ready.cta": "Comenzar",
+  "onboarding_ready.banks_title_single": "{{count}} banco conectado",
+  "onboarding_ready.banks_title_plural": "{{count}} bancos conectados",
+  "onboarding_ready.banks_products_single": "{{count}} producto",
+  "onboarding_ready.banks_products_plural": "{{count}} productos",
+  "onboarding_ready.banks_subtitle": "{{names}} · {{products}}",
+  "onboarding_ready.reminders_title": "Notificaciones activadas",
+
+  "reminders.summary": "{{time}} · {{days}}",
+  "reminders.days_weekdays": "días laborales",
+  "reminders.days_everyday": "todos los días",
+  "reminders.day_1": "Lunes",
+  "reminders.day_2": "Martes",
+  "reminders.day_3": "Miércoles",
+  "reminders.day_4": "Jueves",
+  "reminders.day_5": "Viernes",
+  "reminders.day_6": "Sábado",
+  "reminders.day_7": "Domingo"
 }

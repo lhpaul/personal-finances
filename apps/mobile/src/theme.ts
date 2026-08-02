@@ -568,3 +568,26 @@ export const componentMetrics = {
     iconFontSize: 42,
   },
 } as const;
+
+/**
+ * Screen-level measured values, read off the mockup's `mu-*` CSS the same way `componentMetrics`
+ * is, but namespaced per **screen** rather than per `components/ui/` primitive (implementation
+ * plan for issue #8, Decision 10).
+ *
+ * `componentMetrics` cannot host these: every one of its groups is named after a
+ * `components/ui/` primitive, and `theme` itself cannot grow a group —
+ * `theme-tokens-parity.test.ts` asserts `Object.keys(theme).sort()` equals an exact ten-group
+ * allowlist mirrored from `design/tokens.json`. `screenMetrics` is a sibling export with the same
+ * doc-comment contract and the same graduation rule as `componentMetrics`: a value here graduates
+ * to `design/tokens.json` when it is a colour, or when two unrelated surfaces use it for the same
+ * semantic reason. This sets the pattern for every later screen item (#12–#21).
+ */
+export const screenMetrics = {
+  onboarding: {
+    /** `#s-onboarding-intro` (L702), `#s-onboarding-value` (L723/728/733),
+     *  `#s-onboarding-ready` (L1095) hero glyph font-size. */
+    heroGlyphSize: 62,
+    /** `#s-onboarding-ready` summary-row glyph font-size (L1101-1102). */
+    summaryGlyphSize: 20,
+  },
+} as const;

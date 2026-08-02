@@ -137,5 +137,42 @@
   "dev.placeholder.title": "PLACEHOLDER — not implemented",
   "dev.placeholder.screen": "Mockup screen: {{screenId}}",
   "dev.placeholder.route": "Route: {{route}}",
-  "dev.placeholder.next": "Next: {{label}}"
+  "dev.placeholder.next": "Next: {{label}}",
+
+  "onboarding_intro.title": "Welcome to Finanzas",
+  "onboarding_intro.body": "We'll help you take control of your money — step by step, at your own pace.",
+  "onboarding_intro.cta": "Get started",
+
+  "onboarding_value.skip": "Skip",
+  "onboarding_value.cta": "Continue",
+  "onboarding_value.step_1_title": "Simple financial improvements",
+  "onboarding_value.step_1_body": "We organize your spending automatically without overwhelming you. Every step is clear and easy to follow.",
+  "onboarding_value.step_1_check_1": "No technical hassle",
+  "onboarding_value.step_1_check_2": "Step-by-step process",
+  "onboarding_value.step_1_check_3": "Intuitive interface",
+  "onboarding_value.step_2_title": "Your credentials never leave your phone",
+  "onboarding_value.step_2_body": "We read your bank from your own device. Your credentials are stored encrypted here, not on our servers.",
+  "onboarding_value.step_3_title": "At your own pace, a few minutes a week",
+  "onboarding_value.step_3_body": "This isn't an app that demands your attention every day. A couple of short sessions a week are enough to stay in control.",
+
+  "onboarding_ready.title": "All set!",
+  "onboarding_ready.body": "You're ready to start your journey toward financial control.",
+  "onboarding_ready.cta": "Get started",
+  "onboarding_ready.banks_title_single": "{{count}} bank connected",
+  "onboarding_ready.banks_title_plural": "{{count}} banks connected",
+  "onboarding_ready.banks_products_single": "{{count}} product",
+  "onboarding_ready.banks_products_plural": "{{count}} products",
+  "onboarding_ready.banks_subtitle": "{{names}} · {{products}}",
+  "onboarding_ready.reminders_title": "Notifications enabled",
+
+  "reminders.summary": "{{time}} · {{days}}",
+  "reminders.days_weekdays": "weekdays",
+  "reminders.days_everyday": "every day",
+  "reminders.day_1": "Monday",
+  "reminders.day_2": "Tuesday",
+  "reminders.day_3": "Wednesday",
+  "reminders.day_4": "Thursday",
+  "reminders.day_5": "Friday",
+  "reminders.day_6": "Saturday",
+  "reminders.day_7": "Sunday"
 }
