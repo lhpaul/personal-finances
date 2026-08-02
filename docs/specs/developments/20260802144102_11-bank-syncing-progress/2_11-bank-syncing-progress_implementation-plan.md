@@ -115,7 +115,10 @@ to the parent orchestrator on `Stale or conflicting`.
    If `SyncRunResult` has since gained the failure code, drop Decision 6's connection read and
    use it instead — that is a simplification, not a conflict.
 5. `grep -n "indeterminate" apps/mobile/src/components/ui/Progress.tsx` — item #12 shipped the
-   additive prop (used only by the `starting` phase, Decision 3).
+   additive prop (used only by the `starting` phase, Decision 3). If it did **not** ship, add it
+   here exactly as item #12's Decision 10 specifies — an optional `indeterminate?: boolean` that
+   changes nothing for existing call sites — and record the pickup in the PR. Do not build a
+   screen-local bar: `mu-progress` belongs to `Progress` (V4).
 6. `node -e "…"` over `design/mockups/mobile/mockup-manifest.js` — the `bank-syncing` state list
    is still exactly the four of V2.
 
@@ -245,7 +248,7 @@ export const PROGRESS_FLOOR: Record<BankSyncingState, number> = {
   login: 0.25,
   products: 0.6,
   transactions: 0.9,
-  error: 0,
+  error: 0, // no bar is drawn in `error`; the entry exists only to keep the Record total
 };
 
 export function resolveProgressValue(state: BankSyncingState, scraperProgress: number): number {
@@ -254,8 +257,19 @@ export function resolveProgressValue(state: BankSyncingState, scraperProgress: n
 ```
 
 `Progress` already clamps its `value` into `0..1`, so the composition cannot exceed the track.
-The bar therefore **never moves backwards** — the floor rises monotonically with the state and
-the scraper's own value is monotonic by construction.
+The `error` entry is never rendered: the mockup draws the card only under
+`data-states="login products transactions"`, so the error state has no bar at all.
+
+**The bar never moves backwards, and the mechanism is a composition of two facts, not a hope.**
+`PROGRESS_FLOOR` is non-decreasing along `VALID_STEP_TRANSITIONS`' order (0.25 → 0.6 → 0.9), and
+the `scraperProgress` argument is already non-decreasing because `StateManagerService.updateState`
+is the sole writer and takes `Math.max` of the current and the incoming value, treating a
+non-finite payload as "no new information" (V10). The pointwise `max` of two non-decreasing
+sequences is non-decreasing, so the rendered value is too. Note what this means for testing: a
+*raw payload* that reports a lower number is absorbed **upstream**, inside the scraper package —
+this screen never sees the decrease, so the test that proves monotonicity here feeds a
+non-decreasing series and asserts the composition, and does not attempt to feed a decreasing one
+(which the scraper cannot emit).
 
 Before the first `onProgress` arrives (phase `starting`, the WebView still on `about:blank`),
 the bar renders `indeterminate` — item #12's additive `Progress` prop, used for exactly this
@@ -637,10 +651,15 @@ Routes:
 
 Design system:
 
-- [ ] `apps/mobile/src/components/ui/**` — **not modified.** V4 shows every `mu-*` class this
-      screen draws is already owned by a primitive or is a utility, and V5 shows those primitives
-      already expose every variant needed (`Button` `muted` + `disabled`, `Badge` `neutral` /
-      `info` / `ok`, `Note` `danger`, `Progress` `value` + item #12's `indeterminate`).
+- [ ] `apps/mobile/src/components/ui/**` — **not modified**, with one conditional exception. V4
+      shows every `mu-*` class this screen draws is already owned by a primitive or is a utility,
+      and V5 shows those primitives already expose every variant needed (`Button` `muted` +
+      `disabled`, `Badge` `neutral` / `info` / `ok`, `Note` `danger`, `Progress` `value`). The
+      exception is `Progress.tsx`'s optional `indeterminate?: boolean`, which item #12 owns and
+      which Decision 3 uses for the `starting` phase: this item **consumes** it, and adds it
+      additively — exactly as item #12's Decision 10 specifies — only if step 5 of the
+      implementation-start re-verification shows item #12 has not shipped it. No new primitive,
+      no new export, no `componentMetrics` group either way.
 - [ ] `apps/mobile/src/test-utils/mu-class-map.ts` — **not modified**, for the same reason.
 - [ ] `apps/mobile/src/theme.ts` — **not modified.** No new `componentMetrics` group: the screen
       is a composition of existing primitives and utility spacing.
@@ -799,7 +818,7 @@ items #2 and #12.
 | --- | --- | --- | --- |
 | 1 | Each of the five `ScraperStepId` values resolves to its state; a `Record<ScraperStepId, …>` makes a sixth id a compile error | brief AC1; Decision 2 | `bank-syncing-state.test.ts` |
 | 2 | `resolveBankSyncingState` returns `error` for `phase: 'failed'` and `'refused'` **whatever** the step id is, including `ready` | Decision 2 | `bank-syncing-state.test.ts` |
-| 3 | Feeding the accepted step sequence `load-start → login-start → get-products-start → get-transactions-start` produces the state sequence `login → login → products → transactions`, and the bar value never decreases across the whole sequence, including when the scraper reports `0.95` during `products` and `0.9` during `transactions` | brief AC1; Decision 3 | `bank-syncing-state.test.ts` |
+| 3 | Feeding the accepted step sequence `load-start → login-start → get-products-start → get-transactions-start` produces the state sequence `login → login → products → transactions`, and the bar value never decreases across the whole sequence. Two series are asserted: one where the scraper stays below every floor (`0 → 0 → 0.1 → 0.2`, so the floors drive the bar) and one where it runs ahead of them (`0.1 → 0.3 → 0.95 → 0.97`, so the scraper drives it past `0.9`). Both inputs are non-decreasing, because that is the only kind `StateManagerService` can emit (V10) — the decreasing-payload case belongs to the scraper package's own suite, not here | brief AC1; Decision 3 | `bank-syncing-state.test.ts` |
 | 4 | `resolveProgressValue` floors at the mockup's `0.25` / `0.60` / `0.90` and passes a larger scraper value through unchanged | Decision 3 | `bank-syncing-state.test.ts` |
 | 5 | `resolveStepStatuses` gives, per state, the exact icon/badge triple the mockup draws — including row 1's `✅` in `login` (Assumption A3) | Non-negotiable 6 | `bank-syncing-state.test.ts` |
 | 6 | `FAILURE_BODY_KEY` is total over `FailureReasonCode` plus `read_in_progress`, every value resolves in **both** catalogues, and no value is the key itself (the i18next miss signature) | brief AC2; Decision 7 | `failure-copy.test.ts` |
@@ -817,7 +836,7 @@ items #2 and #12.
 | 18 | A second *Reintentar* press while `phase === 'reading'` is a no-op; the feature source contains no `setTimeout` / `setInterval`, so no retry is automatic | Decision 8 (bounded retry) | `use-bank-sync.test.tsx` |
 | 19 | All four manifest states render their mockup elements: the three progress states draw the 🔄 block, the bar and the three rows with the right badges; `error` draws ⚠️, the title, the per-code body, the danger note and both buttons | Non-negotiable 6; brief AC2 | `bank-syncing-screen.test.tsx` |
 | 20 | Not one user-facing string in the rendered tree is a literal — every one resolves through `t(…)`; `i18next/no-literal-string` covers the same ground at lint time | Non-negotiable 8 | `bank-syncing-screen.test.tsx` |
-| 21 | With `useFidelityPreview()` active, each `fidelityState` renders its state, the root carries `testID="fidelity-bank-syncing"`, and **no** read is started (no WebView element, no keychain read, no `runSync` call) | Decision 12 | `bank-syncing-screen.test.tsx` |
+| 21 | With `useFidelityPreview()` active, each `fidelityState` renders its state, the root carries `testID="fidelity-bank-syncing"`, and **no** read is started (no WebView element, no keychain read, no `runSync` call). Under Decision 12's fallback branch the same three assertions target the local `useLocalSearchParams()` read instead, with the identical param names | Decision 12 | `bank-syncing-screen.test.tsx` |
 | 22 | `BANK_SYNCING_STATE_COVERAGE`'s state set equals the live manifest's `bank-syncing` state set, and every named file and test exists on disk | Decision 13 | `state-coverage.test.ts` |
 | 23 | `apps/mobile/app/_layout.tsx` contains no `StrictMode` | Decision 4 | `bank-syncing-screen.test.tsx` |
 | 24 | `/(dev)/sync-fixtures` is in `DEV_ONLY_ROUTES`, its route file has a `__DEV__` guard before any hook, and `src/dev/scripted-runner.ts` imports neither `expo-secure-store` nor the scraper component | Decision 10 | `route-manifest-parity.test.ts` (existing), `no-secure-store-import.test.ts` |

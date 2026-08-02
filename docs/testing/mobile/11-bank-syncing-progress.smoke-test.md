@@ -247,13 +247,18 @@ Do **not** raise `max_mismatch_pct` to make a state pass — fix the screen, or 
 
 **Maps to**: plan Decision 10.
 
-1. Build a release bundle:
-   `pnpm --filter @finanzas/mobile exec npx expo export --platform ios`.
-2. Grep the output bundle for `sync-fixtures`, `SyncFixtures` and `scripted-runner`.
+1. Confirm no product screen links to `/(dev)/sync-fixtures` — it is reachable by deep link only.
+2. Confirm `apps/mobile/app/(dev)/sync-fixtures.tsx` returns `null` when `__DEV__` is false and
+   `require()`s its panel **inside** that branch, matching `(dev)/gallery.tsx` and
+   `(dev)/sample-data.tsx`.
+3. Confirm `/(dev)/sync-fixtures` is listed in `DEV_ONLY_ROUTES` in
+   `apps/mobile/src/test-utils/route-inventory.ts`.
 
-**Expected result**: no match. The `__DEV__` guard sits before any hook and the implementation is
-`require()`d inside it, so Metro drops it. `/(dev)/sync-fixtures` is also in `DEV_ONLY_ROUTES`,
-so `route-manifest-parity.test.ts` does not count it as a product route.
+**Expected result**: the route is reachable only by deep link in a dev build. The `__DEV__` guard
+sits before any hook and the implementation is `require()`d inside it, so Metro's dead-code
+elimination can drop `src/dev/` from a release bundle — a static top-level import could not be
+eliminated the same way. This mirrors item #12's runbook step 12 rather than prescribing a
+release-export command this repository has not yet exercised.
 
 ### Last Step: Validate & shut down
 
