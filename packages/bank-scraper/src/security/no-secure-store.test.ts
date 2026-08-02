@@ -10,7 +10,11 @@ import { join } from 'node:path';
 
 const PACKAGE_ROOT = join(__dirname, '..', '..');
 const EXCLUDED_DIRS = new Set(['node_modules', 'dist', '.turbo']);
-const SECURE_STORE_IMPORT_PATTERN = /from\s+['"]expo-secure-store['"]|require\(\s*['"]expo-secure-store['"]\s*\)/u;
+// Also matches a dynamic import() call (CodeRabbit finding #14): the original pattern matched
+// only static `import ... from` and `require(...)`, so a dynamic import('expo-secure-store')
+// would have passed this scanner undetected.
+const SECURE_STORE_IMPORT_PATTERN =
+  /from\s+['"]expo-secure-store['"]|(?:require|import)\(\s*['"]expo-secure-store['"]\s*\)/u;
 
 function listSourceFiles(dir: string, base: string = dir): string[] {
   const entries = readdirSync(dir);
@@ -52,6 +56,11 @@ describe('no-secure-store', () => {
 
   it('fires on a planted violation (recorded in the PR): a synthetic import of expo-secure-store', () => {
     const plantedContent = "import * as SecureStore from 'expo-secure-store';";
+    expect(SECURE_STORE_IMPORT_PATTERN.test(plantedContent)).toBe(true);
+  });
+
+  it('fires on a planted dynamic import() of expo-secure-store (CodeRabbit finding #14)', () => {
+    const plantedContent = "const SecureStore = await import('expo-secure-store');";
     expect(SECURE_STORE_IMPORT_PATTERN.test(plantedContent)).toBe(true);
   });
 });

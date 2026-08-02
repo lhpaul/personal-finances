@@ -137,4 +137,12 @@ describe('assertReportedMovementShape', () => {
     const result = assertReportedMovementShape({ ...cleanPayload, extras: { originalAmountMinorUnits: '500' } });
     expect(result.ok).toBe(true);
   });
+
+  it.each([[], 'x', 42])('rejects a payload whose extras is not a plain record (%p) (CodeRabbit finding #10)', (extras) => {
+    // isPlainRecord excludes arrays (and non-objects), so these must reach the "extras present
+    // but not a plain record" branch rather than the "each value must be a string" branch.
+    const result = assertReportedMovementShape({ ...cleanPayload, extras });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.violation).toEqual({ reason: 'missing_field', key: 'extras' });
+  });
 });

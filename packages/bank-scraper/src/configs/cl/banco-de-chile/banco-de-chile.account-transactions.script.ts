@@ -149,10 +149,15 @@ export function accountTransactionsScript(input: { priorMonths?: number } = {}):
       // stated-count check need to see the accumulated movements). Without this ERROR, the engine
       // would see only a TRACE and wait for the full read deadline (CodeRabbit finding #8).
       sendTrace({ logGroup: '${LOG_GROUP}', type: 'error', message: 'Account transactions script failed: ' + error.message });
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        eventType: 'error',
-        data: { code: 'parse_failed', productInstanceId: window.productId },
-      }));
+      // Skip when the step wrapper already posted its own parse_failed with the real attempts
+      // count (CodeRabbit finding #4) — a second, no-attempts-field event here would silently
+      // overwrite it in ScrapeSession's per-product failure map.
+      if (!error.alreadyReportedFailure) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          eventType: 'error',
+          data: { code: 'parse_failed', productInstanceId: window.productId },
+        }));
+      }
     });
   `;
 }
@@ -192,7 +197,14 @@ function fetchTransactionsOfPageHelper(): string {
           currencyCode: 'CLP',
           rawDescription: rawDescription,
           bankSuppliedId: null,
-          positionInReadSnapshot: startingPosition + i,
+          // Position counts accepted movements, not <tr> elements (CodeRabbit finding #5): using
+          // the row index i means a skipped detail row (finding #9's own filter, above) makes
+          // this counter diverge from the caller's own position variable (incremented once per
+          // accepted movement). The two counters then collide across pages: the engine keys its
+          // movement map by productInstanceId plus positionInReadSnapshot, so one real movement
+          // silently overwrites another with no error, and skipped rows leave gaps that break the
+          // AC22 guarantee that two identical-looking movements stay distinguishable by position.
+          positionInReadSnapshot: startingPosition + movements.length,
           extras: {},
         });
       }

@@ -66,21 +66,32 @@ export function creditCardDetailsScript(input: { priorMonths?: number } = {}): s
       let billedTransactions = [];
       if (invoicedTabLink) {
         invoicedTabLink.click();
-        ${generateExecutableStepFunction({
-          stepName: 'wait-for-invoiced-tab',
-          logGroup: LOG_GROUP,
-          code: `
-            await waitForPageToBeReady('${LOG_GROUP}');
-            await waitFor${BCH_SUMMARY_LABEL}Element();
-          `,
-        })}
-        ${generateExecutableStepFunction({
-          stepName: 'extract-billed-transactions',
-          logGroup: LOG_GROUP,
-          code: `
-            billedTransactions = extractTransactionsFromTable(logGroup, true, unbilledTransactions.length);
-          `,
-        })}
+        // Wrapped in a local try/catch (CodeRabbit finding #6): header, balances, and
+        // unbilledTransactions already succeeded above. Without this, a transient failure to
+        // load the billed tab — after generateExecutableStepFunction exhausts its own internal
+        // retries and rethrows — would propagate to the outer .catch() below, which skips
+        // building and posting reportedProduct/movements entirely, discarding data that was
+        // already good. Falls through with billedTransactions = [] instead, the same way the
+        // else branch already handles a missing tab link.
+        try {
+          ${generateExecutableStepFunction({
+            stepName: 'wait-for-invoiced-tab',
+            logGroup: LOG_GROUP,
+            code: `
+              await waitForPageToBeReady('${LOG_GROUP}');
+              await waitFor${BCH_SUMMARY_LABEL}Element();
+            `,
+          })}
+          ${generateExecutableStepFunction({
+            stepName: 'extract-billed-transactions',
+            logGroup: LOG_GROUP,
+            code: `
+              billedTransactions = extractTransactionsFromTable(logGroup, true, unbilledTransactions.length);
+            `,
+          })}
+        } catch (billedError) {
+          sendTrace({ logGroup, type: 'warning', message: 'Billed transactions unavailable: ' + billedError.message });
+        }
       } else {
         // Indistinguishable from "genuinely no billed movements" otherwise (CodeRabbit finding #42).
         sendTrace({ logGroup, message: 'No invoiced tab link found; reporting unbilled transactions only' });
@@ -119,10 +130,15 @@ export function creditCardDetailsScript(input: { priorMonths?: number } = {}): s
       // result, the final navigation) so a failure there is never silently reduced to a TRACE-only
       // hang (CodeRabbit finding #8's pattern, applied here too).
       sendTrace({ logGroup: '${LOG_GROUP}', type: 'error', message: 'Credit card details script failed: ' + error.message });
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        eventType: 'error',
-        data: { code: 'parse_failed', productInstanceId: window.productId },
-      }));
+      // Skip when the step wrapper already posted its own parse_failed with the real attempts
+      // count (CodeRabbit finding #4) — a second, no-attempts-field event here would silently
+      // overwrite it in ScrapeSession's per-product failure map.
+      if (!error.alreadyReportedFailure) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          eventType: 'error',
+          data: { code: 'parse_failed', productInstanceId: window.productId },
+        }));
+      }
     });
   `;
 }

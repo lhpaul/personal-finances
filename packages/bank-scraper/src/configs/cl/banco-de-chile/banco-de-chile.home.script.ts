@@ -301,6 +301,11 @@ function goToNextProductPageHelper(): string {
             eventType: 'error',
             data: { code: 'parse_failed', productInstanceId: currentAccount.instanceId },
           }));
+          // A skip with no click means no navigation happens, so this function is never invoked
+          // again — 'ready' would never be posted and the read would stall until the deadline
+          // (CodeRabbit finding #7). Advance to the next product now instead of returning.
+          // Recursion terminates: the index above is already incremented before this call.
+          goToNextProductPage();
           return;
         }
         window.productId = currentAccount.instanceId;
@@ -321,6 +326,8 @@ function goToNextProductPageHelper(): string {
             eventType: 'error',
             data: { code: 'parse_failed', productInstanceId: currentCard.instanceId },
           }));
+          // Same reasoning as the account guard above (CodeRabbit finding #7).
+          goToNextProductPage();
           return;
         }
         window.productId = currentCard.instanceId;

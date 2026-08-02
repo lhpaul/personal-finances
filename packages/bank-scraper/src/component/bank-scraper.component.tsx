@@ -123,7 +123,9 @@ export const BankScraperComponent = forwardRef<BankScraperHandle, BankScraperPro
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
         onMessage={handleMessage}
-        originWhitelist={config.allowedOrigins as unknown as string[]}
+        // allowedOrigins is readonly string[]; originWhitelist accepts string[] — a direct cast
+        // is sufficient (CodeRabbit finding #3), no need to go through `unknown` first.
+        originWhitelist={config.allowedOrigins as string[]}
         // Selects the bank's mobile page layout, which every ported selector and fixture was
         // written against (implementation plan Decision 13) — not bot-detection evasion.
         userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"

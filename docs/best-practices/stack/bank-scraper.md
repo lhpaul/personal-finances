@@ -164,7 +164,10 @@ for the engine, security perimeter and parsers; `dom` (`testEnvironment: 'jsdom'
 
 - Never scrape anything the user did not connect. `resolveBankConfigOrReject` refuses an
   unregistered bank/country before anything is opened.
-- Never navigate the WebView to a non-bank origin — the three-checkpoint allowlist above.
+- Never navigate the WebView to a non-bank origin during a read — the three-checkpoint allowlist
+  above. The one exception is the teardown path, which deliberately navigates to `about:blank`
+  after `stopLoading()` (destroying the page's JavaScript context so an in-flight injected
+  script's late responses cannot be delivered) — controlled cleanup, not a read-time navigation.
 - Never persist page HTML to disk outside a committed test fixture; nothing from a session
   (cookies, storage, cache) survives past the read that produced it
   (`incognito`, `cacheEnabled={false}`, `sharedCookiesEnabled={false}`,

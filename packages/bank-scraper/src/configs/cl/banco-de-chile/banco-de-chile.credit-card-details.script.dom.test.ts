@@ -226,3 +226,50 @@ describe('creditCardDetailsScript — guarded extraction helpers (CodeRabbit fin
     expect(JSON.stringify(messages)).toContain('.card-header not found');
   });
 });
+
+describe('creditCardDetailsScript — a transient billed-tab failure does not discard already-extracted data (CodeRabbit finding #6)', () => {
+  it(
+    'still reports the product and unbilled movements when the invoiced tab fails to load',
+    async () => {
+      resetScriptGlobals();
+      renderFixture(loadFixtureHtml(FIXTURES_DIR, 'credit-card-details.html'));
+      // Unlike simulateInvoicedTab(), the invoiced tab click here removes .bch-summary instead of
+      // swapping in a billed table — wait-for-invoiced-tab's waitForBchSummaryElement exhausts its
+      // retries and throws, exactly the transient failure this finding targets.
+      const invoicedTab = document.querySelectorAll('.router-tab-link')[1];
+      invoicedTab?.addEventListener('click', () => {
+        document.querySelector('.bch-summary')?.remove();
+      });
+
+      const { messages, thrown } = await runWithProduct(creditCardDetailsScript());
+      expect(thrown).toBeNull();
+      const { products, movements } = lastStateChangeData(messages);
+      // Header, national balance, and the unbilled movement were already extracted successfully
+      // before the invoiced-tab failure — none of that must be discarded.
+      expect(products).toHaveLength(1);
+      expect(products?.[0]).toMatchObject({ displayName: 'Visa Nacional', balanceText: '$150.000' });
+      expect(movements?.some((m) => m.rawDescription === 'Compra Farmacia')).toBe(true);
+      // The billed pass failed, so only the unbilled movement is present.
+      expect(movements).toHaveLength(1);
+    },
+    15000,
+  );
+});
+
+describe('creditCardDetailsScript — no duplicate parse_failed overwriting the real attempts count (CodeRabbit finding #4)', () => {
+  it(
+    'posts exactly one error when the wrapped extract-card-details step exhausts retries, with the real attempts count',
+    async () => {
+      resetScriptGlobals();
+      // No .bch-summary at all: waitForBchSummaryElement (inside wait-for-page-to-be-ready)
+      // exhausts its retries and throws. Without the alreadyReportedFailure guard, the outer
+      // .catch() backstop would post a second error with no attempts field.
+      renderFixture('<html><body></body></html>');
+      const { messages } = await runWithProduct(creditCardDetailsScript());
+      const errorMessages = messages.filter((m) => m.eventType === 'error');
+      expect(errorMessages).toHaveLength(1);
+      expect(errorMessages[0]?.data).toMatchObject({ code: 'parse_failed', step: 'wait-for-page-to-be-ready', attempts: 3 });
+    },
+    15000,
+  );
+});

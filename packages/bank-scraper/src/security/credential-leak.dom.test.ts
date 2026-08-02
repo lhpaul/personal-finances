@@ -118,7 +118,13 @@ describe('credential-leak', () => {
     try {
       const result = await driveFullRead({ rut: SENTINEL_RUT, password: PUNCTUATION_PASSWORD });
       const serialized = JSON.stringify(result);
+      // The JSON-escaped form too (CodeRabbit finding #13): JSON.stringify renders a leaked
+      // PUNCTUATION_PASSWORD as ZZ\"\\'<>&ZZ, not the raw needle — checking only the raw form
+      // made this assertion unable to detect the leak it targets, mirroring finding #32's fix to
+      // consoleCallsContain.
+      const escapedPassword = JSON.stringify(PUNCTUATION_PASSWORD).slice(1, -1);
       expect(serialized).not.toContain(PUNCTUATION_PASSWORD);
+      expect(serialized).not.toContain(escapedPassword);
       expect(serialized).not.toContain(SENTINEL_RUT);
       expect(consoleCallsContain(spies, PUNCTUATION_PASSWORD)).toBe(false);
     } finally {

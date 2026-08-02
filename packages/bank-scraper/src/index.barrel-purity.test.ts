@@ -1,4 +1,5 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
 /**
@@ -29,10 +30,15 @@ function walk(entryFile: string, visited: Set<string> = new Set()): { forbidden:
   visited.add(entryFile);
 
   const content = readFileSync(entryFile, 'utf-8');
-  let match: RegExpExecArray | null;
-  IMPORT_PATTERN.lastIndex = 0;
-  while ((match = IMPORT_PATTERN.exec(content)) !== null) {
-    const specifier = match[1] as string;
+  // Collect every specifier before any recursion, using a fresh regex per call rather than the
+  // shared module-level IMPORT_PATTERN (CodeRabbit finding #11): IMPORT_PATTERN's `lastIndex` is
+  // shared mutable state, and a nested walk() call inside this same while-loop would reset it and
+  // run it against a different file's content. When the nested call returns, the outer loop's own
+  // `exec` would resume from the nested call's leftover lastIndex, not its own — a nested walk
+  // that reached the end of its file would leave lastIndex at 0, restarting the outer loop from
+  // the beginning and double-reporting a forbidden specifier found before a relative import.
+  const specifiers = [...content.matchAll(new RegExp(IMPORT_PATTERN.source, 'gu'))].map((match) => match[1] as string);
+  for (const specifier of specifiers) {
     if (FORBIDDEN_IMPORT_PATTERN.test(specifier)) {
       forbidden.push(`${entryFile} imports "${specifier}"`);
       continue;
@@ -57,15 +63,22 @@ describe('src/index.ts barrel purity (Decision 3)', () => {
     expect(visitedFiles.length).toBeGreaterThan(5);
   });
 
-  it('fires on a planted violation: a module in the barrel graph importing react-native', () => {
-    const { forbidden } = walk(join(SRC_ROOT, 'index.ts'), new Set());
-    expect(forbidden).toEqual([]);
-    // Direct proof the detector works, without editing a real source file: run the same walker
-    // logic against a synthetic in-memory content string via the same regex the walker uses.
-    const plantedContent = "import { View } from 'react-native';\nexport const x = View;";
-    IMPORT_PATTERN.lastIndex = 0;
-    const match = IMPORT_PATTERN.exec(plantedContent);
-    expect(match).not.toBeNull();
-    expect(FORBIDDEN_IMPORT_PATTERN.test(match?.[1] ?? '')).toBe(true);
+  it('fires on a planted violation: a module in the walked graph importing react-native (CodeRabbit finding #12)', () => {
+    // The previous version of this test never actually called walk() against a real violation —
+    // it ran the barrel's own (clean) graph, then checked the regex directly against an in-memory
+    // string with no dependency on walk() at all. A regression inside walk() itself (including
+    // the shared-regex lastIndex bug fixed above, or a dropped forbidden.push) would have passed
+    // silently. This version writes a real two-file module graph to a temp directory and runs the
+    // actual walk() function against it.
+    const dir = mkdtempSync(join(tmpdir(), 'barrel-purity-'));
+    try {
+      writeFileSync(join(dir, 'leaf.ts'), "import { View } from 'react-native';\nexport const x = View;");
+      writeFileSync(join(dir, 'entry.ts'), "export { x } from './leaf';");
+      const { forbidden } = walk(join(dir, 'entry.ts'));
+      expect(forbidden).toHaveLength(1);
+      expect(forbidden[0]).toContain('react-native');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

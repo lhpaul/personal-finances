@@ -112,6 +112,14 @@ export function generateExecutableStepFunction(
           productInstanceId: window.productId,
         }
       }));
+      // Tag the rethrown error as already reported (CodeRabbit finding #4): a caller's own outer
+      // .catch() backstop (added for unwrapped code — see account-transactions.script.ts and
+      // credit-card-details.script.ts) must not post a second parse_failed for the exact same
+      // failure. ScrapeSession#recordProductFailure keys by productInstanceId and would let the
+      // second, no-attempts-field event silently overwrite this one's real attempts count.
+      if (lastError && typeof lastError === 'object') {
+        lastError.alreadyReportedFailure = true;
+      }
       throw lastError;
     })()
   `;

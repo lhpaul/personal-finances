@@ -75,6 +75,26 @@ describe('MessageHandlerService', () => {
     expect(traces).toHaveLength(1);
   });
 
+  it('still routes a trace after the credentials are cleared (CodeRabbit finding #8)', () => {
+    // TraceRedactor#redact has a distinct branch when CredentialHolder.isCleared() returns true
+    // (value-scanning is skipped; CredentialHolder.consume() would otherwise throw
+    // CredentialsClearedError). This is the only guard against a throw when a late trace arrives
+    // after teardown — previously uncovered.
+    const { service, credentials } = buildService();
+    credentials.clear();
+    const traces: unknown[] = [];
+    expect(() =>
+      service.handleMessage(
+        JSON.stringify({
+          eventType: 'trace',
+          data: { logGroup: 'login', type: 'info', message: 'post-teardown trace', timestamp: 1 },
+        }),
+        { onTrace: (t) => traces.push(t), onError: () => {}, onStateChange: () => {} },
+      ),
+    ).not.toThrow();
+    expect(traces).toHaveLength(1);
+  });
+
   it('does not over-fire: a message with no credential content passes through untouched', () => {
     const { service } = buildService();
     const traces: unknown[] = [];

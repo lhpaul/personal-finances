@@ -192,24 +192,36 @@ describe('homeScript — a dropped product is reported, not silently swallowed (
   });
 });
 
-describe('homeScript — goToNextProductPage guards a re-rendered product list (CodeRabbit finding #14)', () => {
-  it('reports parse_failed for the missing account instead of throwing, when the account list shrinks between page loads', async () => {
+describe('homeScript — goToNextProductPage guards a re-rendered product list (CodeRabbit finding #14, #7)', () => {
+  it('reports parse_failed for every missing account and still advances to a valid product, instead of stalling (CodeRabbit finding #7)', async () => {
     resetScriptGlobals();
     renderFixture(loadFixtureHtml(FIXTURES_DIR, 'home.html'));
     await runInjectedScript(homeScript()); // discovery + click on account 0
 
     // Simulate the product list re-rendering with fewer items than were discovered — the exact
     // scenario the finding describes (accountItems[currentAccount.__clickIndex] is undefined).
-    // The next call looks for the account originally discovered at click index 1, so the list
-    // must shrink to fewer than two items, not merely lose the element at that index.
+    // Removing every account after index 0 means accounts 1-4 are all now missing, so the
+    // recursive skip (finding #7) must chain through all four before reaching the credit cards.
     const accountItems = Array.from(document.querySelectorAll('.bch-card.card-cuentas'));
     accountItems.slice(1).forEach((el) => el.remove());
+
+    let firstCardClicked = false;
+    document
+      .querySelectorAll('.card-products .link-card')[0]
+      ?.addEventListener('click', () => {
+        firstCardClicked = true;
+      });
 
     const { messages, thrown } = await runInjectedScript(homeScript());
     expect(thrown).toBeNull();
     const errorMessages = messages.filter((m) => m.eventType === 'error');
-    expect(errorMessages).toHaveLength(1);
-    expect(errorMessages[0]?.data).toMatchObject({ code: 'parse_failed' });
+    // Without finding #7's fix, this would be exactly 1: the function would return after the
+    // first missing account and never be invoked again (no click happened), silently stalling
+    // the read. The recursive fix instead reports every missing account it skips over.
+    expect(errorMessages).toHaveLength(4);
+    expect(errorMessages.every((m) => (m as { data?: { code?: string } }).data?.code === 'parse_failed')).toBe(true);
+    // Recursion reached a real target beyond the four missing accounts — the read did not stall.
+    expect(firstCardClicked).toBe(true);
   });
 });
 

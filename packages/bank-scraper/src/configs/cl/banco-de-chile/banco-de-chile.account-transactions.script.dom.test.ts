@@ -137,3 +137,23 @@ describe('accountTransactionsScript — AC22: two identical-looking movements st
     expect(movements[0]?.outgoingText).toBe(movements[1]?.outgoingText);
   });
 });
+
+describe('accountTransactionsScript — no duplicate parse_failed overwriting the real attempts count (CodeRabbit finding #4)', () => {
+  it(
+    'posts exactly one error when the wrapped wait-for-page-to-be-ready step exhausts retries, with the real attempts count',
+    async () => {
+      resetScriptGlobals();
+      // No movements table and no alert-warning element: waitForMovementsTableElement (inside the
+      // wrapped wait-for-page-to-be-ready step) exhausts its retries and throws, which the step
+      // wrapper reports with the real MAX_STEP_ATTEMPTS count. Without the alreadyReportedFailure
+      // guard, the outer .catch() backstop would post a second error with no attempts field,
+      // silently overwriting the real count with 1 in ScrapeSession's failure map.
+      renderFixture('<html><body></body></html>');
+      const { messages } = await runWithProduct(accountTransactionsScript());
+      const errorMessages = messages.filter((m) => m.eventType === 'error');
+      expect(errorMessages).toHaveLength(1);
+      expect(errorMessages[0]?.data).toMatchObject({ code: 'parse_failed', step: 'wait-for-page-to-be-ready', attempts: 3 });
+    },
+    15000,
+  );
+});
