@@ -73,8 +73,8 @@ Ground truth from the probe run, not inference:
 | `apps/mobile/src/components/RoutePlaceholder.tsx` | 30 | `Mockup screen: ` | → catalogue key with interpolation (Decision 9) |
 | `apps/mobile/src/components/RoutePlaceholder.tsx` | 31 | `Route: ` | → catalogue key with interpolation (Decision 9) |
 | `apps/mobile/src/components/RoutePlaceholder.tsx` | 34 | `Next: ` | → catalogue key with interpolation (Decision 9) |
-| `apps/mobile/src/components/ui/CategoryChip.tsx` | 93 | `★` | → module-level constant (Decision 10) |
-| `apps/mobile/src/components/ui/Checkbox.tsx` | 34 | `✓` | → module-level constant (Decision 10) |
+| `apps/mobile/src/components/ui/CategoryChip.tsx` | 94 | `★` | → module-level constant (Decision 10) |
+| `apps/mobile/src/components/ui/Checkbox.tsx` | 35 | `✓` | → module-level constant (Decision 10) |
 
 `DesignSystemGallery.tsx` produced **zero** violations today, because every string already sits
 inside a `{…}` expression container. The rule alone therefore cannot prove AC4 — see Decision 6.
