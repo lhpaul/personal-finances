@@ -112,9 +112,15 @@ describe('@finanzas/shared-domain purity rule (no-restricted-imports)', () => {
     // worded purity rule (sharedUtilsPurity). Proves the shared-domain message is reached through
     // packages/shared-domain/eslint.config.mjs's real config chain, not hard-coded or leaking into
     // every package (V14).
-    const { messages } = runEslintOnStdin(probe, sharedUtilsRoot);
+    const { messages, result } = runEslintOnStdin(probe, sharedUtilsRoot);
 
+    // Assert the sibling rule actually ran and fired (not just "no shared-domain message"): a
+    // missing or bypassed packages/shared-utils/eslint.config.mjs would silently produce the same
+    // "absent" result this test is checking for, which would defeat its own purpose.
+    expect(result.status).toBe(1);
+    expect(messages.length).toBeGreaterThan(0);
     for (const message of messages) {
+      expect(message.ruleId).toBe('no-restricted-imports');
       expect(message.message).not.toContain(SHARED_DOMAIN_MESSAGE);
     }
   });
