@@ -48,7 +48,9 @@ function runEslintOnStdin(source: string, cwd: string): { messages: EslintMessag
   const result = spawnSync(
     process.execPath,
     [eslintBin, '--no-color', '--format', 'json', '--stdin', '--stdin-filename', STDIN_FILENAME],
-    { cwd, input: source, encoding: 'utf8' },
+    // `timeout`/`killSignal` bound the child process: `jest.setTimeout(60_000)` cannot interrupt a
+    // blocked synchronous spawnSync call, so an ESLint hang would otherwise wedge the whole worker.
+    { cwd, input: source, encoding: 'utf8', timeout: 30_000, killSignal: 'SIGKILL' },
   );
 
   if (result.error) {
