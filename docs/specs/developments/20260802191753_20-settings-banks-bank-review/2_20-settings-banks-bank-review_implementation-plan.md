@@ -96,7 +96,7 @@ All commands were run in the plan worktree `.claude/worktrees/item-20` at repo r
 | Disconnecting really does stop automatic syncing | `sed -n '329,345p' docs/specs/developments/20260802131441_10-sync-engine/2_10-sync-engine_implementation-plan.md` | `isDueForAutomaticSync` requires `connection.status === 'active'` — *"`inactive` and `disconnected` are never automatic"*. This item needs **no** change to #10 for the promise to hold; the re-verification step confirms it |
 | `AUTOMATIC_SYNC_INTERVAL_MS` | Same range | `6 * 60 * 60 * 1000` in `apps/mobile/src/features/sync/auto-sync.ts` — matches the mockup's *"más de 6 horas"* note (Decision 8) |
 | The four `sync.errors.*` keys are **this** item's to define | #10 plan Decision 9 and its A7; #11 plan Assumption A7 | `composeFailureMessageKey` is total over `invalid_credentials \| session_closed \| network \| parse_failed` → `sync.errors.<code>`; *"the catalogue entry that renders these keys belongs to the bank detail screen item"*; #11 keeps its own longer bodies under `bank_syncing.error.body.*` — Decision 10 |
-| Item #9's Use Case 7 is exactly this item's AC3 | `sed -n '341,380p' docs/specs/developments/20260802131302_9-connect-a-bank-picker-credentials-secure-storage/1_9-…_specs.md` | *"The mockup wires the bank detail screen's 'Actualizar credenciales' action straight to this credential form. That path arrives with a credential entry already present, so it arrives with the RUT locked and only the password to retype — which is exactly what item #20's own acceptance criterion asks for… This item owes that behavior; the button that reaches it is item #20's."* |
+| Item #9's Use Case 7 is exactly this item's AC3 | `sed -n '341,380p' docs/specs/developments/20260802131302_9-connect-a-bank-picker-credentials-secure-storage/1_9-connect-a-bank-picker-credentials-secure-storage_specs.md` | *"The mockup wires the bank detail screen's 'Actualizar credenciales' action straight to this credential form. That path arrives with a credential entry already present, so it arrives with the RUT locked and only the password to retype — which is exactly what item #20's own acceptance criterion asks for… This item owes that behavior; the button that reaches it is item #20's."* |
 | Item #9's navigation seam for a settings entry | Same plan, *Frontend/UI — new files* | `connect-flow-store.ts` holds `{ institutionId, entryOrigin: 'onboarding' \| 'settings' }`; `flow-navigation.ts` → `resolveBackHref('settings')` and `resolveExitHref('settings')` both resolve to `/settings/banks` |
 | Item #12 already owns the relative sync-time descriptor | `sed -n '470p;603,606p' docs/specs/developments/20260802172715_12-home-screen/2_12-home-screen_implementation-plan.md` | `src/features/home/relative-time.ts` → `describeSyncTime(nowInstant, isoInstant)` → `{ kind: 'minutes' \| 'hours' \| 'yesterday' \| 'date', … }`, and its A11 cites *"issue #20 AC1 requires last-success and last-attempt to be shown separately"* — Resolution R2 |
 | `BankRow`'s planned shape | Same plan, *Design system* | *"logo or monogram, name, sub-label, chevron. Pressable."* — no trailing-badge slot, hence the additive prop in Decision 4 |
@@ -108,7 +108,7 @@ All commands were run in the plan worktree `.claude/worktrees/item-20` at repo r
 | The campaign data-access pattern | `sed -n '290,360p' docs/specs/developments/20260802172715_12-home-screen/2_12-home-screen_implementation-plan.md` | `getAppDatabase()` + repository functions behind a feature hook; `useFocusEffect` bumps a `reloadToken`; the read is cancellation-guarded and a stored rejection is re-thrown **during render**. **No TanStack Query** |
 | The `.db.test.ts` Jest routing | `cat apps/mobile/jest.config.js`; #12 plan Decision 14 | Two projects today (`app`, `db`). #12/#9/#13/#16 each add the same two additive lines: `db.testMatch` gains `'<rootDir>/src/features/**/*.db.test.ts'`, `app.testPathIgnorePatterns` gains `'\\.db\\.test\\.ts$'` — Resolution R5 |
 | This item's fidelity targets, read from the live contract | `git show origin/feature/47-design-fidelity-gate:scripts/mobile-ui/fidelity-targets.json` | Exactly **5** mappings — `settings-banks` × `list \| empty \| disconnect-confirm` and `bank-review` × `ok \| error` — all `status: "planned"`, all `fixture: "seed-default"`, none carrying a `max_mismatch_pct` override. `coverage_sets` has `{ "issue": 20, "targets": [{ "screen_id": "settings-banks", "states": "all" }, { "screen_id": "bank-review", "states": "all" }] }` |
-| How the contract validates `ready_test_id` | `git show origin/feature/47-design-fidelity-gate:scripts/mobile-ui/fidelity-contract.mjs` lines 196-204 | It passes when the `app_file` source contains **either** the literal `ready_test_id` **or** a `fidelityTestId('<screen_id>')` call. Decision 13 uses the helper-call form and pins the literal in a unit test |
+| How the contract validates `ready_test_id` | `git show origin/feature/47-design-fidelity-gate:scripts/mobile-ui/fidelity-contract.mjs` lines 199-204 | It passes when the `app_file` source contains **either** the literal `ready_test_id` **or** a `fidelityTestId('<screen_id>')` call. Decision 13 uses the helper-call form and pins the literal in a unit test |
 | The preview helpers exist and are `__DEV__`-only | `git show origin/feature/47-design-fidelity-gate:apps/mobile/src/lib/fidelity-preview.ts` | `fidelityTestId(screenId) => \`fidelity-${screenId}\`` and `useFidelityPreview()`, which returns `{ active: false, state: null }` whenever `__DEV__` is false |
 | Bounded same-surface open PRs | `gh pr list --state open --json number,title,headRefName` then a file-level read of each | Three: **#61** (item #47 implementation — same surface: `scripts/mobile-ui/fidelity-targets.json`), **#68** (docs-only edit to item #12's plan), **#46** (`packages/bank-scraper`, item #6). Only #61 touches a file this plan names |
 | **Runtime packages this plan names but cannot verify** | `ls node_modules/expo-sqlite apps/mobile/node_modules/expo-secure-store` | Not installed in the current tree (the same situation items #8, #11 and #19 recorded). Nothing in this plan calls an Expo API directly — the only Expo surfaces reached are `expo-router` (`useLocalSearchParams`, `useFocusEffect`, `router`, `Redirect`) and item #9's secure-store adapter, both behind seams — but the implementer must still confirm `router.setParams` exists on the installed `expo-router` before relying on Decision 7 |
@@ -337,7 +337,7 @@ string built in TypeScript (non-negotiable 8):
 
 | Pure function | Input | Output |
 | --- | --- | --- |
-| `resolveConnectionListItem` | a `BankConnectionSummary` + `now` | `{ badge, subtitleKey, subtitleValues, accessibilityStatusKey }` |
+| `resolveConnectionListItem` | a `BankConnectionSummary` + `now` | a `BankConnectionListItem`: `{ badge, subtitleKey, subtitleValues, accessibilityStatusKey }`, where `subtitleKey` is `settings_banks.row_subtitle` composed from a sync-time fragment and a product-count fragment |
 | `resolveBankReviewState` | a `BankConnectionSummary` | `'ok' \| 'error'` (Decision 9) |
 | `resolveSyncTimeKey` | item #12's `describeSyncTime` descriptor + a key prefix | a catalogue key + values |
 | `resolveSyncErrorKey` | a `BankConnectionSummary` (reads `lastErrorCode` and `lastErrorMessage`) | one of the five `sync.errors.*` keys (Decision 10) |
@@ -564,9 +564,11 @@ Two consequences worth stating:
   `useFidelityPreview()` and, when `active`, renders the named state from
   `src/features/banks/fidelity-presentation.ts` — a frozen, `__DEV__`-only fixture carrying the
   mockup's own sample values (Banco de Chile, three products, `••4821`, cupo `$2.500.000`). This
-  is item #11's Decision 12 pattern.
+  is item #11's Decision 12 pattern. In preview mode the `disconnect-confirm` modal is opened by
+  the **preview state**, not by Decision 7's `disconnect` route param — the deep link carries no
+  `disconnect` value, and the preview branch never reads it.
 - **The `ready_test_id` appears in the route file as a `fidelityTestId(...)` call.** The validator
-  (`scripts/mobile-ui/fidelity-contract.mjs`, verified at lines 196-204) passes when the source
+  (`scripts/mobile-ui/fidelity-contract.mjs`, verified at lines 199-204) passes when the source
   contains either the literal string or a `fidelityTestId('<screen_id>')` call with a literal
   screen id. The routes use `testID={fidelityTestId('settings-banks')}` and
   `testID={fidelityTestId('bank-review')}`, and a unit test pins the literals
@@ -678,7 +680,8 @@ column that already exists. Non-negotiable 5 is not engaged.
 - [ ] `state-coverage.ts` — `BANKS_STATE_COVERAGE`: for each of the two screen ids, every manifest
       `state_id` mapped to the source file that renders it and the test that asserts it.
 - [ ] `components/ConnectedBankRow.tsx` — composes item #12's `BankRow` with the settings subtitle
-      and the trailing `Badge` (Decision 4).
+      and the trailing `Badge` (Decision 4). Its `onPress` navigates to
+      `/settings/banks/{institutionId}` (Decision 13's `[bankId]` semantics).
 - [ ] `components/DisconnectConfirmModal.tsx` — the `Modal` for `disconnect-confirm` (Decision 7).
 - [ ] `components/BankStatusCard.tsx` — `bank-review`'s header card: logo, name, sub-line, badge.
 - [ ] `components/BankProductRow.tsx` — the `Card variant="tight"` product row (Decision 5).
@@ -869,7 +872,8 @@ Flat, lowercase, snake_case, identical key sets — `catalogue-parity.test.ts` e
 | Key | Spanish | Drawn by the mockup? |
 | --- | --- | --- |
 | `settings_banks.title` | Bancos conectados | Yes |
-| `settings_banks.summary` | `{{banks}} · {{products}}` | Yes (composition) |
+| `settings_banks.summary` | `{{banks}} · {{products}}` | Yes (the header line's `·` join) |
+| `settings_banks.row_subtitle` | `{{sync}} · {{products}}` | Yes (the bank row's `·` join, e.g. *Sincronizado hace 2 h · 3 productos*) |
 | `settings_banks.bank_count_one` / `_other` | `{{value}} banco` / `{{value}} bancos` | Yes (singular) |
 | `settings_banks.product_count_one` / `_other` | `{{value}} producto` / `{{value}} productos` | Yes (plural) |
 | `settings_banks.synced_minutes` | Sincronizado hace `{{value}}` min | Inferred from the `hours` variant |
@@ -1036,7 +1040,7 @@ and contract, to be written in the implementation PR.
 - Spec/brief coverage: **Checked** — the brief has three checkbox acceptance criteria plus a
   side-by-side requirement. AC1 → Decision 9, Scenarios 12-13, runbook Step 5. AC2 → Decisions 1-2,
   Scenarios 5-6, 8-10, runbook Step 6. AC3 → Decision 6, Scenario 15, runbook Step 7. The
-  side-by-side requirement → runbook Step 9 and Decision 13. Every brief scope noun is mapped:
+  side-by-side requirement → runbook Step 12 and Decision 13. Every brief scope noun is mapped:
   list, empty state, per-bank detail, products/balances/cupo, sync history (Decision 9), manual
   re-sync (Decision 6), credential update (Decision 6), disconnection (Decisions 1-2, 7), and the
   auto-sync toggle (Decision 8 — explicitly not built, with three authorities cited).
