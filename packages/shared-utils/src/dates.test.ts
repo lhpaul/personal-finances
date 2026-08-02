@@ -8,6 +8,7 @@ import {
   formatMonthYear,
   formatShortDate,
   formatTimeOfDay,
+  formatWallClockLabel,
   getMonthPeriod,
   getWeekPeriod,
   isValidDateLocal,
@@ -587,6 +588,28 @@ describe('dates', () => {
 
     it('throws RangeError on an invalid `to`', () => {
       expect(() => differenceInDays('2025-01-01', 'not-a-date')).toThrow(RangeError);
+    });
+  });
+
+  /** Onboarding item #8's Testing Strategy scenario 9. */
+  describe('formatWallClockLabel', () => {
+    it.each([
+      ['09:00', '9:00 AM'],
+      ['12:00', '12:00 PM'],
+      ['00:30', '12:30 AM'],
+      ['18:00', '6:00 PM'],
+      ['23:59', '11:59 PM'],
+      ['00:00', '12:00 AM'],
+      ['01:05', '1:05 AM'],
+    ])('formatWallClockLabel(%p) -> %p', (timeOfDay, expected) => {
+      expect(formatWallClockLabel(timeOfDay)).toBe(expected);
+    });
+
+    it('throws RangeError on a non-24-hour or malformed input (documented behaviour)', () => {
+      expect(() => formatWallClockLabel('9am')).toThrow(RangeError);
+      expect(() => formatWallClockLabel('24:00')).toThrow(RangeError);
+      expect(() => formatWallClockLabel('09:60')).toThrow(RangeError);
+      expect(() => formatWallClockLabel('')).toThrow(RangeError);
     });
   });
 });
