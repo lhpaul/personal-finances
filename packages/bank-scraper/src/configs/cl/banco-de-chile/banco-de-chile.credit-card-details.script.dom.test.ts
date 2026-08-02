@@ -258,7 +258,7 @@ describe('creditCardDetailsScript — a transient billed-tab failure does not di
 
 describe('creditCardDetailsScript — no duplicate parse_failed overwriting the real attempts count (CodeRabbit finding #4)', () => {
   it(
-    'posts exactly one error when the wrapped extract-card-details step exhausts retries, with the real attempts count',
+    'posts exactly one error when the wrapped wait-for-page-to-be-ready step exhausts retries, with the real attempts count',
     async () => {
       resetScriptGlobals();
       // No .bch-summary at all: waitForBchSummaryElement (inside wait-for-page-to-be-ready)

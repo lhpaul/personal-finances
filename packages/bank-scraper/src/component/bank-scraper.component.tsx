@@ -69,6 +69,12 @@ export const BankScraperComponent = forwardRef<BankScraperHandle, BankScraperPro
   );
 
   const sessionRef = useRef<ScrapeSession | null>(null);
+  // Keep the latest callbacks live without recreating the session (CodeRabbit round-2 follow-up
+  // finding on this same effect): a caller's onResult/onProgress may close over component state
+  // that changes after mount, and the effect below intentionally never re-runs. Without this, the
+  // session would call only the closures captured on the very first render, for the entire read.
+  const callbacksRef = useRef({ onResult, onProgress });
+  callbacksRef.current = { onResult, onProgress };
   // Session creation and startup moved into an effect (CodeRabbit findings #4, #5): creating and
   // starting a ScrapeSession directly in the render body is a side effect during render, and —
   // more importantly — had no unmount cleanup at all. If this component unmounted before the
@@ -82,8 +88,8 @@ export const BankScraperComponent = forwardRef<BankScraperHandle, BankScraperPro
       credentials,
       priorMonths,
       readDeadlineMs,
-      onResult,
-      onProgress,
+      onResult: (result) => callbacksRef.current.onResult(result),
+      onProgress: (progress) => callbacksRef.current.onProgress?.(progress),
     });
     sessionRef.current = session;
     session.start();
