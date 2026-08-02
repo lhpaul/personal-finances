@@ -1137,5 +1137,3 @@ infrastructure with no visible change; the screen appears at Step 9.
   verbatim in the project's `**Bold Title** (#N):` format, under `### Added`.
 - **Not-applicable rationale**: Checked — the two skipped categories (parser-risk, workflow
   decision-gate matrix) each carry a one-sentence rationale above.
-</content>
-</invoke>
