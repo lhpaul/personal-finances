@@ -22,3 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an enforced shared-domain import restriction, and lint / type-check / test checks on pull
   requests
 - **shared-utils: CLP money, dates and RUT** (#4): `@finanzas/shared-utils` now ships CLP formatting (`formatClp`, `formatClpAbbreviated`), Chilean date helpers (`deriveDateLocal`, month/week period boundaries, es-CL labels) and RUT normalization, modulo-11 validation and display formatting. Locale formatting via `toLocaleString` is now an ESLint error repository-wide.
+
+### Fixed
+
+- **Fix the pnpm hoisted layout and add a CI bundle check** (#35): `nodeLinker: hoisted` now lives
+  in `pnpm-workspace.yaml`, where pnpm 11 actually reads it — a plain `pnpm install` produces the
+  hoisted layout the Expo/Metro resolver needs, and `.npmrc` (which pnpm 11 silently ignored) is
+  gone. A new `pnpm check:layout` check runs on every install and in CI, a new `iOS bundle` CI job
+  runs `expo export:embed` so a tree that cannot build the app can no longer be green, and a test
+  now proves the `@finanzas/shared-domain` import restriction rejects a deliberate violation.
