@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<!--
+  Hand-authored fixture, not captured from a live session (Documented Deviation D3). See
+  fixtures/README.md for provenance. Selectors mirror
+  banco-de-chile.credit-card-details.script.ts. The `bch-summary` "Nacional" section carries the
+  card's balance and cupo; the unbilled `.bch-table` has 7 columns (date, card type, description,
+  city, cuotas, outgoing, incoming). The billed table (with a Cuotas column) is swapped in by the
+  DOM test when the invoiced tab is clicked — a <script> assigned via innerHTML does not execute,
+  matching the account-transactions fixture's pagination approach. All amounts and identifiers
+  are synthetic (fixture-sanitization.test.ts).
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Banco de Chile - Tarjeta de Crédito</title>
+  </head>
+  <body>
+    <a class="logo-banca" href="/index.html#/home">Banco de Chile</a>
+    <div class="card-header">
+      <span class="label">Visa Nacional</span>
+      <span class="last4">•••• 1111</span>
+    </div>
+    <div class="bch-summary">
+      <div class="summary-header-title">Tarjeta Nacional</div>
+      <div class="summary-header-lead"><span class="number">$150.000</span></div>
+      <div class="summary-body"><span class="number">$1.000.000</span></div>
+    </div>
+    <div class="router-tab-link">No Facturados</div>
+    <div class="router-tab-link">Facturados</div>
+    <table class="bch-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo de Tarjeta</th>
+          <th>Descripcion</th>
+          <th>Ciudad</th>
+          <th>Cuotas</th>
+          <th>Cargo</th>
+          <th>Abono</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>05/03/2026</td>
+          <td>Nacional</td>
+          <td>Compra Farmacia</td>
+          <td>Santiago</td>
+          <td>1/1</td>
+          <td><span>$12.000</span></td>
+          <td><span></span></td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>
