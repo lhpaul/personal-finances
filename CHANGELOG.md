@@ -27,6 +27,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   matching the mockup `mu-*` classes, seven new design tokens, and a dev-only design-system
   gallery route at `/gallery`
 - **i18n infrastructure: catalogues, resolver and the no-literal-string lint rule** (#34): `i18next` + `react-i18next` initialised in `apps/mobile/src/i18n/`, flat-key `es`/`en` catalogues, device-locale resolution via `expo-localization` defaulting to `es`, and `eslint-plugin-i18next/no-literal-string` enforcing, for JSX text covered by its `jsx-text-only` mode, that no user-facing literal string appears in JSX (known exception: the two tab-title literals in `apps/mobile/app/(tabs)/_layout.tsx`, which the rule's JSX-text-only mode cannot see). The design-system gallery now renders entirely from catalogue keys; `gallery.strings.ts` is removed.
+- **Port the bank scraper with Banco de Chile** (#6): `@finanzas/bank-scraper` now ships the
+  headless read engine (`ScrapeSession` with `start` / `cancel`, message routing, step state
+  machine and WebView driver), the four Banco de Chile reading routines (sign in, product
+  list, account movements, credit-card details) under
+  `src/configs/cl/banco-de-chile/`, an exact bank-origin allowlist checked at three points
+  before any credential is entered, a single-owner credential holder cleared before the
+  browser session is torn down, a redacting diagnostic trail asserted by test, integer
+  minor-unit amount parsing including foreign-currency card movements, timezone-independent
+  `DD/MM/YYYY` dates, bounded retries with an overall read deadline, and
+  `complete` / `partial` / `failed` / `cancelled` read outcomes carrying an opaque per-product
+  identity. Banco Falabella and Banco Pelotillehue are not ported.
 
 ### Fixed
 
