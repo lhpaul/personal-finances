@@ -75,7 +75,10 @@ run_compare() {
 
 pct_from_stdout() {
   # Extracts the "NN.NN%" mismatch figure from compare-screenshots.mjs's PASS/FAIL line.
-  grep -oE '[0-9]+\.[0-9]+% vs' "$1" | head -1 | grep -oE '[0-9]+\.[0-9]+' || echo "n/a"
+  # `-m 1` (not `| head -1`) so the first grep exits cleanly on its own instead of being cut off
+  # by a downstream consumer, which under `pipefail` can otherwise surface a spurious SIGPIPE
+  # (exit 141) as a pipeline failure even though a match was found.
+  grep -m 1 -oE '[0-9]+\.[0-9]+% vs' "$1" 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' || echo "n/a"
 }
 
 echo "== V1: faithful build (two independent browser launches) =="
