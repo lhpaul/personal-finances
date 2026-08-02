@@ -9,7 +9,7 @@
 | Storage | **SQLite** via `expo-sqlite` + **Drizzle ORM** | Local-first is a product requirement, not a shortcut. Drizzle gives typed queries and file-based migrations without a codegen daemon |
 | Secrets | **`expo-secure-store`** (iOS Keychain / Android Keystore) | The one place bank credentials may exist |
 | Scraping | **`react-native-webview`** + injected scripts (`@finanzas/bank-scraper`) | Ported from `bank-scrapper-app`. Banco de Chile is already implemented |
-| State | **TanStack Query** over repository functions + React Context for session state | Screens are read-heavy over SQLite; Query's cache/invalidate model fits better than a global store. No Redux |
+| State | Feature hooks (`getAppDatabase()` + repository functions) + React Context for session state | Screens are read-heavy over SQLite. **Not yet using TanStack Query** — it is not installed; the current pattern is a hook that awaits `getAppDatabase()` and calls repository functions directly (established by issue #8's onboarding screens, the app's first real screens). Adopting a query library for caching/invalidation remains a possible future direction, not a current dependency |
 | Charts | Hand-rolled **`react-native-svg`** components | The dashboard needs five chart shapes, all already drawn in the mockups. A chart library would cost more than it saves |
 | i18n | **`i18next`** + `react-i18next` + `expo-localization`, enforced by `eslint-plugin-i18next` |
 | Notifications | **`expo-notifications`**, local scheduling only | Reminders are local; there is no push server |
@@ -91,9 +91,9 @@ apps/mobile/
 │   ├── components/ui/           # Design-system primitives (theme.ts-driven, mirrors mu-* mockup classes)
 │   ├── dev/                      # __DEV__-only surfaces (DesignSystemGallery) — never ships
 │   ├── features/                # One folder per domain area
-│   │   └── <feature>/{components,hooks,queries}.ts
+│   │   └── <feature>/{components,use-*.ts}
 │   ├── i18n/                    # es / en catalogues — all user-facing copy
-│   └── lib/                     # Query client, db provider, formatters, logger
+│   └── db/runtime.ts            # getAppDatabase(): Promise<AppDatabase> — the app-tier entry point
 ```
 
 There is no `(auth)` route group — this product has no sign-in. The tab bar renders exactly
@@ -101,8 +101,13 @@ two tabs in the MVP, Inicio and Transacciones; Presupuestos and Beneficios are n
 destinations until those sections ship.
 
 - **Components** are presentational; primitives come from `src/components/ui`.
-- **Hooks** in `src/features/*/queries.ts` wrap TanStack Query over `apps/mobile/src/db`
-  repositories. Screens never call Drizzle directly.
+- **Hooks** in `src/features/<feature>/use-*.ts` call `getAppDatabase()`
+  (`apps/mobile/src/db/runtime.ts`) and then call `apps/mobile/src/db` repository functions
+  directly — no TanStack Query, no `QueryProvider`, no `DatabaseProvider`, and no
+  `app/_layout.tsx` change (established by issue #8's onboarding screens, the app's first real
+  screens; see `use-launch-decision.ts`, `use-onboarding-summary.ts`,
+  `use-complete-onboarding.ts`). `@tanstack/react-query` is not installed; adopting it is a
+  possible future direction, not a current dependency. Screens never call Drizzle directly.
 - **Screen states** in the mockups (`empty`, `error`, `filters`…) are real render branches.
   A screen is not done until every state in its manifest entry renders.
 - **Copy lives in i18n catalogues** (`src/i18n/{es,en}.json`, flat keys), never inline in JSX.
@@ -120,8 +125,8 @@ dependency, and must never receive credentials.
 ## Data Access Layer
 
 ```
-screen → feature hook (TanStack Query) → src/db repository → Drizzle → SQLite
-                                       ↘ @finanzas/shared-domain (pure rules)
+screen → feature hook (getAppDatabase() + repository functions) → src/db repository → Drizzle → SQLite
+                                                                 ↘ @finanzas/shared-domain (pure rules)
 ```
 
 - `src/db` is the only module that emits SQL. Repository functions return domain types.
