@@ -184,6 +184,7 @@ arithmetic). Testing weight goes there.
 | **Unit — data** | Jest + in-memory SQLite | `apps/mobile/src/db/**/*.test.ts` | Repositories, migrations, dedup on re-sync. Mandatory |
 | **Unit — scraper** | Jest over jsdom | `packages/bank-scraper/**/*.test.js` | Injected script generators against captured HTML fixtures. Pattern already exists in `bank-scrapper-app` |
 | **Device E2E** | Maestro | `.maestro/` | Happy paths only: onboarding, categorization, exclusion |
+| **Toolchain — layout & bundle** | `scripts/check-node-linker-layout.mjs` + `expo export:embed` | `pnpm check:layout` (postinstall + CI), CI `bundle` job | Every install and every PR. Proves the `node_modules` tree is hoisted and that Metro can actually produce an iOS bundle — CI cannot be green on a tree that cannot build the app |
 
 The automated suite is the canonical record of what works.
 
