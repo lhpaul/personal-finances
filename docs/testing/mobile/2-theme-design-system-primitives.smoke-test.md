@@ -246,7 +246,7 @@ route renders `null` in a release build.
 
 | Entity | Scenario | How to load |
 | --- | --- | --- |
-| Gallery sample content | Emoji, labels, amounts and states copied verbatim from `#screen=ds-components` and `#screen=ds-typography` | Static, in `apps/mobile/src/i18n/{es,en}.json` (`ds.*` keys). Nothing to load |
+| Gallery sample content | Labels, amounts and states copied verbatim from `#screen=ds-components` and `#screen=ds-typography`; three decorative `CategoryChip` emoji remain in `DesignSystemGallery.tsx` | Catalogue-backed content is static in `apps/mobile/src/i18n/{es,en}.json` (`ds.*` keys). Nothing to load |
 
 No database. No SQLite in this item.
 
