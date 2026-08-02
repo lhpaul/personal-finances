@@ -66,10 +66,10 @@ the plan worktree has no `node_modules` of its own.
 | V12 | **What `sqlcipher_export` copies** | `sqlcipher_exportFunc` body, ~lines 111138-111260 | `CREATE TABLE` (rootpage > 0), `CREATE INDEX`, `CREATE UNIQUE INDEX`, `INSERT … SELECT *` per table, `sqlite_sequence` contents, and `view`/`trigger`/virtual-table rows copied into the target `sqlite_schema`. **`PRAGMA user_version` is not copied** |
 | V13 | Raw hex keys are supported | `vendor/sqlcipher/sqlite3.c` ~lines 108762-109317 | `x'hex(key)…hex(salt)'` and `x'hex(key)'` forms; parser requires the literal to start with `x'` |
 | V14 | A capability probe exists | `vendor/sqlcipher/sqlite3.c` ~line 110176 | `PRAGMA cipher_version` is handled only under the SQLCipher build; a plain SQLite build returns no row |
-| V15 | Nothing runs before we can set the key | `build/SQLiteDatabase.js` `openDatabaseSync` + `ios/SQLiteModule.swift` `initDb` | `openDatabaseSync` → `new NativeDatabase(...)` → `initSync()`; `initDb` only installs the update hook. No SQL is executed on open |
+| V15 | Nothing runs before we can set the key | `build/SQLiteDatabase.js` `openDatabaseSync`; `ios/SQLiteModule.swift` `initDb` (~line 346); `android/…/SQLiteModule.kt` `initDb` (~line 356) | `openDatabaseSync` → `new NativeDatabase(...)` → `initSync()`; on **both** platforms `initDb` only installs the update hook. No SQL is executed on open |
 | V16 | `SQLiteOpenOptions` has no key field | `build/NativeDatabase.d.ts` | `enableChangeListener`, `useNewConnection`, `finalizeUnusedStatementsBeforeClosing`, `libSQLOptions` — the key must be set with `PRAGMA key`, not an open option |
-| V17 | Connections are cached by path + options | `ios/SQLiteModule.swift` ~line 108 | `findCachedDatabase(where: { $0.databasePath == databasePath && $0.openOptions == options && !options.useNewConnection })` — a second `openDatabaseSync` of the same name returns the **same keyed handle** |
-| V18 | `deleteDatabase` semantics | `ios/SQLiteModule.swift` ~lines 510-529 | Throws `DeleteDatabaseException` if any cached handle is open; throws `DatabaseNotFoundException` if the file is absent; removes **only** the main file (no `-wal` / `-shm` sweep) |
+| V17 | Connections are cached by path + options | `ios/SQLiteModule.swift` ~line 108; `android/…/SQLiteModule.kt` ~line 110 | Identical predicate on both platforms: `databasePath == databasePath && openOptions == options && !useNewConnection` — a second `openDatabaseSync` of the same name returns the **same keyed handle** |
+| V18 | `deleteDatabase` semantics | `ios/SQLiteModule.swift` ~lines 510-529; `android/…/SQLiteModule.kt` ~lines 523-538 | Identical on both platforms: throws `DeleteDatabaseException` if a cached handle for **that path** is open; throws `DatabaseNotFoundException` if the file is absent; removes **only** the main file (no `-wal` / `-shm` sweep) |
 | V19 | The app does not enable WAL | `grep -rn "journal_mode" apps/mobile` | No hit. `client.ts` sets only `PRAGMA foreign_keys = ON`, so the store is in the default rollback-journal mode and has no persistent sidecar files |
 | V20 | The migration ledger is a table, not `user_version` | `apps/mobile/src/db/bootstrap.ts` `countAppliedMigrations` | `select count(*) … from __drizzle_migrations` — a real table, therefore inside V12's copy set |
 | V21 | Nothing in the app reads `user_version` | `grep -rn "user_version" apps/mobile` | Zero hits |
@@ -82,6 +82,7 @@ the plan worktree has no `node_modules` of its own.
 | V28 | #19's namespace test will reject a second key namespace | #19 plan, Decision 2 | *"A future item that adds a second namespace fails that test and is forced to extend `collectCredentialKeys` in the same change."* |
 | V29 | `db:check` runs in CI | `.github/workflows/ci.yml` line 111 | `pnpm --filter @finanzas/mobile db:check` |
 | V30 | Design assets for this item | Issue #25 body; `grep -rn -i "encrypt\|cifrad\|sqlcipher" design/mockups/mobile/mockup-manifest.js` | No `## Design assets` section in the brief; **zero** mockup hits. This item ships no product screen |
+| V31 | The boundary test's exact scan scope | `apps/mobile/src/db/__tests__/db-access-boundary.test.ts` | `ROOTS = [app/, src/]`, filtered by `isUnderDbDir`. So **`src/dev/` is in scope** and may not import `expo-sqlite` — this is what forces Decision 12's split |
 
 ### The escalation question, answered
 
@@ -273,7 +274,10 @@ migratePlaintextToEncrypted({ port, keyHex, now }):
    8. legacy.close()
    9. encrypted = port.openKeyed(ENCRYPTED_DATABASE_NAME, keyHex)
   10. setSetting(encrypted.db, ENCRYPTION_MARKER_SETTING, now())   <-- COMMIT POINT
-  11. encrypted.close(); port.deleteDatabaseIfPresent(LEGACY_DATABASE_NAME)
+  11. port.deleteDatabaseIfPresent(LEGACY_DATABASE_NAME)
+      // The encrypted handle stays open and is returned to the caller. `deleteDatabase`
+      // rejects only a cached handle for *that* path (V18), and step 8 already closed the
+      // legacy one, so nothing blocks this deletion.
 ```
 
 **Step 6 is the safety property.** It reuses `findPreservationViolations` from
@@ -451,11 +455,26 @@ a bricked profile with no recovery. In the chosen order the worst case is a stal
 file that no longer exists, which the next launch simply reuses for the new store. Step 2 keeps
 #19's fail-closed semantics for credentials, which are the higher-value secret.
 
-### Decision 12 — a `__DEV__`-only probe carries the device-tier assertions
+### Decision 12 — a `__DEV__`-only probe carries the device-tier assertions, split across the SQL boundary
 
-`apps/mobile/src/dev/encryption-probe.ts`, surfaced from the existing `/gallery` dev route
-(`src/dev/` is the repository's established never-ships convention), reports the resolved
-`EncryptionState`, whether a legacy `finanzas.db` still exists, and these four probes:
+The probe must open databases, and opening a database means importing `expo-sqlite` — which
+`dbAccessBoundary` and `db-access-boundary.test.ts` forbid everywhere under `src/**` except
+`src/db/**` (V27, V31). `src/dev/` is under `src/`, so the probe is **split in two**:
+
+- `apps/mobile/src/db/encryption/diagnostics.ts` — `runEncryptionDiagnostics(port): EncryptionDiagnostics`.
+  All database work lives here, inside the sanctioned directory, behind the same
+  `CipherDatabasePort` as everything else. Returns a plain serialisable result object.
+- `apps/mobile/src/dev/encryption-probe.ts` — renders that object in the existing `/gallery` dev
+  route (`src/dev/` is the repository's established never-ships convention). It imports **no**
+  SQL library, so the boundary test keeps passing unchanged.
+
+The result object reports the `EncryptionState` **that was resolved at launch and memoized**, not
+a fresh file probe. This matters: per Decision 7 an existence check works by opening the file, and
+opening a missing `finanzas.db` would **recreate** it — a diagnostic that resurrects the legacy
+store every time someone opens the gallery would be worse than no diagnostic. The four active
+probes below all target the encrypted store, which is known to exist by the time the probe runs.
+
+| Probe | Expected on a correct build |
 
 | Probe | Expected on a correct build |
 | --- | --- |
@@ -500,6 +519,11 @@ New folder — `apps/mobile/src/db/encryption/`:
       Decision 6, written entirely against `CipherDatabasePort`.
 - [ ] `open-encrypted-store.ts` — the composition entry point: probe capability → resolve key →
       probe files → dispatch on `EncryptionState` → return an opened, keyed `CipherHandle`.
+      Memoizes the resolved `EncryptionState` so `diagnostics.ts` can report it without
+      re-probing (Decision 12).
+- [ ] `diagnostics.ts` — `runEncryptionDiagnostics(port)`, the device-tier probe's database half.
+      Lives under `src/db/` because it must import through the cipher port; returns a plain
+      serialisable result (Decision 12, V31).
 
 Modified:
 
@@ -540,7 +564,9 @@ container changes.
       copy. Spanish copy follows the tone of #19's existing wipe-failure strings; there is no
       mockup for this state (V30), so it reuses the same visual treatment as `store_failed`.
 - [ ] `apps/mobile/src/dev/encryption-probe.ts` (new) + its entry in the existing dev gallery
-      route (Decision 12). `__DEV__`-gated; never linked from a product screen.
+      route — **rendering only**, no SQL-library import, consuming
+      `src/db/encryption/diagnostics.ts` (Decision 12, V31). `__DEV__`-gated; never linked from a
+      product screen. Confirm `db-access-boundary.test.ts` still passes after adding it.
 - [ ] **No product screen, no new route, no mockup state.** V30 confirms the mockups contain
       nothing for encryption. The migration runs inside the existing launch path and is invisible
       when it succeeds.
@@ -847,8 +873,10 @@ Any failing check is a **stop and report**, not a workaround.
 12. **The wipe.** `wipe-local-data.ts`, `use-wipe-local-data.ts`, the two i18n catalogues, and the
     widened `secure-store-key-namespace.test.ts` with all ten parser-risk cases (Decision 11 and
     the parser-risk addendum).
-13. **The dev probe.** `src/dev/encryption-probe.ts` and its gallery entry (Decision 12). Confirm
-    it is `__DEV__`-gated and unreachable from any product screen.
+13. **The dev probe, in two halves.** `src/db/encryption/diagnostics.ts` (the database half) then
+    `src/dev/encryption-probe.ts` and its gallery entry (the rendering half) — Decision 12.
+    Confirm the probe is `__DEV__`-gated, unreachable from any product screen, and that
+    `db-access-boundary.test.ts` still passes.
 14. **Verify and document.**
     - `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm --filter @finanzas/mobile db:check` — all
       green. `db:check` must pass **unchanged**; if it needed a change, the schema moved and this

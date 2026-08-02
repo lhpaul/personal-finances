@@ -87,9 +87,12 @@ reported no version, that is a **blocking defect** in the capability probe, not 
 - The probe reports **key present: yes**.
 - Opening `finanzas.enc.db` **with the stored key** succeeds and reports per-table row counts, with
   the seeded categories and institutions present.
-- The probe reports that no legacy `finanzas.db` remains.
-- **The probe never prints the key itself** — only `key present: yes`. If any key material appears
-  on screen, that is a blocking defect (non-negotiable #1).
+- The probe reports the launch-resolved state as `fresh_install`. (The probe reports the state
+  memoized at launch; it deliberately does not re-check whether `finanzas.db` exists, because the
+  existence check works by opening the file and would recreate it — implementation plan
+  Decision 12.)
+- **The probe never prints the key itself** — only `key present: yes` and a one-way fingerprint.
+  If any key material appears on screen, that is a blocking defect (non-negotiable #1).
 
 ---
 
@@ -170,7 +173,8 @@ difference is a blocking defect.
 3. Record the launch duration from Part B step 2 here: `________`. This is the baseline for
    risk R9; it is not a pass/fail threshold on this run.
 
-**Expected result**: the probe reports that `finanzas.db` no longer exists.
+**Expected result**: the probe reports the launch-resolved state as `already_encrypted`, which is
+only reachable once the legacy `finanzas.db` has been deleted (implementation plan Decision 5).
 
 ---
 
@@ -243,7 +247,7 @@ file always begins with that magic; an encrypted SQLCipher file begins with its 
 **Expected result**:
 
 - The probe reports **key present: no** — the `db_key:main` entry is gone.
-- The probe reports that neither `finanzas.enc.db` nor `finanzas.db` holds user data.
+- The probe reports no user tables in `finanzas.enc.db`.
 - The app has returned to `onboarding-intro`.
 
 4. Complete onboarding again and reopen the probe.
