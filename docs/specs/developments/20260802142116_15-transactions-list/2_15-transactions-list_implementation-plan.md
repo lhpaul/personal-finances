@@ -265,8 +265,10 @@ the person's own), comparing `normalizeDescription(categoryName)` against
 `normalizeDescription(term)` from `@finanzas/shared-domain` — so category search is
 accent- and case-insensitive by construction.
 
-The three SQL comparisons use `lower(column) LIKE lower(term) ESCAPE '\'`, with `%`, `_` and `\`
-escaped in the term. SQLite's `LIKE` folds ASCII case but not diacritics, so a search for `nunoa`
+The three SQL comparisons use `lower(column) LIKE <pattern> ESCAPE '\'`. The repository builds
+`<pattern>` from the plain term — lower-cased, with `%`, `_` and `\` escaped, wrapped in `%…%` —
+so the `LIKE` mechanics stay inside `src/db` and the work happens once per query rather than once
+per row. SQLite's `LIKE` folds ASCII case but not diacritics, so a search for `nunoa`
 does not match a stored `ÑUÑOA` in the three text columns (it does for a category name). That
 limitation is Assumption A8, with FTS5 or a normalized shadow column as the named follow-up.
 
@@ -569,7 +571,9 @@ creates. `institutions.ts` is not touched.
       sibling of #10's sync-facing reads, which answer a different question.
 
 **`apps/mobile/src/db/types.ts`** — additive domain types alongside the existing ones:
-`TransactionListFilters`, `TransactionListQueryParams` (filters plus the resolved search),
+`TransactionListFilters`, `TransactionSearch` (`{ term, categoryIds }` — the plain term the
+repository turns into a `LIKE` pattern, plus the category ids the feature layer already resolved),
+`TransactionListQueryParams` (filters plus `search: TransactionSearch | null`),
 `TransactionPageParams` (`TransactionListQueryParams` plus `cursor` and `limit`),
 `TransactionListCursor`, `TransactionListRow`, `TransactionListPage`, `MonthCount`,
 `UserProduct` and `ManualTransactionInput`. `TransactionListFilters` is declared here, **once**,
@@ -608,8 +612,10 @@ action variants, which are added only if #12 left them unowned (re-verification 
 - [ ] `filters.ts` — `DEFAULT_TRANSACTION_FILTERS`, `isDefaultFilters(filters)`,
       `activeFilterCount(filters)`. Pure; imports the `TransactionListFilters` type from
       `src/db/types.ts` (Decision 7).
-- [ ] `search.ts` — `resolveSearch(term, categories): ResolvedSearch | null`, which normalizes
-      the term and resolves matching category ids through `normalizeDescription` (Decision 5).
+- [ ] `search.ts` — `resolveSearch(term, categories): TransactionSearch | null`, which trims the
+      term and resolves matching category ids through `normalizeDescription` (Decision 5). Returns
+      `null` for a blank or whitespace-only term. It builds no SQL and no `LIKE` pattern — the
+      repository owns that (Decision 5).
 - [ ] `list-state.ts` — `TransactionsScreenState` and `resolveTransactionsState` (Decision 9).
 - [ ] `grouping.ts` — `buildListEntries(rows, monthCounts, locale): TransactionListEntry[]`, the
       flat heterogeneous array `FlashList` renders, and `getEntryType(entry)` for `getItemType`
@@ -622,8 +628,10 @@ action variants, which are added only if #12 left them unowned (re-verification 
       pure: digits-only amount parsed to a positive integer, non-empty description, a selected
       product (Decision 12).
 - [ ] `read-transactions-page.ts` — `readTransactionsPage(db, params)`, the pure composition of
-      `listTransactionsPage`, `countTransactionsByMonth`, `listCategories` and `listUserProducts`.
-      No React, so it is testable against a real in-memory store in the `db` tier.
+      `listTransactionsPage`, `countTransactionsByMonth`, `listCategories` (called once per
+      direction, `income: 0` and `income: 1`, because search must match a category name of either)
+      and `listUserProducts`. No React, so it is testable against a real in-memory store in the
+      `db` tier.
 - [ ] `use-transactions-list.ts` — `useTransactionsList(params)`, the single feature hook
       (Decision 1): awaits `getAppDatabase()`, owns the request token, the debounce timer, the
       cursor and the append semantics (concurrency addendum), and re-reads on focus.
@@ -873,7 +881,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, lt, or, sql, type SQL } from
 
 import { isIncluded } from '../fragments';
 import { merchants, transactionCategories, transactions, userFinancialProducts } from '../schema';
-import type { AppDatabase, TransactionListFilters } from '../types';
+import type { AppDatabase, TransactionListQueryParams } from '../types';
 
 /** Escapes the three characters SQLite's LIKE treats specially, so a typed `%` matches a `%`. */
 function escapeLikeTerm(term: string): string {
@@ -887,10 +895,7 @@ function escapeLikeTerm(term: string): string {
  * `isIncluded` fragment — the only sanctioned way to state that condition outside
  * `src/db/fragments.ts` (Business Rule 4).
  */
-function buildTransactionListPredicates(params: {
-  filters: TransactionListFilters;
-  search: { pattern: string; categoryIds: readonly string[] } | null;
-}): SQL[] {
+function buildTransactionListPredicates(params: TransactionListQueryParams): SQL[] {
   const { filters, search } = params;
   const predicates: SQL[] = [];
 
@@ -907,7 +912,8 @@ function buildTransactionListPredicates(params: {
   if (!filters.showExcluded) predicates.push(isIncluded);
 
   if (search !== null) {
-    const pattern = search.pattern;
+    // Lower-cased and escaped once per query, not once per row.
+    const pattern = `%${escapeLikeTerm(search.term.toLowerCase())}%`;
     const textMatches = [
       sql`lower(${transactions.rawDescription}) like ${pattern} escape '\\'`,
       sql`lower(${merchants.name}) like ${pattern} escape '\\'`,
