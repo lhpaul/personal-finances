@@ -12,7 +12,9 @@ everything in a local SQLite database. There is no backend.
 ## Status
 
 The monorepo and the Expo app skeleton exist: every MVP route renders a placeholder naming
-the mockup screen it stands for. No screen is implemented yet.
+the mockup screen it stands for. The local database now exists too — schema, migrations and
+starter content (banks, categories, merchants) are in place under `apps/mobile/src/db/`. No
+screen is implemented yet.
 
 | Artifact | Where |
 |----------|-------|

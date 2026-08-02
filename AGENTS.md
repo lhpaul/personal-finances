@@ -197,7 +197,7 @@ pnpm build
 # Test
 pnpm test
 pnpm --filter @finanzas/shared-domain test          # domain rules, fastest loop
-pnpm --filter @finanzas/mobile test            # repositories, migrations, dedup
+pnpm --filter @finanzas/mobile test            # repositories, migrations, dedup — two Jest projects: app (jest-expo), db (Node)
 pnpm --filter @finanzas/bank-scraper test  # injected scripts vs HTML fixtures
 
 # Type check
@@ -206,9 +206,10 @@ pnpm typecheck
 # node_modules layout check (fails if the tree is not hoisted — also runs as postinstall and in CI)
 pnpm check:layout
 
-# Database (arrives with the database item, #3)
+# Database
 pnpm --filter @finanzas/mobile db:generate     # generate a Drizzle migration
-pnpm --filter @finanzas/mobile db:check        # apply migrations to a fixture DB
+pnpm --filter @finanzas/mobile db:check        # apply migrations to a fixture DB, in four modes
+pnpm --filter @finanzas/mobile db:seed         # regenerate the bundled seed fixture, deterministically
 
 # Lint / Format
 pnpm lint

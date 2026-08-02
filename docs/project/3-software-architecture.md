@@ -126,6 +126,18 @@ screen → feature hook (TanStack Query) → src/db repository → Drizzle → S
 - The inclusion rule (`excluded_at IS NULL`, `COALESCE(included_amount, amount)`) is
   implemented **once**, in a shared query fragment. Duplicating it is a review blocker.
 - Writes go through repositories so sync bookkeeping (`updated_at`, dedup) stays in one place.
+- `src/db/migrate.ts` wraps Drizzle's migration runner and maps any throw to a typed
+  `DatabaseMigrationError`. `src/db/bootstrap.ts` calls it, then writes `schema_version`, then
+  applies seeds — every step idempotent, and single-flighted so two concurrent callers share one
+  bootstrap run.
+- Starter content is driven by a `seed_ledger` table (see
+  [`4-database-model.md`](4-database-model.md#seed_ledger)), not by a plain upsert-by-slug: a
+  refresh inserts a genuinely new starter record, corrects one nobody has touched, and never
+  overwrites an edit or resurrects a deletion.
+- Hashing and id generation are injected **ports**, not direct imports: repositories take a
+  `DbPorts` object (`digestSha256`, `newId`, `now`). The runtime supplies `expo-crypto`; the test
+  tier supplies `node:crypto` and a deterministic counter, so the native module is never loaded by
+  Jest and the committed store snapshot stays reproducible.
 
 ## Security Model
 
