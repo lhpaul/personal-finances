@@ -30,7 +30,7 @@ Before running this smoke test:
 | Gallery route file | `apps/mobile/app/(dev)/gallery.tsx` |
 | Gallery runtime URL | `finanzas://gallery` — Expo Router group segments such as `(dev)` do not appear in the URL |
 | Gallery derived path (parity test only) | `/(dev)/gallery` — `toRoutePath` keeps group parentheses verbatim |
-| Gallery copy source | `apps/mobile/src/dev/gallery.strings.ts` |
+| Gallery copy source | `apps/mobile/src/i18n/{es,en}.json` (`ds.*` keys) — moved from the now-deleted `apps/mobile/src/dev/gallery.strings.ts` by item #34 |
 | Primary reference screen | `design/mockups/mobile/index.html#screen=ds-components` |
 | Typography / amounts reference | `design/mockups/mobile/index.html#screen=ds-typography` |
 | Colour reference | `design/mockups/mobile/index.html#screen=ds-colors` |
@@ -246,7 +246,7 @@ route renders `null` in a release build.
 
 | Entity | Scenario | How to load |
 | --- | --- | --- |
-| Gallery sample content | Emoji, labels, amounts and states copied verbatim from `#screen=ds-components` and `#screen=ds-typography` | Static, in `apps/mobile/src/dev/gallery.strings.ts`. Nothing to load |
+| Gallery sample content | Emoji, labels, amounts and states copied verbatim from `#screen=ds-components` and `#screen=ds-typography` | Static, in `apps/mobile/src/i18n/{es,en}.json` (`ds.*` keys). Nothing to load |
 
 No database. No SQLite in this item.
 
