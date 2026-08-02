@@ -1,11 +1,14 @@
 import { Text as RNText } from 'react-native';
 
 import {
+  BankRow,
   CategoryChip,
+  CategoryRow,
   EmptyState,
   Hero,
   Modal,
   Note,
+  ScreenHeader,
   TabBar,
   Text,
   TransactionRow,
@@ -80,6 +83,40 @@ describe('no naked text in icon-accepting primitives', () => {
       onRequestClose: () => undefined,
       icon: '🗑️',
       title: 'Título',
+    });
+    expect(findNakedText(tree, textTypes)).toEqual([]);
+  });
+
+  /** Home-screen implementation plan (issue #12), Scenario 20 — the three new primitives that
+   * accept an icon-shaped prop. */
+  it('ScreenHeader: a string avatar and action icon do not end up as bare children of a non-text component', () => {
+    const tree = ScreenHeader({
+      avatar: '💰',
+      title: 'Finanzas',
+      subtitle: 'Tu asistente financiero',
+      action: { icon: '⚙️', accessibilityLabel: 'Settings', onPress: () => undefined },
+    });
+    expect(findNakedText(tree, textTypes)).toEqual([]);
+  });
+
+  it('CategoryRow: a string emoji does not end up as a bare child of a non-text component', () => {
+    const tree = CategoryRow({
+      emoji: '🍔',
+      label: 'Comida',
+      amountFormatted: '$279K',
+      ratio: 1,
+      fillColor: '#6366f1',
+      meta: '5 transacciones · 20,6%',
+    });
+    expect(findNakedText(tree, textTypes)).toEqual([]);
+  });
+
+  it('BankRow: a string monogram and chevron do not end up as bare children of a non-text component', () => {
+    const tree = BankRow({
+      monogram: 'BCH',
+      monogramColor: '#003da5',
+      name: 'Banco de Chile',
+      subLabel: 'Sincronizado hace 2 h',
     });
     expect(findNakedText(tree, textTypes)).toEqual([]);
   });

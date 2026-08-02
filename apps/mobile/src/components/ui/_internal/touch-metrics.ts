@@ -63,7 +63,10 @@ export type TouchMetricsKey =
   | 'pill'
   | 'tabBarItem'
   | 'emptyStateAction'
-  | 'sheetDismiss';
+  | 'sheetDismiss'
+  | 'headerAction'
+  | 'categoryRow'
+  | 'bankRow';
 
 /**
  * One entry per pressable primitive built in this item, keyed by primitive (plus a size/variant
@@ -110,4 +113,11 @@ export const TOUCH_METRICS = {
     width: componentMetrics.sheet.grabWidth,
     height: componentMetrics.sheet.grabHeight,
   }),
+  /** Home-screen implementation plan (issue #12), Step 5. */
+  headerAction: withMinTarget({
+    width: componentMetrics.screenHeader.actionSize,
+    height: componentMetrics.screenHeader.actionSize,
+  }),
+  categoryRow: withMinTarget({ height: componentMetrics.categoryRow.minTouchHeight }),
+  bankRow: withMinTarget({ height: componentMetrics.bankRow.minTouchHeight }),
 } satisfies Record<TouchMetricsKey, TouchMetrics>;
