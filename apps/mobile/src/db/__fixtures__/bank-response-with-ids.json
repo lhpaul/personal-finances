@@ -1,0 +1,110 @@
+{
+  "productA": {
+    "run1": [
+      {
+        "externalId": "ext-a-1",
+        "amount": 4200,
+        "type": "debit",
+        "occurredAt": "2026-02-01T12:00:00.000Z",
+        "dateLocal": "2026-02-01",
+        "rawDescription": "LIDER"
+      },
+      {
+        "externalId": "ext-a-2",
+        "amount": 4200,
+        "type": "debit",
+        "occurredAt": "2026-02-01T15:00:00.000Z",
+        "dateLocal": "2026-02-01",
+        "rawDescription": "LIDER"
+      },
+      {
+        "externalId": "ext-a-3",
+        "amount": 15000,
+        "type": "debit",
+        "occurredAt": "2026-02-02T09:30:00.000Z",
+        "dateLocal": "2026-02-02",
+        "rawDescription": "JUMBO"
+      }
+    ],
+    "run2": [
+      {
+        "externalId": "ext-a-1",
+        "amount": 4300,
+        "type": "debit",
+        "occurredAt": "2026-02-01T12:00:00.000Z",
+        "dateLocal": "2026-02-01",
+        "rawDescription": "LIDER SUPERMERCADO"
+      },
+      {
+        "externalId": "ext-a-2",
+        "amount": 4200,
+        "type": "debit",
+        "occurredAt": "2026-02-01T15:00:00.000Z",
+        "dateLocal": "2026-02-01",
+        "rawDescription": "LIDER"
+      },
+      {
+        "externalId": "ext-a-3",
+        "amount": 15000,
+        "type": "debit",
+        "occurredAt": "2026-02-02T09:30:00.000Z",
+        "dateLocal": "2026-02-02",
+        "rawDescription": "JUMBO"
+      },
+      {
+        "externalId": "ext-a-4",
+        "amount": 5000,
+        "type": "debit",
+        "occurredAt": "2026-02-03T10:00:00.000Z",
+        "dateLocal": "2026-02-03",
+        "rawDescription": "COPEC"
+      },
+      {
+        "externalId": "ext-a-5",
+        "amount": 6000,
+        "type": "debit",
+        "occurredAt": "2026-02-04T11:00:00.000Z",
+        "dateLocal": "2026-02-04",
+        "rawDescription": "NETFLIX.COM"
+      }
+    ]
+  },
+  "productB": {
+    "run1": [
+      {
+        "externalId": "ext-b-1",
+        "amount": 800000,
+        "type": "credit",
+        "occurredAt": "2026-02-01T08:00:00.000Z",
+        "dateLocal": "2026-02-01",
+        "rawDescription": "PAGO SUELDO"
+      }
+    ],
+    "run2": [
+      {
+        "externalId": "ext-b-1",
+        "amount": 810000,
+        "type": "credit",
+        "occurredAt": "2026-02-01T08:00:00.000Z",
+        "dateLocal": "2026-02-01",
+        "rawDescription": "PAGO SUELDO FEBRERO"
+      },
+      {
+        "externalId": "ext-b-2",
+        "amount": 20000,
+        "type": "credit",
+        "occurredAt": "2026-02-05T08:00:00.000Z",
+        "dateLocal": "2026-02-05",
+        "rawDescription": "TRANSFERENCIA RECIBIDA"
+      },
+      {
+        "externalId": "ext-b-3",
+        "amount": 30000,
+        "type": "credit",
+        "occurredAt": "2026-02-06T08:00:00.000Z",
+        "dateLocal": "2026-02-06",
+        "rawDescription": "REEMBOLSO"
+      }
+    ]
+  }
+}

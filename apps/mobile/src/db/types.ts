@@ -38,3 +38,27 @@ export interface ConnectableInstitution {
   scraperStatus: 'available' | 'coming_soon';
   logoUrl: string | undefined;
 }
+
+export interface Transaction {
+  id: string;
+  userFinancialProductId: string;
+  externalId: string | null;
+  amount: number;
+  type: 'debit' | 'credit';
+  currencyCode: string;
+  occurredAt: string;
+  dateLocal: string;
+  rawDescription: string;
+  note: string | null;
+  merchantId: string | null;
+  transactionCategoryId: string | null;
+  categorySource: 'auto' | 'user' | 'rule' | null;
+  reviewFlag: 'review_later' | 'uncertain' | null;
+  excludedAt: string | null;
+  exclusionReason: 'personal_transfer' | 'shared_expense' | 'not_relevant' | 'cash_withdrawal' | 'other' | null;
+  exclusionNote: string | null;
+  includedAmount: number | null;
+  isManual: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
