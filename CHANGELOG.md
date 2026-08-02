@@ -41,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ready screens are built from the mockup, with all copy in the `es`/`en` catalogues;
   `onboarding-ready` summarises the real connection and reminder state. Completing onboarding
   writes the flag and replaces the route so the flow is never re-entered.
+- **Home screen** (#12): the challenge hero, financial summary, trend chart, category
+  breakdown, recent movements and connected-banks card, in all four manifest states
+  (`pending`, `all-clear`, `empty`, `sync-error`), reading real aggregates through the
+  shared `isIncluded` / `includedAmount` fragments. Adds five design-system primitives
+  (`ScreenHeader`, `CategoryRow`, `LineChart`, `Legend`, `BankRow`), `formatPercentTenths`
+  in `@finanzas/shared-utils`, and a `__DEV__`-only sample-data route
 
 ### Fixed
 
