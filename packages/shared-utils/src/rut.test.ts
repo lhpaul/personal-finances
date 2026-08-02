@@ -150,7 +150,7 @@ describe('rut', () => {
 
     it('no thrown message contains any 6-or-more-digit substring of the offending input', () => {
       const longDigitInput = '123456789012';
-      let messages: string[] = [];
+      const messages: string[] = [];
       try {
         computeRutCheckDigit(longDigitInput + 'X');
       } catch (error) {
