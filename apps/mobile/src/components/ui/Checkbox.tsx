@@ -48,7 +48,7 @@ export function Checkbox({ checked, onChange, accessibilityLabel }: CheckboxProp
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked }}
       onPress={() => onChange(!checked)}
-      hitSlop={touchMetrics?.hitSlop}
+      hitSlop={touchMetrics.hitSlop}
       style={boxStyle}
     >
       {glyph}

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Pressable } from 'react-native';
+import { useEffect } from 'react';
+import { BackHandler, Pressable } from 'react-native';
 
 import { componentMetrics, theme } from '../../../theme';
 
@@ -19,8 +20,21 @@ export type OverlayProps = {
  *
  * Tapping the backdrop calls `onRequestClose`; tapping `children` does not, because the
  * content is itself wrapped in a no-op `Pressable` that claims the touch responder first.
+ *
+ * Registers an Android hardware-back-press handler while `visible` — otherwise the back
+ * button does nothing while a `Sheet`/`Modal` is open instead of dismissing it (found in
+ * review). The `useEffect` runs before the `visible` early return, per the Rules of Hooks.
  */
 export function Overlay({ align, visible, onRequestClose, children }: OverlayProps) {
+  useEffect(() => {
+    if (!visible) return undefined;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      onRequestClose();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [visible, onRequestClose]);
+
   if (!visible) return null;
 
   return (

@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
+import { fontWeight } from './_internal/font-weight';
 
 export type TextVariant =
   | 'h1'
@@ -69,21 +70,21 @@ function variantStyle(variant: TextVariant): TextStyle {
     case 'h1':
       return {
         fontSize: theme.typography.size['2xl'],
-        fontWeight: String(theme.typography.weight.extrabold) as TextStyle['fontWeight'],
+        fontWeight: fontWeight(theme.typography.weight.extrabold),
         letterSpacing: componentMetrics.text.h1.letterSpacing,
         lineHeight: componentMetrics.text.h1.lineHeight,
       };
     case 'h2':
       return {
         fontSize: theme.typography.size.lg,
-        fontWeight: String(theme.typography.weight.bold) as TextStyle['fontWeight'],
+        fontWeight: fontWeight(theme.typography.weight.bold),
         letterSpacing: componentMetrics.text.h2.letterSpacing,
         lineHeight: componentMetrics.text.h2.lineHeight,
       };
     case 'h3':
       return {
         fontSize: theme.typography.size.md,
-        fontWeight: String(theme.typography.weight.bold) as TextStyle['fontWeight'],
+        fontWeight: fontWeight(theme.typography.weight.bold),
         letterSpacing: componentMetrics.text.h3.letterSpacing,
       };
     case 'body':
@@ -103,14 +104,14 @@ function variantStyle(variant: TextVariant): TextStyle {
     case 'eyebrow':
       return {
         fontSize: theme.typography.size.xs,
-        fontWeight: String(theme.typography.weight.bold) as TextStyle['fontWeight'],
+        fontWeight: fontWeight(theme.typography.weight.bold),
         letterSpacing: componentMetrics.text.eyebrow.letterSpacing,
         textTransform: 'uppercase',
       };
     case 'label':
       return {
         fontSize: theme.typography.size.sm,
-        fontWeight: String(theme.typography.weight.semibold) as TextStyle['fontWeight'],
+        fontWeight: fontWeight(theme.typography.weight.semibold),
         marginBottom: componentMetrics.text.label.marginBottom,
       };
     case 'hint':
@@ -144,7 +145,7 @@ export function Text({ variant = 'body', tone, center = false, style, ...rest }:
         variantStyle(variant),
         { color: TONE_COLOR[resolvedTone] },
         isErrorHint && {
-          fontWeight: String(theme.typography.weight.semibold) as TextStyle['fontWeight'],
+          fontWeight: fontWeight(theme.typography.weight.semibold),
         },
         center && { textAlign: 'center' as const },
         style,

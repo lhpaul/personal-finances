@@ -1,6 +1,7 @@
-import { Pressable, type TextStyle } from 'react-native';
+import { Pressable } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
+import { fontWeight } from './_internal/font-weight';
 import { TOUCH_METRICS } from './_internal/touch-metrics';
 import { Text } from './Text';
 
@@ -20,7 +21,7 @@ export function Pill({ label, active = false, onPress }: PillProps) {
       accessibilityState={{ selected: active }}
       accessibilityLabel={label}
       onPress={onPress}
-      hitSlop={touchMetrics?.hitSlop}
+      hitSlop={touchMetrics.hitSlop}
       style={{
         paddingVertical: componentMetrics.pill.paddingVertical,
         paddingHorizontal: componentMetrics.pill.paddingHorizontal,
@@ -33,7 +34,7 @@ export function Pill({ label, active = false, onPress }: PillProps) {
       <Text
         variant="small"
         tone={active ? 'inverse' : 'secondary'}
-        style={{ fontWeight: String(theme.typography.weight.semibold) as TextStyle['fontWeight'] }}
+        style={{ fontWeight: fontWeight(theme.typography.weight.semibold) }}
       >
         {label}
       </Text>

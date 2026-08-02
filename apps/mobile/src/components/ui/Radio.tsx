@@ -47,7 +47,7 @@ export function Radio({ selected, onPress, accessibilityLabel }: RadioProps) {
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected }}
       onPress={onPress}
-      hitSlop={touchMetrics?.hitSlop}
+      hitSlop={touchMetrics.hitSlop}
       style={ringStyle}
     >
       {dot}

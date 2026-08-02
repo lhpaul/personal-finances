@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Pressable, View, type TextStyle } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
+import { fontWeight } from './_internal/font-weight';
 import { TOUCH_METRICS } from './_internal/touch-metrics';
 import { Text } from './Text';
 
@@ -44,7 +45,7 @@ export function TabBar({ items, activeKey, onSelect }: TabBarProps) {
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={item.label}
             onPress={() => onSelect(item.key)}
-            hitSlop={touchMetrics?.hitSlop}
+            hitSlop={touchMetrics.hitSlop}
             style={{
               flex: 1,
               alignItems: 'center',
@@ -75,7 +76,7 @@ export function TabBar({ items, activeKey, onSelect }: TabBarProps) {
               tone={isActive ? 'brand' : undefined}
               style={{
                 color: isActive ? theme.colors.tabBarActive : theme.colors.tabBarInactive,
-                fontWeight: String(theme.typography.weight.semibold) as TextStyle['fontWeight'],
+                fontWeight: fontWeight(theme.typography.weight.semibold),
               }}
             >
               {item.label}

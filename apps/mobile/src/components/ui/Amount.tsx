@@ -1,5 +1,6 @@
-import { Text as RNText, type TextStyle } from 'react-native';
+import { Text as RNText } from 'react-native';
 
+import { fontWeight } from './_internal/font-weight';
 import { theme } from '../../theme';
 
 export type AmountTone = 'neutral' | 'in' | 'out';
@@ -33,9 +34,14 @@ const TONE_COLOR: Record<AmountTone, string> = {
 
 export function Amount(props: AmountProps) {
   const { tone = 'neutral', size = 'md' } = props;
-  const text = 'formatted' in props && props.formatted !== undefined
-    ? props.formatted
-    : props.format(props.minorUnits);
+  // Narrow on `minorUnits` (the required-together pair with `format`), not on `formatted`:
+  // an untyped caller could spread an object with `formatted: undefined`, which would fall
+  // into the `formatted` branch below and read `undefined` as the text instead of calling
+  // the injected formatter.
+  const text =
+    'minorUnits' in props && props.minorUnits !== undefined && props.format !== undefined
+      ? props.format(props.minorUnits)
+      : props.formatted;
   const scale = theme.typography.scale.amount[size];
 
   return (
@@ -44,7 +50,7 @@ export function Amount(props: AmountProps) {
         fontVariant: ['tabular-nums'],
         fontSize: scale.fontSize,
         lineHeight: scale.lineHeight,
-        fontWeight: String(scale.fontWeight) as TextStyle['fontWeight'],
+        fontWeight: fontWeight(scale.fontWeight),
         letterSpacing: 'letterSpacing' in scale ? scale.letterSpacing : undefined,
         color: TONE_COLOR[tone],
       }}

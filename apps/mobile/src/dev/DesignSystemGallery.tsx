@@ -72,7 +72,12 @@ export function DesignSystemGallery() {
 
           <Section title={t['ds.section.buttons']}>
             <Button variant="primary" label={t['ds.button.primary']} onPress={() => undefined} />
-            <Button variant="muted" label={t['ds.button.muted']} onPress={() => undefined} />
+            <Button
+              variant="muted"
+              label={t['ds.button.muted']}
+              onPress={() => undefined}
+              disabled
+            />
             <Button variant="outline" label={t['ds.button.outline']} onPress={() => undefined} />
             <Button variant="ghost" label={t['ds.button.ghost']} onPress={() => undefined} />
             <Button variant="danger" label={t['ds.button.danger']} onPress={() => undefined} />

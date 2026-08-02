@@ -1,6 +1,7 @@
-import { View, type TextStyle } from 'react-native';
+import { View } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
+import { fontWeight } from './_internal/font-weight';
 import { Text } from './Text';
 
 export type StatTileTone = 'income' | 'expense';
@@ -40,9 +41,7 @@ export function StatTile({ tone, label, value, sub, arrow }: StatTileProps) {
         style={{
           fontSize: theme.typography.scale.amount.stat.fontSize,
           lineHeight: theme.typography.scale.amount.stat.lineHeight,
-          fontWeight: String(
-            theme.typography.scale.amount.stat.fontWeight,
-          ) as TextStyle['fontWeight'],
+          fontWeight: fontWeight(theme.typography.scale.amount.stat.fontWeight),
           letterSpacing: theme.typography.scale.amount.stat.letterSpacing,
           marginTop: componentMetrics.statTile.valueMarginTop,
         }}

@@ -43,17 +43,45 @@ export function withMinTarget(size: { width?: number; height: number }): TouchMe
 }
 
 /**
+ * The exhaustive set of `TOUCH_METRICS` keys, one per pressable primitive built in this item
+ * (plus a size/variant suffix where a primitive has more than one visual box). Declaring this
+ * as a literal union — rather than typing `TOUCH_METRICS` as `Record<string, TouchMetrics>` —
+ * means `TOUCH_METRICS.<typo>` is a compile error instead of a silent `undefined`, so a
+ * misspelled key can never defeat the AC4 touch-target guarantee at runtime.
+ */
+export type TouchMetricsKey =
+  | 'button'
+  | 'buttonSm'
+  | 'buttonGhost'
+  | 'categoryChip'
+  | 'transactionRow'
+  | 'hero'
+  | 'checkbox'
+  | 'radio'
+  | 'switch'
+  | 'segmentItem'
+  | 'pill'
+  | 'tabBarItem'
+  | 'emptyStateAction'
+  | 'sheetDismiss';
+
+/**
  * One entry per pressable primitive built in this item, keyed by primitive (plus a size/variant
  * suffix where a primitive has more than one visual box). Components consume
  * `TOUCH_METRICS.<key>` directly; `apps/mobile/src/__tests__/touch-targets.test.ts` iterates
  * this **same** record and asserts every entry's effective target (visual box + `hitSlop`)
  * reaches `theme.touchTarget.min` on both axes — one enumeration, no drift.
  *
+ * `segmentItem` (30) and `pill` (32) are *pre-hit-slop* input heights — both are below
+ * `theme.touchTarget.min` on their own; `withMinTarget` is what brings their effective target
+ * (height + hitSlop.top + hitSlop.bottom, exactly what `touch-targets.test.ts` asserts) up to
+ * the minimum, the same way it does for `buttonSm` (40) and the checkbox/radio/switch pair.
+ *
  * Extended in Steps 3 and 4 as more pressable primitives land. Non-pressable rendering modes
  * (`Checkbox`, `Radio`, `Switch` rendered inside a pressable row they don't own) are exempt and
  * are not listed here — see the implementation plan's Decision 4.
  */
-export const TOUCH_METRICS: Record<string, TouchMetrics> = {
+export const TOUCH_METRICS = {
   button: withMinTarget({ height: componentMetrics.button.height }),
   buttonSm: withMinTarget({ height: componentMetrics.button.heightSm }),
   buttonGhost: withMinTarget({ height: componentMetrics.button.heightGhost }),
@@ -82,4 +110,4 @@ export const TOUCH_METRICS: Record<string, TouchMetrics> = {
     width: componentMetrics.sheet.grabWidth,
     height: componentMetrics.sheet.grabHeight,
   }),
-};
+} satisfies Record<TouchMetricsKey, TouchMetrics>;

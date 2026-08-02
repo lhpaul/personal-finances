@@ -35,7 +35,7 @@ export function Card({ variant = 'default', title, subtitle, headerRight, childr
               shadowOpacity: componentMetrics.shadow.card.opacity,
               shadowRadius: componentMetrics.shadow.card.radius,
               shadowOffset: { width: 0, height: componentMetrics.shadow.card.offsetY },
-              elevation: 1,
+              elevation: componentMetrics.shadow.card.elevation,
             },
       ]}
     >

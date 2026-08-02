@@ -35,7 +35,7 @@ export function Sheet({ visible, onRequestClose, children }: SheetProps) {
         <Pressable
           accessibilityRole="button"
           onPress={onRequestClose}
-          hitSlop={touchMetrics?.hitSlop}
+          hitSlop={touchMetrics.hitSlop}
           style={{
             width: componentMetrics.sheet.grabWidth,
             height: componentMetrics.sheet.grabHeight,

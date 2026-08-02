@@ -48,6 +48,11 @@ export function TextField({
             borderWidth: componentMetrics.borderWidth.control,
             borderColor: theme.colors.borderInput,
           },
+          // Reviewed: the `shadow*` ring below is iOS-only (Android has no `boxShadow`
+          // equivalent for RN's `shadow*` props, only `elevation`, which draws a drop shadow,
+          // not a ring, and would look wrong here). `borderColor` changing to brandPrimary is
+          // the focus indicator that survives on every platform; the ring is an iOS-only
+          // enhancement layered on top, not the only signal.
           focused &&
             !hasError && {
               borderColor: theme.colors.brandPrimary,
@@ -69,6 +74,12 @@ export function TextField({
           secureTextEntry={secureTextEntry}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
+          // `label` renders as a sibling Text, which React Native does not associate with the
+          // input on its own — set an explicit accessible name (falling back to the
+          // placeholder) and surface the error/hint as the accessibility hint (found in
+          // review).
+          accessibilityLabel={label ?? placeholder}
+          accessibilityHint={hasError ? (error ?? undefined) : hint}
           style={{
             flex: 1,
             fontSize: componentMetrics.textField.fontSize,
@@ -78,7 +89,7 @@ export function TextField({
       </View>
       {hint !== undefined && !hasError && <Text variant="hint">{hint}</Text>}
       {hasError && (
-        <Text variant="hint" tone="danger">
+        <Text variant="hint" tone="danger" accessibilityLiveRegion="polite">
           {error}
         </Text>
       )}

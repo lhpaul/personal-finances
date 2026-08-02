@@ -19,6 +19,14 @@ import { findNakedText } from '../test-utils/naked-text-scan';
  * within a <Text> component" at runtime. `TabBar` did this (`icon` was a bare child of a
  * `View`); this suite exercises every primitive with an icon-shaped prop, including `TabBar`
  * with the exact scenario every consumer hits — a string icon.
+ *
+ * **Hook-free constraint**: every primitive below is called directly as a plain function
+ * (`TabBar({...})`, not `<TabBar {...} />` through a renderer), which only works because none
+ * of them call a React hook in their own function body. `Modal` composes `_internal/Overlay`
+ * (which does use `useEffect`, for its Android back-button handling) only as an unexecuted JSX
+ * element — `<Overlay>` is never invoked as a function here, so its hook never runs. If any of
+ * these seven primitives gains its own hook, that primitive must be rendered through React
+ * (e.g. via a future renderer-based tier) before its output tree is passed to `findNakedText`.
  */
 describe('no naked text in icon-accepting primitives', () => {
   const textTypes = new Set<unknown>([RNText, Text]);

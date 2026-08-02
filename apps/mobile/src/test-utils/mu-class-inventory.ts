@@ -11,6 +11,16 @@
  * contract (E1-E10):
  * docs/specs/developments/20260801172100_2-theme-design-system-primitives/
  * 2_2-theme-design-system-primitives_implementation-plan.md
+ *
+ * **Known limitation** (raised in review, not fixed here — no comment-stripping pass): a
+ * CSS comment that itself contains a *braced* rule, e.g. `/* .mu-old-class { color: red; } * /`
+ * (unlike E6's brace-free comment case, which the RULE_REGEX below already handles correctly
+ * by construction), would be picked up as a real selector because this scanner has no
+ * comment-awareness — it looks for `text{text}` patterns generically across the whole
+ * `<style>` block. `design/mockups/mobile/index.html` has no such comment today (verified),
+ * so this is a latent robustness gap, not a current false positive. Fixing it properly needs a
+ * comment-stripping pass with its own edge-case contract, mirroring Scanner B's
+ * `stripComments` — deferred rather than added speculatively.
  */
 
 const STYLE_OPEN = '<style>';

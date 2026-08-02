@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Pressable, View, type GestureResponderEvent, type TextStyle } from 'react-native';
+import { Pressable, View, type GestureResponderEvent } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
+import { fontWeight } from './_internal/font-weight';
 import { TOUCH_METRICS } from './_internal/touch-metrics';
 import { Text } from './Text';
 
@@ -36,33 +37,29 @@ export function TransactionRow({
   const isPending = state === 'pending';
   const isExcluded = state === 'excluded';
 
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${name}, ${meta}, ${amount}`}
-      onPress={onPress}
-      hitSlop={touchMetrics?.hitSlop}
-      style={[
-        {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.space['3'],
-          width: '100%',
-          padding: theme.space['3'],
-          paddingHorizontal: theme.space['4'],
-          borderRadius: theme.radius.lg,
-          backgroundColor: isPending ? theme.colors.warningBg : theme.colors.surface1,
-          borderWidth: componentMetrics.borderWidth.hairline,
-          borderColor: isPending ? theme.colors.warningBorder : theme.colors.border,
-          shadowColor: componentMetrics.shadow.black,
-          shadowOpacity: componentMetrics.shadow.sm.opacity,
-          shadowRadius: componentMetrics.shadow.sm.radius,
-          shadowOffset: { width: 0, height: componentMetrics.shadow.sm.offsetY },
-          elevation: 1,
-        },
-        isExcluded && { opacity: componentMetrics.transactionRow.excludedOpacity },
-      ]}
-    >
+  const rowStyle = [
+    {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: theme.space['3'],
+      width: '100%' as const,
+      padding: theme.space['3'],
+      paddingHorizontal: theme.space['4'],
+      borderRadius: theme.radius.lg,
+      backgroundColor: isPending ? theme.colors.warningBg : theme.colors.surface1,
+      borderWidth: componentMetrics.borderWidth.hairline,
+      borderColor: isPending ? theme.colors.warningBorder : theme.colors.border,
+      shadowColor: componentMetrics.shadow.black,
+      shadowOpacity: componentMetrics.shadow.sm.opacity,
+      shadowRadius: componentMetrics.shadow.sm.radius,
+      shadowOffset: { width: 0, height: componentMetrics.shadow.sm.offsetY },
+      elevation: componentMetrics.shadow.sm.elevation,
+    },
+    isExcluded && { opacity: componentMetrics.transactionRow.excludedOpacity },
+  ];
+
+  const content = (
+    <>
       <Text
         style={{
           fontSize: componentMetrics.transactionRow.iconFontSize,
@@ -76,7 +73,7 @@ export function TransactionRow({
         <Text
           style={{
             fontSize: componentMetrics.transactionRow.nameFontSize,
-            fontWeight: String(theme.typography.weight.semibold) as TextStyle['fontWeight'],
+            fontWeight: fontWeight(theme.typography.weight.semibold),
             lineHeight: componentMetrics.transactionRow.nameLineHeight,
           }}
         >
@@ -88,9 +85,7 @@ export function TransactionRow({
             color:
               metaTone === 'warn' ? theme.colors.palette.amber['700'] : theme.colors.textSecondary,
             fontWeight:
-              metaTone === 'warn'
-                ? (String(theme.typography.weight.semibold) as TextStyle['fontWeight'])
-                : undefined,
+              metaTone === 'warn' ? fontWeight(theme.typography.weight.semibold) : undefined,
             marginTop: componentMetrics.transactionRow.metaMarginTop,
           }}
         >
@@ -100,12 +95,32 @@ export function TransactionRow({
       <Text
         style={{
           fontSize: theme.typography.size.md,
-          fontWeight: String(theme.typography.weight.bold) as TextStyle['fontWeight'],
+          fontWeight: fontWeight(theme.typography.weight.bold),
           color: direction === 'in' ? theme.colors.success : theme.colors.brandSecondary,
         }}
       >
         {amount}
       </Text>
+    </>
+  );
+
+  // A row with no `onPress` is not actionable — rendering it as a Pressable with
+  // accessibilityRole="button" would announce a "button" to screen readers that does nothing
+  // on activation (found in review). Fall back to a plain View, matching how Checkbox/Radio/
+  // Switch handle an omitted handler (Decision 4).
+  if (onPress === undefined) {
+    return <View style={rowStyle}>{content}</View>;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${name}, ${meta}, ${amount}`}
+      onPress={onPress}
+      hitSlop={touchMetrics.hitSlop}
+      style={rowStyle}
+    >
+      {content}
     </Pressable>
   );
 }

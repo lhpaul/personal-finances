@@ -2,11 +2,11 @@ import {
   Pressable,
   Text as RNText,
   type GestureResponderEvent,
-  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
+import { fontWeight } from './_internal/font-weight';
 import { TOUCH_METRICS } from './_internal/touch-metrics';
 
 export type ButtonVariant = 'primary' | 'muted' | 'outline' | 'ghost' | 'danger' | 'dangerSoft';
@@ -78,7 +78,7 @@ export function Button({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      hitSlop={touchMetrics?.hitSlop}
+      hitSlop={touchMetrics.hitSlop}
       style={[
         {
           flexDirection: 'row',
@@ -91,7 +91,7 @@ export function Button({
           borderRadius: theme.radius.button,
         },
         VARIANT_STYLE[variant],
-        disabled && { opacity: 0.55 },
+        disabled && { opacity: componentMetrics.button.disabledOpacity },
       ]}
     >
       <RNText
@@ -99,7 +99,7 @@ export function Button({
           // `.mu-btn--sm` (L360) overrides font-size to `var(--base)` (14); the default
           // `.mu-btn` (L351) literal 15 applies to every other size.
           fontSize: size === 'sm' ? theme.typography.size.base : componentMetrics.button.fontSize,
-          fontWeight: String(theme.typography.weight.semibold) as TextStyle['fontWeight'],
+          fontWeight: fontWeight(theme.typography.weight.semibold),
           letterSpacing: componentMetrics.button.letterSpacing,
           color: VARIANT_TEXT_COLOR[variant],
         }}

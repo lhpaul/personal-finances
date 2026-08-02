@@ -1,6 +1,7 @@
-import { Pressable, View, type GestureResponderEvent, type TextStyle } from 'react-native';
+import { Pressable, View, type GestureResponderEvent } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
+import { fontWeight } from './_internal/font-weight';
 import { TOUCH_METRICS } from './_internal/touch-metrics';
 import { Text } from './Text';
 
@@ -31,7 +32,7 @@ export function CategoryChip({
       accessibilityLabel={label}
       accessibilityState={{ selected: state === 'selected' }}
       onPress={onPress}
-      hitSlop={touchMetrics?.hitSlop}
+      hitSlop={touchMetrics.hitSlop}
       style={{
         minHeight: componentMetrics.categoryChip.minHeight,
         paddingVertical: theme.space['3'],
@@ -58,7 +59,7 @@ export function CategoryChip({
         variant="small"
         tone="primary"
         center
-        style={{ fontWeight: String(theme.typography.weight.semibold) as TextStyle['fontWeight'] }}
+        style={{ fontWeight: fontWeight(theme.typography.weight.semibold) }}
       >
         {label}
       </Text>
@@ -67,7 +68,7 @@ export function CategoryChip({
           variant="xs"
           tone="tertiary"
           center
-          style={{ fontWeight: String(theme.typography.weight.medium) as TextStyle['fontWeight'] }}
+          style={{ fontWeight: fontWeight(theme.typography.weight.medium) }}
         >
           {hint}
         </Text>

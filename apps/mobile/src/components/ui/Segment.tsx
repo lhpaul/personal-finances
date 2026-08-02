@@ -1,6 +1,7 @@
-import { Pressable, View, type TextStyle } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
+import { fontWeight } from './_internal/font-weight';
 import { TOUCH_METRICS } from './_internal/touch-metrics';
 import { Text } from './Text';
 
@@ -39,7 +40,7 @@ export function Segment({ options, value, onChange }: SegmentProps) {
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={option.label}
             onPress={() => onChange(option.value)}
-            hitSlop={touchMetrics?.hitSlop}
+            hitSlop={touchMetrics.hitSlop}
             style={[
               {
                 paddingVertical: componentMetrics.segment.itemPaddingVertical,
@@ -52,14 +53,14 @@ export function Segment({ options, value, onChange }: SegmentProps) {
                 shadowOpacity: componentMetrics.shadow.sm.opacity,
                 shadowRadius: componentMetrics.shadow.sm.radius,
                 shadowOffset: { width: 0, height: componentMetrics.shadow.sm.offsetY },
-                elevation: 1,
+                elevation: componentMetrics.shadow.sm.elevation,
               },
             ]}
           >
             <Text
               variant="small"
               tone={isActive ? 'primary' : 'secondary'}
-              style={{ fontWeight: String(theme.typography.weight.semibold) as TextStyle['fontWeight'] }}
+              style={{ fontWeight: fontWeight(theme.typography.weight.semibold) }}
             >
               {option.label}
             </Text>

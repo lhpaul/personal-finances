@@ -305,11 +305,14 @@ export const componentMetrics = {
     /** Pure black — matches `theme.shadow.sm`'s `rgba(0, 0, 0, α)` tint. */
     black: '#000000',
     /** `theme.shadow.sm` (`0 1px 2px 0 rgba(0, 0, 0, 0.05)`) — used by `.mu-tx`
-     * (`--sh-sm`, L472), `.mu-switch::after` (L447), `.mu-segment__item.is-active` (L408). */
-    sm: { offsetY: 1, radius: 2, opacity: 0.05 },
+     * (`--sh-sm`, L472), `.mu-switch::after` (L447), `.mu-segment__item.is-active` (L408).
+     * `elevation` is the Android-only equivalent React Native reads instead of the
+     * `shadow*` properties above; not part of the CSS token, kept alongside it so every
+     * consumer sources the whole shadow from one place. */
+    sm: { offsetY: 1, radius: 2, opacity: 0.05, elevation: 1 },
     /** `theme.shadow.card`'s first layer (`0 1px 3px rgba(26, 29, 41, 0.06)`) — used by
      * `.mu-card` (`--sh-card`, L296). The rgba tint (26, 29, 41) is `theme.colors.textPrimary`. */
-    card: { offsetY: 1, radius: 3, opacity: 0.06 },
+    card: { offsetY: 1, radius: 3, opacity: 0.06, elevation: 1 },
   },
 
   text: {
@@ -344,6 +347,9 @@ export const componentMetrics = {
     fontSize: 15,
     /** `.mu-btn` (L351) letter-spacing. */
     letterSpacing: -0.1,
+    /** Not in the mockup CSS (`disabled` is a React Native-only state, no `.mu-btn` equivalent)
+     * — the dimming amount `Button` applies when `disabled` is true. */
+    disabledOpacity: 0.55,
   },
 
   card: {

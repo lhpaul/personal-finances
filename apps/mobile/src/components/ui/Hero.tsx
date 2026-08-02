@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Pressable, View, type GestureResponderEvent, type TextStyle } from 'react-native';
+import { Pressable, View, type GestureResponderEvent } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
+import { fontWeight } from './_internal/font-weight';
 import { TOUCH_METRICS } from './_internal/touch-metrics';
 import { Text } from './Text';
 
@@ -67,7 +68,7 @@ export function Hero({ gradient = 'challenge', icon, title, subtitle, onPress }:
             tone="inverse"
             style={{
               fontSize: theme.typography.size.lg,
-              fontWeight: String(theme.typography.weight.extrabold) as TextStyle['fontWeight'],
+              fontWeight: fontWeight(theme.typography.weight.extrabold),
               letterSpacing: componentMetrics.hero.titleLetterSpacing,
             }}
           >
@@ -97,7 +98,7 @@ export function Hero({ gradient = 'challenge', icon, title, subtitle, onPress }:
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
-      hitSlop={touchMetrics?.hitSlop}
+      hitSlop={touchMetrics.hitSlop}
     >
       {content}
     </Pressable>

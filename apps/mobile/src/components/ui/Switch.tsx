@@ -38,7 +38,7 @@ export function Switch({ value, onValueChange, accessibilityLabel }: SwitchProps
         shadowOpacity: componentMetrics.shadow.sm.opacity,
         shadowRadius: componentMetrics.shadow.sm.radius,
         shadowOffset: { width: 0, height: componentMetrics.shadow.sm.offsetY },
-        elevation: 1,
+        elevation: componentMetrics.shadow.sm.elevation,
       }}
     />
   );
@@ -55,7 +55,7 @@ export function Switch({ value, onValueChange, accessibilityLabel }: SwitchProps
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked: value }}
       onPress={() => onValueChange(!value)}
-      hitSlop={touchMetrics?.hitSlop}
+      hitSlop={touchMetrics.hitSlop}
       style={trackStyle}
     >
       {thumb}

@@ -1,6 +1,7 @@
-import { View, type TextStyle, type ViewStyle } from 'react-native';
+import { View, type ViewStyle } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
+import { fontWeight } from './_internal/font-weight';
 import { Text } from './Text';
 
 export type BadgeTone = 'neutral' | 'ok' | 'warn' | 'danger' | 'info' | 'celebration';
@@ -66,7 +67,7 @@ export function Badge({ tone = 'neutral', label }: BadgeProps) {
         variant="xs"
         style={{
           color: toneStyle.color,
-          fontWeight: String(theme.typography.weight.bold) as TextStyle['fontWeight'],
+          fontWeight: fontWeight(theme.typography.weight.bold),
         }}
       >
         {label}
