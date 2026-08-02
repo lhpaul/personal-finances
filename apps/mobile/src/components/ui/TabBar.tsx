@@ -61,7 +61,14 @@ export function TabBar({ items, activeKey, onSelect }: TabBarProps) {
                 backgroundColor: isActive ? theme.colors.infoBg : 'transparent',
               }}
             >
-              {item.icon}
+              {/* `item.icon` is commonly a raw emoji string (the mockup's tab icons); React
+                  Native throws "Text strings must be rendered within a <Text> component" if a
+                  bare string is a direct child of a View. Wrap it, matching how every other
+                  icon-accepting primitive (Hero, Note, TransactionRow, CategoryChip,
+                  EmptyState, Modal) already renders its icon slot. */}
+              <Text style={{ fontSize: componentMetrics.tabBar.itemIconFontSize }}>
+                {item.icon}
+              </Text>
             </View>
             <Text
               variant="xs"

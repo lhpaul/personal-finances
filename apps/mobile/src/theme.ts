@@ -524,6 +524,8 @@ export const componentMetrics = {
     itemIconWidth: 46,
     /** `.mu-tabbar__icon` (L546) height. */
     itemIconHeight: 30,
+    /** `.mu-tabbar__icon` (L546) glyph font-size. */
+    itemIconFontSize: 18,
     /** `.mu-tabbar__item` (L541) icon/label gap. */
     itemGap: 4,
     /** `.mu-tabbar__item` (L540-544) has no explicit CSS height — it fills the tab bar's own
