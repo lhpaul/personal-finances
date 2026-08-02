@@ -24,6 +24,7 @@ personal-finances/
 │       ├── src/
 │       │   ├── components/         # Shared components; components/ui/ = design-system primitives
 │       │   ├── db/                 # Drizzle schema, migrations, seeds, repositories
+│       │   ├── dev/                # __DEV__-only surfaces (design-system gallery); never ships
 │       │   ├── features/           # One folder per domain area (screens' logic)
 │       │   ├── hooks/
 │       │   ├── lib/                # Query client, formatters, logger

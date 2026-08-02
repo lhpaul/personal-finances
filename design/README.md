@@ -58,6 +58,12 @@ design/
    (`categoryIcons` and `categoryLabels` are content, not CSS — they have no `:root` mirror)
 3. The Expo theme (`apps/mobile/src/theme.ts`) follows the JSON
 
+`apps/mobile/src/theme.ts` now exists and is parity-tested against `tokens.json`
+(`theme-tokens-parity.test.ts`, added by item #2): step 3 above is not optional busywork — a
+token added without a `theme.ts` mirror fails that test in CI. See
+[`docs/best-practices/stack/design-tokens.md`](../docs/best-practices/stack/design-tokens.md)
+for the `theme` vs `componentMetrics` split.
+
 ### Source-of-truth hierarchy
 
 1. **Product specifications** (`docs/project/`) — business rules win

@@ -15,9 +15,23 @@ reviews:
       enabled: true
       timeout_ms: 600000
   auto_review:
+    # Label-gated. CodeRabbit exhausted its included quota on 2026-08-01 (95th
+    # percentile of review volume), throttling to one included review every ~40
+    # minutes. Rather than pay that stall on every PR, reviews are now opt-in:
+    # only PRs carrying `needs-coderabbit` are reviewed automatically.
+    #
+    # Apply the label to:
+    #   - implementation PRs (feature/*, fix/*, refactor/*)
+    #   - any Feature-route item: #3 schema, #6 scraper, #9 credentials,
+    #     #10 sync, #13 categorization
+    # Plan and spec PRs for mechanical items do not need it.
+    #
+    # `@coderabbitai review` still triggers a manual pass on any PR.
     enabled: true
     drafts: false
     auto_pause_after_reviewed_commits: 1
+    labels:
+      - needs-coderabbit
     base_branches:
       - develop
   path_filters:
