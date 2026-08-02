@@ -30,12 +30,21 @@ const REGISTRY_FILES = new Set([join('src', 'configs', 'index.ts'), join('src', 
  *   file cannot import a compiled constant from a TypeScript source without a build step.
  * - `src/configs/registry.test.ts`: exists specifically to assert the registry's content (AC18,
  *   AC28), which requires referencing the one concretely registered bank id by name throughout.
+ * - `src/testing/source-rut-scan.test.ts`: cross-checks that the concretely registered bank's
+ *   config wires its RUT field to `@finanzas/shared-utils` rather than a second copy (AC29),
+ *   which requires importing that bank's own config.
+ * - `src/security/credential-leak.dom.test.ts`: the named end-to-end test for AC2/Business Rule
+ *   4 drives a real read through the concretely registered bank's own config and fixtures —
+ *   a synthetic bank-agnostic config would not exercise the real login routine this test exists
+ *   to prove never leaks a credential.
  * - `src/testing/bank-containment.test.ts` (this file): its own planted-violation proof
  *   deliberately contains a Banco de Chile-shaped string as *scanner test data*.
  */
 const ALLOWED_EXCEPTION_FILES = new Set([
   'jest.config.js',
   join('src', 'configs', 'registry.test.ts'),
+  join('src', 'testing', 'source-rut-scan.test.ts'),
+  join('src', 'security', 'credential-leak.dom.test.ts'),
   join('src', 'testing', 'bank-containment.test.ts'),
 ]);
 const SELF_FILE = join('src', 'testing', 'bank-containment.test.ts');
@@ -110,8 +119,8 @@ describe('bank-containment', () => {
     expect(CL_BANKS[0]?.id).toBe('banco-de-chile');
   });
 
-  it('the named exceptions are exactly the three documented files, not a widening set', () => {
-    expect(ALLOWED_EXCEPTION_FILES.size).toBe(3);
+  it('the named exceptions are exactly the five documented files, not a widening set', () => {
+    expect(ALLOWED_EXCEPTION_FILES.size).toBe(5);
   });
 
   describe('planted-violation proof (recorded in the PR)', () => {
