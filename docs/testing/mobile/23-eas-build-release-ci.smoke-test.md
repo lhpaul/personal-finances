@@ -193,23 +193,31 @@ value found in the repository is an immediate FAIL and blocks the PR.
 Run this **before** the owner adds the secret. If the secret already exists, skip to step 8 and
 record this step as N/A with that reason.
 
+`workflow_dispatch` may only be dispatchable once the workflow file exists on the repository's
+default branch (plan claim **T5**, unverified). The push probe below therefore comes first; manual
+dispatch is the fallback. Record which technique actually worked.
+
 1. Confirm the secret is absent: `gh secret list` shows no `EXPO_TOKEN`.
-2. Push the branch and confirm GitHub lists the `EAS build` workflow:
-   `gh workflow list | grep "EAS build"`
-3. Dispatch it against the branch:
-   `gh workflow run "EAS build" --ref implementation-plan/23-eas-build-release-ci -f profile=preview -f platform=ios`
-   (dispatch from the implementation branch once it exists; the workflow must be present on the
-   ref you dispatch).
-4. `gh run list --workflow "EAS build" --limit 1` then `gh run view <run-id>`
-5. Confirm `.github/workflows/deploy.yml` is untouched:
+2. **Push probe (primary).** On the implementation branch, temporarily add that branch to the
+   workflow's `push.branches` list, commit, and push. This is the same push-to-CI-and-revert
+   technique item #35 used to prove its controls.
+3. `gh run list --workflow "EAS build" --limit 1` then `gh run view <run-id>`
+4. Revert the temporary trigger change in a follow-up commit and confirm the workflow no longer
+   runs on a push to the implementation branch.
+5. **Manual dispatch (fallback).** If the workflow file is already on the default branch, the
+   probe can be replaced by
+   `gh workflow run "EAS build" --ref <implementation-branch> -f profile=preview -f platform=ios`
+   followed by the same `gh run view` inspection.
+6. Confirm `.github/workflows/deploy.yml` is untouched:
    `git diff origin/develop -- .github/workflows/deploy.yml` prints nothing.
-6. Confirm the framework placeholder test still passes:
+7. Confirm the framework placeholder test still passes:
    `bash scripts/development-workflow/tests/test-placeholder-workflows-opt-in.sh`
 
 **Expected result**: the run is **green**; `preflight` succeeded and annotated the run with a
 notice naming `docs/project/5-release-and-signing-runbook.md`; the `preview` and `production` jobs
-are **skipped**, not failed. The placeholder workflow diff is empty and its test passes. A red run
-here means an unconfigured repository would block every merge — that is a FAIL.
+are **skipped**, not failed. The temporary trigger is reverted and the final branch state contains
+only the intended `develop` / `main` triggers. The placeholder workflow diff is empty and its test
+passes. A red run here means an unconfigured repository would block every merge — that is a FAIL.
 
 ---
 
@@ -358,7 +366,7 @@ variant's new bundle identifier gives the dev build a fresh, empty database on f
 | `finanzas://…` opens the wrong app | Two variants are installed and iOS resolved the shared scheme arbitrarily (plan Decision D4) | Uninstall the variant you are not testing |
 | The app cannot resolve a native module after this branch | The dev client predates the `expo-dev-client` install | Rebuild: `expo prebuild --clean` then `expo run:ios` |
 | `expo run:ios` fails inside CocoaPods after the clean prebuild | Pod cache out of sync with the regenerated `ios/` | Follow the Environment Setup sequence in `docs/project/2-repo-architecture.md`, which was verified end to end under #35 |
-| The `EAS build` workflow does not appear in `gh workflow list` | The workflow file is not on the ref you are querying | Push the branch first; workflows are discovered per ref |
+| The `EAS build` workflow does not appear in `gh workflow list`, or `gh workflow run` reports it does not exist | The workflow file is not yet on the default branch (plan claim T5) | Use the push probe in step 7 instead of manual dispatch, and record that T5 held |
 | The workflow ran but both build jobs are skipped | `EXPO_TOKEN` is absent, or `EAS_PREVIEW_ON_PUSH` is `false` | Expected before step 8. Afterwards, check `gh secret list` and `gh variable list` |
 | A merge to `develop` did not trigger a build | The push touched only paths outside the workflow's filter (docs, workflow-framework files) | Expected. Dispatch manually if a build is wanted |
 | `eas build` fails on EAS servers while installing dependencies | The workspace layout did not reproduce remotely | Confirm `pnpm-workspace.yaml` still declares `nodeLinker: hoisted` (#35) and that `pnpm-lock.yaml` is committed and current |

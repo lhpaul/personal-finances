@@ -129,6 +129,35 @@ worktree clean. Verified 2026-08-02.
 | V16 | Release protocol touch points | `sed -n 68,110p docs/workflow/development-workflow/protocols/05-prepare-release-protocol.md` | Step 4 says "Update the version field in any manifest files that track it … Ask the human which files apply if it's not obvious." Step 6 opens the `main` and backport PRs. Step 8 says the tag is created by `auto-tag-release.yml` on merge |
 | V17 | How the release tag is produced | `sed -n 1,40p .github/workflows/auto-tag-release.yml` | Tag `vX.Y.Z` is created by a job using the workflow `GITHUB_TOKEN` after a `release/*` or `hotfix/*` PR merges into `main`. Decision D9 therefore triggers production builds on `push: main`, never on the tag |
 | V18 | Version fields that exist today | `grep -n '"version"' package.json apps/mobile/package.json` | Both are `0.0.0`; `app.config.js` separately hard-codes `version: '0.0.0'` — three places, none linked |
+| V19 | Is `vars` usable in a job-level `if:`? | `grep -n "vars\." .github/workflows/*.yml` | `.github/workflows/e2e-regression.yml` line 21 gates a job on `vars.ENABLE_TEMPLATE_PLACEHOLDER_REGRESSION == 'true'`. The `vars`-in-`if` half of D7/D9 is confirmed **inside this repository** |
+| V20 | Does any workflow here gate a job on `secrets.`? | `grep -n "if:.*secrets\." .github/workflows/*.yml` | No match. Secrets are only consumed through step-level `env:` (for example `.github/workflows/pr-agent.yml` lines 29–35). Consistent with the preflight design in D7, though see [Technical claims requiring confirmation](#technical-claims-requiring-confirmation) |
+
+---
+
+## Technical claims requiring confirmation
+
+Several statements in this plan describe **GitHub Actions or EAS behaviour that cannot be proved
+from this repository's source**. They are listed here rather than left implicit, per the
+technical-accuracy rule in [`REVIEW.md`](../../../../REVIEW.md). Each carries a status: *verified
+here* means a file in this repository demonstrates it; *unverified* means the implementer must
+confirm it against the authoritative documentation or a real run **before relying on it**.
+
+| # | Claim | Used by | Status |
+| --- | --- | --- | --- |
+| T1 | `vars` is available in a job-level `if:` | D7, D9 | **Verified here** — V19 |
+| T2 | A secret can be read into a step-level `env:` and tested in `run:` | D7 | **Verified here** — V20 |
+| T3 | The `secrets` context is **not** available in a job-level `if:`, which is why the preflight job exists | D7 | **Unverified** — no counter-example exists in this repository (V20), but absence is not proof. Confirm against the GitHub Actions "context availability" documentation. If it turns out to be allowed, the preflight job is redundant but still correct; nothing breaks |
+| T4 | A workflow triggered by an event raised with the workflow `GITHUB_TOKEN` does not trigger further workflows — hence `push: main` rather than a tag trigger (D9) | D9 | **Unverified** — confirm against the GitHub Actions documentation on recursive workflow prevention. The chosen design does not depend on the answer: `push: main` fires on the release merge regardless |
+| T5 | `workflow_dispatch` is only dispatchable once the workflow file exists on the repository's **default branch** | Runbook step 7 | **Unverified** — this is why runbook step 7 offers a branch-scoped push probe as the primary technique and manual dispatch as the fallback. Confirm at implementation time and record which technique actually worked |
+| T6 | `eas.json` build profiles support `extends`, `env`, `autoIncrement`, `ios.simulator` and `android.buildType` as used in the sample | D5, D10, code samples | **Unverified** — confirm against `eas build --help` and the EAS schema for the pinned CLI version before committing the file. A profile key the CLI rejects fails loudly on the first build, not silently |
+| T7 | `cli.appVersionSource: "remote"` plus `autoIncrement: true` makes EAS own `ios.buildNumber` / `android.versionCode` while `version` still comes from the app config | D10 | **Unverified** — confirm before H4. If the semantics differ, the fallback is `appVersionSource: local` with the build number bumped by `/prepare-release`; the release runbook must then say so |
+| T8 | `eas build --auto-submit` submits the finished build using the submit profile whose name matches the build profile | D9 | **Unverified** — confirm during H6, which is deliberately interactive for this reason |
+| T9 | An iOS Simulator build requires no Apple account and no signing | D5 | **Unverified** — confirm the first time `eas build --profile development` runs. Local `expo run:ios` already builds for the Simulator without an account today, which is suggestive but not the same code path |
+| T10 | `eas build` run inside `apps/mobile` uploads and installs the whole pnpm workspace correctly | D8, H4 | **Unverified** — first proved by H4. `pnpm-workspace.yaml` already declares `nodeLinker: hoisted` (#35), which is the setting the remote install needs |
+
+Nothing in T3–T10 changes the plan's structure if it resolves the other way; each row names its
+fallback. No implementation step may proceed on an unverified row without recording the
+confirmation in the implementation PR.
 
 ---
 
@@ -227,7 +256,8 @@ an unused framework placeholder.
 
 ### D7 — A preflight job gates on `EXPO_TOKEN`; an unconfigured repository skips, it does not fail
 
-The `secrets` context is **not** available in a job-level `if:`. The workflow therefore opens with
+The `secrets` context is **not** available in a job-level `if:` (claim **T3**, unverified — see
+[Technical claims requiring confirmation](#technical-claims-requiring-confirmation)). The workflow therefore opens with
 a `preflight` job that reads `EXPO_TOKEN` into a step `env:` (where secrets are allowed), writes
 `configured=true|false` to `$GITHUB_OUTPUT`, and emits a `::notice::` pointing at the release
 runbook when it is false. Every build job carries `if: needs.preflight.outputs.configured == 'true'`.
@@ -248,16 +278,18 @@ being that the pre-existing CI `bundle` job already catches the failure mode tha
 ### D9 — Production builds trigger on `push: main`; store submission is doubly gated
 
 The release tag `vX.Y.Z` is created by `auto-tag-release.yml` using the workflow `GITHUB_TOKEN`
-(V17). GitHub does not re-trigger workflows from events raised with that token, so a `push: tags`
-trigger would be a pipeline that silently never runs. `push: branches: [main]` is the reliable
-signal, and it fires exactly when a `release/*` or `hotfix/*` PR merges.
+(V17). GitHub does not re-trigger workflows from events raised with that token (claim **T4**,
+unverified), so a `push: tags` trigger risks being a pipeline that silently never runs.
+`push: branches: [main]` is the reliable signal either way, and it fires exactly when a
+`release/*` or `hotfix/*` PR merges.
 
 Store submission is gated twice: the job declares `environment: production` (so GitHub
 Environment protection rules — required reviewers — apply, matching what
 `3-software-architecture.md` already promises), and `--auto-submit` is appended only when the
-repository variable `EAS_AUTO_SUBMIT` is `true`. `vars` **is** available in a job-level `if:`,
-unlike `secrets`. The owner flips that variable after H6 proves an interactive submit works, so
-the first ever store submission is never an unattended one.
+repository variable `EAS_AUTO_SUBMIT` is `true`. `vars` **is** available in a job-level `if:`
+(claim **T1**, verified in this repository at V19), unlike `secrets`. The owner flips that
+variable after H6 proves an interactive submit works, so the first ever store submission is never
+an unattended one.
 
 ### D10 — One version source: `apps/mobile/package.json`; build numbers stay remote
 
@@ -816,7 +848,8 @@ enrolment and App Store Connect processing, which are wall-clock waits, not work
 1. **Add `expo-dev-client`** (D5). `cd apps/mobile && pnpm exec expo install expo-dev-client`.
    Verification: it appears in `apps/mobile/package.json` dependencies and `pnpm install` is
    clean. Record the resolved version in the PR.
-2. **Rewrite `apps/mobile/eas.json`** per D1, D3, D5, D10, D12. Verification: the file parses
+2. **Rewrite `apps/mobile/eas.json`** per D1, D3, D5, D10, D12, first confirming claims **T6** and
+   **T7** against the pinned CLI's schema and recording the result in the PR. Verification: the file parses
    (`node -e "JSON.parse(require('fs').readFileSync('apps/mobile/eas.json','utf8'))"`) and every
    build profile carries an `env.APP_VARIANT`.
 3. **Rewrite `apps/mobile/app.config.js`** per D2, D3, D4, D10, including the corrected header
@@ -866,7 +899,9 @@ enrolment and App Store Connect processing, which are wall-clock waits, not work
 
 13. **Run the runbook's non-account steps** (`docs/testing/mobile/23-eas-build-release-ci.smoke-test.md`
     steps 1–7) and record PASS/FAIL for each in the PR description.
-14. **Hand H1–H8 to the owner** as an explicit escalation on the PR. S4 and AC3 stay open until
+14. **Record the outcome of every unverified technical claim** (T3–T10) that the work touched, in
+    the PR description: confirmed as stated, or corrected with the fallback the row names.
+15. **Hand H1–H8 to the owner** as an explicit escalation on the PR. S4 and AC3 stay open until
     H1–H8 are done; do not mark this item complete on the strength of a green CI run.
 
 ---
