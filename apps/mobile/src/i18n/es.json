@@ -199,5 +199,60 @@
   "reminders.day_4": "Jueves",
   "reminders.day_5": "Viernes",
   "reminders.day_6": "Sábado",
-  "reminders.day_7": "Domingo"
+  "reminders.day_7": "Domingo",
+
+  "home.header_title": "Finanzas",
+  "home.header_subtitle": "Tu asistente financiero",
+  "home.header_settings_action": "Configuración",
+
+  "home.challenge_title": "¡Tu primera etapa!",
+  "home.challenge_subtitle": "{{count}} transacciones pendientes · ~{{minutes}} min",
+  "home.all_clear_title": "¡Todo al día!",
+  "home.all_clear_subtitle": "No tienes transacciones pendientes",
+
+  "home.empty_title": "Estamos preparando tus datos",
+  "home.empty_body": "Tu primer sincronización con Banco de Chile está en curso. Esto puede tomar un par de minutos.",
+  "home.empty_progress_label": "Progreso de sincronización",
+
+  "home.sync_error_note": "No pudimos sincronizar {{bankName}}.",
+  "home.sync_error_last_success_minutes": "Último sync exitoso: hace {{minutes}} min.",
+  "home.sync_error_last_success_hours": "Último sync exitoso: hace {{hours}} h.",
+  "home.sync_error_last_success_yesterday": "Último sync exitoso: ayer {{time}}.",
+  "home.sync_error_last_success_date": "Último sync exitoso: {{date}}.",
+  "home.sync_error_retry": "Reintentar",
+
+  "home.summary_title": "Resumen financiero",
+  "home.summary_income_label": "Ingresos",
+  "home.summary_expense_label": "Gastos",
+  "home.summary_movement_count_single": "{{count}} movimiento",
+  "home.summary_movement_count_plural": "{{count}} movimientos",
+  "home.summary_balance_label": "Balance del mes",
+
+  "home.trend_title": "Análisis de tendencias",
+  "home.trend_segment_expense": "Gastos",
+  "home.trend_segment_income": "Ingresos",
+  "home.trend_legend_current": "Este mes",
+  "home.cta_view_full_analysis": "Ver análisis completo →",
+
+  "home.category_title": "Análisis por categorías",
+  "home.category_subtitle_single": "{{count}} categoría · {{month}}",
+  "home.category_subtitle_plural": "{{count}} categorías · {{month}}",
+  "home.category_meta_single": "{{count}} transacción · {{percent}}",
+  "home.category_meta_plural": "{{count}} transacciones · {{percent}}",
+  "home.category_uncategorized_label": "Sin categorizar",
+
+  "home.recent_title": "Transacciones recientes",
+  "home.recent_cta": "Ver todas",
+  "home.recent_meta_uncategorized": "{{date}} · Sin categorizar",
+  "home.recent_meta_categorized": "{{date}} · {{category}}",
+  "home.recent_meta_warn": "⚠️ Necesita categorización",
+
+  "home.banks_title": "Bancos conectados",
+  "home.banks_badge_ok": "Al día",
+  "home.banks_badge_error": "Error",
+  "home.banks_sub_error": "Error de sincronización",
+  "home.bank_sync_minutes": "Sincronizado hace {{minutes}} min",
+  "home.bank_sync_hours": "Sincronizado hace {{hours}} h",
+  "home.bank_sync_yesterday": "Sincronizado ayer {{time}}",
+  "home.bank_sync_date": "Sincronizado el {{date}}"
 }
