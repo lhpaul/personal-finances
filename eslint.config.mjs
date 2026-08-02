@@ -188,16 +188,26 @@ export const sharedUtilsPurity = {
         ],
       },
     ],
+    // `checkGlobalObject: true` (plus `global` in `globalObjects`, alongside ESLint's own
+    // defaults `globalThis`/`self`/`window`) closes the gap the bare `globals` array leaves open:
+    // without it, `globalThis.process?.env` or `global.process` would not be flagged, only a bare
+    // `process` identifier.
     'no-restricted-globals': [
       'error',
       {
-        name: 'process',
-        message:
-          '@finanzas/shared-utils must stay pure: no Node I/O. Do not read process.env or any other process global; pass configuration in as an explicit function argument instead.',
-      },
-      {
-        name: 'global',
-        message: '@finanzas/shared-utils must stay pure: no Node globals.',
+        globals: [
+          {
+            name: 'process',
+            message:
+              '@finanzas/shared-utils must stay pure: no Node I/O. Do not read process.env or any other process global (including via globalThis.process / global.process); pass configuration in as an explicit function argument instead.',
+          },
+          {
+            name: 'global',
+            message: '@finanzas/shared-utils must stay pure: no Node globals.',
+          },
+        ],
+        checkGlobalObject: true,
+        globalObjects: ['global'],
       },
     ],
   },
