@@ -86,16 +86,21 @@ unchanged afterwards (`git status` reports a clean tree).
 `clean` removes it. The mobile workspace's `workspace-wiring` test passes, proving the app
 consumes code from all three packages.
 
-### Step 4: Boot the app in the iOS Simulator — HUMAN VERIFICATION REQUIRED
+### Step 4: Boot the app in the iOS Simulator
 
 **Maps to**: AC4
 
-> Steps 4-8 need an interactive macOS session with Xcode and cannot be executed by the
-> implementation agent. Their results must be recorded by a human; until then the pull request
-> must list AC4 — and the flow-walk portions of AC5 and AC14 — as *pending human verification*
-> rather than claiming them.
+> Originally recorded as needing an interactive macOS session with Xcode and unable to be
+> executed by the implementation agent. **Resolved under #35** (2026-08-02, Decision 7 of that
+> item's implementation plan): the implementation environment did have Xcode, CocoaPods and an
+> iOS Simulator available, so the full native sequence was run end to end and the boot was
+> observed directly (transcript + screenshot in the #35 implementation PR) — not asserted.
+> AC4 is closed. Steps 5-8's flow-walk portions (AC5, AC14) still need an interactive walk
+> beyond a single boot and remain *pending human verification*.
 
-1. Run `pnpm dev:mobile:ios`.
+1. Run `pnpm dev:mobile:ios` (a dev build must already exist on the simulator — see
+   `docs/project/2-repo-architecture.md` → Environment Setup for the full
+   prebuild/pod install/`expo run:ios` sequence that produces one from a clean clone).
 2. Wait for the iOS Simulator to open the app.
 
 **Expected result**: The app boots and lands on the `onboarding-intro` placeholder. The Metro
@@ -179,6 +184,12 @@ absent; no product data or credential input appears anywhere.
 
 **Maps to**: AC7
 
+> **Automated under #35** (2026-08-02): this was previously a manual-only runbook step. It is
+> now also proved by `packages/shared-domain/src/domain-purity-lint.test.ts`, which drives the
+> real ESLint CLI over a deliberate violation on every `pnpm test` run (root CI `test` job) — see
+> the implementation plan for #35, Decision 5. The manual steps below remain valid as an
+> independent, from-scratch reproduction.
+
 1. Add `import Constants from 'expo-constants';` to `packages/shared-domain/src/index.ts`.
 2. Run `pnpm lint`.
 3. Remove the import.
@@ -256,10 +267,15 @@ the architecture document is reflected in that document in the same change.
 - [ ] **AC1** — `pnpm install` succeeds from a clean clone with no manual repair step and no undocumented environment variable.
 - [ ] **AC2** — `pnpm lint`, `pnpm typecheck` and `pnpm test` succeed from the root and cover the app and all three packages.
 - [ ] **AC3** — Each package builds, develops, cleans and lints on its own, and the app consumes all three.
-- [ ] **AC4** — `pnpm dev:mobile:ios` boots the app in the iOS Simulator and renders a placeholder.
+- [x] **AC4** — `pnpm dev:mobile:ios` boots the app in the iOS Simulator and renders a
+      placeholder. Executed under #35 on 2026-08-02 via the full native sequence
+      (`pnpm exec expo prebuild --platform ios --clean` → `pod install` → `pnpm exec expo run:ios`
+      — see `docs/project/2-repo-architecture.md` → Environment Setup); the app booted on an
+      "iPhone 17" simulator and landed on the `onboarding-intro` placeholder. Evidence (transcript,
+      screenshot) is in the implementation PR for #35.
 - [ ] **AC5** — Every MVP route exists, is reachable by flow and directly, and names its mockup screen and route.
 - [ ] **AC6** — No route exists for the eight out-of-MVP screens or the three design-system screens.
-- [ ] **AC7** — A deliberate restricted import in `shared-domain` fails lint with the restriction message; removing it passes.
+- [x] **AC7** — A deliberate restricted import in `shared-domain` fails lint with the restriction message; removing it passes. Automated under #35 (`packages/shared-domain/src/domain-purity-lint.test.ts`, run by `pnpm test`); the manual reproduction above still passes independently.
 - [ ] **AC8** — The pull request shows lint, type-check and test results individually.
 - [ ] **AC9** — Checks install from the committed lockfile, and a mismatched lockfile fails them.
 - [ ] **AC10** — No browser-based end-to-end check runs on the pull request.

@@ -75,6 +75,24 @@ and the missing root modules, and each FAIL line says what to fix and which comm
 Step 4 prints `exit=0` with one ok line per assertion. Record both outputs — this is the evidence
 that the check can fail, not just pass.
 
+> **Finding recorded during #35's implementation (2026-08-02)**: on a real, larger monorepo tree
+> (not the small scratch dir the plan's V-log used), step 2's `pnpm check:layout` does **not**
+> reproduce a FAIL as written. pnpm performs an implicit dependency-sync check before any
+> `pnpm run`/`pnpm exec` invocation and silently relinks `node_modules` back to match the
+> *declared* `nodeLinker` in `pnpm-workspace.yaml` (still `hoisted`) before the script runs — even
+> with `--force` added to the isolated install. This does **not** affect the `postinstall`
+> enforcement mechanism itself (Step 3 below is unaffected and reproduces genuinely), only this
+> step's use of the *named* `pnpm check:layout` command to observe a FAIL. To get a genuine FAIL
+> for this step, invoke the script directly, bypassing `pnpm run`:
+>
+> ```bash
+> node scripts/check-node-linker-layout.mjs; echo "exit=$?"
+> ```
+>
+> This runs the same code the `pnpm check:layout`/`postinstall` wiring calls, without pnpm's
+> pre-run sync in the way. Step 4 (both invocations, once the tree is genuinely hoisted again)
+> works via either form.
+
 ### Step 3: A plain install cannot silently end isolated
 
 **Maps to**: AC1, AC2
@@ -104,6 +122,26 @@ run was 1022 modules, 3.9 MB, 22 assets, and a large deviation is worth a look.
 > If the exact `--eager` invocation had to be adapted (see the plan's Risks table), use the form
 > recorded in the implementation PR here and note the deviation in the results.
 
+> **Same finding as Step 2 applies here**: `pnpm exec expo export:embed …` is also a `pnpm`-mediated
+> invocation, so a CLI-flag-only isolated install (`--node-linker=isolated`) is silently healed back
+> to hoisted before the bundle command runs and step 2 will incorrectly *succeed*. To reproduce a
+> genuine FAIL, declare the isolated linker in `pnpm-workspace.yaml` itself instead of via a CLI
+> flag (this is also exactly what CI's Step 5 scratch commit does, so it is a higher-fidelity local
+> rehearsal of that CI run):
+>
+> ```bash
+> sed -i '' 's/^nodeLinker: hoisted$/nodeLinker: isolated/' pnpm-workspace.yaml
+> rm -rf node_modules apps/*/node_modules packages/*/node_modules
+> pnpm install --ignore-scripts
+> cd apps/mobile && pnpm exec expo export:embed --eager --platform ios --dev false; echo "exit=$?"
+> cd ../..
+> sed -i '' 's/^nodeLinker: isolated$/nodeLinker: hoisted/' pnpm-workspace.yaml
+> rm -rf node_modules apps/*/node_modules packages/*/node_modules
+> pnpm install
+> cd apps/mobile && pnpm exec expo export:embed --eager --platform ios --dev false; echo "exit=$?"
+> cd ../..
+> ```
+
 ### Step 5: The CI bundle job fails on an isolated tree and passes on a hoisted one
 
 **Maps to**: AC3, AC4
@@ -118,6 +156,19 @@ run was 1022 modules, 3.9 MB, 22 assets, and a large deviation is worth a look.
 
 **Expected result**: both run URLs exist and show what the plan claims. A green `iOS bundle` job
 with no recorded failing counterpart does not pass this step.
+
+> **Status (2026-08-02)**: **RAN, PASS**, executed on implementation PR #39 after it opened.
+> Scratch commit set `pnpm-workspace.yaml: nodeLinker: isolated`, pushed, and the `iOS bundle`
+> job failed: [FAILURE run](https://github.com/lhpaul/personal-finances/actions/runs/30732643254/job/91455606495)
+> — failure occurred at the `Install dependencies` step, where the root `postinstall` layout
+> check refused the install itself (`FAIL: pnpm config get nodeLinker printed "isolated"`,
+> `[ELIFECYCLE] Command failed with exit code 1`), before the bundle step ever ran — an even
+> stronger proof than a resolver error mid-bundle. `Lint`/`Type check`/`Test` correctly failed the
+> same way on that commit, since `postinstall` runs on every `pnpm install --frozen-lockfile`.
+> The scratch commit was reverted (`git revert --no-edit HEAD`) and pushed; the `iOS bundle` job
+> then passed: [SUCCESS run](https://github.com/lhpaul/personal-finances/actions/runs/30732674784/job/91455674728).
+> Both URLs are also recorded in PR #39's description under the `Evidence` heading (E4).
+> tick this step's boxes in the Assertions Checklist once done.
 
 ### Step 6: The domain-purity ESLint rule is proved to fire
 
@@ -152,9 +203,18 @@ wrong and must be corrected before this step passes.
 **Expected result**: the documented sequence reaches a native build with no undocumented step. Any
 correction needed becomes an edit to `2-repo-architecture.md` before this runbook is signed off.
 
+**Result — RAN, 2026-08-02**: PASS with two documented corrections (both now in
+`2-repo-architecture.md` → Environment Setup). Versions: Node `v26.5.0`, pnpm `11.12.0`, Xcode
+`26.6` (build `17F113`), CocoaPods `1.16.2`, macOS `26.5.2`. `expo prebuild --platform ios --clean`
+succeeded; the CocoaPods step inside it failed once with a Ruby/locale
+`Encoding::CompatibilityError` and was fixed by exporting `LANG=en_US.UTF-8` /
+`LC_ALL=en_US.UTF-8` before `pod install`; `expo run:ios` then failed once with a stale Xcode
+DerivedData `build.db` lock left by an earlier interrupted attempt (killing the orphaned
+`SWBBuildService` process and retrying resolved it) before succeeding.
+
 ### Step 8: The app boots in the iOS Simulator
 
-**Maps to**: AC6, AC7 — **HUMAN VERIFICATION REQUIRED**
+**Maps to**: AC6, AC7
 
 1. Complete Step 7, ending with the app launching in the simulator.
 2. Confirm the simulator shows the running app (a placeholder screen is the expected content at
@@ -171,6 +231,16 @@ implementation PR and referenced from
 > commands were executed, which were not, and what therefore remains unverified. Do **not** mark it
 > PASS by inspection — that is the failure this whole item exists to correct.
 
+**Result — RAN, 2026-08-02**: PASS. Xcode, CocoaPods and the iOS Simulator were all available in
+the implementation environment (contrary to the "possibly no Xcode" contingency this runbook and
+the plan both anticipated), so this was executed directly, not left open. `xcrun simctl list
+devices | grep Booted` showed `iPhone 17 (…) (Booted)`; a `launchctl list` spawn on that simulator
+showed the `UIKitApplication:cl.finanzas.mobile` process running; a screenshot was captured showing
+the app on the `onboarding-intro` placeholder (mockup screen `onboarding-intro`, route
+`/(onboarding)/intro`), matching item #1's smoke-test Step 4 expected result exactly. Evidence
+(transcript, screenshot) is in the implementation PR for #35, and item #1's runbook AC4/AC7 rows
+are updated accordingly.
+
 ### Step 9: No stale reference to the old configuration survives
 
 **Maps to**: AC1, AC6
@@ -184,6 +254,14 @@ record and is intentionally not rewritten. No live config file, script, source c
 project document still points at `.npmrc` for the linker setting. In particular
 `apps/mobile/metro.config.js` now cites `pnpm-workspace.yaml`.
 
+**Result — RAN, 2026-08-02**: PASS. Surviving hits: item #1's and #35's own merged/in-progress
+implementation plans (both historical, intentionally not rewritten), this runbook and the
+implementation-plan for #35 itself (intentional — they describe the fix), the new
+`scripts/check-node-linker-layout.mjs` and `pnpm-workspace.yaml` (intentional — the fix itself),
+`AGENTS.md`/`2-repo-architecture.md` (intentional — explain the correct current behaviour), and
+`CHANGELOG.md` (intentional — the entry names `.npmrc` as what was removed). No live config,
+script, comment or current doc still points at `.npmrc` as the linker declaration surface.
+
 ### Last Step: Validate & Shut Down
 
 - Verify every assertion in the checklist below, including the ones marked NOT RUN with a reason.
@@ -194,21 +272,40 @@ project document still points at `.npmrc` for the linker setting. In particular
 
 ## Assertions Checklist
 
-Each checkbox maps to an acceptance criterion of issue #35.
+Each checkbox maps to an acceptance criterion of issue #35. Status initially recorded 2026-08-02
+during implementation, ahead of implementation PR #39 being opened; AC3/AC4 updated the same day
+after PR #39 opened and E4's CI evidence (Step 5) was captured.
 
-- [ ] **AC1** — A plain `pnpm install` (no flags) produces a hoisted layout with
-      `@expo/metro-runtime` at the workspace root (Steps 1, 3).
-- [ ] **AC2** — The layout check fails on a tree deliberately installed isolated and passes on a
-      hoisted one, with both outputs recorded (Steps 2, 3).
-- [ ] **AC3** — `expo export:embed --eager --platform ios --dev false` succeeds in CI (Steps 4, 5).
-- [ ] **AC4** — The bundle job was *seen to fail* on a deliberately isolated tree, locally and in
-      CI, before the green run was trusted (Steps 4, 5).
-- [ ] **AC5** — A test proves `no-restricted-imports` rejects a deliberate violation from
+- [x] **AC1** — A plain `pnpm install` (no flags) produces a hoisted layout with
+      `@expo/metro-runtime` at the workspace root (Steps 1, 3). PASS — verified directly (real
+      directories, not symlinks; `pnpm config get nodeLinker` → `hoisted`).
+- [x] **AC2** — The layout check fails on a tree deliberately installed isolated and passes on a
+      hoisted one, with both outputs recorded (Steps 2, 3). PASS, with the Step 2 methodology
+      correction noted above (`node scripts/check-node-linker-layout.mjs` invoked directly, not
+      `pnpm check:layout`, for the negative case — pnpm's implicit pre-run sync otherwise heals
+      the tree before the check runs). Step 3's `postinstall` enforcement reproduces genuinely
+      through either invocation form (it is not affected by the same masking).
+- [x] **AC3** — `expo export:embed --eager --platform ios --dev false` succeeds in CI (Steps 4, 5).
+      Step 4 (local) PASS: 992 modules, 3.8 MB, 22 assets on the hoisted tree. Step 5 (CI) PASS,
+      executed on implementation PR #39 — see the run URLs recorded under Step 5 below.
+- [x] **AC4** — The bundle job was *seen to fail* on a deliberately isolated tree, locally and in
+      CI, before the green run was trusted (Steps 4, 5). Step 4 (local) PASS, using the
+      `pnpm-workspace.yaml`-edit methodology noted above (a CLI-flag-only isolated install is
+      silently healed by pnpm before `pnpm exec` runs, so it does not reproduce a failure — see
+      the Step 4 note). Step 5 (CI) PASS: the scratch commit's failing run and the reverted
+      commit's passing run are both recorded under Step 5 below and in PR #39's description.
+- [x] **AC5** — A test proves `no-restricted-imports` rejects a deliberate violation from
       `@finanzas/shared-domain`, and the test itself fails when the rule is neutered (Step 6).
-- [ ] **AC6** — `docs/project/2-repo-architecture.md` carries a setup sequence that was executed
-      end to end to a running simulator build (Steps 7, 8, 9).
-- [ ] **AC7** — Item #1's simulator criterion has real evidence, or an explicit written
-      reclassification stating what remains unverified (Step 8).
+      PASS — emptying `sharedDomainPurity`'s `patterns` group triggers ESLint's own schema
+      validation (`minItems: 1`), which fails the two purity-rule test cases with a fatal config
+      error (a stronger failure than "silently stops firing"). Reverted and re-verified passing.
+- [x] **AC6** — `docs/project/2-repo-architecture.md` carries a setup sequence that was executed
+      end to end to a running simulator build (Steps 7, 8, 9). PASS — see the Step 7/8 results
+      above.
+- [x] **AC7** — Item #1's simulator criterion has real evidence, or an explicit written
+      reclassification stating what remains unverified (Step 8). PASS with real evidence (not a
+      reclassification): Xcode/CocoaPods/Simulator were available in the implementation
+      environment. Item #1's runbook AC4 and AC7 rows are updated with this evidence.
 
 ---
 

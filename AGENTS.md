@@ -203,6 +203,9 @@ pnpm --filter @finanzas/bank-scraper test  # injected scripts vs HTML fixtures
 # Type check
 pnpm typecheck
 
+# node_modules layout check (fails if the tree is not hoisted — also runs as postinstall and in CI)
+pnpm check:layout
+
 # Database (arrives with the database item, #3)
 pnpm --filter @finanzas/mobile db:generate     # generate a Drizzle migration
 pnpm --filter @finanzas/mobile db:check        # apply migrations to a fixture DB
@@ -296,3 +299,4 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 | A transaction shows up in the wrong month | The local day was derived from the UTC timestamp instead of `@finanzas/shared-utils`'s `deriveDateLocal` |
 | Native module missing at runtime | Needs a dev build, not Expo Go |
 | App crashes on launch after an update | A migration threw. This is unrecoverable in the field — that is why `db:check` is a required check |
+| `Unable to resolve "@expo/metro-runtime"` from `expo-router/entry-classic.js` | The installed `node_modules` tree is isolated, not hoisted (pnpm 11 does not read `node-linker` from `.npmrc`; it reads `nodeLinker` from `pnpm-workspace.yaml`) | Run `pnpm check:layout` to confirm, then `pnpm install` (plain, no `--node-linker` flag) |

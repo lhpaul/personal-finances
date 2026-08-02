@@ -17,6 +17,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
+    "check:layout": "node scripts/check-node-linker-layout.mjs",
+    "postinstall": "node scripts/check-node-linker-layout.mjs",
     "format": "prettier --write \"**/*.md\"",
     "format:code": "prettier --write \"{apps,packages}/**/*.{ts,tsx,js,jsx,json}\"",
     "mockups:mobile": "open design/mockups/mobile/index.html",

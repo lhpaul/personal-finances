@@ -27,3 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   matching the mockup `mu-*` classes, seven new design tokens, and a dev-only design-system
   gallery route at `/gallery`
 - **i18n infrastructure: catalogues, resolver and the no-literal-string lint rule** (#34): `i18next` + `react-i18next` initialised in `apps/mobile/src/i18n/`, flat-key `es`/`en` catalogues, device-locale resolution via `expo-localization` defaulting to `es`, and `eslint-plugin-i18next/no-literal-string` enforcing, for JSX text covered by its `jsx-text-only` mode, that no user-facing literal string appears in JSX (known exception: the two tab-title literals in `apps/mobile/app/(tabs)/_layout.tsx`, which the rule's JSX-text-only mode cannot see). The design-system gallery now renders entirely from catalogue keys; `gallery.strings.ts` is removed.
+
+### Fixed
+
+- **Fix the pnpm hoisted layout and add a CI bundle check** (#35): `nodeLinker: hoisted` now lives
+  in `pnpm-workspace.yaml`, where pnpm 11 actually reads it — a plain `pnpm install` produces the
+  hoisted layout the Expo/Metro resolver needs, and `.npmrc` (which pnpm 11 silently ignored) is
+  gone. A new `pnpm check:layout` check runs on every install and in CI, a new `iOS bundle` CI job
+  runs `expo export:embed` so a tree that cannot build the app can no longer be green, and a test
+  now proves the `@finanzas/shared-domain` import restriction rejects a deliberate violation.
