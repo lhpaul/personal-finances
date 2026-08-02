@@ -90,6 +90,21 @@ describe('isSyntheticAmount / findAmountViolations', () => {
     const violations = findAmountViolations('<td>$1.111.000</td><td>$1.234.567</td>');
     expect(violations).toHaveLength(1);
   });
+
+  it.each([1, 500, 567, 999, 1999])(
+    'rejects %i minor units as non-synthetic — a single-digit thousands-quotient carries no repeated-digit signal (CodeRabbit finding #39, Major)',
+    (value) => {
+      // Math.floor(value / 1000) is 0 or 1 for every one of these — a one-character quotient
+      // string, for which [...quotientDigits].every(...) is trivially true regardless of the
+      // actual digit. Every one of these values is a real (non-round, non-repeated-digit) amount
+      // and must not be misclassified as synthetic.
+      expect(isSyntheticAmount(value)).toBe(false);
+    },
+  );
+
+  it('flags a real-looking sub-CLP1000 amount in a fixture, not just multi-digit-quotient amounts', () => {
+    expect(findAmountViolations('$567')).toHaveLength(1);
+  });
 });
 
 describe('isSyntheticAccountNumber / findAccountNumberViolations', () => {

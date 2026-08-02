@@ -77,6 +77,12 @@ export function isSyntheticAmount(minorUnits: number): boolean {
   if (minorUnits === 0) return true;
   if (minorUnits % 1000 === 0) return true;
   const quotientDigits = String(Math.floor(minorUnits / 1000));
+  // A single-digit quotient carries no repeated-digit signal at all: [...'0'].every(...) and
+  // [...'1'].every(...) are trivially true for a one-character array, so every minorUnits value
+  // from 1 to 1999 (other than exact multiples of 1000, already caught above) was previously
+  // misclassified as synthetic regardless of its actual digits (CodeRabbit finding #39, Major).
+  // Rule 3 only means something for a quotient of two or more identical digits.
+  if (quotientDigits.length < 2) return false;
   return [...quotientDigits].every((digit) => digit === quotientDigits[0]);
 }
 

@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { loadFixtureHtml } from '../test-utils/load-fixture';
 import { scanFixtureContent } from './fixture-scan';
 import { PROHIBITED_NAME_TOKENS } from './prohibited-name-tokens';
@@ -58,12 +58,17 @@ describe('fixture-sanitization', () => {
     expect(violations).toEqual([]);
   });
 
-  it('the synthetic-allowlist exclusion is exactly one file, not a widening set', () => {
-    // scanFixtureContent's own callers never scan synthetic-allowlist.ts (it is not under
-    // fixtures/), so the "exclusion list" is the single, named allowlist source file itself.
-    // This assertion documents the invariant explicitly rather than leaving it implicit.
-    const excludedFiles = ['synthetic-allowlist.ts'];
-    expect(excludedFiles).toHaveLength(1);
+  it('the synthetic-allowlist exclusion is exactly one file, not a widening set (CodeRabbit finding #38)', () => {
+    // The previous version of this test declared a local, disconnected array and asserted its
+    // own length — it never called scanFixtureContent, listFixtureFiles, or checked
+    // synthetic-allowlist.ts on disk, so it passed unconditionally and could not detect a
+    // regression in the actual exclusion behavior it was named for. This version checks the real
+    // invariant: synthetic-allowlist.ts exists at the expected location, and it is not among the
+    // files this suite's own fixture discovery scans (it lives one directory above fixtures/, not
+    // inside it).
+    const allowlistPath = join(__dirname, 'synthetic-allowlist.ts');
+    expect(existsSync(allowlistPath)).toBe(true);
+    expect(fixtureFiles.some((f) => f.fileName === 'synthetic-allowlist.ts')).toBe(false);
   });
 
   describe('planted-violation proofs (recorded in the PR)', () => {
