@@ -62,6 +62,9 @@ revision `6ab7d03`.
 | Route files for the three screens today | `cat "apps/mobile/app/(onboarding)/{intro,value,ready}.tsx"` | All three render `RoutePlaceholder`; `app/index.tsx` unconditionally `Redirect`s to `/(onboarding)/intro` with a comment naming issue #8 as the owner of the real gate |
 | `app/(tabs)/_layout.tsx` renders exactly two tabs | `cat "apps/mobile/app/(tabs)/_layout.tsx"` | `home` + `transactions` only — the launch gate's `/(tabs)/home` target exists |
 | Route/manifest parity guard | `apps/mobile/src/__tests__/route-manifest-parity.test.ts` | Asserts the derived route set equals the manifest's 25 MVP routes exactly. This plan adds **no** route file, so the count is unchanged |
+| `expo-router` exports `ErrorBoundary` | `grep -n "ErrorBoundary" apps/mobile/node_modules/expo-router/build/exports.d.ts` | `export { ErrorBoundary } from './views/ErrorBoundary';` — Decision 15's re-export is real API, not assumed |
+| `expo-router` already mounts `SafeAreaProvider` | `grep -n "SafeAreaProvider" apps/mobile/node_modules/expo-router/build/ExpoRoot.js` | Mounted inside `ExpoRoot` — `app/_layout.tsx` needs **no** provider of its own |
+| `drizzle-orm` is absent from the installed tree | `ls node_modules/.pnpm \| grep -i drizzle` | No match at the plan revision — the Expo migrator signature is therefore **unverified; the implementer must confirm it before proceeding** (Implementation Order step 1, Decision 2) |
 | Same-surface open PRs | `gh pr list --state open` then `gh pr diff 51` | Open: #44, #46 (packages), #51 (spec for #9), #52 (spec for #10). Only #51 touches the onboarding journey; its scope starts at `/(onboarding)/connect-bank` and it states the person "reaches the connect-a-bank introduction at the end of the onboarding carousel" — the same seam this plan defines. No conflict |
 
 ### Residual verification strategy
@@ -178,9 +181,11 @@ No migration. `app_settings` is key-value; `onboarding_completed` is a new key, 
 - [ ] `apps/mobile/app/index.tsx` — replaces the unconditional `Redirect` with the launch gate.
       Renders `null` while `status === 'pending'` (Decision 15) and `<Redirect href={...} />` once
       resolved. Re-exports `ErrorBoundary` from `expo-router`.
-- [ ] `apps/mobile/app/_layout.tsx` — wrap the `Stack` in `SafeAreaProvider` from
-      `react-native-safe-area-context` (already a dependency) so `SafeAreaView`/insets work on every
-      screen. The `import '../src/i18n'` side-effect import stays the first import.
+- [ ] `apps/mobile/app/_layout.tsx` — **no change expected.** `expo-router`'s `ExpoRoot` already
+      mounts `SafeAreaProvider` from `react-native-safe-area-context`
+      (`expo-router/build/ExpoRoot.js:77`, see the Verification Log), so `useSafeAreaInsets` and
+      `SafeAreaView` work in the onboarding screens without adding a second provider. Touch this
+      file only if the runbook's step 2 shows insets resolving to zero, and say so in the PR.
 - [ ] `apps/mobile/app/(onboarding)/_layout.tsx` — `screenOptions={{ headerShown: false }}`. The
       mockups draw their own top bars; no native header exists in any onboarding frame. This adds no
       literal string, so the `i18next/no-literal-string` exception recorded for
@@ -238,12 +243,22 @@ set (`catalogue-parity.test.ts` enforces it).
 | `onboarding_ready.banks_subtitle` | `{{names}} · {{products}}` | `index.html:1101` (`Banco de Chile · 3 productos`) |
 | `onboarding_ready.reminders_title` | `Notificaciones activadas` | `index.html:1102` |
 | `reminders.summary` | `{{time}} · {{days}}` | `index.html:1102` (`9:00 AM · días laborales`) |
-| `reminders.days_weekdays` | `días laborales` | `index.html:1102` and the `Solo días laborales` control at `index.html:1083` |
+| `reminders.days_weekdays` | `días laborales` | `index.html:1102` and the `Solo días laborales` control at `index.html:1080` |
 | `reminders.days_everyday` | `todos los días` | **not drawn** — Assumption A4 |
-| `reminders.day_1` … `reminders.day_7` | `Lunes` … `Domingo` | `index.html:1074-1080` |
+| `reminders.day_1` … `reminders.day_7` | `Lunes` … `Domingo` | `index.html:1072-1078` |
 
 Decorative glyphs (`👋 🎯 🔒 🌱 🎉 ✓ 🏦 🔔`) are **not** catalogue entries — they are module-level
 named constants, per item #34's Decision 10 (Decision 11 below).
+
+Two notes on transcription, so the "string for string" check at review is unambiguous:
+
+- `index.html:704` contains a `<br>` (`… tu dinero —<br>paso a paso …`). That is a layout line
+  break in the mockup's fixed-width frame, not part of the sentence. The catalogue value is the
+  sentence with a single space, and React Native wraps it; a literal `\n` in the catalogue would
+  break on narrow screens in the wrong place.
+- `index.html:1101` is one row rendered as three nodes (title, subtitle, badge). The catalogue
+  splits it into `banks_title_*` and `banks_subtitle` accordingly; concatenated at count 1 it
+  reproduces the drawn text exactly.
 
 ---
 
@@ -454,7 +469,7 @@ and is numeric-only (no `Intl`), so it is deterministic and needs no ICU:
 ```ts
 // Illustrative — adapt during implementation. packages/shared-utils/src/dates.ts
 /** `"09:00"` → `"9:00 AM"`. Numeric only, so it takes no locale — the mockup's format is
- *  fixed (`index.html:1102`, and the presets at `index.html:1046-1052`). */
+ *  fixed (`index.html:1102`, and the presets at `index.html:1048-1052`). */
 export function formatWallClockLabel(timeOfDay: string): string;
 ```
 
@@ -784,8 +799,9 @@ To be executed by the developer during implementation, not now.
    *Verification*: `catalogue-parity.test.ts` passes.
 8. **Add `screenMetrics`** to `src/theme.ts` (Decision 10). *Verification*:
    `theme-tokens-parity.test.ts` still passes untouched.
-9. **Wire the launch gate** — `app/index.tsx`, `app/_layout.tsx` (`SafeAreaProvider`), and
-   `app/(onboarding)/_layout.tsx` (`headerShown: false`), plus `use-launch-decision.ts`.
+9. **Wire the launch gate** — `app/index.tsx` and `app/(onboarding)/_layout.tsx`
+   (`headerShown: false`), plus `use-launch-decision.ts`. `app/_layout.tsx` is expected to need no
+   change (see Layer-by-Layer).
    *Verification*: launch a dev build on a simulator with the app data cleared and confirm it lands
    on the intro screen; relaunch after completing onboarding (step 12) and confirm it lands on the
    home placeholder.

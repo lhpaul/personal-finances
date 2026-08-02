@@ -125,8 +125,10 @@ this step has two parts.
 
 **6a — the honest empty case (always run this)**
 
-1. Navigate to `/(onboarding)/ready`. With `pnpm dev:mobile` running, enter `finanzas://(onboarding)/ready`
-   in the dev client, or walk the placeholder chain from `/(onboarding)/connect-bank`.
+1. Navigate to `/(onboarding)/ready`. With `pnpm dev:mobile` running, deep-link it as
+   `finanzas:///ready` — Expo Router group segments in parentheses are not part of the URL, which
+   is why the dev-only gallery is reached as `finanzas://gallery` and not `finanzas://(dev)/gallery`.
+   Alternatively, walk the placeholder chain from `/(onboarding)/connect-bank`.
 2. Confirm the screen shows 🎉, `¡Todo listo!`, its lead paragraph, and the `Comenzar` button.
 3. Confirm **no** summary card is shown, and in particular that no row claims a connected bank or
    active notifications.
@@ -254,7 +256,7 @@ differences.
 | `Native module missing` / `expo-sqlite` is undefined | Running in Expo Go | Rebuild and install the dev build |
 | `Unable to resolve "@expo/metro-runtime"` | `node_modules` is isolated, not hoisted | `pnpm check:layout`, then a plain `pnpm install` |
 | The dots do not match the visible page after a fast swipe | Momentum-scroll index calculation | Note the exact gesture and report it — this is scenario 4's unit test failing to cover a real case |
-| Cannot reach `/(onboarding)/ready` for Step 6 | The connect-bank screens are still placeholders | Deep-link it: `finanzas://(onboarding)/ready` from the dev client's URL bar |
+| Cannot reach `/(onboarding)/ready` for Step 6 | The connect-bank screens are still placeholders | Deep-link it: `finanzas:///ready` from the dev client's URL bar (group segments are not in the URL) |
 | No SQLite client for Step 6b | — | Step 6b is optional. Record it as not run; scenarios 6, 7, 8 and 9 in the plan's Testing Strategy cover the same logic automatically |
 
 ---
