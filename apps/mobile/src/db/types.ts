@@ -39,6 +39,31 @@ export interface ConnectableInstitution {
   logoUrl: string | undefined;
 }
 
+/**
+ * `onboarding-ready`'s "how many banks, and which ones" summary (implementation plan Decision 7).
+ * `connectionCount` and `productCount` are always non-negative integers; `institutionNames` is
+ * empty exactly when `connectionCount` is `0`.
+ */
+export interface ConnectedBanksSummary {
+  connectionCount: number;
+  institutionNames: string[];
+  productCount: number;
+}
+
+/**
+ * The `app_settings` reminder-settings value contract this item defines for item #18 to write
+ * (implementation plan Decision 8). `reminderDays` uses ISO weekday integers, `1` = Monday …
+ * `7` = Sunday (Assumption A8). Every field is independently optional/defensive: a missing or
+ * malformed value degrades to "this field is unknown", never to a thrown error.
+ */
+export interface ReminderSettings {
+  enabled: boolean;
+  /** `"HH:mm"`, 24-hour, zero-padded — `undefined` when absent or malformed. */
+  timeOfDay: string | undefined;
+  /** ISO weekday integers, `1..7` — `undefined` when absent or malformed. */
+  days: number[] | undefined;
+}
+
 export interface Transaction {
   id: string;
   userFinancialProductId: string;
