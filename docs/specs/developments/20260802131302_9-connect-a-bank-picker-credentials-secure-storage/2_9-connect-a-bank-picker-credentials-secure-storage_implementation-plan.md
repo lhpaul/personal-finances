@@ -73,9 +73,10 @@ acceptance criteria are unverifiable in an MVP that ships exactly one connectabl
 | `mu-bank` measurements | `sed -n '568,578p' design/mockups/mobile/index.html` | Row: `gap var(--sp3)`, `padding var(--sp3) var(--sp4)`, `radius var(--r-lg)`, `background var(--s1)`, `1px var(--border)`; logo `40x40`, `radius var(--r-md)`, `font-size var(--sm)`, weight 800, letter-spacing `-.3px`; name `15px`, weight 600; sibling rows `margin-top var(--sp2)` |
 | `mu-item__sub` vs `mu-small` | `sed -n '327p;465p' design/mockups/mobile/index.html` | Identical `font-size: var(--sm); color: var(--t2)`; `mu-item__sub` adds `margin-top: 1px` |
 | Fidelity tooling (#47) | `ls scripts/mobile-ui` | `No such file or directory` — item #47's plan is merged, its implementation is not |
-| Feature folder | `ls apps/mobile/src/features` | `No such file or directory` — this item creates it (item #8's plan creates it too; see the assumption check) |
-| Same-surface open PRs | `gh pr list --repo lhpaul/personal-finances --state open --json number,title,headRefName` | #55 `implementation-plan/8-onboarding-intro-value-ready`, #46 `feature/6-port-bank-scraper-banco-de-chile`, #44 `feature/5-shared-domain-rules-matching-aggregates` |
-| Overlap with PR #55 | `git show origin/implementation-plan/8-onboarding-intro-value-ready:docs/specs/developments/20260802132343_8-onboarding-intro-value-ready/2_8-onboarding-intro-value-ready_implementation-plan.md` | Plans `src/db/runtime.ts` (`getAppDatabase()`), `src/db/repositories/connections.ts` (read-only `getConnectedBanksSummary`), `src/db/types.ts` additions, `app/(onboarding)/_layout.tsx` `headerShown: false`, and a new `screenMetrics` export in `theme.ts` |
+| Feature folder | `ls apps/mobile/src/features` | `No such file or directory` — this item creates it (item #8's merged plan schedules it too; see the assumption check) |
+| Same-surface PRs, first pass | `gh pr list --repo lhpaul/personal-finances --state open --json number,title,headRefName` | At `4fc495a`: #55 `implementation-plan/8-onboarding-intro-value-ready`, #46 `feature/6-port-bank-scraper-banco-de-chile`, #44 `feature/5-shared-domain-rules-matching-aggregates` |
+| Same-surface PRs, re-check after the review gate | `git fetch origin && git log --oneline HEAD..origin/develop` | **#55 merged** into `develop` as `05c0926` + `3f4b49c` while this plan was in its review gate. #46 and #44 remain open and touch `packages/*` only. The plan branch was merged with `develop` at `e9ec926` so the item #8 plan is present in this worktree |
+| Overlap with item #8's plan | `git show origin/develop:docs/specs/developments/20260802132343_8-onboarding-intro-value-ready/2_8-onboarding-intro-value-ready_implementation-plan.md` (re-read after the merge) | Plans `src/db/runtime.ts` (`getAppDatabase()`), `src/db/repositories/connections.ts` (read-only `getConnectedBanksSummary`), `src/db/types.ts` additions, `app/(onboarding)/_layout.tsx` `headerShown: false`, and a new `screenMetrics` export in `theme.ts` |
 
 ---
 
@@ -86,16 +87,18 @@ acceptance criteria are unverifiable in an MVP that ships exactly one connectabl
 | Assumption surface | Recorded value | Authoritative source | Verified at | Bounded cross-check scope | Result |
 | --- | --- | --- | --- | --- | --- |
 | Artifact base branch and owner | Plan and plan PR are owned by this repository and target `develop` | `.ai-dev-workflow.yaml` (no `repository_mode` key → `single_repo`); `AGENTS.md` → Git & Branching | 2026-08-02, `4fc495a` | Current invocation only | `Verified` |
-| Runtime database handle for app code | `getAppDatabase(): Promise<AppDatabase>` in `apps/mobile/src/db/runtime.ts` | PR #55 (item #8 plan), Database layer; no such module exists at `4fc495a` | 2026-08-02, `4fc495a` | Same-surface open PRs only: #55. #46/#44 touch `packages/*` only | `Resolved` — see Resolution R1 |
-| Connection repository module path | `apps/mobile/src/db/repositories/connections.ts` | PR #55 plans it read-only ("Write-side connection functions belong to #9"); this plan adds the write side | 2026-08-02, `4fc495a` | Same-surface open PRs only: #55 | `Resolved` — see Resolution R1 |
-| Connection `status` value written on connect | `'active'` | `docs/project/4-database-model.md` → `user_financial_institutions.status`; spec → Statuses / Enum Values → Connection state | 2026-08-02, `4fc495a` | Same-surface open PRs only: #55, whose read-side filter is written as status `connected` | `Conflict` — see Resolution R2 |
-| `expo-secure-store` version | `~15.0.8` | `expo/bundledNativeModules.json` for the installed Expo SDK 54 | 2026-08-02, `4fc495a` | Current invocation only; no open PR changes `apps/mobile/package.json` | `Verified` |
+| Runtime database handle for app code | `getAppDatabase(): Promise<AppDatabase>` in `apps/mobile/src/db/runtime.ts` | Item #8's plan (**merged** into `develop`), Database layer; no such module exists in the codebase at `e9ec926` | 2026-08-02, re-verified at `e9ec926` | Same-surface artifacts only: item #8's merged plan; #46/#44 touch `packages/*` only | `Resolved` — see Resolution R1 |
+| Connection repository module path | `apps/mobile/src/db/repositories/connections.ts` | Item #8's merged plan schedules it read-only ("Write-side connection functions belong to #9"); this plan adds the write side | 2026-08-02, re-verified at `e9ec926` | Same-surface artifacts only: item #8's merged plan | `Resolved` — see Resolution R1 |
+| Connection `status` value written on connect | `'active'` | `docs/project/4-database-model.md` → `user_financial_institutions.status`; spec → Statuses / Enum Values → Connection state | 2026-08-02, re-verified at `e9ec926` | Same-surface artifacts only: item #8's merged plan, whose read-side filter is still written as status `connected` at line 134 of the merged file | `Conflict` — see Resolution R2 |
+| `expo-secure-store` version | `~15.0.8` | `expo/bundledNativeModules.json` for the installed Expo SDK 54 | 2026-08-02, `4fc495a` | Current invocation only; no open or recently merged PR changes `apps/mobile/package.json` | `Verified` |
 | Design-fidelity tooling availability | Not available; AC30 is a manual side-by-side comparison | `ls scripts/mobile-ui` → absent; item #47's plan (merged at `7919372`) plans `pnpm fidelity --issue N` for future screen items | 2026-08-02, `4fc495a` | Same-surface merged artifact only: #47 plan | `Verified` — see Resolution R3 |
 | Scraper public entry point | `startBankRead(...)` from `@finanzas/bank-scraper` | The merged item #6 implementation plan (Decisions 3, 5, 7) and the open PR #46 branch source | 2026-08-02, `4fc495a` | Same-surface open PRs only: #46 | `Verified` — this item records the seam and calls nothing |
 
-**Resolution R1 — shared `src/db` modules with item #8.** Competing evidence: PR #55 (open,
-unmerged) creates `src/db/runtime.ts` and `src/db/repositories/connections.ts`; this item needs
-both. Affected plan statements: every Database-layer bullet and Implementation Order steps 3-5.
+**Resolution R1 — shared `src/db` modules with item #8.** Competing evidence: item #8's plan —
+open as PR #55 when this plan was written, **merged into `develop` during this plan's review
+gate** — schedules `src/db/runtime.ts` and `src/db/repositories/connections.ts`; this item needs
+both. Neither module exists in the codebase yet: item #8's *plan* is merged, its *implementation*
+is not. Affected plan statements: every Database-layer bullet and Implementation Order steps 3-5.
 Resolution: **ownership is split by direction, and creation is merge-order-contingent.** Item #8
 owns `runtime.ts` and the read-only `getConnectedBanksSummary`; item #9 owns the write-side
 connection functions and `listConnectedBankSummaries`. Whichever item is implemented second
@@ -108,7 +111,8 @@ before writing it (Implementation Order step 3).
 
 **Resolution R2 — the connection `status` value.** Competing evidence: the data model and this
 item's spec both enumerate `active | inactive | disconnected` and this item is the **only**
-writer of that column; PR #55's plan describes its read-side filter as status `connected`.
+writer of that column; item #8's merged plan describes its read-side filter as status
+`connected`, and that wording survived its own review gate.
 Affected plan statements: `upsertConnection` (Database layer), `listConnectedBankSummaries`, the
 Seed Data table and smoke steps 8-10. Resolution: **`'active'` is authoritative** — it is the
 value the normative data model fixes and the value this item writes; a reader filtering on
@@ -116,7 +120,8 @@ value the normative data model fixes and the value this item writes; a reader fi
 read-side filter to `'active'`; item #9's own tests assert the written value is `'active'`, which
 will fail loudly if the other reading is adopted. Decision owner: tech-lead agent for item #9,
 under the parent orchestrator's no-human-available delegation. This is reported to the parent
-orchestrator as a cross-item finding against PR #55.
+orchestrator as a cross-item finding against item #8's merged plan (PR #55), which is a
+documentation correction there rather than a blocker here.
 
 **Resolution R3 — design fidelity.** Item #47's merged plan says future screen items register
 targets in `scripts/mobile-ui/fidelity-targets.json` and run `pnpm fidelity --issue N`. That
@@ -158,7 +163,8 @@ postpone path out of the introduction) are settled inputs and are **not** reliti
   `assets.logo = 'asset://banks/<slug>.png'` and no such file ships. The mockup draws the
   `short_name` monogram over `brand_color`, and `BankRow` does the same; no image is loaded and
   no asset is added by this item.
-- **A8 — `app/index.tsx` and the launch gate are not touched.** Item #8 owns them. This item's
+- **A8 — `app/index.tsx` and the launch gate are not touched.** Item #8 owns them, and its plan
+  merged into `develop` during this plan's review gate. This item's
   screens are reached by navigation, and the runbook navigates to the route directly.
 
 ---
