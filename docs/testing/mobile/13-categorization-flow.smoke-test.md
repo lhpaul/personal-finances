@@ -48,14 +48,15 @@ store.
 2. Resolve the container and apply the fixture:
 
    ```bash
-   APP_ID=$(node -e "console.log(require('./apps/mobile/app.config.js')().ios.bundleIdentifier)")
-   CONTAINER=$(xcrun simctl get_app_container booted "$APP_ID" data)
-   sqlite3 "$CONTAINER/Documents/SQLite/finanzas.db" \
-     < apps/mobile/src/db/__fixtures__/stage-queue-v1.sql
+   # cl.finanzas.mobile is apps/mobile/app.config.js -> expo.ios.bundleIdentifier.
+   CONTAINER=$(xcrun simctl get_app_container booted cl.finanzas.mobile data)
+   DB_PATH=$(find "$CONTAINER" -name 'finanzas.db' | head -1)
+   sqlite3 "$DB_PATH" < apps/mobile/src/db/__fixtures__/stage-queue-v1.sql
    ```
 
-   If the database path differs on this Expo SDK, find it with
-   `find "$CONTAINER" -name 'finanzas.db'` and use that path.
+   The `find` is deliberate: the exact directory `expo-sqlite` uses under the app container is
+   **unverified** in this runbook — the implementer confirms it on the first run and may pin the
+   path here afterwards. Every later SQL step in this runbook reuses `$DB_PATH`.
 3. Relaunch the app.
 
 **Expected result**: no error; the file applies cleanly and re-applying it a second time also
@@ -152,7 +153,7 @@ as pending.
 now shows **3** pending. Verify the write directly:
 
 ```bash
-sqlite3 "$CONTAINER/Documents/SQLite/finanzas.db" \
+sqlite3 "$DB_PATH" \
   "select transaction_category_id, category_source, review_flag, excluded_at, included_amount
    from transactions where id = 'stage-tx-expense';"
 ```
@@ -161,14 +162,17 @@ The row shows the chosen category, `user`, and three `NULL`s.
 
 ### Step 8: Deferral marks
 
-**Maps to**: AC14, AC15
+**Maps to**: AC4, AC14, AC15
 
 1. On the next card, open `¿No estás seguro?` and tap `Revisar más tarde`.
 2. On the following card, open it again and tap `No recuerdo`.
+3. Keep advancing to the end of the stage, noting every movement you are shown.
 
 **Expected result**: each choice acts immediately and advances the stage; neither assigns a
 category; both movements are still pending afterwards. In SQL, `review_flag` is `review_later`
-and `uncertain` respectively, with `transaction_category_id` still `NULL`.
+and `uncertain` respectively, with `transaction_category_id` still `NULL`. Neither the deferred
+movements nor the movement skipped in Step 6 is offered a second time before the stage ends —
+each of the four movements appears exactly once (AC4).
 
 ### Step 9: Exclusion, and the re-sync guarantee
 
@@ -245,7 +249,7 @@ option, no amount field and no `50%` / `Monto` segment — not disabled, not hid
 row in `transactions` has a non-null `included_amount`:
 
 ```bash
-sqlite3 "$CONTAINER/Documents/SQLite/finanzas.db" \
+sqlite3 "$DB_PATH" \
   "select count(*) from transactions where included_amount is not null;"
 ```
 
@@ -331,7 +335,7 @@ failure is fixed in the screen or in the fixture — **never** by raising a thre
 
 | Entity | Scenario | How to load |
 | --- | --- | --- |
-| Connection, product, two merchants, 4 pending and 9 categorized movements | The whole runbook | `sqlite3 <container>/Documents/SQLite/finanzas.db < apps/mobile/src/db/__fixtures__/stage-queue-v1.sql` (Step 0) |
+| Connection, product, two merchants, 4 pending and 9 categorized movements | The whole runbook | `sqlite3 "$DB_PATH" < apps/mobile/src/db/__fixtures__/stage-queue-v1.sql` (Step 0) |
 | Starter categories, institutions and merchants | Applied automatically on first launch by `ensureDatabaseReady` | — |
 
 ---
