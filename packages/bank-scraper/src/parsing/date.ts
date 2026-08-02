@@ -1,7 +1,7 @@
 import { toDateLocal, type DateLocal } from '@finanzas/shared-utils';
 
 /**
- * Banco de Chile's `DD/MM/YYYY` date parsing (spec Business Rule 11, spec Decision 3, AC8;
+ * Chilean `DD/MM/YYYY` date parsing (spec Business Rule 11, spec Decision 3, AC8;
  * implementation plan Decision 11). Runs on the React Native side, never in the page: the page
  * only splits the raw string on `/`, zero-pads and reorders it into `YYYY-MM-DD` — no `new Date`,
  * no `toISOString`, in either half. This is the calendar-validity gate: `toDateLocal` (from

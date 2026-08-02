@@ -1,7 +1,7 @@
 /**
  * The message-routing and step protocol between an injected page script and the engine
  * (implementation plan Layer-by-Layer Changes → engine; spec "Read step", "Read outcome",
- * "Failure reason"). Bank-agnostic: nothing here names Banco de Chile.
+ * "Failure reason"). Bank-agnostic: nothing here names a specific bank.
  */
 
 /** How a posted message is routed by `MessageHandlerService`. */

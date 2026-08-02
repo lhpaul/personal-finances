@@ -11,10 +11,34 @@ import { ALLOWED_ACCOUNT_NUMBERS, SYNTHETIC_NAMES } from './synthetic-allowlist'
  * over-fire" half of AC5 — the fixtures are written to pass their own scanners.
  */
 
-const FIXTURES_DIR = join(__dirname, '..', 'configs', 'cl', 'banco-de-chile', 'fixtures');
+// Discovers every bank's fixtures dynamically (configs/cl/<bank>/fixtures/) rather than
+// hardcoding a specific bank's directory name — this scanner is bank-agnostic and must not
+// itself become bank-specific knowledge living outside that bank's own directory
+// (testing/bank-containment.test.ts enforces this containment property).
+const CL_CONFIGS_DIR = join(__dirname, '..', 'configs', 'cl');
 
-function listFixtureFiles(): string[] {
-  return readdirSync(FIXTURES_DIR).filter((name) => name.endsWith('.html'));
+interface FixtureFile {
+  bankDir: string;
+  fixturesDir: string;
+  fileName: string;
+}
+
+function listFixtureFiles(): FixtureFile[] {
+  const files: FixtureFile[] = [];
+  for (const bankDir of readdirSync(CL_CONFIGS_DIR, { withFileTypes: true })) {
+    if (!bankDir.isDirectory()) continue;
+    const fixturesDir = join(CL_CONFIGS_DIR, bankDir.name, 'fixtures');
+    let fixtureNames: string[];
+    try {
+      fixtureNames = readdirSync(fixturesDir).filter((name) => name.endsWith('.html'));
+    } catch {
+      continue; // this bank directory has no fixtures/ subdirectory
+    }
+    for (const fileName of fixtureNames) {
+      files.push({ bankDir: bankDir.name, fixturesDir, fileName });
+    }
+  }
+  return files;
 }
 
 describe('fixture-sanitization', () => {
@@ -24,8 +48,8 @@ describe('fixture-sanitization', () => {
     expect(fixtureFiles.length).toBeGreaterThan(0);
   });
 
-  it.each(fixtureFiles)('%s has zero sanitization violations', (fileName) => {
-    const content = loadFixtureHtml(FIXTURES_DIR, fileName);
+  it.each(fixtureFiles)('$bankDir/fixtures/$fileName has zero sanitization violations', ({ fixturesDir, fileName }) => {
+    const content = loadFixtureHtml(fixturesDir, fileName);
     const violations = scanFixtureContent(content, {
       prohibitedNameTokens: PROHIBITED_NAME_TOKENS,
       allowlistNames: SYNTHETIC_NAMES,

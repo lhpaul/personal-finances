@@ -4,8 +4,8 @@
  * 1) — a plain function is provable in a millisecond, with no `Date`, no `parseFloat`, and no
  * float anywhere in the result.
  *
- * `.` groups thousands; `,` introduces decimals. Banco de Chile presents its one supported
- * foreign currency, US dollars, in that same Chilean style (`US$ 1.234,56`), not the
+ * `.` groups thousands; `,` introduces decimals. A supported bank's foreign-currency card
+ * statement (US dollars) is presented in that same Chilean style (`US$ 1.234,56`), not the
  * English decimal-point convention. Arithmetic is done on digit **strings**, never on a `float`.
  */
 

@@ -2,7 +2,7 @@ import type { FailureReasonCode } from './protocol.types';
 
 /**
  * The shared vocabulary a read reports in (spec "Statuses / Enum Values" → Product type; V11).
- * `savings` and `credit_line` are enumerated for future banks; Banco de Chile in this item
+ * `savings` and `credit_line` are enumerated for future banks; the bank ported in this item
  * reports only `checking`, `sight` and `credit_card` (spec Decision 15 — línea de crédito is not
  * reported as a product).
  */
@@ -44,7 +44,7 @@ export interface RawMovementPayload {
   incomingText: string | null; // populated -> direction is 'credit'
   currencyCode: string;
   rawDescription: string; // the bank's own words, verbatim
-  bankSuppliedId: string | null; // ALWAYS null for Banco de Chile (spec Conflict 2, AC23)
+  bankSuppliedId: string | null; // ALWAYS null for a bank that supplies no identifier (spec Conflict 2, AC23)
   positionInReadSnapshot: number; // same-read tie-breaker ONLY (Business Rule 14)
   extras: Readonly<Record<string, string>>; // raw values; the normalizer resolves stable keys
 }
@@ -72,7 +72,7 @@ export interface ScrapedMovement {
   direction: MovementDirection;
   currencyCode: string; // 'CLP' | 'USD'
   rawDescription: string; // verbatim from the bank
-  bankSuppliedId: string | null; // ALWAYS null for Banco de Chile
+  bankSuppliedId: string | null; // ALWAYS null for a bank that supplies no identifier
   positionInReadSnapshot: number; // same-read tie-breaker ONLY — never a cross-read identity
   extras: Readonly<Record<string, string | number | boolean>>;
 }

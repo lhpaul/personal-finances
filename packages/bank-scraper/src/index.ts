@@ -35,8 +35,8 @@ export type {
   RawMovementPayload,
 } from './types/scrape-result.types';
 
-// Bank configuration shape (consumed by a future bank-picker UI; the concrete Banco de Chile
-// config is reachable only through the registry below, never imported directly by app code).
+// Bank configuration shape (consumed by a future bank-picker UI; a concrete bank's own config
+// is reachable only through the registry below, never imported directly by app code).
 export type { BankField, ScriptConfig, BankNormalizer, BankConfig, WebViewPort } from './types/bank-config.types';
 
 // Security perimeter.

@@ -20,8 +20,8 @@ describe('BANK_CONFIGS registry — AC18: refusal for an unsupported bank or cou
   });
 
   it('refuses an unsupported bank id within a supported country', () => {
-    const result = resolveBankConfigOrReject(BANK_CONFIGS, 'cl', 'banco-falabella');
-    expect(result).toEqual({ reason: 'unsupported_bank', countryCode: 'cl', bankId: 'banco-falabella' });
+    const result = resolveBankConfigOrReject(BANK_CONFIGS, 'cl', 'not-a-real-bank');
+    expect(result).toEqual({ reason: 'unsupported_bank', countryCode: 'cl', bankId: 'not-a-real-bank' });
   });
 
   it('resolves banco-de-chile in cl to its real config', () => {
