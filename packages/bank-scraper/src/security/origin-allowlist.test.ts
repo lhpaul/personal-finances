@@ -21,6 +21,11 @@ describe('isAllowedOrigin', () => {
     ['http downgrade', 'http://login.portales.bancochile.cl/login'],
     ['idn homograph', 'https://xn--bancochile-lookalike.example/login'],
     ['unparseable', 'not a url'],
+    // No-dot-boundary hostname: the last characters of this hostname literally spell the
+    // allowed hostname, but preceded by a hyphen rather than a dot — a plain
+    // `hostname.endsWith(allowedHostname)` comparison would wrongly accept this. `URL.origin`
+    // equality rejects it because the *whole* origin, not a trailing substring, must match.
+    ['no-dot-boundary suffix', 'https://evil-login.portales.bancochile.cl/login'],
   ];
 
   it.each(rejectedCases)('rejects %s: %s', (_label, url) => {
