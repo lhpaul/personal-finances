@@ -287,6 +287,7 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 | Scraper hangs on `LOGIN_START` | The bank changed a selector. Run `pnpm --filter @finanzas/bank-scraper test` — the fixture tests fail before the app does. Re-capture and scrub a fixture, then fix the script |
 | Duplicate movements after a sync | A write bypassed the repository upsert. All sync writes go through `(user_financial_product_id, external_id)` / `dedup_hash` |
 | `home` and `dashboard` totals disagree | Someone hand-wrote an exclusion filter. Both must use the shared `isIncluded` / `includedAmount` fragments from `apps/mobile/src/db` |
-| Amounts off by a factor of 100, or with decimals | Something treated CLP as having cents. Minor unit is the peso; amounts are `INTEGER` |
+| Amounts off by a factor of 100, or with decimals | Something treated CLP as having cents. Minor unit is the peso; amounts are `INTEGER`. `@finanzas/shared-utils`'s `formatClp` throws a `TypeError` on a non-integer input by design — that throw means a float already entered the money pipeline upstream, not a formatter bug |
+| A transaction shows up in the wrong month | The local day was derived from the UTC timestamp instead of `@finanzas/shared-utils`'s `deriveDateLocal` |
 | Native module missing at runtime | Needs a dev build, not Expo Go |
 | App crashes on launch after an update | A migration threw. This is unrecoverable in the field — that is why `db:check` is a required check |

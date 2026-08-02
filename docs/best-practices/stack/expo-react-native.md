@@ -63,11 +63,20 @@ implemented in the description.
   comes from the mockup — if copy should change, change the mockup first. See
   [`i18n.md`](i18n.md).
 - Currency: `$1.200.000` — point as thousands separator, no decimals, no space after `$`.
-  Income prefixed `+`, expenses unsigned. Abbreviate (`3.7M`) **only** in the stat tiles on
-  `home`, per the mockups.
+  Income prefixed `+`, expenses unsigned. Abbreviate (`3.7M`, `$279K`) in the stat tiles and in
+  the `home` category rows, per the mockups.
 - Dates: `24 ene` in lists, `viernes, 24 de enero de 2025` in detail. Lowercase month, as in
-  Spanish convention.
-- Formatting lives in `lib/format.ts` and is unit-tested. No inline `toLocaleString` calls.
+  Spanish convention. These labels are produced by `Intl.DateTimeFormat(locale, …)` inside
+  `@finanzas/shared-utils`, parameterised by the active app locale — not by a hardcoded month
+  table. See [`i18n.md`](i18n.md).
+- Money, date and RUT formatting live in `@finanzas/shared-utils` (`formatClp`,
+  `formatClpAbbreviated`, `formatShortDate`, `formatLongDate`, `formatRut`, …), not in
+  `apps/mobile`: `@finanzas/bank-scraper` also consumes them and cannot import from the app.
+  `apps/mobile/src/lib/format.ts`, if it is ever created, is a thin composition layer that
+  delegates to this package (for example gluing `formatShortDate(...)` and
+  `formatTimeOfDay(...)` into `26 ene · 14:32`) rather than reimplementing formatting itself.
+  `toLocaleString` / `toLocaleDateString` / `toLocaleTimeString` are an ESLint error
+  (`no-restricted-properties`) repository-wide, not merely a convention.
 
 ## TypeScript
 

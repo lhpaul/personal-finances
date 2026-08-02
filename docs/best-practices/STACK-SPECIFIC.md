@@ -36,7 +36,9 @@ The rules most likely to be violated in this codebase. Detail lives in the `stac
 
 - **Money is `INTEGER` minor units, everywhere.** No `number` arithmetic on formatted strings,
   no floats, no `parseFloat` on a bank string outside the scraper's parser. CLP has no cents;
-  a decimal point in an amount is a bug.
+  a decimal point in an amount is a bug. `formatClp` / `formatClpAbbreviated` from
+  `@finanzas/shared-utils` are the only sanctioned CLP formatters — a hand-built amount string
+  anywhere else is a review blocker.
 
 - **The inclusion rule is written once.** Totals and charts count a transaction when
   `excluded_at IS NULL`, at `COALESCE(included_amount, amount)`. Import the shared query
@@ -76,6 +78,12 @@ The rules most likely to be violated in this codebase. Detail lives in the `stac
   eslint-disable it to get a screen merged. Identifiers, table and
   column names, commit messages and comments stay English. Enum-like values are stored as
   stable codes and resolved to copy by the catalogue — never persist a translated string.
+  Spanish **date labels** are the one exception to "copy comes from the catalogue": they come
+  from `@finanzas/shared-utils`'s `Intl.DateTimeFormat(locale, …)`-based formatters
+  (`formatShortDate`, `formatLongDate`, `formatMonthYear`, `formatMonthAbbreviation`) —
+  locale-parameterised, with no hardcoded month or weekday table — while sentence-level **copy**
+  still comes from `apps/mobile/src/i18n/`. The two surfaces do not overlap: formatters produce
+  date/number primitives, the catalogue produces sentences.
 
 - **No cross-package relative imports.** Shared code is imported by its `@finanzas/*` package
   name. A `../../packages/…` import defeats the boundary that keeps the domain testable.
