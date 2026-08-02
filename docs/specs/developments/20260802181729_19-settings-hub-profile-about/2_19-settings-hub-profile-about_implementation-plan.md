@@ -91,6 +91,11 @@ All commands were run in the plan worktree `.claude/worktrees/item-19` at repo r
 | Fidelity kit present? | `ls scripts/mobile-ui` | `No such file or directory` — item #47 is planned, not implemented → Resolution R3 |
 | #19's fidelity coverage set | Item #47 merged plan, *Coverage sets* table | `#19 → settings, settings-account, settings-about → 4 targets`, all seeded `status: "planned"` |
 | Item #9's secure-store contract (this item's hard dependency) | `git show origin/implementation-plan/9-connect-a-bank:docs/specs/developments/20260802131302_9-…_implementation-plan.md`, *Frontend/UI — new files* and Decisions 4-6 | `src/lib/secure-store/types.ts` → `SecureStorePort { getItem, setItem, deleteItem }` (**no list-keys method**); `expo-secure-store.adapter.ts` (only importer); `credential-store.ts` → `credentialsKeyFor(institutionId) === 'bank_creds:' + institutionId`, `writeCredentials`, `readCredentials`, `deleteCredentials`; `rut-lock.ts` → `resolveLockedRut(db, port)`; `connections.ts` → `listConnectionsForCredentialLookup(db)`, `listConnectedBankSummaries(db)`; `institutions.ts` → `listInstitutions(db)`; Decision 14 → a third `feature` Jest project matching `src/features/**/*.node.test.ts` |
+| Design-system primitive variant names this plan cites | `grep -nE 'export type (NoteTone\|ButtonVariant\|CardVariant\|TextVariant)' apps/mobile/src/components/ui/{Note,Button,Card,Text}.tsx` | `NoteTone = 'info' \| 'ok' \| 'warn' \| 'danger'`; **`ButtonVariant = 'primary' \| 'muted' \| 'outline' \| 'ghost' \| 'danger' \| 'dangerSoft'`** (camelCase, **not** `'danger-soft'`); `CardVariant = 'default' \| 'tight' \| 'flat'`; `TextVariant` includes `h2`, `h3`, `small`, `body` |
+| `Modal`'s prop contract | `sed -n '1,40p' apps/mobile/src/components/ui/Modal.tsx` | `{ visible, onRequestClose, icon?, title, children? }` — `onRequestClose` is **required**, and the title renders as `Text variant="h2"` (Assumption A12) |
+| Gallery coverage is bidirectional | `cat apps/mobile/src/__tests__/gallery-catalogue-keys.test.ts` | Every `ds.*` catalogue key must be used by `src/dev/DesignSystemGallery.tsx`, and every key the gallery calls must exist in `es.json`. Adding a primitive without a gallery entry is a convention breach; adding a gallery entry without its `ds.*` keys fails the suite → Decision 12 |
+| Best-practice quotes this plan relies on | `grep -n 'one-off' docs/best-practices/stack/mobile-ui-fidelity.md`; `grep -n 'Aggregate in SQL' docs/best-practices/stack/sqlite-drizzle.md`; `sed -n '149,152p' docs/project/3-software-architecture.md` | Lines 43-44, line 114 and the *Deletion* row respectively — all three quoted verbatim in the Decisions below |
+| **Runtime APIs this plan names but cannot verify** | `ls node_modules/expo-sqlite apps/mobile/node_modules/expo-sqlite` | **Not installed in the current tree** — same situation item #8's plan recorded for `drizzle-orm`. `expo-sqlite`'s database-deletion and handle-close API, `expo-router`'s `router.dismissAll()`, and `expo-constants`' `Constants.expoConfig?.version` are therefore **unverified — the implementer must confirm each against the installed package before proceeding** (Implementation Order steps 2 and 8; Risks table) |
 | Bounded same-surface open PRs | `gh pr list --state open --json number,title,headRefName` then a file-level read of each | Four: **#57** (item #9 plan — same surface, see the Assumption Check), **#59** (item #13 plan), **#46** (item #6 `packages/bank-scraper`), **#44** (item #5 `packages/shared-domain` + `packages/shared-utils`). Only #57 and #44 touch surfaces this plan names |
 
 ### Residual verification strategy
@@ -356,7 +361,8 @@ without a renderer — the split item #8 established with `launch-decision.ts`.
 ### Decision 7 — `delete-confirm` is a state of the account route, not a route
 
 The manifest declares `delete-confirm` as a `state_id` of `settings-account`, not a `screen_id`.
-It is rendered by the existing `Modal` primitive with `visible={phase === 'confirming'}`, inside
+It is rendered by the existing `Modal` primitive with `visible={phase === 'confirming'}` and
+`onRequestClose={cancelDelete}` (that prop is required — Verification Log), inside
 `app/settings/account.tsx`. No new route file, so `route-manifest-parity.test.ts` is untouched.
 
 `useWipeLocalData`'s `phase` is a four-value closed union — `'idle' | 'confirming' | 'wiping' |
@@ -420,9 +426,9 @@ no code added by this item deletes a row.
 
 ### Decision 12 — three new design-system primitives, because these screens draw blocks nobody owns
 
-`docs/best-practices/stack/mobile-ui-fidelity.md`: *"Compose the shared primitives in
+`docs/best-practices/stack/mobile-ui-fidelity.md` lines 43-44: *"Compose the shared primitives in
 `src/components/ui/` before writing a one-off style. A one-off is a signal the primitive is
-missing — add it there."*
+missing — add it there and to `#screen=ds-components`."*
 
 | New primitive | `mu-*` classes it takes ownership of | Why here | Later consumers |
 | --- | --- | --- | --- |
@@ -432,6 +438,15 @@ missing — add it there."*
 
 `ListRow` also becomes an **additional** owner of `mu-item__txt`, `mu-item__sub` and
 `mu-item__chev` (the `owners` field is an array; `mu-overlay` already has two owners).
+
+That best-practice line ends *"and to `#screen=ds-components`"*, and
+`gallery-catalogue-keys.test.ts` makes the app-side half of that bidirectional (Verification Log).
+So all three primitives also get a section in `apps/mobile/src/dev/DesignSystemGallery.tsx` with
+its own `ds.*` catalogue keys — a new primitive with no gallery entry is a convention breach, and
+a gallery entry whose keys are missing fails the suite. Updating the **mockup's** `ds-components`
+page is deliberately **not** in scope: `design/mockups/` is the design contract and
+`mu-class-coverage.test.ts` derives its class universe from it, so that edit belongs to the design
+owner (recorded as a follow-up).
 
 **Contingency, checked at implementation time**: item #12's plan flips those same three classes to
 `primitive` with `owners: ['CategoryRow', 'BankRow']`. If #12 has landed, this item **appends**
@@ -627,11 +642,14 @@ Design-system primitives (Decision 12):
       `testID="fidelity-settings"`.
 - [ ] `apps/mobile/app/settings/account.tsx` — replaces `RoutePlaceholder`: `ScreenTopBar`, the
       decorative device card, the four `ProfileFactRow`s, the `Note tone="ok"`, the
-      `Button variant="danger-soft"`, the `Modal` for `delete-confirm`, and the A3 failure `Note`.
+      `Button variant="dangerSoft"`, the `Modal` for `delete-confirm`, and the A3 failure `Note`.
       Carries `testID="fidelity-settings-account"`.
 - [ ] `apps/mobile/app/settings/about.tsx` — replaces `RoutePlaceholder`: `ScreenTopBar`, the brand
       block with the version line, the `Note tone="ok"` privacy paragraph, and the `ListGroup` of
       three inert `ListRow`s. Carries `testID="fidelity-settings-about"`.
+- [ ] `apps/mobile/src/dev/DesignSystemGallery.tsx` — add one section per new primitive
+      (`ScreenTopBar`, `ListGroup` + `ListRow`) with sample data, plus their `ds.*` catalogue keys
+      in both catalogues (Decision 12). `__DEV__`-only; never ships.
 - [ ] `apps/mobile/src/test-utils/mu-class-map.ts` — flip the classes of Decision 12, honouring the
       contingency.
 - [ ] `apps/mobile/src/theme.ts` — add a `settings` group to item #8's `screenMetrics` export, and
@@ -691,6 +709,7 @@ in-memory secure-store fake, source-scan guards, and smoke on a dev build.
 | 15 | **`formatLongMonthYear`** renders `enero 2025` / `January 2025` and is stable under a hostile host timezone | Decision 10; A7 | `packages/shared-utils/src/dates.test.ts` | shared-utils |
 | 16 | **Routes render every manifest state.** `settings-account` renders the modal when the phase is `'confirming'` and not otherwise; the three routes no longer render `RoutePlaceholder` | non-negotiable 6 | `apps/mobile/app/settings/__tests__/{index,account,about}.test.tsx` | `app` |
 | 17 | **`mu-*` coverage stays exhaustive** after the Decision 12 flips | AC-adjacent; Decision 12 | existing `apps/mobile/src/__tests__/mu-class-coverage.test.ts` (no edit; must stay green) | `app` |
+| 18 | **Gallery coverage stays bidirectional** — every new `ds.*` key is used by the gallery and every gallery key exists in `es.json` | Decision 12 | existing `apps/mobile/src/__tests__/gallery-catalogue-keys.test.ts` (no edit; must stay green) | `app` |
 
 RN-tier component tests follow item #2's renderer-free convention: call the component function and
 walk the returned element tree.
@@ -865,7 +884,7 @@ The developer updates these **after** implementation; they are not edited during
 | A credential key namespace is added later and the wipe silently misses it | Low | **Critical** | Scenario 11's scanner fails the build; a new namespace forces an edit to `collectCredentialKeys` in the same change (Decision 2) |
 | The wipe half-succeeds on a real device (keychain delete refused while locked) | Low | High | Decision 1's fail-closed step 3 verifies each key reads back `null` **before** the store is touched, and the failure leaves a consistent, retryable state. Runbook step 7 exercises it |
 | `resetAppDatabase()` leaves a stale handle and the next screen reads a deleted file | Med | High | The memo is cleared **before** the await, `resetDatabaseBootstrap()` clears the single-flight, and scenario 14 pins the bootstrap half |
-| `deleteAppDatabaseFile`'s exact `expo-sqlite` API differs from what this plan assumes | Med | Low | The plan names the *responsibility* and the file, not the API call; Implementation Order step 2 reads the installed `expo-sqlite` typings first. The `expo-sqlite` import stays inside `client.ts` either way |
+| Three runtime APIs are **unverified** because their packages are absent from the current `node_modules` tree: `expo-sqlite`'s database-deletion / handle-close call, `expo-router`'s `router.dismissAll()`, `expo-constants`' `Constants.expoConfig?.version` | Med | Low | Flagged as *unverified — the implementer must confirm before proceeding* in the Verification Log. The plan names the **responsibility and the owning file**, not the call signature: Implementation Order step 2 reads the installed `expo-sqlite` typings first, step 8 reads `expo-router` and `expo-constants`. The `expo-sqlite` import stays inside `client.ts` whatever the call turns out to be, and if `dismissAll()` is unavailable the fallback is `router.replace` alone plus a `(onboarding)` layout that disables the back gesture |
 | `mu-topbar*` gets promoted by a sibling item first, causing a merge conflict in `MU_CLASS_MAP` | Med | Low | Decision 12's contingency: consume the existing primitive, record the difference in the PR body, let `mu-class-coverage.test.ts` arbitrate |
 | The three inert about rows read as broken UI in review | Med | Low | Decision 8 records the two rejected alternatives and the follow-up item, so the reviewer rules with the same evidence rather than re-deriving it |
 | Item #47 lands mid-flight and the fidelity contract validation fails on unflipped targets | Low | Med | Resolution R3 makes the flip conditional and checked at implementation start (re-verification step 7) |
@@ -883,6 +902,9 @@ The developer updates these **after** implementation; they are not edited during
    a follow-up by item #9; this item consumes whichever exists and does not converge them.
 5. **`Modal`'s title variant versus the mockup's `mu-h3`** (Assumption A12) — a design-system
    question with `#screen=ds-components` consequences.
+6. **Adding `ScreenTopBar`, `ListGroup` and `ListRow` to the mockup's `#screen=ds-components`
+   page** (Decision 12) — a design-contract edit for the design owner; this item adds them to the
+   app-side `__DEV__` gallery only.
 
 ---
 
@@ -934,15 +956,18 @@ Each step ends in a state where `pnpm lint && pnpm typecheck && pnpm test` passe
    second guard fails. Revert both, and confirm both suites report a non-zero scanned-file count.
 
 7. **Design-system primitives.** Add `ScreenTopBar`, `ListGroup` and `ListRow`, export them from the
-   barrel, add their `componentMetrics` groups, and flip the `MU_CLASS_MAP` entries honouring
-   Decision 12's contingency.
-   *Verification*: `pnpm --filter @finanzas/mobile test` — `mu-class-coverage.test.ts` passes;
-   paste its per-status breakdown into the PR body. Also confirm `touch-targets.test.ts` and
-   `no-style-literals.test.ts` still pass for the three new components.
+   barrel, add their `componentMetrics` groups, add their gallery sections and `ds.*` catalogue
+   keys, and flip the `MU_CLASS_MAP` entries honouring Decision 12's contingency.
+   *Verification*: `pnpm --filter @finanzas/mobile test` — `mu-class-coverage.test.ts` and
+   `gallery-catalogue-keys.test.ts` pass; paste the per-status breakdown into the PR body. Also
+   confirm `touch-targets.test.ts` and `no-style-literals.test.ts` still pass for the three new
+   components.
 
 8. **The three screens.** Add the catalogue keys to `es.json` and `en.json`, add
    `screenMetrics.settings`, write the feature hooks and their pure siblings, and replace the three
-   `RoutePlaceholder` routes (Decisions 5-9, 14, 15).
+   `RoutePlaceholder` routes (Decisions 5-9, 14, 15). Confirm `router.dismissAll()` and
+   `Constants.expoConfig?.version` against the installed `expo-router` and `expo-constants`
+   packages before using them — both are flagged **unverified** in the Verification Log.
    *Verification*: `pnpm lint` (the `no-literal-string` rule must report nothing),
    `pnpm --filter @finanzas/mobile test` — `catalogue-parity`, `route-manifest-parity`,
    `no-naked-text` and the three new route tests pass. Then run the app and walk
@@ -988,10 +1013,17 @@ Each step ends in a state where `pnpm lint && pnpm typecheck && pnpm test` passe
   `deleteAppDatabaseFile`, `resetDatabaseBootstrap`, `countTransactions`,
   `countCategoriesByDirection`, `readFirstLaunchAt`, `formatLongMonthYear`, `ScreenTopBar`,
   `ListGroup`, `ListRow`), route path (`/settings`, `/settings/account`, `/settings/about`),
-  `testID` and Decision index is spelled identically in every section.
+  `testID`, Decision index (1-17), Assumption label (A1-A12) and scenario number (1-18) is spelled
+  identically in every section.
 - **Verification support**: Checked — every claim about existing behaviour cites a Verification Log
   row with a command and a result; every cross-item interface claim cites the owning item's plan
   document by path or by `git show` revision.
+- **Technical accuracy**: Checked — every primitive prop, variant string, best-practice quote and
+  guard behaviour this plan names was read from the actual source file and recorded in the
+  Verification Log. The three runtime APIs whose packages are absent from the current
+  `node_modules` tree (`expo-sqlite` deletion, `router.dismissAll()`,
+  `Constants.expoConfig?.version`) are explicitly flagged **unverified — the implementer must
+  confirm before proceeding**, with the owning Implementation Order step and a fallback named.
 - **Behavioural guarantees**: Checked — "no credential entry survives" names its mechanism (the
   step-3 read-back plus the namespace scanner), "returns to onboarding" names its mechanism (the
   file is gone, so the flag is gone), fail-closed names its mechanism (step 3 stops before
