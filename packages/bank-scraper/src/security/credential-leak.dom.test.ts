@@ -153,14 +153,14 @@ describe('credential-leak', () => {
     }
   });
 
-  it('credentials are cleared once the read ends, regardless of the outcome', async () => {
+  it('credentials are cleared once the read ends, regardless of the outcome (CodeRabbit finding #21: observes CredentialHolder.isCleared(), not isFinalized())', async () => {
     const port = new FakeWebViewPort();
     let cleared = false;
     const session = new ScrapeSession(BANCO_DE_CHILE_CONFIG, port, {
       countryCode: 'cl',
       credentials: { rut: SENTINEL_RUT, password: SENTINEL_PASSWORD },
       onResult: () => {
-        cleared = session.isFinalized();
+        cleared = session.areCredentialsCleared();
       },
     });
     session.start();

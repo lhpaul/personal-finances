@@ -151,6 +151,16 @@ export class ScrapeSession {
     return this.#finalized;
   }
 
+  /**
+   * Test-visible signal for `CredentialHolder.clear()` (CodeRabbit finding #21). Without this,
+   * a test asserting "credentials are cleared" could only observe `isFinalized()` — which stays
+   * true even if a regression dropped the `clear()` call from `#finalize()` entirely, since the
+   * two are set independently.
+   */
+  areCredentialsCleared(): boolean {
+    return this.#credentials.isCleared();
+  }
+
   getTraces(): ScraperTrace[] {
     return [...this.#traces];
   }

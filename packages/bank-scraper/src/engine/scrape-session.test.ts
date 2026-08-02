@@ -122,11 +122,11 @@ describe('ScrapeSession — AC1 happy path', () => {
 });
 
 describe('ScrapeSession — AC3, AC2: credentials and diagnostics', () => {
-  it('clears credentials on a successful completion', () => {
+  it('clears credentials on a successful completion (CodeRabbit finding #21: observes CredentialHolder.isCleared(), not isFinalized())', () => {
     const { session } = drive();
     session.start();
     session.handleWebViewMessage(JSON.stringify({ eventType: 'state-change', stepId: 'ready', progress: 1 }));
-    expect(session.isFinalized()).toBe(true);
+    expect(session.areCredentialsCleared()).toBe(true);
   });
 
   it('no sentinel credential value appears anywhere in the result or traces', () => {
@@ -384,6 +384,10 @@ describe('ScrapeSession — AC20: progress never decreases', () => {
     session.handleWebViewMessage(
       JSON.stringify({ eventType: 'state-change', stepId: 'get-transactions-start', progress: 0.75 }),
     );
+    // CodeRabbit finding #22: the loop below starts at index 1, so it passes vacuously (checks
+    // nothing) if onProgress fires zero or one times. Asserting the count first means a
+    // regression that silently drops onProgress calls fails this test instead of passing it.
+    expect(progresses).toHaveLength(4);
     for (let i = 1; i < progresses.length; i += 1) {
       expect(progresses[i]).toBeGreaterThanOrEqual(progresses[i - 1] as number);
     }
@@ -559,25 +563,27 @@ describe('ScrapeSession — Decision 7: outcome derivation, all four branches', 
 });
 
 describe('ScrapeSession — Cancellation (Decision 9)', () => {
-  it('clears credentials before tearing down the browser session (ordering)', () => {
+  it('clears credentials before tearing down the browser session (ordering) (CodeRabbit finding #21: asserts CredentialHolder.isCleared() directly, not just isFinalized())', () => {
     const port = new FakeWebViewPort();
     const orderedCalls: string[] = [];
+    let credentialsClearedBeforeTeardown = false;
     const originalStopLoading = port.stopLoading.bind(port);
-    port.stopLoading = () => {
-      orderedCalls.push('port.stopLoading');
-      originalStopLoading();
-    };
     const session = new ScrapeSession(buildConfig(), port, {
       countryCode: 'cl',
       credentials: { rut: 'r', password: 'p' },
       onResult: () => {},
     });
-    // Spy on clear() by wrapping cancel()'s effect via a a proxy is awkward with # private fields;
-    // instead assert observable ordering via the port call log, which is only ever reached AFTER
-    // finalize() calls credentials.clear() (verified by code inspection of #finalize()).
+    port.stopLoading = () => {
+      orderedCalls.push('port.stopLoading');
+      // Captured at the exact moment teardown starts — proves clear() ran before teardown, not
+      // just that isFinalized() eventually becomes true (which is set independently of clear()).
+      credentialsClearedBeforeTeardown = session.areCredentialsCleared();
+      originalStopLoading();
+    };
     session.start();
     session.cancel();
     expect(orderedCalls).toEqual(['port.stopLoading']);
+    expect(credentialsClearedBeforeTeardown).toBe(true);
   });
 
   it('a message injected after cancellation changes nothing about the emitted result', () => {
