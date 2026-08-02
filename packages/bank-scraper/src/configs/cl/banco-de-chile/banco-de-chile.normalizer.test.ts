@@ -33,6 +33,14 @@ describe('mapProductKind', () => {
   it('an unrecognized kind is not reported and does not throw', () => {
     expect(mapProductKind('cuenta-de-ahorro-a-plazo')).toBeNull();
   });
+
+  it.each(['constructor', 'toString', 'hasOwnProperty', '__proto__'])(
+    'the inherited Object.prototype key %s is not reported, rather than resolving through the prototype chain (CodeRabbit finding #47)',
+    (kindKey) => {
+      expect(() => mapProductKind(kindKey)).not.toThrow();
+      expect(mapProductKind(kindKey)).toBeNull();
+    },
+  );
 });
 
 describe('mapMovementDirection', () => {
@@ -47,6 +55,14 @@ describe('mapMovementDirection', () => {
   it('a card movement is not assumed to be one direction — reads the column like any other (AC9)', () => {
     expect(mapMovementDirection(movement({ outgoingText: '$500', incomingText: null }))).toBe('debit');
     expect(mapMovementDirection(movement({ outgoingText: null, incomingText: '$500' }))).toBe('credit');
+  });
+
+  it('an empty-string outgoingText is "populated" here too, matching the engine\'s nullish amount selection (CodeRabbit finding #48)', () => {
+    // scrape-session.ts picks the amount text with `payload.outgoingText ?? payload.incomingText`
+    // — a nullish check, not a truthiness check. An empty string is not null, so the engine
+    // treats it as populated (and ultimately fails to parse it as an amount); this function must
+    // agree, not report 'credit' for a movement the engine considers a debit attempt.
+    expect(mapMovementDirection(movement({ outgoingText: '', incomingText: null }))).toBe('debit');
   });
 });
 
@@ -69,5 +85,11 @@ describe('mapMovementExtras', () => {
 
   it('omits keys the payload does not carry, rather than inventing empty values', () => {
     expect(mapMovementExtras(movement({ extras: {} }))).toEqual({});
+  });
+
+  it('omits originalAmountMinorUnits entirely when the raw value is not numeric, rather than storing NaN (CodeRabbit finding #49)', () => {
+    const extras = mapMovementExtras(movement({ extras: { originalAmountMinorUnits: 'not-a-number' } }));
+    expect(extras).toEqual({});
+    expect(Object.keys(extras)).not.toContain('originalAmountMinorUnits');
   });
 });
