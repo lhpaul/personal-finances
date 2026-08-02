@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { MAX_SUBMIT_ATTEMPTS } from '../../../engine/constants';
 import { loadFixtureHtml, renderFixture } from '../../../test-utils/load-fixture';
 import { resetScriptGlobals, runInjectedScript } from '../../../test-utils/run-injected-script';
 import { BANCO_DE_CHILE_CREDENTIAL_ENTRY_ORIGIN } from './banco-de-chile.constants';
@@ -90,6 +91,33 @@ describe('loginScript — against login-invalid-credentials.html (AC14)', () => 
     async () => {
       const { messages } = await runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
       expect(JSON.stringify(messages)).not.toContain('datos ingresados no son correctos');
+    },
+    TEST_TIMEOUT_MS,
+  );
+});
+
+describe('loginScript — MAX_SUBMIT_ATTEMPTS (Decision 8, AC19)', () => {
+  beforeEach(() => {
+    resetScriptGlobals();
+    renderFixture(loadFixtureHtml(FIXTURES_DIR, 'login.html'));
+  });
+
+  it(
+    'posts a parse_failed ERROR with attempts equal to MAX_SUBMIT_ATTEMPTS when the submit button is missing, instead of hanging silently',
+    async () => {
+      // Only the rut input is awaited before this step (waitForRutInputElement); removing the
+      // submit button instead lets that wait succeed and fails specifically inside the
+      // submit-form step, isolating this proof from wait-for-page-to-be-ready's own retry step.
+      getSubmitButton().remove();
+      const { messages } = await runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
+
+      const errorMessages = messages.filter((m) => m.eventType === 'error');
+      expect(errorMessages).toHaveLength(1);
+      expect(errorMessages[0]?.data).toMatchObject({
+        code: 'parse_failed',
+        step: 'submit-form',
+        attempts: MAX_SUBMIT_ATTEMPTS,
+      });
     },
     TEST_TIMEOUT_MS,
   );

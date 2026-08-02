@@ -1,3 +1,4 @@
+import { MAX_SUBMIT_ATTEMPTS } from '../../../engine/constants';
 import { toJsStringLiteral } from '../../../security/js-string-literal';
 import { commonHelperFunctions, generateExecutableStepFunction, generateLoginInvalidCredentialsErrorFunction, generateWaitForElementHelperFunctions } from '../../../scripts/script-utils';
 import { BANCO_DE_CHILE_CREDENTIAL_ENTRY_ORIGIN } from './banco-de-chile.constants';
@@ -7,9 +8,12 @@ import { BANCO_DE_CHILE_CREDENTIAL_ENTRY_ORIGIN } from './banco-de-chile.constan
  * implementation plan Decision 4 checkpoint 3, Decision 5, Decision 8).
  *
  * The credential fields are built with `toJsStringLiteral` — escaping, never interpolation
- * (Decision 5, control 1) — and are typed into the form with **no retry wrapper at all**
- * (Decision 8: `MAX_SUBMIT_ATTEMPTS = 1`). A rejected sign-in posts `invalid_credentials` with no
- * `message` field (Decision 5, control 3) and is never retried (Business Rule 22).
+ * (Decision 5, control 1) — and are typed into the form with the shared step wrapper capped at
+ * `maxRetries: MAX_SUBMIT_ATTEMPTS` (Decision 8: `MAX_SUBMIT_ATTEMPTS = 1`), so a flaky submit
+ * still surfaces as a proper `parse_failed` `ERROR` rather than hanging silently until the read
+ * deadline, while never clicking "Ingresar" a second time (Business Rule 22). A rejected sign-in
+ * posts `invalid_credentials` with no `message` field (Decision 5, control 3) and is never
+ * retried, via a separate, non-wrapped code path (Business Rule 22).
  */
 
 const RUT_INPUT_LABEL = 'RutInput';
@@ -49,23 +53,33 @@ export function loginScript(credentials: { rut: string; password: string }): str
           `,
         })}
 
-        // Credential entry and submit run with no retry wrapper (Decision 8: MAX_SUBMIT_ATTEMPTS
-        // = 1) — a flaky submit must never click "Ingresar" more than once (Business Rule 22).
-        const rutInput = ${RUT_INPUT_SELECTOR};
-        rutInput.value = ${rutLiteral};
-        rutInput.dispatchEvent(new Event('input', { bubbles: true }));
-        rutInput.dispatchEvent(new Event('blur', { bubbles: true }));
-        rutInput.dispatchEvent(new Event('change', { bubbles: true }));
+        // Credential entry and submit run through the shared step wrapper capped at
+        // maxRetries: MAX_SUBMIT_ATTEMPTS (= 1) — a flaky submit must never click "Ingresar" more
+        // than once (Business Rule 22), but a missing input or button still posts a proper
+        // parse_failed ERROR instead of hanging until the read deadline.
+        ${generateExecutableStepFunction(
+          {
+            stepName: 'submit-form',
+            logGroup: LOG_GROUP,
+            code: `
+              const rutInput = ${RUT_INPUT_SELECTOR};
+              rutInput.value = ${rutLiteral};
+              rutInput.dispatchEvent(new Event('input', { bubbles: true }));
+              rutInput.dispatchEvent(new Event('blur', { bubbles: true }));
+              rutInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-        const passwordInput = ${PASSWORD_INPUT_SELECTOR};
-        passwordInput.value = ${passwordLiteral};
-        passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
-        passwordInput.dispatchEvent(new Event('blur', { bubbles: true }));
-        passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
+              const passwordInput = ${PASSWORD_INPUT_SELECTOR};
+              passwordInput.value = ${passwordLiteral};
+              passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+              passwordInput.dispatchEvent(new Event('blur', { bubbles: true }));
+              passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-        const submitButton = ${SUBMIT_BUTTON_SELECTOR};
-        sendTrace({ logGroup: '${LOG_GROUP}', message: 'Step completed', data: { stepName: 'submit-form', attempts: 1 } });
-        submitButton.click();
+              const submitButton = ${SUBMIT_BUTTON_SELECTOR};
+              submitButton.click();
+            `,
+          },
+          { maxRetries: MAX_SUBMIT_ATTEMPTS },
+        )}
 
         // A single bounded wait, then one check — not wrapped in the retry step function.
         // Finding no rejection banner is treated as success (the engine advances once the next
