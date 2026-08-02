@@ -100,6 +100,27 @@ describe('StateManagerService', () => {
     expect(result.rejectedReason).toBe('unknown_step');
   });
 
+  it('a NaN progress does not permanently corrupt the monotonic guarantee (CodeRabbit finding #27)', () => {
+    const manager = new StateManagerService();
+    manager.updateState({ stepId: 'get-products-start', progress: 0.5 });
+    const rejectedProgress = manager.updateState({ stepId: 'get-transactions-start', progress: Number.NaN });
+    expect(Number.isNaN(rejectedProgress.progress)).toBe(false);
+    expect(rejectedProgress.progress).toBe(0.5); // NaN is treated as "no new information"
+    // A later, legitimate progress value must still be able to advance normally — Math.max with
+    // a leaked NaN would poison every subsequent call.
+    const recovered = manager.updateState({ stepId: 'get-transactions-start', progress: 0.9 });
+    expect(recovered.progress).toBe(0.9);
+  });
+
+  it('clamps an out-of-range progress value into 0..1 (CodeRabbit finding #27)', () => {
+    const manager = new StateManagerService();
+    const tooHigh = manager.updateState({ stepId: 'get-products-start', progress: 5 });
+    expect(tooHigh.progress).toBe(1);
+    const manager2 = new StateManagerService();
+    const negative = manager2.updateState({ stepId: 'get-products-start', progress: -3 });
+    expect(negative.progress).toBe(0);
+  });
+
   it('starts at load-start / progress 0 before any update', () => {
     const manager = new StateManagerService();
     expect(manager.getCurrentStep()).toBe('load-start');

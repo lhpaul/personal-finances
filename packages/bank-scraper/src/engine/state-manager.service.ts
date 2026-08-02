@@ -46,7 +46,13 @@ export class StateManagerService {
       };
     }
     this.#stepIndex = incomingIndex;
-    this.#progress = Math.max(this.#progress, update.progress);
+    // update.progress comes from a WebView payload — clamp it into 0..1 and guard against NaN
+    // before it ever reaches Math.max. Math.max(current, NaN) is NaN, and every later
+    // Math.max(NaN, x) is also NaN, permanently breaking the "monotonic" guarantee this class's
+    // own doc comment claims to enforce mechanically (CodeRabbit finding #27). A NaN input is
+    // treated as "no new information" (the current value is kept) rather than corrupting it.
+    const incomingProgress = Number.isFinite(update.progress) ? Math.min(1, Math.max(0, update.progress)) : this.#progress;
+    this.#progress = Math.max(this.#progress, incomingProgress);
     return {
       accepted: true,
       stepId: VALID_STEP_TRANSITIONS[this.#stepIndex] as ScraperStepId,
