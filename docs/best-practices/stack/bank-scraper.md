@@ -17,12 +17,14 @@ Chile is the only bank implemented for the MVP.
    navigation and no credential access happen.
 2. **Scripts** are injected at matching URL paths (`BankConfig.scripts`). A script is a function
    that takes input and returns a JavaScript **string** to run inside the page. Every script's
-   in-page work is DOM traversal, identity hashing and masking only — it posts **raw structural
-   facts** (a bank-formatted amount string, a `DD/MM/YYYY` date string); parsing into an integer
-   minor-unit amount or a `DateLocal` happens only on the React Native side
-   (`src/parsing/amount.ts`, `src/parsing/date.ts`). No `parseFloat`, no `Date`, no
-   `toLocaleString` anywhere in an injected script — enforced by `no-float-parsing.test.ts`
-   scanning the generated source strings, because ESLint cannot see inside a template literal.
+   **data-extraction** work is DOM traversal, identity hashing and masking only — it posts **raw
+   structural facts** (a bank-formatted amount string, a `DD/MM/YYYY` date string); parsing into an
+   integer minor-unit amount or a `DateLocal` happens only on the React Native side
+   (`src/parsing/amount.ts`, `src/parsing/date.ts`). The login script is the one exception to
+   "extraction only": it also enters credentials into the form and submits it — see
+   [Credentials](#credentials) below. No `parseFloat`, no `Date`, no `toLocaleString` anywhere in
+   an injected script — enforced by `no-float-parsing.test.ts` scanning the generated source
+   strings, because ESLint cannot see inside a template literal.
 3. Scripts talk back via `window.ReactNativeWebView.postMessage()` using `ScraperEventType`
    (`STATE_CHANGE`, `ERROR`, `TRACE`).
 4. `MessageHandlerService` routes messages (redacting `TRACE`/`ERROR` payloads before they reach
@@ -41,8 +43,10 @@ substring or a suffix match. Three independent checkpoints, each closing a gap t
 
 1. **Navigation gate** — `onShouldStartLoadWithRequest` on the `<WebView>` blocks a request before
    a byte is fetched.
-2. **Injection gate** — `WebViewDriverService` re-checks the load-end URL before injecting any
-   script, catching a redirect the navigation gate does not reliably fire for on Android.
+2. **Injection gate** — `ScrapeSession.handleLoadEnd` re-checks the load-end URL before calling
+   into `WebViewDriverService` at all, catching a redirect the navigation gate does not reliably
+   fire for on Android. `WebViewDriverService` itself does not re-validate the origin — it assumes
+   the caller already did, by design (see its own doc comment).
 3. **In-page gate** — the login script's own first statement compares `window.location.origin`
    against the bank's `credentialEntryOrigin` literal, before either credential field is touched —
    the only checkpoint that observes the origin at the instant a credential would be typed.
@@ -102,11 +106,14 @@ packages/bank-scraper/src/configs/cl/<bank-name>/
     └── README.md                             # provenance: hand-authored, or captured-and-scrubbed
 ```
 
-`src/configs/cl/<bank-name>/tsconfig` inherits from the package root — there is no per-bank build
-config. Register the new config in `src/configs/cl/index.ts` and, if it is a new country,
-`src/configs/index.ts`. No file outside the bank's own directory changes; a committed test
-(`testing/bank-containment.test.ts`) asserts this, not a one-off grep at review time — it also
-asserts the registry never accidentally has more than one entry per bank id.
+There is no per-bank `tsconfig` — every bank's directory is compiled by the single package-root
+`packages/bank-scraper/tsconfig.json` (`rootDir: "src"`, `include: ["src"]`). Register the new
+config in `src/configs/cl/index.ts` and, if it is a new country, `src/configs/index.ts` — these two
+registry files are the one intentional, named exception to "no file outside the bank's own
+directory changes"; every other file this containment property covers stays inside
+`src/configs/cl/<bank-name>/`. A committed test (`testing/bank-containment.test.ts`) asserts this,
+not a one-off grep at review time — it also asserts the registry never accidentally has more than
+one entry per bank id.
 
 ## Testing
 
