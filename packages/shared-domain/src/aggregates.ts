@@ -1,4 +1,4 @@
-import { differenceInDays, divideRoundHalfUp } from '@finanzas/shared-utils';
+import { differenceInDays, divideRoundHalfUp, isValidMoneyMinorUnits } from '@finanzas/shared-utils';
 import { apportionTenths, PERCENTAGE_TENTHS_TOTAL } from './apportionment';
 import { contributedAmount, isIncludedInAnalysis } from './inclusion';
 import type { DateLocal, Movement, MovementDirection, MovementInclusionFields, Period } from './types';
@@ -34,10 +34,16 @@ export function countElapsedDaysInPeriod(period: Period, asOf: DateLocal): numbe
 
 /**
  * Half-up average of `total` over `dayCount` elapsed days. Throws `RangeError` when
- * `dayCount < 1` — dividing by zero days is a caller bug, not a value (Decision 12).
- * `summarizePeriod` guards this and returns `null` instead of calling it in that case.
+ * `dayCount < 1` — dividing by zero days is a caller bug, not a value (Decision 12). Throws
+ * `TypeError` when `total` is not a safe-integer minor-unit value (Business Rule 8) — checked
+ * explicitly rather than relying on `divideRoundHalfUp`'s internal `BigInt` conversion to throw,
+ * because that throw is not guaranteed for every non-integer input (see `computePeriodDelta`).
+ * `summarizePeriod` guards `dayCount < 1` and returns `null` instead of calling this in that case.
  */
 export function dailyAverage(total: number, dayCount: number): number {
+  if (!isValidMoneyMinorUnits(total)) {
+    throw new TypeError('dailyAverage: total must be a safe-integer minor-unit value');
+  }
   if (dayCount < 1) {
     throw new RangeError('dailyAverage: dayCount must be at least 1');
   }
@@ -58,9 +64,19 @@ export interface PeriodDelta {
  * Period-over-period delta (Decision 13). `percentageTenths` is the signed half-away-from-zero
  * rounding of `(current - previous) * 1000 / previous`, computed as `divideRoundHalfUp` on the
  * magnitude and then re-signed — the same half-away-from-zero convention
- * `formatClpAbbreviated` already uses.
+ * `formatClpAbbreviated` already uses. Throws `TypeError` when either total is not a
+ * safe-integer minor-unit value (Business Rule 8): a non-integer `absoluteDelta` can otherwise
+ * survive the `* PERCENTAGE_TENTHS_TOTAL` multiplication undetected when the fractional parts
+ * happen to cancel out (e.g. `1000.5 - 2000` scaled by `1000` lands back on an integer), so this
+ * is checked explicitly rather than left to `divideRoundHalfUp`'s internal `BigInt` conversion.
  */
 export function computePeriodDelta(currentTotal: number, previousTotal: number): PeriodDelta {
+  if (!isValidMoneyMinorUnits(currentTotal)) {
+    throw new TypeError('computePeriodDelta: currentTotal must be a safe-integer minor-unit value');
+  }
+  if (!isValidMoneyMinorUnits(previousTotal)) {
+    throw new TypeError('computePeriodDelta: previousTotal must be a safe-integer minor-unit value');
+  }
   const absoluteDelta = currentTotal - previousTotal;
   if (previousTotal === 0) {
     return { currentTotal, previousTotal, absoluteDelta, percentageTenths: null };

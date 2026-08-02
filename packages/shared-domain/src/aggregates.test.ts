@@ -266,3 +266,51 @@ describe('buildCategoryBreakdown — a category whose every movement is excluded
     expect(buckets).toHaveLength(0);
   });
 });
+
+describe('Business Rule 8 — amounts are integers in minor units', () => {
+  it('buildCategoryBreakdown propagates inclusion.ts\'s TypeError for a non-integer movement amount', () => {
+    expect(() =>
+      buildCategoryBreakdown([{ transactionCategoryId: 'comida', amount: 1.5, includedAmount: null, excludedAt: null }]),
+    ).toThrow(TypeError);
+  });
+
+  it('summarizePeriod propagates the same guard for a non-integer movement amount', () => {
+    const badMovement = movement({ id: 'bad', dateLocal: '2025-01-05', amount: 1.5 });
+    expect(() => summarizePeriod([badMovement], JAN_2025, '2025-01-29')).toThrow(TypeError);
+  });
+
+  it.each([1.5, NaN, Infinity])('dailyAverage throws TypeError when total is %p', (total) => {
+    expect(() => dailyAverage(total, 10)).toThrow(TypeError);
+  });
+
+  it.each([1.5, NaN, Infinity])('computePeriodDelta throws TypeError when currentTotal is %p', (currentTotal) => {
+    expect(() => computePeriodDelta(currentTotal, 1000)).toThrow(TypeError);
+  });
+
+  it.each([1.5, NaN, Infinity])('computePeriodDelta throws TypeError when previousTotal is %p', (previousTotal) => {
+    expect(() => computePeriodDelta(1000, previousTotal)).toThrow(TypeError);
+  });
+
+  it('regression: a fractional delta that would cancel out through the *1000 scale still throws', () => {
+    // 1000.5 - 2000 = -999.5; (-999.5) * 1000 = -999500, an exact integer — this is the specific
+    // shape that would otherwise slip past divideRoundHalfUp's internal BigInt conversion
+    // undetected. The explicit isValidMoneyMinorUnits guard on currentTotal catches it up front.
+    expect(() => computePeriodDelta(1000.5, 2000)).toThrow(TypeError);
+  });
+
+  it('every numeric value in Fixture A and Fixture C summaries is a safe integer', () => {
+    const fixtureC: Movement[] = [
+      ...fixtureA,
+      movement({ id: 'm4', dateLocal: '2025-01-25', transactionCategoryId: null, amount: 21000 }),
+    ];
+    for (const summary of [summarizePeriod(fixtureA, JAN_2025, '2025-01-29'), summarizePeriod(fixtureC, JAN_2025, '2025-01-29')]) {
+      expect(Number.isSafeInteger(summary.totals.expenseTotal)).toBe(true);
+      expect(Number.isSafeInteger(summary.totals.incomeTotal)).toBe(true);
+      expect(Number.isSafeInteger(summary.dailyAverageExpense as number)).toBe(true);
+      for (const bucket of summary.expenseBreakdown.buckets) {
+        expect(Number.isSafeInteger(bucket.total)).toBe(true);
+        expect(Number.isSafeInteger(bucket.percentageTenths)).toBe(true);
+      }
+    }
+  });
+});

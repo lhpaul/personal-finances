@@ -1,3 +1,4 @@
+import { isValidMoneyMinorUnits } from '@finanzas/shared-utils';
 import type { MovementInclusionFields } from './types';
 
 /**
@@ -30,8 +31,22 @@ export function isIncludedInAnalysis(m: MovementInclusionFields): boolean {
   return m.excludedAt === null;
 }
 
-/** `??`, never `||`: an `includedAmount` of `0` is a real partial amount, not an absence. */
+/**
+ * `??`, never `||`: an `includedAmount` of `0` is a real partial amount, not an absence.
+ *
+ * Business Rule 8 (amounts are integers in minor units): both `amount` and a non-null
+ * `includedAmount` are validated with `@finanzas/shared-utils`'s `isValidMoneyMinorUnits` before
+ * any arithmetic. Throws `TypeError` with a fixed sentence — Business Rule 1 requires that no
+ * thrown message in this module interpolates its input, so the received value is deliberately
+ * not echoed.
+ */
 export function effectiveAmount(m: MovementInclusionFields): number {
+  if (!isValidMoneyMinorUnits(m.amount)) {
+    throw new TypeError('effectiveAmount: amount must be a safe-integer minor-unit value');
+  }
+  if (m.includedAmount !== null && !isValidMoneyMinorUnits(m.includedAmount)) {
+    throw new TypeError('effectiveAmount: includedAmount must be a safe-integer minor-unit value');
+  }
   return m.includedAmount ?? m.amount;
 }
 
