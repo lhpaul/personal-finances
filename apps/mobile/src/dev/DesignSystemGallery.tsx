@@ -33,7 +33,15 @@ import { theme } from '../theme';
 /** Decorative sample glyphs for the `CategoryChip` demo rows below: language-independent, not
  *  user-facing copy, so they do not belong in the i18n catalogues (implementation plan Decision
  *  10, applied here the same way as `CategoryChip.tsx`'s `STAR_GLYPH` and `Checkbox.tsx`'s
- *  `CHECK_GLYPH`). */
+ *  `CHECK_GLYPH`).
+ *
+ *  This is Decision 10's "extract to a named constant" pattern applied to *sample data passed
+ *  as a prop* into a primitive's demo row — not to the `ds.*_icon` / `ds.*.icon` catalogue
+ *  entries elsewhere in this file (e.g. `ds.hero.icon`, `ds.note.info_icon`,
+ *  `ds.tab_bar.home_icon`). Those icon keys are intentionally catalogue-owned demo content, not
+ *  decorative glyphs internal to a primitive: `catalogue-parity.test.ts` requires them to exist
+ *  with identical keys in both `es` and `en`, and removing them would be a Decision 10 scope
+ *  expansion this item's plan does not authorize (see PR #41 thread discussion). */
 const SUGGESTED_CATEGORY_EMOJI = '📦';
 const SELECTED_CATEGORY_EMOJI = '🍔';
 const DEFAULT_CATEGORY_EMOJI = '🚗';
