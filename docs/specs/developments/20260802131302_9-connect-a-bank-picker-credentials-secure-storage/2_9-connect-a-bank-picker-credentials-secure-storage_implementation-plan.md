@@ -15,37 +15,35 @@ updates `user_financial_institutions` while never receiving a credential value; 
 where item #11 mounts the scraper. The plaintext RUT and password exist in component state only
 between typing and the secure-store write, and are dropped before navigation. The picker,
 credential form and connected screen are pure renderings of catalogue copy over data read
-through `src/db` repositories, with one new design-system primitive (`BankRow`) taking the
-`mu-bank*` classes that item #2 explicitly deferred to this item.
+through `src/db` repositories, composing the `BankRow` primitive that item #12's merged plan
+builds and names this item as a consumer of.
 
 **Estimated complexity**: L
 
 <!-- S: < 1 day | M: 1-3 days | L: 3+ days -->
 
 **Rationale**: Four screens with eleven declared states between them, a new native dependency,
-a new lint/test boundary for credentials, a new design-system primitive with gallery and
-`mu-class` bookkeeping, a new repository layer for the connection lifecycle, a third Jest
-project for the Node-tier service tests, and a dev-only fixture surface without which four
+a new lint/test boundary for credentials, the connection-lifecycle repository functions, a
+negative test that has to be shown to fire, and a dev-only fixture surface without which four
 acceptance criteria are unverifiable in an MVP that ships exactly one connectable bank.
 
 **Dependencies**:
 
-- **#2 (theme and design-system primitives)** — merged. `Button`, `TextField`, `Note`, `Badge`,
-  `Card`, `EmptyState`, `Text` and `componentMetrics` are used as they exist today.
-- **#3 (local database)** — merged. `financial_institutions` is seeded; the
-  `user_financial_institutions` table, its `(financial_institution_id)` unique index and the
-  `credentials_key` column exist. No migration is needed.
-- **#34 (i18n)** — merged. Every new string is a flat catalogue key.
-- **#4 (shared-utils)** — merged. `isValidRut` / `formatRut` / `normalizeRut` are the RUT
-  authority; this item adds no RUT logic of its own.
-- **#6 (bank scraper)** — **open in review (PR #46)**. This item does **not** import the
-  scraper at runtime; it only records the seam that item #11 will call
-  (`startBankRead`). The plan's only hard requirement is that `financial_institutions.id`
-  keeps matching the scraper's `bankId` (`banco-de-chile`), which is already true in the
-  seed catalogue. **Implementation must not start the connect-flow → scraper wiring before
-  #6 merges**; nothing else in this plan is blocked by it.
-- **#10 (sync engine) and #11 (syncing screen)** — not built. This plan defines the seam and
-  builds neither side of it.
+| Item | State at plan time | Why this plan needs it | Blocking? |
+| --- | --- | --- | --- |
+| [#2 theme and primitives](https://github.com/lhpaul/personal-finances/issues/2) | Merged | `Button`, `TextField`, `Note`, `Badge`, `Card`, `EmptyState`, `Text`, `componentMetrics` | Satisfied |
+| [#3 local database](https://github.com/lhpaul/personal-finances/issues/3) | Merged | `financial_institutions` seeded; `user_financial_institutions` with its unique index and `credentials_key`. **No migration is needed** | Satisfied |
+| [#4 shared-utils](https://github.com/lhpaul/personal-finances/issues/4) | Merged | `isValidRut`, `formatRut`, `normalizeRut` — the RUT authority; this item adds no RUT logic | Satisfied |
+| [#34 i18n](https://github.com/lhpaul/personal-finances/issues/34) | Merged | Flat-key catalogues and the `no-literal-string` rule | Satisfied |
+| [#8 onboarding](https://github.com/lhpaul/personal-finances/issues/8) | Plan merged (PR [#55](https://github.com/lhpaul/personal-finances/pull/55)); implementation pending | Owns `apps/mobile/src/db/runtime.ts` → `getAppDatabase()`, the async-`migrate` widening of `bootstrap.ts`, and `app/(onboarding)/_layout.tsx`. This plan consumes all of them (Decision 17) | **Yes** — must be merged before Implementation Order step 3 |
+| [#12 home screen](https://github.com/lhpaul/personal-finances/issues/12) | Plan merged; implementation pending | Owns the `BankRow` primitive and the `mu-bank*` / `mu-item__txt` / `mu-item__sub` / `mu-item__chev` reclassification, `componentMetrics.bankRow` and the `bankRow` touch-metrics entry. This plan **consumes** `BankRow` and does not rebuild it (Decision 10) | **Yes** — must be merged before Implementation Order step 6 |
+| [#10 sync engine](https://github.com/lhpaul/personal-finances/issues/10) | Plan merged; implementation pending | Owns `markConnectionSyncing` and the other connection-sync writes in `src/db/repositories/institutions.ts`, and `runSync` / `ScraperRunner` in `src/features/sync/`. This plan calls `markConnectionSyncing` and hands `runSync` its request (Decision 8) | **No** — see Decision 8's merge-order contingency |
+| [#6 bank scraper](https://github.com/lhpaul/personal-finances/issues/6) | PR [#46](https://github.com/lhpaul/personal-finances/pull/46) open, in review on another lane | Nothing at runtime: this item imports no scraper module. Only the identity contract matters — `financial_institutions.id` must keep matching the scraper's `bankId` (`banco-de-chile`), which the merged seed already satisfies | **No** for this item; **yes** before anyone wires the read |
+| [#11 syncing screen](https://github.com/lhpaul/personal-finances/issues/11) | Not started | Consumes this item's handoff: mounts the hidden WebView, supplies `ScraperRunner` and calls `runSync` | **No** — this item defines the seam and builds neither side |
+
+**Not built here** (navigation seams only): the syncing screen (#11), the sync engine (#10), the
+onboarding frame (#8), notifications (#18) and connection management (#20). This item's routes
+link to their existing placeholder routes.
 
 ---
 
@@ -58,7 +56,7 @@ acceptance criteria are unverifiable in an MVP that ships exactly one connectabl
 | --- | --- | --- |
 | Repo revision | `git rev-parse --short HEAD` | `4fc495a` (branch `implementation-plan/9-connect-a-bank`, fast-forwarded to `origin/develop`) |
 | `mu-bank*` ownership | `grep -n "mu-bank" apps/mobile/src/test-utils/mu-class-map.ts` | Three entries (`mu-bank`, `mu-bank__logo`, `mu-bank__name`), all `status: 'deferred'`, all noted `Deferred to #9 (Connect a bank).` |
-| `mu-topbar*` / `mu-item*` ownership | `grep -n "mu-topbar\|mu-item" apps/mobile/src/test-utils/mu-class-map.ts` | `mu-topbar*` deferred to #12; `mu-item*` deferred to #19 — **not** this item's to claim |
+| `mu-topbar*` / `mu-item*` ownership | `grep -n "mu-topbar\|mu-item" apps/mobile/src/test-utils/mu-class-map.ts` | Both `deferred` in the merged map (`mu-topbar*` noted #12, `mu-item*` noted #19). Item #12's merged plan retargets the `mu-topbar*` notes to **#8** and claims `mu-item__txt` / `__sub` / `__chev` for its row components — neither block is this item's to claim |
 | `expo-secure-store` is not installed | `grep -c "expo-secure-store" apps/mobile/package.json` | `0` |
 | Version pinned by Expo SDK 54 | `node -e "console.log(require('expo/bundledNativeModules.json')['expo-secure-store'])"` (resolved through the workspace store) | `~15.0.8` |
 | Seeded institutions | `sed -n '77,126p' apps/mobile/src/db/seeds/catalogue.ts` | Six banks: `banco-de-chile` (`available`); `santander`, `bci`, `banco-estado`, `falabella`, `itau` (`coming_soon`) |
@@ -77,6 +75,10 @@ acceptance criteria are unverifiable in an MVP that ships exactly one connectabl
 | Same-surface PRs, first pass | `gh pr list --repo lhpaul/personal-finances --state open --json number,title,headRefName` | At `4fc495a`: #55 `implementation-plan/8-onboarding-intro-value-ready`, #46 `feature/6-port-bank-scraper-banco-de-chile`, #44 `feature/5-shared-domain-rules-matching-aggregates` |
 | Same-surface PRs, re-check after the review gate | `git fetch origin && git log --oneline HEAD..origin/develop` | **#55 merged** into `develop` as `05c0926` + `3f4b49c` while this plan was in its review gate. #46 and #44 remain open and touch `packages/*` only. The plan branch was merged with `develop` at `e9ec926` so the item #8 plan is present in this worktree |
 | Overlap with item #8's plan | `git show origin/develop:docs/specs/developments/20260802132343_8-onboarding-intro-value-ready/2_8-onboarding-intro-value-ready_implementation-plan.md` (re-read after the merge) | Plans `src/db/runtime.ts` (`getAppDatabase()`), `src/db/repositories/connections.ts` (read-only `getConnectedBanksSummary`), `src/db/types.ts` additions, `app/(onboarding)/_layout.tsx` `headerShown: false`, and a new `screenMetrics` export in `theme.ts` |
+| `BankRow` ownership | `grep -n "BankRow\|mu-bank" docs/specs/developments/20260802172715_12-home-screen/2_12-home-screen_implementation-plan.md` | Item #12's **merged** plan builds `BankRow.tsx`, takes `mu-bank`, `mu-bank__logo`, `mu-bank__name`, `mu-item__txt`, `mu-item__sub`, `mu-item__chev`, and names #9 and #20 as its later consumers |
+| Connection repository home | `grep -n "repositories/institutions.ts" docs/specs/developments/20260802131441_10-sync-engine/2_10-sync-engine_implementation-plan.md`; `grep -rn "^export function" apps/mobile/src/db/repositories/institutions.ts` | Item #10's **merged** plan adds `getConnection`, `listSyncableConnections`, `markConnectionSyncing`, `recordSyncOutcomeInTx`, `recordSyncOutcome` and `clearStuckSyncingConnections` to `institutions.ts`, which already holds `listConnectableInstitutions` and `disconnectInstitution` |
+| Feature-layer test convention | `grep -n "db.test.ts" docs/specs/developments/20260802172715_12-home-screen/2_12-home-screen_implementation-plan.md` | Item #12's merged plan adds `'<rootDir>/src/features/**/*.db.test.ts'` to the `db` project's `testMatch` and `'\\.db\\.test\\.ts$'` to the `app` project's ignore list, and calls `.db.test.ts` "the convention every later screen item reuses" |
+| No query library is installed | `grep -c "@tanstack/react-query" apps/mobile/package.json` | `0` — item #8's and item #12's merged plans both read the database through `getAppDatabase()` plus repository functions behind a feature hook, and neither adds one |
 
 ---
 
@@ -90,6 +92,10 @@ acceptance criteria are unverifiable in an MVP that ships exactly one connectabl
 | Runtime database handle for app code | `getAppDatabase(): Promise<AppDatabase>` in `apps/mobile/src/db/runtime.ts` | Item #8's plan (**merged** into `develop`), Database layer; no such module exists in the codebase at `e9ec926` | 2026-08-02, re-verified at `e9ec926` | Same-surface artifacts only: item #8's merged plan; #46/#44 touch `packages/*` only | `Resolved` — see Resolution R1 |
 | Connection repository module path | `apps/mobile/src/db/repositories/connections.ts` | Item #8's merged plan schedules it read-only ("Write-side connection functions belong to #9"); this plan adds the write side | 2026-08-02, re-verified at `e9ec926` | Same-surface artifacts only: item #8's merged plan | `Resolved` — see Resolution R1 |
 | Connection `status` value written on connect | `'active'` | `docs/project/4-database-model.md` → `user_financial_institutions.status`; spec → Statuses / Enum Values → Connection state | 2026-08-02, re-verified at `e9ec926` | Same-surface artifacts only: item #8's merged plan, whose read-side filter is still written as status `connected` at line 134 of the merged file | `Conflict` — see Resolution R2 |
+| Data-access pattern for app code | `getAppDatabase()` plus repository functions behind one feature hook; **no** TanStack Query, **no** `QueryProvider` / `DatabaseProvider`, **no** `app/_layout.tsx` change | Campaign-wide decision recorded by the parent orchestrator after this item's dispatch, with item #8's and item #12's merged plans (#12 Decision 7) as the reference implementations | 2026-08-02, re-verified at `1c7af24` | Same-surface artifacts: items #8, #12 and #10 merged plans; `grep -c '@tanstack/react-query' apps/mobile/package.json` → `0` | `Verified` — see Decision 17 |
+| `BankRow` primitive ownership | Item #12 owns `BankRow` and the `mu-bank*` reclassification; item #9 consumes it | Item #12's merged plan, Decision 5 table ("Later consumers: #9, #20") | 2026-08-02, re-verified at `1c7af24` | Same-surface artifacts: item #12's merged plan | `Resolved` — see Resolution R4 |
+| `markConnectionSyncing` ownership and module | `apps/mobile/src/db/repositories/institutions.ts`, owned by item #10 | Item #10's merged plan, Application layer; the existing `institutions.ts` already holds `disconnectInstitution` | 2026-08-02, re-verified at `1c7af24` | Same-surface artifacts: item #10's merged plan and item #8's `connections.ts` | `Resolved` — see Resolution R5 |
+| Feature-layer test convention | `*.db.test.ts` under `src/features/`, run by the existing `db` Jest project | Item #12's merged plan, Infrastructure layer | 2026-08-02, re-verified at `1c7af24` | Same-surface artifacts: item #12's merged plan | `Verified` — see Decision 14 |
 | `expo-secure-store` version | `~15.0.8` | `expo/bundledNativeModules.json` for the installed Expo SDK 54 | 2026-08-02, `4fc495a` | Current invocation only; no open or recently merged PR changes `apps/mobile/package.json` | `Verified` |
 | Design-fidelity tooling availability | Not available; AC30 is a manual side-by-side comparison | `ls scripts/mobile-ui` → absent; item #47's plan (merged at `7919372`) plans `pnpm fidelity --issue N` for future screen items | 2026-08-02, `4fc495a` | Same-surface merged artifact only: #47 plan | `Verified` — see Resolution R3 |
 | Scraper public entry point | `startBankRead(...)` from `@finanzas/bank-scraper` | The merged item #6 implementation plan (Decisions 3, 5, 7) and the open PR #46 branch source | 2026-08-02, `4fc495a` | Same-surface open PRs only: #46 | `Verified` — this item records the seam and calls nothing |
@@ -99,15 +105,16 @@ open as PR #55 when this plan was written, **merged into `develop` during this p
 gate** — schedules `src/db/runtime.ts` and `src/db/repositories/connections.ts`; this item needs
 both. Neither module exists in the codebase yet: item #8's *plan* is merged, its *implementation*
 is not. Affected plan statements: every Database-layer bullet and Implementation Order steps 3-5.
-Resolution: **ownership is split by direction, and creation is merge-order-contingent.** Item #8
-owns `runtime.ts` and the read-only `getConnectedBanksSummary`; item #9 owns the write-side
-connection functions and `listConnectedBankSummaries`. Whichever item is implemented second
-**adds to the existing file and does not recreate it**, and if `src/db/runtime.ts` does not exist
-when item #9 is implemented, item #9 creates it with exactly the contract quoted in the
-Verification Log (`getAppDatabase(): Promise<AppDatabase>`), so the two implementations converge
-rather than fork. Decision owner: tech-lead agent for item #9, under the parent orchestrator's
-no-human-available delegation. Recorded here so the implementer verifies the file's presence
-before writing it (Implementation Order step 3).
+Resolution: **item #8 owns `src/db/runtime.ts` and it is a blocking dependency of this item**,
+which is how item #12's merged plan treats it too. Item #9 never creates it: if it is absent at
+implementation start, the correct response is to stop and return the evidence, not to fork a
+second `getAppDatabase()`. Ownership of the connection functions is split by direction — item #8
+owns the read-only `getConnectedBanksSummary` in `connections.ts`, item #10 owns the sync writes
+in `institutions.ts` (Resolution R5), and item #9 owns the connect-time writes and
+`listConnectedBankSummaries`, also in `institutions.ts`. Whichever item is implemented second
+**adds to the existing file and does not recreate it**. Decision owner: tech-lead agent for item
+#9, under the parent orchestrator's no-human-available delegation. Steps 1-2 of the
+implementation-start re-verification are what enforce it.
 
 **Resolution R2 — the connection `status` value.** Competing evidence: the data model and this
 item's spec both enumerate `active | inactive | disconnected` and this item is the **only**
@@ -129,6 +136,54 @@ tooling does not exist at `4fc495a`. This item's runbook therefore performs AC30
 side-by-side comparison against `design/mockups/mobile/index.html`. **Contingency**: if item #47
 is implemented before item #9, the implementer registers the four screens' targets and adds
 `pnpm fidelity --issue 9` to the runbook's fidelity step instead of removing the manual step.
+
+**Resolution R4 — `BankRow` is item #12's, not this item's.** Competing evidence: item #2's
+`MU_CLASS_MAP` deferred `mu-bank`, `mu-bank__logo` and `mu-bank__name` to **#9**, and this plan's
+first revision claimed them; item #12's plan — merged while this plan was in its review gate —
+builds `BankRow` for `#screen=home`'s connected-banks card and reassigns those classes to itself,
+naming #9 and #20 as later consumers. Affected plan statements: Decision 10, the design-system
+bullets, the `mu-class-map.ts` edit, the `componentMetrics` edit and the gallery section.
+Resolution: **item #12 owns it and this item consumes it.** Item #9 makes no `mu-class-map.ts`
+edit, adds no `componentMetrics` bank group and adds no gallery section for `BankRow`; where the
+picker needs an affordance `BankRow` does not yet have (a non-pressable row announced as
+unavailable, AC9), item #9 extends `BankRow` **additively** rather than forking it. Decision
+owner: tech-lead agent for item #9, under the parent orchestrator's no-human-available delegation.
+Rebuilding the same component is exactly what item #12's Decision 5 exists to prevent.
+
+**Resolution R5 — connection functions live in `institutions.ts`.** Competing evidence: item #8's
+merged plan creates `src/db/repositories/connections.ts` for its read-only
+`getConnectedBanksSummary`; item #10's merged plan adds the connection reads **and** the four
+sync writes — `markConnectionSyncing` among them — to `src/db/repositories/institutions.ts`, which
+is also where the merged codebase already keeps `listConnectableInstitutions` and
+`disconnectInstitution`. Affected plan statements: every Database-layer bullet and Implementation
+Order step 4. Resolution: **this item's connection functions go in `institutions.ts`**, following
+the merged code and the most recent merged plan; item #8's `connections.ts` is left alone, and
+converging the two files is carried as follow-up F2. `markConnectionSyncing` is **item #10's** to
+define — this item calls it, and creates it with item #10's recorded shape only if item #10 has
+not merged first (Decision 7's contingency). Decision owner: tech-lead agent for item #9, under
+the parent orchestrator's no-human-available delegation.
+
+---
+
+## Implementation-start re-verification
+
+Before touching a file, the implementer re-runs the checks whose value could have moved and
+records `Still valid` or `Stale or conflicting` in the implementation PR. Stop and return the
+evidence rather than adapting silently.
+
+1. `git log --oneline -1 origin/develop` — confirm items **#8 and #12** have merged.
+2. `grep -n 'getAppDatabase' apps/mobile/src/db/runtime.ts` — confirm item #8 shipped
+   `getAppDatabase(): Promise<AppDatabase>`, and that
+   `grep -c '@tanstack/react-query' apps/mobile/package.json` is still `0`.
+3. `grep -n 'BankRow' apps/mobile/src/components/ui/index.ts` and read `BankRow.tsx` — confirm
+   item #12 shipped it, and determine whether it already supports a non-pressable row and a
+   trailing slot, or whether this item must extend it additively (Resolution R4).
+4. `grep -n '^export function' apps/mobile/src/db/repositories/institutions.ts` — confirm whether
+   item #10 has shipped `markConnectionSyncing`, and with which signature (Resolution R5).
+5. `grep -n 'db.test.ts' apps/mobile/jest.config.js` — confirm the `db` project already matches
+   `src/features/**/*.db.test.ts`; add the two lines only if item #12 has not.
+6. `grep -n "status: 'deferred'" apps/mobile/src/test-utils/mu-class-map.ts` — confirm
+   `mu-topbar*` is still deferred, which decides Decision 10's contingency.
 
 ---
 
@@ -176,10 +231,9 @@ postpone path out of the introduction) are settled inputs and are **not** reliti
 No migration. Every column this item writes already exists (Verification Log → *Connection table
 shape*), so non-negotiable 5 (additive migrations) is not engaged at all.
 
-- [ ] `apps/mobile/src/db/runtime.ts` — **verify first, create only if absent** (Resolution R1).
-      Opens the device database via `openAppDatabase()`, wires the Expo migrator and the
-      `expo-crypto` / clock ports, calls `ensureDatabaseReady(...)`, memoizes and exports
-      `getAppDatabase(): Promise<AppDatabase>`.
+- [ ] `apps/mobile/src/db/runtime.ts` — **consumed, not created.** Item #8 owns it and it is a
+      blocking dependency (Resolution R1, Decision 17). This item calls
+      `getAppDatabase(): Promise<AppDatabase>` from its feature hooks and nothing else.
 - [ ] `apps/mobile/src/db/repositories/institutions.ts` — add
       `listInstitutions(db): PickerInstitution[]`: **every** row of `financial_institutions`,
       ordered `available` first and then by `name` (Business Rule 10), carrying `id`, `name`,
@@ -188,8 +242,9 @@ shape*), so non-negotiable 5 (additive migrations) is not engaged at all.
       declares both fields. `listConnectableInstitutions` is left byte-identical —
       it filters to `available` and is the wrong reader for a picker that must draw coming-soon
       banks (spec Decision 1).
-- [ ] `apps/mobile/src/db/repositories/connections.ts` — **verify first, add to it if item #8
-      created it** (Resolution R1). This item contributes:
+- [ ] `apps/mobile/src/db/repositories/institutions.ts` — the connection functions go here, next
+      to the merged `disconnectInstitution` and the connection reads item #10's merged plan adds
+      (Resolution R5). Item #8's `connections.ts` is not touched. This item contributes:
   - `getConnectionByInstitution(db, institutionId): BankConnection | undefined`
   - `upsertConnection(db, { institutionId, credentialsKey, newId, now }): { id, created }` —
     inserts with `status: 'active'`, `sync_status: 'idle'`, `created_at: now` when absent;
@@ -197,9 +252,10 @@ shape*), so non-negotiable 5 (additive migrations) is not engaged at all.
     `last_success_at` and the error columns untouched (Business Rules 14-15, AC20-AC21). The
     `(financial_institution_id)` unique index is the mechanism that makes "exactly one
     connection per bank" true even under a double submit.
-  - `markConnectionSyncing(db, id, now)` — sets `sync_status: 'syncing'` and `last_sync_at: now`
-    (Business Rules 17-18). It does **not** touch `last_success_at`, which is what makes AC22's
-    "two separate facts" hold.
+  - `markConnectionSyncing(db, id, now)` — **item #10 owns this function**; this item calls it and
+    defines it only if item #10 has not merged first (Resolution R5). It sets
+    `sync_status: 'syncing'` and `last_sync_at: now` (Business Rules 17-18) and does **not** touch
+    `last_success_at`, which is what makes AC22's "two separate facts" hold.
   - `deleteConnectionIfNeverSynced(db, id)` — the compensating action of Decision 7; refuses to
     delete a connection whose `last_success_at` is set.
   - `listConnectionsForCredentialLookup(db): { id, institutionId, credentialsKey, createdAt }[]`
@@ -210,9 +266,9 @@ shape*), so non-negotiable 5 (additive migrations) is not engaged at all.
     `financial_institutions` for name/brand and counting `user_financial_products` and the
     `transactions` reachable through them.
 - [ ] `apps/mobile/src/db/types.ts` — add `PickerInstitution`, `BankConnection` and
-      `ConnectedBankSummary` so no caller sees a Drizzle row shape. If item #8 already added
-      `ConnectedBanksSummary`, both types coexist; converging them is a follow-up, not this item's
-      edit.
+      `ConnectedBankSummary` so no caller sees a Drizzle row shape. Item #8's
+      `ConnectedBanksSummary` and item #10's `SyncConnection` coexist with them; converging the
+      three readers is follow-up F2, not this item's edit.
 
 ### Shared Packages / Libraries
 
@@ -262,9 +318,11 @@ Connect-bank feature:
       `input = { institutionId, rut, password }`. Executes Decision 7's ordered sequence and
       returns `{ userFinancialInstitutionId, credentialsKey }`.
 - [ ] `apps/mobile/src/features/connect-bank/sync-handoff.ts` — the seam (Decision 8):
-      the `SyncRequest` type (`{ userFinancialInstitutionId, institutionId, countryCode,
-      credentialsKey }`), `buildSyncRequest(...)`, and `SYNCING_ROUTE`. Documented as the single
-      contract item #11 consumes; this file calls nothing in `@finanzas/bank-scraper`.
+      the `ConnectHandoff` type (`{ connectionId, countryCode, bankId, credentialsKey }` — the
+      field names item #10's `ScraperRunner.run` already uses), `buildSyncRequest(...)`, and
+      `SYNCING_ROUTE`. Deliberately **not** named `SyncRequest`: item #10's merged plan owns that
+      type name in `src/features/sync/types.ts`. This file imports nothing from
+      `@finanzas/bank-scraper` and nothing from `src/features/sync/`.
 - [ ] `apps/mobile/src/features/connect-bank/use-institutions.ts` — reads the catalogue through
       `getAppDatabase()` + `listInstitutions`.
 - [ ] `apps/mobile/src/features/connect-bank/rut-lock.ts` — `resolveLockedRut(db, port)`, the
@@ -281,33 +339,36 @@ Connect-bank feature:
       for each of the four screen ids, every manifest `state_id` mapped to the source file that
       renders it and the test that asserts it. This is the residual-verification mechanism for
       AC28 (see Testing Strategy).
-- [ ] `apps/mobile/src/features/connect-bank/components/FlowHeader.tsx` — screen-local back bar.
-      **Not** a design-system primitive: `mu-topbar*` stays deferred to #12 (Decision 10).
+- [ ] `apps/mobile/src/features/connect-bank/components/FlowHeader.tsx` — the back bar, screen-local
+      by default. Item #12's merged plan retargets the `mu-topbar*` deferral notes from #12 to
+      **#8**; if #8 has shipped a topbar primitive by implementation time, this item composes it
+      instead of drawing its own (Decision 10's contingency).
 - [ ] `apps/mobile/src/features/connect-bank/components/SecurityAccordion.tsx` — screen-local
       disclosure. **Not** a primitive: `mu-item*` stays deferred to #19 (Decision 10).
 
 Design system:
 
-- [ ] `apps/mobile/src/components/ui/BankRow.tsx` — the `mu-bank` primitive. Props:
-      `{ name, shortName, brandColor, subtitle, trailing?, onPress?, unavailableLabel? }`.
-      With `onPress` it renders a `Pressable` with `accessibilityRole="button"`; without it, a
-      plain `View` marked `accessible` whose accessible name ends with `unavailableLabel`
-      (Decision 12, AC9).
-- [ ] `apps/mobile/src/components/ui/index.ts` — export `BankRow` and its props type.
+- [ ] `apps/mobile/src/components/ui/BankRow.tsx` — **consumed, not created** (Resolution R4).
+      Item #12 ships it. This item extends it **additively** only if step 3 of the
+      implementation-start re-verification shows it cannot yet render a non-pressable row: an
+      optional `unavailableLabel?: string` which, in the absence of `onPress`, renders a plain
+      `View` marked `accessible` whose accessible name ends with that label and which carries no
+      `accessibilityRole="button"` and no chevron (Decision 12, AC9). No new export, no
+      `mu-class-map.ts` edit and no `componentMetrics` group are added by this item.
 - [ ] `apps/mobile/src/components/ui/TextField.tsx` — **modified**: two optional props,
       `icon?: ReactNode` (leading slot, mirrors the mockup's search input) and
       `accessibilityLabel?: string` (so a labelless search field is not announced as its emoji
       placeholder). Existing call sites are unaffected (Decision 16).
-- [ ] `apps/mobile/src/theme.ts` — **modified**: add a `bank` group to the existing
-      `componentMetrics` export with the `mu-bank` measurements from the Verification Log. The
-      `theme` object itself is untouched — `theme-tokens-parity.test.ts` asserts its key set
-      exactly.
-- [ ] `apps/mobile/src/test-utils/mu-class-map.ts` — **modified**: `mu-bank`, `mu-bank__logo` and
-      `mu-bank__name` move from `deferred` to
-      `{ status: 'primitive', owners: ['BankRow'] }`. No other entry changes.
-- [ ] `apps/mobile/src/dev/DesignSystemGallery.tsx` — **modified**: a `BankRow` section
-      (available, coming-soon and connected-summary rows) and the icon variant of `TextField`,
-      rendered from new `ds.*` catalogue keys.
+- [ ] `apps/mobile/src/theme.ts` — **modified only if `TextField` gains the icon slot**: nothing
+      new is needed for it beyond the existing `componentMetrics.textField` group. Item #12 owns
+      `componentMetrics.bankRow`; the `theme` object itself is untouched by this item —
+      `theme-tokens-parity.test.ts` asserts its key set exactly.
+- [ ] `apps/mobile/src/test-utils/mu-class-map.ts` — **not modified** for `mu-bank*` (item #12
+      reassigns those). Touched **only** under Decision 10's contingency, if this item ends up
+      building the `TopBar` primitive.
+- [ ] `apps/mobile/src/dev/DesignSystemGallery.tsx` — **modified**: the icon variant of
+      `TextField`, rendered from new `ds.*` catalogue keys. No `BankRow` section — item #12 adds
+      it with the primitive.
 
 Routes:
 
@@ -342,10 +403,11 @@ Routes:
 - [ ] `apps/mobile/eslint.config.mjs` — apply `secureStoreBoundary` to `app/**` and `src/**`,
       ignoring `src/lib/secure-store/**`; and set `no-console: 'error'` for
       `src/lib/secure-store/**` and `src/features/connect-bank/**` (Business Rule 1).
-- [ ] `apps/mobile/jest.config.js` — add a third project, `feature`
-      (`testEnvironment: 'node'`, `testMatch: ['<rootDir>/src/features/**/*.node.test.ts']`,
-      the same `babel-jest` transform the `db` project uses), and add `*.node.test.ts` to the
-      `app` project's `testPathIgnorePatterns` (Decision 14).
+- [ ] `apps/mobile/jest.config.js` — **no new project.** Follow item #12's convention
+      (Decision 14): the existing `db` project's `testMatch` gains
+      `'<rootDir>/src/features/**/*.db.test.ts'` and the `app` project's `testPathIgnorePatterns`
+      gains `'\\.db\\.test\\.ts$'`. If item #12 has already added both lines, this item adds
+      nothing here.
 
 ### Executable workflow shell snippets
 
@@ -489,20 +551,25 @@ flow's last act is: mark the connection `syncing`, build a `SyncRequest`, `route
 
 ```ts
 // Illustrative — adapt during implementation. src/features/connect-bank/sync-handoff.ts
-export type SyncRequest = {
-  userFinancialInstitutionId: string;
-  institutionId: string;   // === financial_institutions.id === scraper bankId
+export type ConnectHandoff = {
+  connectionId: string;    // user_financial_institutions.id
   countryCode: string;     // 'cl'
-  credentialsKey: string;  // read by #11 through the secure-store port
+  bankId: string;          // === financial_institutions.id === the scraper's bankId
+  credentialsKey: string;  // the secure-store *key name*, never a value
 };
 ```
 
-Item #11 reads the credential through the same port and calls
-`startBankRead({ countryCode, bankId: institutionId, credentials, port, onResult })`; item #10
-persists what comes back and writes the connection's `ok` / `error` outcome. **This item hands
-over a key, not a secret**, which is why the plaintext can be dropped at step 4 of Decision 7 and
-why Business Rule 5's "cleared when the attempt ends" holds even though the read outlives the
-screen.
+Those four field names are exactly item #10's `ScraperRunner.run` request, so the handoff drops
+into `runSync` without a translation layer. Item #11 mounts the hidden WebView, implements
+`ScraperRunner` over `startBankRead(...)`, reads the credential through this item's secure-store
+port, and calls item #10's `runSync(deps, request)`; item #10 persists what comes back and writes
+the connection's `ok` / `error` outcome. **This item hands over a key, not a secret**, which is
+why the plaintext can be dropped at step 4 of Decision 7 and why Business Rule 5's "cleared when
+the attempt ends" holds even though the read outlives the screen.
+
+`runSync` also calls `markConnectionSyncing`. That is not a conflict: the write is idempotent, and
+this item marks it at confirmation time so the record is never `idle` while a read is pending —
+which is what Business Rule 17 describes and what item #10's own stuck-`syncing` sweep assumes.
 
 The history window (`priorMonths`) is named by the sync spec as the connect flow's to own. This
 item records the intended value — the scraper's own default of one prior month — as part of the
@@ -517,18 +584,28 @@ in one query is both the literal reading of "what the sync stored" and the only 
 survives a re-entry. Until #10 lands, the counts are honestly zero and the rows only appear once
 `last_success_at` is set, which is the behaviour AC24 describes.
 
-### Decision 10 — `BankRow` is a primitive; the top bar and the accordion are not
+### Decision 10 — `BankRow` comes from item #12; the top bar and the accordion stay screen-local
 
 Item #2 classified `mu-bank`, `mu-bank__logo` and `mu-bank__name` as `deferred` with the note
-`Deferred to #9`. This item takes them: `BankRow` joins the barrel and the three entries become
-`primitive` with `owners: ['BankRow']`, which is what `mu-class-coverage.test.ts` checks.
+`Deferred to #9`. Item #12's plan — merged while this plan was in its review gate — builds
+`BankRow` for `#screen=home`'s connected-banks card, reassigns those three classes plus
+`mu-item__txt`, `mu-item__sub` and `mu-item__chev` to it, and names #9 and #20 as its later
+consumers. **This item therefore consumes `BankRow` and does not build it** (Resolution R4).
+Rebuilding it is precisely what item #12's own Decision 5 exists to prevent, and a second
+component over the same `mu-*` block would make `mu-class-coverage.test.ts` dishonest.
 
-`mu-topbar*` (deferred to #12) and `mu-item*` (deferred to #19) are **not** claimed, even though
-these screens draw a back bar and an accordion row. Both are built as screen-local components
-under `src/features/connect-bank/components/`, following the precedent item #8's plan sets for
-its own `ReadySummaryRow`. The subtitle inside `BankRow` renders through `Text variant="small"`,
-whose `mu-small` rule is identical to `mu-item__sub` apart from a 1px top margin (Verification
-Log) — so no ownership is implied and no fidelity is lost.
+What this item may still need is one affordance the home screen never draws: a row that is *not*
+pressable and is announced as unavailable (AC9). If `BankRow` cannot express that when it ships,
+this item adds `unavailableLabel?: string` to it additively — an optional prop that changes
+nothing for existing callers. Step 3 of the implementation-start re-verification decides it.
+
+`mu-item*` stays with item #12's row components and `mu-item`, `mu-item__icon` and
+`mu-item__title` stay deferred to #19, so the introduction's accordion is built screen-local under
+`src/features/connect-bank/components/`. `mu-topbar*` stays `deferred`, with its note retargeted
+by item #12 from #12 to **#8**. `FlowHeader` is therefore screen-local by default; if #8 ships a
+topbar primitive first, this item composes it, and only if neither has shipped one by
+implementation time does this item build `TopBar` as a primitive and take those classes — the
+one case in which this item edits `mu-class-map.ts`.
 
 ### Decision 11 — Search folding: NFD, strip combining marks, lowercase, substring
 
@@ -567,15 +644,17 @@ plant a credential entry; plant one synced connection; plant two synced connecti
 flow as if from settings; clear everything this surface planted. No product screen links to it,
 and `DEV_ONLY_ROUTES` keeps it out of the manifest parity comparison.
 
-### Decision 14 — A third Jest project for the Node-tier service tests
+### Decision 14 — Feature-layer SQLite tests use the repository's `.db.test.ts` convention
 
-The `app` project runs `jest-expo`; the `db` project runs a Node environment and matches only
-`src/db/**/*.test.ts`. The credential-leak test needs a real SQLite store (`better-sqlite3`,
-a native Node addon that item #3 deliberately kept out of the RN tier) *and* the feature service,
-which does not live under `src/db`. A third project, `feature`, matching
-`src/features/**/*.node.test.ts`, is the smallest change that keeps both tiers as item #3 left
-them. React component tests for these screens stay in the `app` project and follow item #2's
-renderer-free convention (call the component function, walk the returned element tree).
+The credential-leak test needs a real SQLite store (`better-sqlite3`, the native Node addon item
+#3 deliberately kept out of the RN tier) *and* the feature service, which does not live under
+`src/db`. Item #12's merged plan already solved this and named the convention: the existing `db`
+project's `testMatch` gains `'<rootDir>/src/features/**/*.db.test.ts'`, and the `app` project's
+`testPathIgnorePatterns` gains `'\\.db\\.test\\.ts$'` so the same file does not run twice.
+Item #12 calls `.db.test.ts` *"the convention every later screen item reuses"*, so this item
+reuses it and **adds no third Jest project**. Everything else — pure functions and component
+element-tree assertions — stays in the `app` project, following item #2's renderer-free
+precedent.
 
 ### Decision 15 — The connected screen refuses to render without a completed sync
 
@@ -592,6 +671,32 @@ copy would fork the focus, error and locked styling that primitive already encod
 props — `icon` and `accessibilityLabel` — keep every existing call site byte-identical while
 letting the picker draw the magnifier and be announced as "Buscar banco" instead of as an emoji.
 
+### Decision 17 — Data access is `getAppDatabase()` plus repository functions behind feature hooks
+
+Campaign-wide decision, recorded by the parent orchestrator after this item was dispatched and
+already applied to items #8, #12 and #13. `docs/best-practices/stack/expo-react-native.md`
+prescribes TanStack Query over repository functions; **that library is not installed**, item #8
+deliberately did not add it, and item #12's Decision 7 restates the rule and queues the
+best-practice correction. This item follows the same pattern so every screen item reads the
+database the same way.
+
+Consequences:
+
+- No `QueryProvider`, no `QueryClient`, no `DatabaseProvider`, and **no change to
+  `apps/mobile/app/_layout.tsx`**. The only layout this item may touch is
+  `app/(onboarding)/_layout.tsx`, and only for `screenOptions={{ headerShown: false }}` if item #8
+  has not already set it — a screen option, not a provider.
+- Each feature hook (`use-institutions`, `use-rut-lock`, `use-connected-banks`) awaits
+  `getAppDatabase()` once and then calls repository functions. The driver is synchronous
+  (`BaseSQLiteDatabase<'sync', …>`), so every read after the handle resolves is a plain call and
+  there is no per-query async machinery to cache.
+- Screens call neither `getAppDatabase()` nor a repository directly.
+- Freshness follows item #12's contract: `useFocusEffect` bumps a `reloadToken` that is a
+  dependency of the hook's effect. `bank-connected` needs exactly this, because "Agregar otro
+  banco" can return to it after a second connection was made.
+- Every hook is cancellation-guarded: a resolved read is discarded rather than `setState`-ed after
+  unmount (see the concurrency addendum).
+
 ---
 
 ## Testing Strategy
@@ -604,7 +709,7 @@ smoke on a dev build.
 1. **Nothing typed reaches the store or a log** — sentinel RUT and password through
    `connectBank`, then a full dump of the resulting database and a scan of every `console.*`
    call. Maps to AC1, AC2, AC3.
-   *(`apps/mobile/src/features/connect-bank/credential-leak.node.test.ts`)*
+   *(`apps/mobile/src/features/connect-bank/credential-leak.db.test.ts`)*
 2. **The failed-attempt variant of scenario 1** — the DB write throws; the compensating delete
    runs; the dump and the log scan still find nothing; the thrown error's serialized form
    contains neither sentinel. Maps to AC3, AC5.
@@ -612,14 +717,14 @@ smoke on a dev build.
 3. **One entry per bank, one connection per bank** — connecting `banco-de-chile` twice leaves one
    secure-store key and one row; connecting a second institution creates a second key. Maps to
    AC4, AC17, AC19, AC20.
-   *(`connect-bank.service.node.test.ts`)*
+   *(`connect-bank.service.db.test.ts`)*
 4. **`idle` really happens, and `last_success_at` is not clobbered** — assert the ordered writes
    and that a connection with an earlier success keeps it after a later failed attempt. Maps to
-   AC21, AC22. *(`connect-bank.service.node.test.ts`)*
+   AC21, AC22. *(`connect-bank.service.db.test.ts`)*
 5. **The RUT lock resolution** — no connections → unlocked; one connection with an entry →
    locked with that RUT; connections whose entries were deleted → unlocked again; two
    connections → the older one's entry wins. Maps to AC18.
-   *(`rut-lock.node.test.ts`, over `resolveLockedRut`)*
+   *(`rut-lock.db.test.ts`, over `resolveLockedRut`)*
 6. **Connect enablement** — a wrong check digit never enables; a dotless RUT is accepted and
    displayed canonically; an empty password never enables. Maps to AC13, AC14.
    *(`credential-form.test.ts`)*
@@ -656,7 +761,7 @@ smoke on a dev build.
 
 **Planted-defect proof (required in the PR body).** Scenario 1 is a negative test, so it must be
 shown to fire. On a clean tree, add a realistic debugging mistake — a
-`console.warn('connect', input.rut)` inside `connectBank` — re-run the `feature` project, and
+`console.warn('connect', input.rut)` inside `connectBank` — re-run the `db` project, and
 record the failing test name and the sentinel it matched; then `git checkout --` the file,
 re-run green, and confirm `git diff --stat` prints nothing. The same test also asserts it does
 **not** over-fire: the dump it scans is non-empty and contains the seeded institutions and the
@@ -762,7 +867,7 @@ secure-store write racing unmount, and a module-scoped store shared by two route
 | Secure-store entry | `bank_creds:banco-de-chile` → `{"rut":"12.345.678-5","password":"ZZFIXTUREPASSZZ"}` — planted only by the dev fixtures surface, for the `rut-locked` state (AC18) | `apps/mobile/src/dev/ConnectFlowFixtures.tsx` |
 | `user_financial_institutions` | One `active` connection to `banco-de-chile` with `last_success_at` set, for the `single` state; a second one for the `multiple` state (planted against a coming-soon institution, which is legitimate at the data layer and unreachable from the picker) | `apps/mobile/src/dev/ConnectFlowFixtures.tsx` |
 | `user_financial_products` + `transactions` | Three products and a handful of movements under the first connection, so the row reads a real "N productos · M movimientos" (AC24) | `apps/mobile/src/dev/ConnectFlowFixtures.tsx` |
-| Sentinel credentials | `rut: 'ZZSENTINELRUTZZ'`, `password: 'ZZSENTINELPASSZZ'`, plus a punctuation variant containing quotes, a backslash and U+2028 | `apps/mobile/src/features/connect-bank/credential-leak.node.test.ts` |
+| Sentinel credentials | `rut: 'ZZSENTINELRUTZZ'`, `password: 'ZZSENTINELPASSZZ'`, plus a punctuation variant containing quotes, a backslash and U+2028 | `apps/mobile/src/features/connect-bank/credential-leak.db.test.ts` |
 | Test institutions | The bootstrapped in-memory store from `src/db/testing/memory-db.ts` already seeds all six banks; no extra fixture is needed for the Node-tier tests | `apps/mobile/src/db/testing/memory-db.ts` (unchanged) |
 
 ---
@@ -782,6 +887,10 @@ secure-store write racing unmount, and a module-scoped store shared by two route
       boundary and on why `keychainAccessible` is not left at its default.
 - [ ] `docs/best-practices/stack/i18n.md` — the plural-key convention this item introduces
       (`*_one` / `*_other` for counts), if the doc does not already state it.
+- [ ] `docs/best-practices/stack/expo-react-native.md` — **do not duplicate item #8's edit.** Its
+      *Data fetching* section still prescribes TanStack Query; item #8 queued that correction with
+      its own plan (Decision 17). Verify it landed and, if it did not, raise it there rather than
+      correcting the same paragraph twice.
 - [ ] `AGENTS.md` — add the dev-only fixtures route alongside the design-system gallery in the
       "Common Commands" block, and add a Troubleshooting row for "the RUT field is locked and I
       want it editable" (clear the app's data, or use the fixtures surface).
@@ -802,7 +911,8 @@ secure-store write racing unmount, and a module-scoped store shared by two route
 | iCloud Keychain sync carries the password off-device | Low | High | `WHEN_UNLOCKED_THIS_DEVICE_ONLY` on every write; asserted by a unit test on the adapter's options object |
 | The dev fixtures surface reaches a release bundle | Low | High | Same guard shape as the merged `(dev)/gallery` route (`__DEV__` check before any hook, `require()` inside the guard), plus the existing route-parity test and a bundle-time check in the runbook |
 | `mu-class-coverage.test.ts` fails after the map edit | Low | Low | The reclassification is three entries and the test names the mismatch; run it before the UI work (Implementation Order step 6) |
-| The `feature` Jest project destabilises the RN tier | Low | Med | It is a separate project with its own environment, and `*.node.test.ts` is excluded from the `app` project — the same separation item #3 proved for `db` |
+| `BankRow` ships from item #12 without a non-pressable variant, so AC9 has no home | Med | Med | Step 3 of the implementation-start re-verification checks it before any UI work; the fallback is one additive optional prop, not a fork (Resolution R4) |
+| Items #8 or #12 do not merge before this item is implemented | Med | High | Both are recorded as **blocking** in the Dependencies table and re-checked at implementation start; the correct response is to stop and return the evidence, not to recreate their modules |
 | The counts on `bank-connected` read zero until #10 lands and are mistaken for a defect | Med | Low | The runbook states it explicitly and uses the fixtures surface to show real counts |
 
 ---
@@ -817,7 +927,8 @@ secure-store write racing unmount, and a module-scoped store shared by two route
 `listConnectionsForCredentialLookup`, `listConnectedBankSummaries`, `listInstitutions`,
 `credentialsKeyFor`, `resolveLockedRut`, `foldForSearch`, `matchInstitutions`, `sortForPicker`,
 `formatRutForDisplay`, `canConnect`, `resolveBackHref`, `resolveExitHref`, `buildSyncRequest`,
-`getAppDatabase`, `BankRow`, `CONNECT_FLOW_STATE_COVERAGE`, and the secure-store key prefix
+`getAppDatabase` and `BankRow` (both consumed from other items, never redefined here),
+`CONNECT_FLOW_STATE_COVERAGE`, and the secure-store key prefix
 `bank_creds:`.
 
 ---
@@ -826,7 +937,8 @@ secure-store write racing unmount, and a module-scoped store shared by two route
 
 1. **Add the dependency and the boundary.** `pnpm add expo-secure-store@~15.0.8` in
    `apps/mobile`; add `secureStoreBoundary` to the root `eslint.config.mjs` and apply it plus
-   `no-console: 'error'` in `apps/mobile/eslint.config.mjs`; add the `feature` Jest project.
+   `no-console: 'error'` in `apps/mobile/eslint.config.mjs`; add the two `.db.test.ts` lines to
+   `jest.config.js` if item #12 has not already added them.
    *Verify*: `pnpm install && pnpm check:layout && pnpm lint` — confirm the lint run reports no
    new violations and that a deliberate `import 'expo-secure-store'` added temporarily to a
    feature file is reported.
@@ -842,14 +954,16 @@ secure-store write racing unmount, and a module-scoped store shared by two route
    `institutions.test.ts`. *Verify*: `pnpm --filter @finanzas/mobile test` and confirm the new
    tests assert `status = 'active'` and that `last_success_at` survives a later failed attempt.
 5. **The service and its leak test.** Write `connect-bank.service.ts`, then
-   `credential-leak.node.test.ts` and `connect-bank.service.node.test.ts`. Run the planted-defect
+   `credential-leak.db.test.ts` and `connect-bank.service.db.test.ts`. Run the planted-defect
    proof and record its output for the PR body. *Verify*: the leak test fails with the planted
    `console.warn` and passes after `git checkout --`, with `git diff --stat` empty.
-6. **`BankRow`, the `TextField` props, `componentMetrics.bank` and the `mu-class-map` edit**,
-   plus the gallery section and its `ds.*` keys. *Verify*: `pnpm --filter @finanzas/mobile test`
-   — `mu-class-coverage`, `gallery-catalogue-keys`, `theme-tokens-parity`, `no-style-literals`
-   and `touch-targets` all pass; read the `mu-class-coverage` console line and confirm the
-   `mu-bank*` classes are now counted as `primitive` rather than `deferred`.
+6. **`TextField`'s optional `icon` / `accessibilityLabel` props**, the gallery entry for them
+   and its `ds.*` keys, plus — only if step 3 of the implementation-start re-verification says so
+   — the additive `unavailableLabel` prop on item #12's `BankRow`. *Verify*:
+   `pnpm --filter @finanzas/mobile test` — `mu-class-coverage`, `gallery-catalogue-keys`,
+   `theme-tokens-parity`, `no-style-literals` and `touch-targets` all pass, and the
+   `mu-class-coverage` console line is unchanged by this item unless Decision 10's `TopBar`
+   contingency was taken.
 7. **Catalogue copy.** Add every `connect.*` key to `es.json` (verbatim from the mockup) and
    `en.json`, in the flat lowercase dotted form the parity test requires. *Verify*:
    `pnpm --filter @finanzas/mobile test` — catalogue parity passes.
@@ -888,8 +1002,10 @@ secure-store write racing unmount, and a module-scoped store shared by two route
 
 - **F1** — a `BankConfig`-driven credential form, when a second bank ships with a different field
   set (Decision 2).
-- **F2** — converge `getConnectedBanksSummary` (item #8) and `listConnectedBankSummaries` (this
-  item) into one reader once both have merged (Resolution R1).
+- **F2** — converge the three connection readers once items #8, #9 and #10 have all merged:
+  item #8's `getConnectedBanksSummary` in `connections.ts`, item #10's `getConnection` /
+  `listSyncableConnections` in `institutions.ts`, and this item's `listConnectedBankSummaries`
+  (Resolutions R1 and R5).
 - **F3** — register the four screens in `scripts/mobile-ui/fidelity-targets.json` once item #47
   is implemented, and replace the runbook's manual comparison with `pnpm fidelity --issue 9`
   (Resolution R3).
