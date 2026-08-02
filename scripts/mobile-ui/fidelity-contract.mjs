@@ -192,7 +192,14 @@ function assertMappingShape({ mapping, fixtures, profiles, defaults, root }) {
       fail(`Mapping "${id}" references missing app file "${mapping.app_file}"`);
     }
     const source = fs.readFileSync(path.join(root, mapping.app_file), 'utf8');
-    if (!source.includes(mapping.ready_test_id)) {
+    // Accept either the literal selector string, or the canonical `fidelityTestId(screenId)`
+    // call (Decision 9) with a matching screen_id — screens are expected to compute the
+    // selector from the shared helper rather than hand-typing it, and the call expression
+    // still statically proves the correct id is wired.
+    const helperCallPattern = new RegExp(
+      `fidelityTestId\\(\\s*['"\`]${mapping.screen_id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"\`]\\s*\\)`,
+    );
+    if (!source.includes(mapping.ready_test_id) && !helperCallPattern.test(source)) {
       fail(`Mapping "${id}" selector "${mapping.ready_test_id}" is absent from ${mapping.app_file}`);
     }
     let deepLink;

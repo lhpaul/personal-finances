@@ -49,6 +49,7 @@ personal-finances/
 ├── e2e/                            # Playwright placeholder (see note below)
 ├── scripts/
 │   ├── design/                     # Mockup manifest verification (arrives with #24)
+│   ├── mobile-ui/                  # Design-fidelity gate: contract, mockup/simulator capture, diff (#47)
 │   ├── development-workflow/       # AI workflow helpers
 │   └── dev/                        # Local dev helpers (arrives with a later item)
 ├── .maestro/                       # Device E2E flows (arrives with #22)

@@ -316,6 +316,30 @@ test('rejects a wired mapping whose selector is absent from its app_file', (t) =
   );
 });
 
+// 17b. A wired mapping whose app_file uses the canonical fidelityTestId(screenId) call
+// expression (Decision 9) is accepted without the literal selector string.
+test('accepts a wired mapping whose app_file computes the selector via fidelityTestId()', (t) => {
+  const contract = baseContract();
+  const manifest = baseManifest();
+  const root = makeRoot(t, contract);
+  fs.writeFileSync(
+    path.join(root, contract.mappings[0].app_file),
+    "testID={fidelityTestId('stateless')}\n",
+  );
+  assert.doesNotThrow(() => validateFidelityContract({ contract, manifest, root }));
+});
+
+test('rejects a fidelityTestId() call expression whose screen id does not match the mapping', (t) => {
+  const contract = baseContract();
+  const manifest = baseManifest();
+  const root = makeRoot(t, contract);
+  fs.writeFileSync(
+    path.join(root, contract.mappings[0].app_file),
+    "testID={fidelityTestId('multi')}\n",
+  );
+  assert.throws(() => validateFidelityContract({ contract, manifest, root }), /absent from/);
+});
+
 // 18. planned mapping carrying app_file / deep_link / ready_test_id.
 test('rejects a planned mapping carrying wired-only fields', (t) => {
   for (const field of ['app_file', 'deep_link', 'ready_test_id']) {

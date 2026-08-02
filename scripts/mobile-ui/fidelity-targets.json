@@ -544,8 +544,11 @@
     },
     {
       "screen_id": "settings",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/index.tsx",
+      "deep_link": "finanzas:///settings?fidelity=1&fidelityScreen=settings",
+      "ready_test_id": "fidelity-settings"
     },
     {
       "screen_id": "settings-account",

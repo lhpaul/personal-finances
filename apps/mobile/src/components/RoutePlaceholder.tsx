@@ -14,6 +14,13 @@ export type RoutePlaceholderProps = {
   route: string;
   /** Manifest successors, so the skeleton can be walked end to end (spec UX Rules). */
   next?: RoutePlaceholderNextLink[];
+  /**
+   * The design-fidelity gate's readiness selector for a `wired` target
+   * (`fidelityTestId(screenId)`, implementation plan Decision 9). Undefined for every screen
+   * that has not been wired yet — the fidelity contract validates this string appears in the
+   * route's source once a mapping flips to `status: "wired"`.
+   */
+  testID?: string;
 };
 
 /**
@@ -28,10 +35,10 @@ export type RoutePlaceholderProps = {
  * this is disposable scaffolding from item #1, not screen copy sourced from a mockup, and is
  * deleted along with this component when the last screen item lands.
  */
-export function RoutePlaceholder({ screenId, route, next = [] }: RoutePlaceholderProps) {
+export function RoutePlaceholder({ screenId, route, next = [], testID }: RoutePlaceholderProps) {
   const { t } = useTranslation();
   return (
-    <View>
+    <View testID={testID}>
       <Text>{t('dev.placeholder.title')}</Text>
       <Text>{t('dev.placeholder.screen', { screenId })}</Text>
       <Text>{t('dev.placeholder.route', { route })}</Text>

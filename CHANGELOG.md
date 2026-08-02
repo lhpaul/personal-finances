@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decisions, a ledger-driven starter-content seeder that neither overwrites an edit nor
   resurrects a deletion, and `db:generate` / `db:check` / `db:seed` with a four-mode check that
   mechanically rejects any non-additive change to the stored shape
+- **Design-fidelity gate: port the Zeki fidelity kit wired to the mockup manifest** (#47): `scripts/mobile-ui/` compares every `mvp: true` mockup screen state against the running app on a 393×852 iOS simulator and fails when the pixel mismatch exceeds the screen's threshold. A fidelity contract registers all 64 MVP screen/state targets against `design/mockups/mobile/mockup-manifest.js` and is validated in CI, so a mockup state cannot be added — or a screen shipped — without the gate noticing. `pnpm fidelity:verify-gate` proves the comparison passes on a faithful build and fails on a wrong token, a wrong state and a wrong device size.
 
 ### Fixed
 
