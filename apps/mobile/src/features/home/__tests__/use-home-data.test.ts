@@ -9,7 +9,6 @@ jest.mock('../read-home-data', () => ({
   readHomeData: jest.fn(() => ({ stubbed: true })),
 }));
 
-// eslint-disable-next-line import/first -- must follow the jest.mock call above
 import { loadHomeData } from '../use-home-data';
 
 /**
