@@ -134,6 +134,31 @@
   "ds.modal.confirm_label": "Delete",
   "ds.modal.cancel_label": "Cancel",
 
+  "ds.section.screen_header": "Screen header",
+  "ds.screen_header.avatar": "💰",
+  "ds.screen_header.title": "Finanzas",
+  "ds.screen_header.subtitle": "Your financial assistant",
+  "ds.screen_header.action_icon": "⚙️",
+  "ds.screen_header.action_label": "Settings",
+
+  "ds.section.category_row": "Category row",
+  "ds.category_row.emoji": "📦",
+  "ds.category_row.label": "Shopping",
+  "ds.category_row.amount": "$235K",
+  "ds.category_row.meta": "2 transactions · 17.4%",
+
+  "ds.section.line_chart": "Line chart",
+  "ds.line_chart.label": "This month's expense trend",
+
+  "ds.section.legend": "Legend",
+  "ds.legend.item_current": "This month",
+  "ds.legend.item_previous": "Dec 2024",
+
+  "ds.section.bank_row": "Bank row",
+  "ds.bank_row.monogram": "BCH",
+  "ds.bank_row.name": "Banco de Chile",
+  "ds.bank_row.sub_label": "Synced 2h ago",
+
   "dev.placeholder.title": "PLACEHOLDER — not implemented",
   "dev.placeholder.screen": "Mockup screen: {{screenId}}",
   "dev.placeholder.route": "Route: {{route}}",

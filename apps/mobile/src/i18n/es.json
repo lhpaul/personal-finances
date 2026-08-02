@@ -134,6 +134,31 @@
   "ds.modal.confirm_label": "Borrar",
   "ds.modal.cancel_label": "Cancelar",
 
+  "ds.section.screen_header": "Encabezado de pantalla",
+  "ds.screen_header.avatar": "💰",
+  "ds.screen_header.title": "Finanzas",
+  "ds.screen_header.subtitle": "Tu asistente financiero",
+  "ds.screen_header.action_icon": "⚙️",
+  "ds.screen_header.action_label": "Configuración",
+
+  "ds.section.category_row": "Fila de categoría",
+  "ds.category_row.emoji": "📦",
+  "ds.category_row.label": "Compras",
+  "ds.category_row.amount": "$235K",
+  "ds.category_row.meta": "2 transacciones · 17,4%",
+
+  "ds.section.line_chart": "Gráfico de línea",
+  "ds.line_chart.label": "Tendencia de gastos del mes",
+
+  "ds.section.legend": "Leyenda",
+  "ds.legend.item_current": "Este mes",
+  "ds.legend.item_previous": "dic 2024",
+
+  "ds.section.bank_row": "Fila de banco",
+  "ds.bank_row.monogram": "BCH",
+  "ds.bank_row.name": "Banco de Chile",
+  "ds.bank_row.sub_label": "Sincronizado hace 2 h",
+
   "dev.placeholder.title": "PLACEHOLDER — sin implementar",
   "dev.placeholder.screen": "Pantalla de maqueta: {{screenId}}",
   "dev.placeholder.route": "Ruta: {{route}}",
