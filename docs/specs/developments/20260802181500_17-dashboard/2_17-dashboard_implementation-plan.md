@@ -71,8 +71,13 @@ All commands were run in the plan worktree `.claude/worktrees/item-17` at repo r
 | Trend line colours drawn | `stroke="#…"` on the three `polyline`s | `#10b981` (income), `#f59e0b` (expense), `#cbd5e1` dashed (`stroke-dasharray="4 4"`) = `theme.colors.success`, `theme.colors.warning`, `theme.chart.comparison`. Consistent with `design-tokens.md` → *Colour semantics* |
 | Colour semantics the brief's AC3 points at | `sed -n '117,130p' docs/best-practices/stack/design-tokens.md` | Expenses = `brandSecondary` / `warning` `#f59e0b`; Income = `success` `#10b981`; *"Never render an expense in green or an income in amber"* |
 | The chart tokens already in the theme | `python3 -c "import json;print(json.load(open('design/tokens.json'))['chart'])"` | `series: ['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6']`, `grid: '#e2e8f0'`, `axis: '#94a3b8'`, `comparison: '#cbd5e1'`. **No new colour token is needed**; `theme-tokens-parity.test.ts` is unaffected |
+| Direction and surface tokens this plan names | `sed -n '27,68p' apps/mobile/src/theme.ts` | `success: '#10b981'`, `warning: '#f59e0b'`, `surface3: '#f1f5f9'`. `surface3` is byte-identical to the donut track the mockup draws, so the track needs no new token (Decision 7) |
+| The `mu-bars` CSS the `BarChart` primitive must reproduce | `awk 'NR>=496 && NR<=501' design/mockups/mobile/index.html` | `.mu-bars` is a `flex-end` row, `height: 120px`, `gap: 6px`; `.mu-bars__bar` defaults to `var(--brand)`, `--muted` is `var(--slate-300)` `#cbd5e1` and `--warm` is `var(--brand-2)` `#f59e0b`. Confirms the two column colours named in Decision 7 |
+| Tone unions of the primitives this plan composes | `grep -n 'AmountTone =' apps/mobile/src/components/ui/Amount.tsx; grep -n 'BadgeTone =' apps/mobile/src/components/ui/Badge.tsx` | `AmountTone = 'neutral' \| 'in' \| 'out'` — **not** `income` / `expense`, which is what `design-tokens.md` uses for `StatTile`; `BadgeTone = 'neutral' \| 'ok' \| 'warn' \| 'danger' \| 'info' \| 'celebration'`, so Decision 16's three tones all exist |
+| The fidelity scripts this plan invokes | `git show origin/feature/47-design-fidelity-gate:package.json \| grep fidelity` | `"fidelity": "node scripts/mobile-ui/run-fidelity.mjs"` and `"fidelity:contract": "node scripts/mobile-ui/fidelity-contract.mjs"` — so `pnpm fidelity --issue 17` and `pnpm fidelity:contract` are the correct invocations |
 | The inclusion rule's single SQL definition | `cat apps/mobile/src/db/fragments.ts` | Two exports today: `isIncluded` and `includedAmount`. `isPesoDenominated` is **not** there yet — it arrives with #10 (Decision 4) |
 | Aggregate functions this plan consumes, and their owner | `git show origin/develop:docs/specs/developments/20260802172715_12-home-screen/2_12-home-screen_implementation-plan.md` → *Layer-by-Layer → Database* and *Code Samples* | `sumIncludedByDirectionAndCategory(db, period): DirectionCategoryTotal[]` (grouped by `type` + `transaction_category_id`, `null` category returned as its own bucket) and `sumIncludedByDirectionAndDay(db, period): DirectionDayTotal[]` (grouped by `date_local` + `type`, ordered ascending). Both filter on `isIncluded` and weight by `includedAmount` |
+| The Jest wiring that routes a `.db.test.ts` file outside `src/db/` to the Node project | Same `git show` of item #12's merged plan, *Layer-by-Layer → Infrastructure* | #12 adds `'<rootDir>/src/features/**/*.db.test.ts'` to the `db` project's `testMatch` and `'\\.db\\.test\\.ts$'` to the `app` project's `testPathIgnorePatterns`, and calls the suffix *"the convention every later screen item reuses"*. **This item therefore needs no `jest.config.js` change** |
 | Repository exports that exist on `develop` today | `grep -n '^export function' apps/mobile/src/db/repositories/transactions.ts apps/mobile/src/db/repositories/categories.ts` | `upsertBankTransactions`, `countUncategorized`, `listMonth`, `totalForCategoryInPeriod`, `listByMerchant`; `listCategories(db, { income: 0 \| 1, locale })`. The two aggregates above ship with #12 → re-verified by Step 0 |
 | `mu-*` classes still deferred to **#17** in the live map | `grep -o "'mu-[a-z_-]*': { status: 'deferred', note: 'Deferred to #17" apps/mobile/src/test-utils/mu-class-map.ts \| wc -l`, then read the entries | **17** entries: `mu-bars`, `mu-bars__bar`, `mu-bars__bar--muted`, `mu-bars__bar--warm`, `mu-bars__col`, `mu-bars__lbl`, `mu-cat-row`, `mu-cat-row__bar`, `mu-cat-row__fill`, `mu-cat-row__icon`, `mu-donut`, `mu-legend`, `mu-legend__dot`, `mu-legend__name`, `mu-legend__row`, `mu-legend__val`, `mu-line`. Item #12's merged plan (Decision 5) takes over `mu-cat-row*` (4), `mu-line`, `mu-legend`, `mu-legend__row` and `mu-legend__dot` — leaving **exactly 9** for this item: `mu-donut`, the six `mu-bars*`, `mu-legend__name`, `mu-legend__val` → Decision 8 |
 | `mu-topbar*` ownership across the campaign | `grep -rn "mu-topbar" docs/specs/developments/*/2_*.md apps/mobile/src/test-utils/mu-class-map.ts` | Map says `deferred` "to #12". #12's merged plan retargets the *note* to #8; **#8's merged plan Decision 12 declines to build it** ("these screens compose locally"); #13's merged plan Decision 13 composes `StageTopBar` screen-locally; #9's merged plan keeps `FlowHeader` screen-local. **No item builds a topbar primitive** → Decision 9 |
@@ -377,9 +382,9 @@ treated differently:
 | Trend income polyline | `theme.colors.success` |
 | Trend expense polyline | `theme.colors.warning` |
 | Trend dashed average polyline | `theme.chart.comparison` |
-| Trend `Ingresos` / `Gastos` tile amounts, and the two category-report totals | `Amount` with `tone="income" \| "expense"` (item #2's primitive) |
-| Spending-overview current bar (`mu-bars__bar--warm`) | `theme.colors.warning` — the spending card is about expenses |
-| Spending-overview previous bar (`mu-bars__bar--muted`) | `theme.chart.comparison` |
+| Trend `Ingresos` / `Gastos` tile amounts, and the two category-report totals | `Amount` with `tone="in" \| "out"` — item #2's primitive; `AmountTone` is `'neutral' \| 'in' \| 'out'`, verified in `Amount.tsx`, **not** `income` / `expense` |
+| Spending-overview current bar (`mu-bars__bar--warm`) | `theme.colors.warning` — the mockup's rule is `background: var(--brand-2)`, i.e. `brandSecondary` `#f59e0b`, the same value; the spending card is about expenses |
+| Spending-overview previous bar (`mu-bars__bar--muted`) | `theme.chart.comparison` — the mockup's rule is `background: var(--slate-300)` `#cbd5e1`, which `theme.chart.comparison` and `theme.colors.palette.slate['300']` both carry; `chart.comparison` is chosen because the bar *is* the comparison series, and its legend dot is drawn in the same colour |
 | Gridlines | `theme.chart.grid` |
 
 **Category-identity elements — the categorical palette, seeded per direction.** A donut arc
@@ -398,13 +403,13 @@ DONUT_SERIES_ORDER = {
 The income donut therefore **starts on `success` green**, and the expense donut starts on the
 brand primary and reaches amber at rank 2 — which is what the drawing does and what keeps AC3's
 "never an income in amber" true for the element that carries the direction (the total above the
-donut, which is `Amount tone="income"`). These are **indices into `theme.chart.series`**, never
+donut, which is `Amount tone="in"`). These are **indices into `theme.chart.series`**, never
 hex literals, so `no-style-literals.test.ts` stays green (Assumption A2).
 
-The donut track is `theme.colors.surface3` if that token equals the mockup's `#f1f5f9`, and
-otherwise the nearest existing neutral surface token; the implementer reads `theme.ts` and
-records which token was used in the PR — **no new token is added and `design/tokens.json` is not
-edited**, so `theme-tokens-parity.test.ts` is unaffected (Assumption A2).
+The donut track is `theme.colors.surface3`, which is `#f1f5f9` — byte-identical to the track
+colour the mockup draws (both verified in the Verification Log). **No new token is added and
+`design/tokens.json` is not edited**, so `theme-tokens-parity.test.ts` is unaffected
+(Assumption A2).
 
 ### Decision 8 — two new primitives, two additive widenings; the nine `mu-*` classes deferred to this item all flip to `primitive`
 
@@ -636,7 +641,7 @@ place.
 | # | Assumption | Source / derivation | Reversal cost |
 | --- | --- | --- | --- |
 | A1 | 🔴 **D2** on `dashboard` resolves to *full* amounts, because the mockup draws every amount in full on this screen | The parent orchestrator's default (*"abbreviated exactly where the mockup draws them, nowhere else"*) applied to the drawing (Decision 5) | Five call sites in `src/features/dashboard/`, one helper swap |
-| A2 | The donut track uses an existing neutral surface token, and arc colours are **indices** into `theme.chart.series` | `design/tokens.json` carries no `#f1f5f9` chart token; `no-style-literals.test.ts` forbids a hex literal outside `theme.ts` (Decision 7) | One constant in `dashboard-palette.ts` |
+| A2 | The donut track is `theme.colors.surface3`, and arc colours are **indices** into `theme.chart.series` rather than hex values | `theme.colors.surface3` is `#f1f5f9`, the exact track colour drawn; `design/tokens.json`'s `chart` group carries no track entry; `no-style-literals.test.ts` forbids a hex literal outside `theme.ts` (Decision 7) | One constant in `dashboard-palette.ts` |
 | A3 | 🟡 `dashboard` shows only the period in progress; the `‹ ›`-style past-period navigation `BEHAVIOR.md` makes conditional does not exist because the mockup draws none | `BEHAVIOR.md` → `dashboard`: *"Navegación a períodos anteriores si el mockup la dibuja; si no, solo período vigente"* (Decision 3) | `dashboard-period.ts` plus two `Pressable`s |
 | A4 | The dashboard's empty-state copy is authored rather than copied from the mockup, because `#screen=dashboard` declares no empty state | Non-negotiable 8 says the Spanish comes from the mockup; here there is none to come from (Decision 11) | Six catalogue keys; a follow-up adds the state to the mockup |
 | A5 | The category report's inner segment reads *Este mes* / *Mes anterior* in the `month` state and *Esta semana* / *Semana anterior* in the `week` state | The mockup draws the inner segment once, without `data-states`, while the outer segment is state-driven (Decision 13) | Two catalogue keys and one ternary |
