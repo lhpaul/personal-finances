@@ -19,11 +19,8 @@
   "ds.badge.celebration": "Logro",
 
   "ds.section.category_chips": "Chips de categoría",
-  "ds.category_chip.suggested_emoji": "📦",
   "ds.category_chip.suggested_label": "Sugerido",
-  "ds.category_chip.selected_emoji": "🍔",
   "ds.category_chip.selected_label": "Elegido",
-  "ds.category_chip.default_emoji": "🚗",
   "ds.category_chip.default_label": "Normal",
 
   "ds.section.fields": "Campos",

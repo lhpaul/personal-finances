@@ -19,11 +19,8 @@
   "ds.badge.celebration": "Achievement",
 
   "ds.section.category_chips": "Category chips",
-  "ds.category_chip.suggested_emoji": "📦",
   "ds.category_chip.suggested_label": "Suggested",
-  "ds.category_chip.selected_emoji": "🍔",
   "ds.category_chip.selected_label": "Selected",
-  "ds.category_chip.default_emoji": "🚗",
   "ds.category_chip.default_label": "Default",
 
   "ds.section.fields": "Fields",

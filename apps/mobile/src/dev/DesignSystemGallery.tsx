@@ -30,6 +30,14 @@ import {
 } from '../components/ui';
 import { theme } from '../theme';
 
+/** Decorative sample glyphs for the `CategoryChip` demo rows below: language-independent, not
+ *  user-facing copy, so they do not belong in the i18n catalogues (implementation plan Decision
+ *  10, applied here the same way as `CategoryChip.tsx`'s `STAR_GLYPH` and `Checkbox.tsx`'s
+ *  `CHECK_GLYPH`). */
+const SUGGESTED_CATEGORY_EMOJI = '📦';
+const SELECTED_CATEGORY_EMOJI = '🍔';
+const DEFAULT_CATEGORY_EMOJI = '🚗';
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={{ marginTop: theme.space['5'] }}>
@@ -110,19 +118,19 @@ export function DesignSystemGallery() {
           <Section title={t('ds.section.category_chips')}>
             <View style={{ flexDirection: 'row', gap: theme.space['2'] }}>
               <CategoryChip
-                emoji={t('ds.category_chip.suggested_emoji')}
+                emoji={SUGGESTED_CATEGORY_EMOJI}
                 label={t('ds.category_chip.suggested_label')}
                 state="suggested"
                 onPress={() => undefined}
               />
               <CategoryChip
-                emoji={t('ds.category_chip.selected_emoji')}
+                emoji={SELECTED_CATEGORY_EMOJI}
                 label={t('ds.category_chip.selected_label')}
                 state="selected"
                 onPress={() => undefined}
               />
               <CategoryChip
-                emoji={t('ds.category_chip.default_emoji')}
+                emoji={DEFAULT_CATEGORY_EMOJI}
                 label={t('ds.category_chip.default_label')}
                 onPress={() => undefined}
               />
