@@ -96,4 +96,16 @@ describe('findTranslationKeys (Parser-risk addendum E1-E12)', () => {
     expect(result.keys).toEqual(['ds.a']);
     expect(result.dynamic).toEqual([]);
   });
+
+  it('E13: a quoted prefix concatenated with more code (t(\'ds.a\' + suffix)) is dynamic, not static — the quoted prefix alone is not the real runtime key', () => {
+    const result = findTranslationKeys(`t('ds.a' + suffix)`);
+    expect(result.keys).toEqual([]);
+    expect(result.dynamic).toHaveLength(1);
+  });
+
+  it('E13b: a quoted prefix followed by another string argument via concatenation is still dynamic', () => {
+    const result = findTranslationKeys(`t('ds.' + section + '.title')`);
+    expect(result.keys).toEqual([]);
+    expect(result.dynamic).toHaveLength(1);
+  });
 });

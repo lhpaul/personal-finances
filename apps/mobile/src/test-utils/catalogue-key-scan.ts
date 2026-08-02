@@ -67,11 +67,16 @@ function indexToLineColumn(index: number, lineInfos: LineInfo[]): { line: number
 /**
  * Parses the first call argument starting at `startIndex` (just past the call's opening `(`,
  * skipping any leading whitespace/newlines — E12). Returns the literal's content when the
- * argument is a single- or double-quoted string (E1, E2), or `null` when it is anything else —
- * a bare identifier (E5), a template literal (E6), a conditional expression (E11), or an
- * unterminated string. An empty string literal (E7) is returned as `''`, distinguished from
- * `null` by the caller so both count as a "dynamic" finding without conflating "no literal" and
- * "empty literal".
+ * argument is a single- or double-quoted string (E1, E2) **and nothing else follows the closing
+ * quote but an argument terminator** (a `,` that starts a trailing options argument, or the `)`
+ * that closes the call — optionally preceded by whitespace/newlines). Returns `null` when the
+ * argument is anything else — a bare identifier (E5), a template literal (E6), a conditional
+ * expression (E11), an unterminated string, or a quoted prefix followed by more code such as
+ * string concatenation (E13) — `t('ds.a' + suffix)` is not the static key `'ds.a'`; the actual
+ * runtime key is dynamic and unverifiable, so it must be classified as dynamic rather than
+ * silently accepted as the quoted prefix. An empty string literal (E7) is returned as `''`,
+ * distinguished from `null` by the caller so both count as a "dynamic" finding without
+ * conflating "no literal" and "empty literal".
  */
 function parseFirstArgument(source: string, startIndex: number): string | null {
   let i = startIndex;
@@ -89,7 +94,16 @@ function parseFirstArgument(source: string, startIndex: number): string | null {
       i += 2;
       continue;
     }
-    if (ch === quote) return value;
+    if (ch === quote) {
+      // E13: the closing quote must be immediately followed (modulo whitespace) by an argument
+      // terminator. Anything else — most notably a `+` for string concatenation — means the
+      // quoted text was only a prefix of a larger, non-static expression.
+      let j = i + 1;
+      while (j < source.length && /\s/.test(source.charAt(j))) j++;
+      const next = source.charAt(j);
+      if (next === ',' || next === ')') return value;
+      return null;
+    }
     value += ch;
     i++;
   }
