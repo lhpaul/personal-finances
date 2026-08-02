@@ -1,4 +1,4 @@
-import type { FailureReasonCode } from './protocol.types';
+import type { FailureReasonCode, ReadOutcome } from './protocol.types';
 
 /**
  * The shared vocabulary a read reports in (spec "Statuses / Enum Values" → Product type; V11).
@@ -24,7 +24,11 @@ export interface RawProductPayload {
   displayName: string; // the bank's own words, verbatim
   currencyCode: string;
   maskedIdentifier: string; // '••••1111'
-  balanceText: string; // raw, bank-formatted
+  // Optional, not required (CodeRabbit finding #13): the home page does not expose a credit
+  // card's real balance, only its own details page does. Omitting the key — rather than
+  // fabricating a placeholder like '$0' — lets a card surface with no balance yet known,
+  // distinguishable from a genuinely-zero balance.
+  balanceText?: string; // raw, bank-formatted
   creditLimitText?: string;
   availableCreditText?: string;
   cardBrand?: string;
@@ -56,7 +60,7 @@ export interface ScrapedProduct {
   displayName: string;
   currencyCode: string;
   maskedIdentifier: string;
-  balanceMinorUnits: number;
+  balanceMinorUnits?: number; // absent when the reporting page did not expose a balance (finding #13)
   creditLimitMinorUnits?: number;
   availableCreditMinorUnits?: number;
   cardBrand?: string;
@@ -98,7 +102,7 @@ export interface ScraperTrace {
  * on purpose: a read-level failure happens before any product is discovered (AC14).
  */
 export interface ScrapeResult {
-  outcome: 'complete' | 'partial' | 'failed' | 'cancelled';
+  outcome: ReadOutcome;
   countryCode: string;
   bankId: string;
   products: ScrapedProduct[];

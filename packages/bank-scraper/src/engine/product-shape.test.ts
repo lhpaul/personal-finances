@@ -25,7 +25,7 @@ describe('assertReportedProductShape', () => {
     }
   });
 
-  it.each(['elementIdex', '__clickIndex', 'accountNumber', 'rawIdentifier', 'index', 'position'])(
+  it.each(['elementIndex', '__clickIndex', 'accountNumber', 'rawIdentifier', 'index', 'position'])(
     'rejects a payload containing the forbidden key %s',
     (key) => {
       const result = assertReportedProductShape({ ...cleanPayload, [key]: 'x' });
@@ -52,11 +52,33 @@ describe('assertReportedProductShape', () => {
   });
 
   it('rejects a payload missing a required field', () => {
-    const missingBalance: Record<string, unknown> = { ...cleanPayload };
-    delete missingBalance.balanceText;
-    const result = assertReportedProductShape(missingBalance);
+    const missingDisplayName: Record<string, unknown> = { ...cleanPayload };
+    delete missingDisplayName.displayName;
+    const result = assertReportedProductShape(missingDisplayName);
     expect(result.ok).toBe(false);
   });
+
+  it('accepts a payload with no balanceText (CodeRabbit finding #13: the home page does not expose every product balance)', () => {
+    const noBalance: Record<string, unknown> = { ...cleanPayload };
+    delete noBalance.balanceText;
+    const result = assertReportedProductShape(noBalance);
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects a payload whose balanceText is present but not a string (CodeRabbit finding #18)', () => {
+    const result = assertReportedProductShape({ ...cleanPayload, balanceText: 12345 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.violation).toEqual({ reason: 'missing_field', key: 'balanceText' });
+  });
+
+  it.each(['creditLimitText', 'availableCreditText', 'cardBrand', 'cardCategory', 'cardLast4'] as const)(
+    'rejects a payload whose optional field %s is present but not a string (CodeRabbit finding #18)',
+    (field) => {
+      const result = assertReportedProductShape({ ...cleanPayload, [field]: 42 });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.violation).toEqual({ reason: 'missing_field', key: field });
+    },
+  );
 });
 
 describe('assertReportedMovementShape', () => {
@@ -94,5 +116,25 @@ describe('assertReportedMovementShape', () => {
   it('rejects a payload with a non-numeric positionInReadSnapshot', () => {
     const result = assertReportedMovementShape({ ...cleanPayload, positionInReadSnapshot: '0' });
     expect(result.ok).toBe(false);
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'rejects a positionInReadSnapshot of %s (CodeRabbit finding #19: typeof is "number" for both)',
+    (value) => {
+      const result = assertReportedMovementShape({ ...cleanPayload, positionInReadSnapshot: value });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.violation).toEqual({ reason: 'missing_field', key: 'positionInReadSnapshot' });
+    },
+  );
+
+  it('rejects a payload whose extras value is not a string (CodeRabbit finding #20)', () => {
+    const result = assertReportedMovementShape({ ...cleanPayload, extras: { originalAmountMinorUnits: 500 } });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.violation).toEqual({ reason: 'missing_field', key: 'extras' });
+  });
+
+  it('accepts a payload with string-only extras values', () => {
+    const result = assertReportedMovementShape({ ...cleanPayload, extras: { originalAmountMinorUnits: '500' } });
+    expect(result.ok).toBe(true);
   });
 });

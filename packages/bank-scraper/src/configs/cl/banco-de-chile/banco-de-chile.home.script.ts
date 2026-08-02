@@ -22,6 +22,7 @@ export function homeScript(): string {
     ${commonHelperFunctions()}
     ${generateInstanceIdHelperFunction()}
     ${generateWaitForElementHelperFunctions({ label: ACCOUNT_ITEMS_LABEL, selector: `${ACCOUNT_ITEMS_SELECTOR}[0]` })}
+    ${reportExtractionFailureHelper()}
     ${extractAccountsHelper()}
     ${extractCreditCardsHelper()}
     ${toReportedProductHelper()}
@@ -118,7 +119,13 @@ function extractAccountsHelper(): string {
             sendTrace({ logGroup, message: 'No account text found in index ' + index });
             continue;
           }
-          const splitItemText = itemText.split('  ').filter(function (part) { return part.trim().length > 0; });
+          // Split on any run of two-or-more whitespace characters, not exactly two space
+          // characters — textContent concatenates the source markup's own whitespace, which for
+          // a real Angular template is normally a newline plus indentation, not two literal
+          // spaces (CodeRabbit finding #10). This is a robustness improvement, not a guaranteed
+          // match for the live page's exact whitespace (fixtures are hand-authored, Documented
+          // Deviation D3).
+          const splitItemText = itemText.split(/\\s{2,}/).filter(function (part) { return part.trim().length > 0; });
           const accountTypeLabel = splitItemText[0] ? splitItemText[0].trim() : '';
           const accountNumberString = splitItemText[1] || '';
           const balanceText = splitItemText[splitItemText.length - 1];
@@ -156,9 +163,33 @@ function extractAccountsHelper(): string {
           sendTrace({ logGroup, message: 'Product added', data: { kindKey: kindKey } });
         } catch (itemError) {
           sendTrace({ logGroup, type: 'error', message: 'Error processing account item at index ' + index + ': ' + itemError.message });
+          await reportExtractionFailure('account', index);
         }
       }
       return products;
+    }
+  `;
+}
+
+function reportExtractionFailureHelper(): string {
+  return `
+    // A dropped account or credit card previously left no trace in the read's outcome: the
+    // caller cannot distinguish "this customer has two accounts" from "this customer has three
+    // accounts and we failed to read one" (CodeRabbit finding #11). Report it as a product
+    // failure, scoped by a synthetic per-item instanceId (there is no real instanceId — the
+    // failure happened before one could be computed) — this degrades the read's outcome to
+    // 'partial' instead of silently reporting 'complete'.
+    async function reportExtractionFailure(kindLabel, index) {
+      try {
+        const failureInstanceId = await computeInstanceId('${BANCO_DE_CHILE_BANK_ID}', kindLabel + '-extraction-failure', String(index));
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          eventType: 'error',
+          data: { code: 'parse_failed', productInstanceId: failureInstanceId },
+        }));
+      } catch (hashError) {
+        // crypto.subtle unavailable — nothing more to attach the failure to; the caller's own
+        // trace is the only diagnostic available in that case.
+      }
     }
   `;
 }
@@ -190,7 +221,12 @@ function extractCreditCardsHelper(): string {
           }
 
           const kindKey = 'tarjeta-credito';
-          const rawIdentifier = brand + '|' + category + '|' + last4;
+          // Identity is derived from brand + last4 only, not category (CodeRabbit finding #12):
+          // category comes from the label's own wording ('Nacional'/'Internacional'), which can
+          // shift with casing, accents, or the bank's own copy changes. brand + last4 is the
+          // stable pair that actually distinguishes one physical card from another; category is
+          // still reported as a display field below, just not fed into the opaque identity.
+          const rawIdentifier = brand + '|' + last4;
           const instanceId = await computeInstanceId('${BANCO_DE_CHILE_BANK_ID}', kindKey, rawIdentifier);
 
           creditCards.push({
@@ -199,7 +235,10 @@ function extractCreditCardsHelper(): string {
             displayName: label,
             currencyCode: 'CLP',
             maskedIdentifier: '••••' + last4,
-            balanceText: '$0',
+            // No balanceText key at all (CodeRabbit finding #13): the home page does not expose a
+            // credit card's real balance, only its own details page does. A fabricated '$0' would
+            // be indistinguishable from a genuinely-zero balance if the details page read never
+            // completes.
             cardBrand: brand,
             cardCategory: category,
             cardLast4: last4,
@@ -207,6 +246,7 @@ function extractCreditCardsHelper(): string {
           });
         } catch (itemError) {
           sendTrace({ logGroup, type: 'error', message: 'Error processing credit card element at index ' + index + ': ' + itemError.message });
+          await reportExtractionFailure('credit-card', index);
         }
       }
       return creditCards;
@@ -223,8 +263,11 @@ function toReportedProductHelper(): string {
         displayName: p.displayName,
         currencyCode: p.currencyCode,
         maskedIdentifier: p.maskedIdentifier,
-        balanceText: p.balanceText,
       };
+      // balanceText is optional (CodeRabbit finding #13) — a credit card discovered here has no
+      // balance to report until its own details page is visited; omit the key rather than
+      // fabricating one.
+      if (p.balanceText !== undefined) reported.balanceText = p.balanceText;
       if (p.cardBrand !== undefined) reported.cardBrand = p.cardBrand;
       if (p.cardCategory !== undefined) reported.cardCategory = p.cardCategory;
       if (p.cardLast4 !== undefined) reported.cardLast4 = p.cardLast4;
@@ -242,23 +285,46 @@ function goToNextProductPageHelper(): string {
       const accountsIndex = globalVariables.currentProductIndexes.accounts;
       const creditCardsIndex = globalVariables.currentProductIndexes.creditCards;
 
+      // Three unguarded dereferences here previously threw uncaught if the product list
+      // re-rendered with fewer items or the credit-card section disappeared between page loads
+      // (CodeRabbit finding #14). Each guard below reports parse_failed for that specific
+      // product — whose instanceId is already known, since it was extracted successfully earlier
+      // — and advances past it instead of throwing.
       if (accountsIndex < accounts.length) {
         const currentAccount = accounts[accountsIndex];
-        window.productId = currentAccount.instanceId;
         const accountItems = document.querySelectorAll('.bch-card.card-cuentas');
         const target = accountItems[currentAccount.__clickIndex];
+        globalVariables.currentProductIndexes.accounts++;
+        if (!target) {
+          sendTrace({ logGroup: '${GO_TO_NEXT_PRODUCT_PAGE_LOG_GROUP}', type: 'error', message: 'Account item not found at click index ' + currentAccount.__clickIndex });
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            eventType: 'error',
+            data: { code: 'parse_failed', productInstanceId: currentAccount.instanceId },
+          }));
+          return;
+        }
+        window.productId = currentAccount.instanceId;
         const clickable = target.querySelector('.clickable') || target;
         clickable.click();
-        globalVariables.currentProductIndexes.accounts++;
         return;
       }
 
       if (creditCardsIndex < creditCards.length) {
         const currentCard = creditCards[creditCardsIndex];
-        window.productId = currentCard.instanceId;
-        const cardElements = document.querySelector('.card-products').querySelectorAll('.link-card');
-        cardElements[currentCard.__clickIndex].click();
+        const cardSection = document.querySelector('.card-products');
+        const cardElements = cardSection ? cardSection.querySelectorAll('.link-card') : [];
+        const target = cardElements[currentCard.__clickIndex];
         globalVariables.currentProductIndexes.creditCards++;
+        if (!target) {
+          sendTrace({ logGroup: '${GO_TO_NEXT_PRODUCT_PAGE_LOG_GROUP}', type: 'error', message: 'Credit card element not found at click index ' + currentCard.__clickIndex });
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            eventType: 'error',
+            data: { code: 'parse_failed', productInstanceId: currentCard.instanceId },
+          }));
+          return;
+        }
+        window.productId = currentCard.instanceId;
+        target.click();
         return;
       }
 

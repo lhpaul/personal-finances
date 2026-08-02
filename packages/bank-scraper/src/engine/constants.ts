@@ -33,7 +33,6 @@ export const PRODUCT_ID_DOMAIN_SEPARATOR = 'finanzas.product.v1';
 /** Forbidden keys on an inbound product payload (implementation plan Decision 6). */
 export const FORBIDDEN_PRODUCT_KEYS: readonly string[] = [
   'elementIndex',
-  'elementIdex',
   '__clickIndex',
   'accountNumber',
   'rawIdentifier',

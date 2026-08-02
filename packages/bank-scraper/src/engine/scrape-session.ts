@@ -290,8 +290,13 @@ export class ScrapeSession {
           displayName: payload.displayName,
           currencyCode: payload.currencyCode,
           maskedIdentifier: payload.maskedIdentifier,
-          balanceMinorUnits: parseMinorUnits(payload.balanceText, payload.currencyCode),
         };
+        // balanceText is absent when the reporting page did not expose a balance (finding #13,
+        // e.g. a credit card discovered on the home page but not yet visited on its own details
+        // page) — leave balanceMinorUnits unset rather than fabricating a zero.
+        if (payload.balanceText !== undefined) {
+          product.balanceMinorUnits = parseMinorUnits(payload.balanceText, payload.currencyCode);
+        }
         if (payload.creditLimitText !== undefined) {
           product.creditLimitMinorUnits = parseMinorUnits(payload.creditLimitText, payload.currencyCode);
         }

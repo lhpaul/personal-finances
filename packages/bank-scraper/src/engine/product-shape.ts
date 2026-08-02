@@ -31,8 +31,17 @@ export function assertReportedProductShape(payload: unknown): ShapeResult<RawPro
   if (typeof instanceId !== 'string' || !INSTANCE_ID_PATTERN.test(instanceId)) {
     return { ok: false, violation: { reason: 'invalid_instance_id' } };
   }
-  for (const field of ['kindKey', 'displayName', 'currencyCode', 'maskedIdentifier', 'balanceText'] as const) {
+  for (const field of ['kindKey', 'displayName', 'currencyCode', 'maskedIdentifier'] as const) {
     if (typeof payload[field] !== 'string') {
+      return { ok: false, violation: { reason: 'missing_field', key: field } };
+    }
+  }
+  // `balanceText` and the card-only fields are optional (RawProductPayload) — the home page does
+  // not expose a credit card's balance (finding #13), and account products never carry the
+  // card-only fields at all. But when any of these fields IS present, it must still be a string:
+  // an optional field is not a license to skip validation on it (finding #18).
+  for (const field of ['balanceText', 'creditLimitText', 'availableCreditText', 'cardBrand', 'cardCategory', 'cardLast4'] as const) {
+    if (payload[field] !== undefined && typeof payload[field] !== 'string') {
       return { ok: false, violation: { reason: 'missing_field', key: field } };
     }
   }
@@ -56,7 +65,11 @@ export function assertReportedMovementShape(payload: unknown): ShapeResult<RawMo
       return { ok: false, violation: { reason: 'missing_field', key: field } };
     }
   }
-  if (typeof payload.positionInReadSnapshot !== 'number') {
+  // typeof === 'number' narrows the type but does not reject NaN or +/-Infinity (both have
+  // typeof 'number'); Number.isFinite adds that check. A malformed positionInReadSnapshot must
+  // not silently collide with another movement's map key (finding #19).
+  const positionInReadSnapshot = payload.positionInReadSnapshot;
+  if (typeof positionInReadSnapshot !== 'number' || !Number.isFinite(positionInReadSnapshot)) {
     return { ok: false, violation: { reason: 'missing_field', key: 'positionInReadSnapshot' } };
   }
   const outgoingText = typeof payload.outgoingText === 'string' ? payload.outgoingText : null;
@@ -65,7 +78,20 @@ export function assertReportedMovementShape(payload: unknown): ShapeResult<RawMo
     return { ok: false, violation: { reason: 'missing_field', key: 'outgoingText/incomingText' } };
   }
   const bankSuppliedId = typeof payload.bankSuppliedId === 'string' ? payload.bankSuppliedId : null;
-  const extras = isPlainRecord(payload.extras) ? (payload.extras as Record<string, string>) : {};
+  // Every extras value must itself be a string — a plain-record check alone does not verify
+  // this, so a non-string value (number, nested object, boolean) previously flowed through
+  // unchanged into a type the compiler believed was guaranteed but the runtime never verified
+  // (finding #20).
+  if (payload.extras !== undefined && !isPlainRecord(payload.extras)) {
+    return { ok: false, violation: { reason: 'missing_field', key: 'extras' } };
+  }
+  const extrasRecord = isPlainRecord(payload.extras) ? payload.extras : {};
+  for (const value of Object.values(extrasRecord)) {
+    if (typeof value !== 'string') {
+      return { ok: false, violation: { reason: 'missing_field', key: 'extras' } };
+    }
+  }
+  const extras = extrasRecord as Record<string, string>;
   return {
     ok: true,
     value: {
@@ -76,7 +102,7 @@ export function assertReportedMovementShape(payload: unknown): ShapeResult<RawMo
       currencyCode: payload.currencyCode as string,
       rawDescription: payload.rawDescription as string,
       bankSuppliedId,
-      positionInReadSnapshot: payload.positionInReadSnapshot,
+      positionInReadSnapshot,
       extras,
     },
   };

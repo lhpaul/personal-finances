@@ -91,6 +91,26 @@ describe('homeScript — discovery against home.html (AC1, AC6)', () => {
   });
 });
 
+describe('homeScript — whitespace-robust account-text split (CodeRabbit finding #10)', () => {
+  it('extracts an account whose fields are separated by newline-and-indentation whitespace, not two literal spaces', async () => {
+    resetScriptGlobals();
+    renderFixture(loadFixtureHtml(FIXTURES_DIR, 'home.html'));
+    // Overwrite the first account's markup with newline+indentation whitespace between fields —
+    // the shape textContent produces from a real multi-line Angular template — instead of the
+    // fixture's literal two-space separators.
+    const firstAccount = document.querySelectorAll('.bch-card.card-cuentas')[0];
+    const clickable = firstAccount?.querySelector('.clickable');
+    if (clickable) {
+      clickable.textContent = 'Cuenta Corriente\n      66666666\n      $666.000';
+    }
+    const { messages } = await runInjectedScript(homeScript());
+    const products = productsFromMessages(messages);
+    const corriente = products.filter((p) => p.kindKey === 'cuenta-corriente');
+    expect(corriente).toHaveLength(2);
+    expect(corriente[0]?.balanceText).toBe('$666.000');
+  });
+});
+
 describe('homeScript — AC24: two accounts of the same kind, stable across two independent reads', () => {
   it('produces two different instanceIds for the two Cuenta Corriente accounts, each identical across two separate runs', async () => {
     resetScriptGlobals();
@@ -155,6 +175,41 @@ describe('homeScript — Risk R4: crypto.subtle unavailable', () => {
     );
     expect(errorTraces.length).toBeGreaterThan(0);
     expect(JSON.stringify(errorTraces)).toContain('crypto.subtle');
+  });
+});
+
+describe('homeScript — a dropped product is reported, not silently swallowed (CodeRabbit finding #11)', () => {
+  it('wires both extraction catch blocks to report a product-scoped failure, not only a trace', () => {
+    const source = homeScript();
+    const accountsCatch = source.slice(source.indexOf('async function extractAccounts'), source.indexOf('async function extractCreditCards'));
+    const creditCardsCatch = source.slice(source.indexOf('async function extractCreditCards'), source.indexOf('function toReportedProduct'));
+    expect(accountsCatch).toContain("reportExtractionFailure('account', index)");
+    expect(creditCardsCatch).toContain("reportExtractionFailure('credit-card', index)");
+    // The helper itself must actually post an ERROR (not just another trace) for the failure to
+    // affect the read's outcome.
+    expect(source).toContain("eventType: 'error'");
+    expect(source).toContain('reportExtractionFailure(kindLabel, index)');
+  });
+});
+
+describe('homeScript — goToNextProductPage guards a re-rendered product list (CodeRabbit finding #14)', () => {
+  it('reports parse_failed for the missing account instead of throwing, when the account list shrinks between page loads', async () => {
+    resetScriptGlobals();
+    renderFixture(loadFixtureHtml(FIXTURES_DIR, 'home.html'));
+    await runInjectedScript(homeScript()); // discovery + click on account 0
+
+    // Simulate the product list re-rendering with fewer items than were discovered — the exact
+    // scenario the finding describes (accountItems[currentAccount.__clickIndex] is undefined).
+    // The next call looks for the account originally discovered at click index 1, so the list
+    // must shrink to fewer than two items, not merely lose the element at that index.
+    const accountItems = Array.from(document.querySelectorAll('.bch-card.card-cuentas'));
+    accountItems.slice(1).forEach((el) => el.remove());
+
+    const { messages, thrown } = await runInjectedScript(homeScript());
+    expect(thrown).toBeNull();
+    const errorMessages = messages.filter((m) => m.eventType === 'error');
+    expect(errorMessages).toHaveLength(1);
+    expect(errorMessages[0]?.data).toMatchObject({ code: 'parse_failed' });
   });
 });
 
