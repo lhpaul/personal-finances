@@ -61,6 +61,21 @@ describe('loginScript — against login.html (AC1, AC6)', () => {
     },
     TEST_TIMEOUT_MS,
   );
+
+  it(
+    'ignores an unrelated [role="alert"] outside the login form (CodeRabbit finding #16: scoped selector)',
+    async () => {
+      const unrelatedBanner = document.createElement('div');
+      unrelatedBanner.setAttribute('role', 'alert');
+      unrelatedBanner.textContent = 'Este sitio usa cookies';
+      document.body.appendChild(unrelatedBanner);
+
+      const { messages } = await runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
+      const errorMessages = messages.filter((m) => m.eventType === 'error');
+      expect(errorMessages).toEqual([]);
+    },
+    TEST_TIMEOUT_MS,
+  );
 });
 
 describe('loginScript — against login-invalid-credentials.html (AC14)', () => {
@@ -121,6 +136,14 @@ describe('loginScript — MAX_SUBMIT_ATTEMPTS (Decision 8, AC19)', () => {
     },
     TEST_TIMEOUT_MS,
   );
+
+  it('pins MAX_SUBMIT_ATTEMPTS at 1 (CodeRabbit finding #15): raising it would let a flaky submit resubmit the login form', () => {
+    // The submit-form step above is wrapped with { maxRetries: MAX_SUBMIT_ATTEMPTS } — Business
+    // Rule 22's "never click Ingresar twice" guarantee holds only because this constant is 1.
+    // This test exists so a future change to the constant fails CI immediately, rather than
+    // silently reintroducing the repeated-sign-in-attempt defect Decision 8 fixes.
+    expect(MAX_SUBMIT_ATTEMPTS).toBe(1);
+  });
 });
 
 describe('loginScript — Decision 4 checkpoint 3 (in-page origin gate)', () => {

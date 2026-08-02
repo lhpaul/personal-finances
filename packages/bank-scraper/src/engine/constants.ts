@@ -16,6 +16,12 @@ export const MAX_STEP_ATTEMPTS = 3;
 export const STEP_RETRY_DELAY_MS = 1000;
 export const MAX_ELEMENT_ATTEMPTS = 10;
 export const ELEMENT_RETRY_DELAY_MS = 200;
+// Business Rule 22's "never resubmit a rejected sign-in" guarantee holds only as long as this
+// stays 1 — a bank's login script wraps its submit step in the shared retry wrapper with
+// `maxRetries: MAX_SUBMIT_ATTEMPTS`, so raising this value would silently resume the exact
+// repeated-sign-in-attempt defect Decision 8 exists to fix (CodeRabbit finding #15). A dedicated
+// test in that login script's own test file pins this value so a future change is caught by CI
+// rather than silently changing safety-critical behavior.
 export const MAX_SUBMIT_ATTEMPTS = 1;
 
 /**

@@ -20,6 +20,13 @@ const RUT_INPUT_LABEL = 'RutInput';
 const RUT_INPUT_SELECTOR = "document.getElementById('ppriv_per-login-click-input-rut')";
 const PASSWORD_INPUT_SELECTOR = "document.getElementById('ppriv_per-login-click-input-password')";
 const SUBMIT_BUTTON_SELECTOR = "document.getElementById('ppriv_per-login-click-ingresar-login')";
+// Scoped to the login form container (CodeRabbit finding #16): an unscoped `[role="alert"]`
+// lookup could match an unrelated alert region elsewhere on the page (a cookie banner, an ad, a
+// site-wide notice) and misreport a rejection that never happened.
+const REJECTION_BANNER_SELECTOR = "document.querySelector('.login-form [role=\"alert\"]')";
+// A named constant instead of a bare literal, per the same finding — gives the delay a single,
+// documented meaning instead of a magic number.
+const REJECTION_CHECK_DELAY_MS = 1000;
 const LOG_GROUP = 'login';
 
 export function loginScript(credentials: { rut: string; password: string }): string {
@@ -86,8 +93,8 @@ export function loginScript(credentials: { rut: string; password: string }): str
         // page loads and the home script reports get-products-start); this is not a "retry of a
         // failed submission" in the Business Rule 22 sense, just giving the bank's page a moment
         // to render a rejection before concluding there is none.
-        await wait(1000);
-        const errorElement = document.querySelector('[role="alert"]');
+        await wait(${REJECTION_CHECK_DELAY_MS});
+        const errorElement = ${REJECTION_BANNER_SELECTOR};
         if (errorElement && errorElement.textContent && errorElement.textContent.trim()) {
           sendLoginInvalidCredentialsError();
         }
