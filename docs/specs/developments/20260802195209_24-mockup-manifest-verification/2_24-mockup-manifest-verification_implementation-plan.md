@@ -83,6 +83,40 @@ question, not an operational assumption; it is resolved in **Decision 2** below.
 
 ---
 
+## Brief Coverage
+
+This item has no spec, so the [#24](https://github.com/lhpaul/personal-finances/issues/24) issue
+body is the brief. Every scope bullet and acceptance criterion maps to a check, a wiring change,
+or a test.
+
+| Brief item | Type | Covered by |
+| --- | --- | --- |
+| "Navigation ids exist in `screens`" | Scope | `M002` + its planted-violation test |
+| "exactly one `initial: true` per stateful screen" | Scope | `M005` + its two planted-violation tests (0 initial, 2 initial) |
+| "States declare no screen-level fields" | Scope | `M006` + its planted-violation test |
+| "Every `data-states` value is declared" | Scope | `M008` + its planted-violation test and the two decoy must-not-fire tests |
+| "every `go()` target exists" | Scope | `M009` + its two planted-violation tests and the computed-argument must-not-fire test |
+| "Every screen has a DOM node and vice versa" | Scope | `M007` + its two planted-violation tests (missing node, orphan node) |
+| "`pnpm mockups:verify`, wired into CI" | Scope | `package.json` and `.github/workflows/ci.yml` entries; runbook Step 7 |
+| AC 1 — "Passes on the current manifest with no false positives" | Acceptance criterion | Verification Log (`semanticNotMirrored: []`, markup-strip deltas); Testing Strategy scenario 1; runbook Steps 1, 2, 5 |
+| AC 2 — "Fails on a deliberately broken manifest" | Acceptance criterion | The ten-row planted-violation matrix; Implementation Order step 7 (deliberate-break sanity check); runbook Steps 3 and 6 |
+| AC 3 — "Runs in CI on changes under `design/`" | Acceptance criterion | **Decision 3** (every-PR superset); runbook Step 7 |
+
+Two additions beyond the literal brief text, both deliberate:
+
+- **`M010` (tokens mirrored in `:root`)** is the sixth item of the PR checklist that
+  [`design/mockups/README.md`](../../../../design/mockups/README.md) already states, and the
+  fourth PR check in the HTML Mockup Framework standard § *Manifest workflow*. The brief says
+  "Promote it" about that checklist, so leaving the token check as the one un-mechanised item
+  would leave the promotion half-done. Scope is bounded by **Decision 4**.
+- **`M001`, `M003`, `M004`** are structural preconditions rather than new scope: without them a
+  malformed manifest would make `M002`, `M005`–`M009` report confusing cascades or crash. Each
+  is a handful of lines.
+
+Nothing else is added: see the **Residual Verification** § *Explicit non-goals*.
+
+---
+
 ## Decisions
 
 ### Decision 1 — `scripts/design/`, per the issue and the framework standard
@@ -155,9 +189,11 @@ The current README one-liner reports two documented false positives (`ds-compone
 Because all three `<script>` blocks sit after the last screen section, a naive `split()` on the
 section marker attributes their contents to the last screen.
 
-`verify-manifest.mjs` blanks out `<script …>…</script>` blocks and `<!-- … -->` comments
-(replacing each with equal-length whitespace so byte offsets and reported line numbers stay
-correct) before scanning for sections, `data-states`, and `go(`. Measured effect at plan time:
+`verify-manifest.mjs` blanks out `<script …>…</script>` blocks and `<!-- … -->` comments,
+replacing each with **equal-length whitespace** rather than deleting it, so a match offset in the
+stripped text still maps to the same offset — and therefore the same line number — in the
+original file. That is what lets markup-derived messages cite `(index.html:<line>)`.
+The stripped text is then scanned for sections, `data-states`, and `go(`. Measured effect at plan time:
 `data-states` goes 211 → 210 and `go(` goes 176 → 171, and the two false positives disappear.
 Section count is unchanged at 36, confirming no screen markup is lost.
 
@@ -184,7 +220,7 @@ None — nothing under `packages/` or `apps/` changes.
 
 - [ ] **New** `scripts/design/verify-manifest.mjs` — the verifier. ES module, no dependencies, Node 22 built-ins only. Public surface:
   - `export function verifyMockup({ mockupDir, tokensPath })` → `{ violations: Array<{ code, message }>, stats: { screens, states, checks } }`. Pure: reads files, returns findings, never calls `process.exit`.
-  - A CLI wrapper guarded by `import.meta.url === pathToFileURL(process.argv[1]).href` that parses `--mockup-dir` (default `design/mockups/mobile`) and `--tokens` (default `design/tokens.json`), prints one `CODE  message` line per violation, and exits `1` when `violations.length > 0`, `0` otherwise. The success line has the form `OK — <screens> screens, <states> states, <checks> checks passed`, with every number rendered from `stats` rather than hard-coded.
+  - A CLI wrapper guarded by `import.meta.url === pathToFileURL(process.argv[1]).href` that parses `--mockup-dir` (default `design/mockups/mobile`) and `--tokens` (default `design/tokens.json`), prints one `CODE  message` line per violation, and exits `1` when `violations.length > 0`, `0` otherwise. Markup-derived violations (`M007` orphan nodes, `M008`, `M009`) append the source location as `(index.html:<line>)`, which is exactly what the equal-length blanking in `stripNonMarkup` preserves (**Decision 5**); manifest-derived violations (`M001`–`M006`) carry no location because the manifest is consumed as an evaluated object, not as text. The success line has the form `OK — <screens> screens, <states> states, <checks> checks passed`, with every number rendered from `stats` rather than hard-coded.
   - Internal helpers: `loadManifest(manifestPath)` (see **Decision 2**), `stripNonMarkup(html)` (see **Decision 5**), `collectNavScreenIds(navigation)` (recursive over `items`), `domIdFor(screen)` → `screen.dom_id ?? 's-' + screen.screen_id`, `normalizeCssValue(value)` (see **Decision 4**).
 - [ ] **New** `scripts/design/verify-manifest.test.mjs` — `node:test` + `node:assert/strict` suite; see **Testing Strategy**.
 - [ ] **Modify** `package.json` — add two entries to `scripts`, placed immediately after `"mockups:mobile"`:
@@ -395,8 +431,9 @@ enforces the mockup PR checklist" — so the evidence the implementation must pr
 `ready-for-human-review` is:
 
 1. **Checklist coverage evidence**: the six-item PR checklist in `design/mockups/README.md` maps
-   onto `M002`, `M004`+`M005`, `M006`, `M008`, `M009`, `M010`; the *Brief coverage* column of
-   **The checks** table is that mapping. The implementation PR description must restate it.
+   onto `M002`, `M004`+`M005`, `M006`, `M008`, `M009`, `M010`; the **Brief Coverage** table and
+   the *Brief coverage* column of **The checks** table are the two views of that mapping. The
+   implementation PR description must restate it.
 2. **Both-directions evidence**: `pnpm mockups:verify:test` output showing every planted
    violation test passing, i.e. at least one firing test and one must-not-fire assertion per
    check code `M001`–`M010`.
@@ -443,36 +480,37 @@ export function verifyMockup({ mockupDir, tokensPath }) {
 ## Implementation Order
 
 1. **Create `scripts/design/verify-manifest.mjs`** with `loadManifest`, `stripNonMarkup`,
-   `collectNavScreenIds`, `domIdFor`, `normalizeCssValue`, checks `M001`–`M006`, and the
-   `verifyMockup` entry point returning `{ violations, stats }`.
-   *Verify*: `node -e "import('./scripts/design/verify-manifest.mjs').then(m => console.log(m.verifyMockup({ mockupDir: 'design/mockups/mobile', tokensPath: 'design/tokens.json' })))"` prints an object; confirm no violations are reported for the manifest-only checks.
+   `collectNavScreenIds`, `domIdFor`, `normalizeCssValue`, the `verifyMockup` entry point
+   returning `{ violations, stats }`, checks `M001`–`M006`, and the CLI wrapper (argument
+   parsing, per-violation output lines, exit codes, success line rendered from `stats`) — so the
+   script is runnable from step 1 onward and every later step has the same simple check command.
+   *Verify*: run `node scripts/design/verify-manifest.mjs` and read the output — it should list
+   no `M001`–`M006` violations for the current mockup.
 2. **Add checks `M007`–`M009`** (DOM parity, `data-states`, `go()`) on top of `stripNonMarkup`.
-   *Verify*: rerun the command from step 1 and confirm the output no longer contains the
-   `ds-components -> a` / `-> b` findings the old one-liner produced.
+   *Verify*: run `node scripts/design/verify-manifest.mjs` again and confirm the output does not
+   contain the `ds-components -> a` / `-> b` findings the old one-liner produced.
 3. **Add check `M010`** (token mirroring) with the normalisation and exclusions from **Decision 4**.
-   *Verify*: rerun the command from step 1 and confirm the violations list is empty.
-4. **Add the CLI wrapper** (argument parsing, per-violation output lines, exit codes, success
-   line rendered from `stats`).
-   *Verify*: `node scripts/design/verify-manifest.mjs; echo "exit=$?"` prints the success line
-   and `exit=0`.
-5. **Create `scripts/design/verify-manifest.test.mjs`** with the good synthetic fixture, the ten
-   planted-violation tests, the five must-not-fire tests, and the fifteen edge-case tests from
-   the **Parser-risk addendum**.
+   *Verify*: run `node scripts/design/verify-manifest.mjs; echo "exit=$?"` and confirm it prints
+   the success line with no violations and `exit=0`.
+4. **Create `scripts/design/verify-manifest.test.mjs`** with the good synthetic fixture, the ten
+   planted-violation tests, the five must-not-fire tests, and the edge-case tests from the
+   **Parser-risk addendum** (11 additional tests — enumeration rows 1, 2, 6, and 7 are already
+   covered by the must-not-fire tests, and each remaining row names its own new test).
    *Verify*: `node --test scripts/design/*.test.mjs` — read the summary line and confirm every
    test passes and the reported test count matches the number of tests written.
-6. **Wire `package.json`**: add `"mockups:verify"` and `"mockups:verify:test"` immediately after
+5. **Wire `package.json`**: add `"mockups:verify"` and `"mockups:verify:test"` immediately after
    `"mockups:mobile"`.
    *Verify*: `pnpm mockups:verify` and `pnpm mockups:verify:test` both succeed.
-7. **Wire `.github/workflows/ci.yml`**: append the two steps to the existing `test` job.
+6. **Wire `.github/workflows/ci.yml`**: append the two steps to the existing `test` job.
    *Verify*: read the edited file and confirm the two new steps sit inside the `test` job's
    `steps:` list at the same indentation as its existing steps. CI executing them on the
    implementation PR is the authoritative confirmation (runbook Step 7).
-8. **Deliberate-break sanity check** (brief AC 2): temporarily edit `design/mockups/mobile/mockup-manifest.js` to add a second `initial: true` to one screen, run `pnpm mockups:verify`, confirm it reports `M005` for that screen and exits non-zero, then **revert the edit** with `git checkout -- design/mockups/mobile/mockup-manifest.js` and confirm `git status` is clean for `design/`.
-9. **Run the smoke test runbook** at
+7. **Deliberate-break sanity check** (brief AC 2): temporarily edit `design/mockups/mobile/mockup-manifest.js` to add a second `initial: true` to one screen, run `pnpm mockups:verify`, confirm it reports `M005` for that screen and exits non-zero, then **revert the edit** with `git checkout -- design/mockups/mobile/mockup-manifest.js` and confirm `git status` is clean for `design/`.
+8. **Run the smoke test runbook** at
    [`docs/testing/mobile/24-mockup-manifest-verification.smoke-test.md`](../../../testing/mobile/24-mockup-manifest-verification.smoke-test.md)
    and record the results in the implementation PR.
-10. **Update project docs** per the **Documentation Updates** section above.
-11. **Update `CHANGELOG.md`** under `[Unreleased]` → `### Added`, using exactly this entry:
+9. **Update project docs** per the **Documentation Updates** section above.
+10. **Update `CHANGELOG.md`** under `[Unreleased]` → `### Added`, using exactly this entry:
 
     ```markdown
     - **Mockup manifest verification script** (#24): `scripts/design/verify-manifest.mjs` and
