@@ -626,9 +626,16 @@ the query, so `search` renders rows in the same order as `list`.
 ### Decision 12 — A coming-soon row is not a button
 
 RN's accessibility model would happily announce a `Pressable` with no `onPress` as a button. AC9
-asks for the opposite. `BankRow` without `onPress` renders a `View` with `accessible`, no
-`accessibilityRole`, and an accessible name composed as `"<name>, <unavailableLabel>"` from
-catalogue keys. There is no `onPress`, so there is nothing to fire (AC8).
+asks for the opposite: the row must say it is unavailable. The required rendering is a `View`
+marked `accessible`, with **no** `accessibilityRole`, whose accessible name is composed as
+`"<name>, <unavailableLabel>"` from catalogue keys, and with no chevron. There is no `onPress`, so
+there is nothing to fire (AC8).
+
+Item #12 owns `BankRow` (Resolution R4), so this is a **requirement on that component**, not a
+component this item writes. If `BankRow` already renders that way when it ships, this item passes
+`unavailableLabel` and nothing else changes; if it does not, this item adds the optional
+`unavailableLabel` prop additively. Either way the assertion lives in this item's
+`bank-picker.test.tsx` (Testing Strategy scenario 8), because AC9 is this item's criterion.
 
 ### Decision 13 — A `__DEV__`-only fixture surface, because the MVP ships one bank
 
@@ -945,10 +952,11 @@ secure-store write racing unmount, and a module-scoped store shared by two route
 2. **Secure-store port, adapter and credential store**, with their unit tests and
    `secure-store-boundary.test.ts`. *Verify*: `pnpm --filter @finanzas/mobile test` — the
    boundary test passes and its exemption list resolves to the adapter file only.
-3. **Runtime database handle.** Check whether `apps/mobile/src/db/runtime.ts` exists
-   (Resolution R1). If it does, use it unchanged. If it does not, create it with
-   `getAppDatabase(): Promise<AppDatabase>`. *Verify*: the whole `db` Jest project still passes
-   unchanged.
+3. **Confirm the blocking dependencies.** Run the *Implementation-start re-verification* block
+   in full and record `Still valid` or `Stale or conflicting` in the implementation PR. *Verify*:
+   `apps/mobile/src/db/runtime.ts` exports `getAppDatabase()` (item #8) and
+   `apps/mobile/src/components/ui/index.ts` exports `BankRow` (item #12). If either is missing,
+   **stop and return the evidence** — this item creates neither (Resolutions R1 and R4).
 4. **Connection repository.** Add the write-side functions, `listInstitutions`, and
    `listConnectedBankSummaries`, with tests in `src/db/__tests__/connections.test.ts` and
    `institutions.test.ts`. *Verify*: `pnpm --filter @finanzas/mobile test` and confirm the new
