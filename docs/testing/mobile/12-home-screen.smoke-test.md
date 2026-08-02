@@ -258,9 +258,11 @@ small-screen and one normal-screen viewport (Spanish copy is long). Keep screens
 Each checkbox maps to an acceptance criterion in the work item brief.
 
 - [ ] **AC1** — the "por categorizar" count uses the partial index, not a full scan.
-      Evidence: `pnpm --filter @finanzas/mobile test` shows the `EXPLAIN QUERY PLAN` assertion
-      in `src/db/__tests__/indexes.test.ts` naming `transactions_uncategorized_idx`, and the
-      hero's count matches the real number of uncategorized non-excluded movements (Step 3).
+      Evidence: `pnpm --filter @finanzas/mobile test` keeps the merged `EXPLAIN QUERY PLAN`
+      assertion in `src/db/__tests__/indexes.test.ts` green — the
+      `"How many movements still need a category?"` case, which names
+      `transactions_uncategorized_idx` — and the hero's count matches the real number of
+      uncategorized non-excluded movements (Step 3).
 - [ ] **AC2** — all four states render, including first-sync `empty` and `sync-error`
       (Steps 1, 3, 4, 5), with the documented precedence (Step 5).
 - [ ] **AC3** — totals match the dashboard exactly, because both read the shared inclusion

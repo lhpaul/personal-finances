@@ -361,6 +361,8 @@ that package, and #17 needs the identical function. A new file avoids editing `m
 
 ```ts
 // packages/shared-utils/src/percent.ts — Illustrative, adapt during implementation
+import { MINUS_SIGN } from './money';
+
 export const PERCENT_DECIMAL_SEPARATOR = ',';
 
 /** `206` → `20,6%`. Tenths of a percent in, display string out. Throws on a non-integer. */
@@ -623,7 +625,7 @@ the returned element tree, and everything else is a pure function or a real-SQLi
 
 | # | Scenario | Maps to | Test file | Tier |
 | --- | --- | --- | --- | --- |
-| 1 | `countUncategorized`'s `WHERE` still matches `transactions_uncategorized_idx`, proven by `EXPLAIN QUERY PLAN` naming the partial index rather than `SCAN transactions` | brief AC1 | `apps/mobile/src/db/__tests__/indexes.test.ts` (extend) | db |
+| 1 | `countUncategorized` uses `transactions_uncategorized_idx`, proven by `EXPLAIN QUERY PLAN` naming the partial index rather than `SCAN transactions`. **This test already exists and passes** (`indexes.test.ts`, the `"How many movements still need a category?"` case) because item #3 built it; this item adds no query on that path, so the requirement is to keep it green — extend it only if `countUncategorized` is touched | brief AC1 | `apps/mobile/src/db/__tests__/indexes.test.ts` (existing) | db |
 | 2 | `sumIncludedByDirectionAndCategory` over a fixture with one full, one partially included and one excluded movement returns a hand-derived literal total, and the excluded movement's amount appears nowhere | brief AC3, BR4, Decision 1 | `apps/mobile/src/db/__tests__/transactions.test.ts` (extend) | db |
 | 3 | The same fixture: the per-category buckets returned by `sumIncludedByDirectionAndCategory` agree, category by category, with `totalForCategoryInPeriod` — **and both agree with the hand-derived literal**, so this is an equivalence check, not two implementations agreeing about a shared mistake | brief AC3 ("totals match the dashboard exactly") | `apps/mobile/src/db/__tests__/transactions.test.ts` | db |
 | 4 | The `null`-category group is returned as its own bucket and is not dropped | Mockup's *Sin categorizar* row; item #5 Decision 10 | `transactions.test.ts` | db |
@@ -926,7 +928,8 @@ infrastructure with no visible change; the screen appears at Step 9.
 2. **`@finanzas/shared-utils`: `percent.ts`.** Decision 12, plus `percent.test.ts` (Scenario 16)
    and the one-line `index.ts` re-export. Verify: `pnpm --filter @finanzas/shared-utils test`.
 3. **Database layer.** The three new exports in `transactions.ts`, one in `institutions.ts`, the
-   four domain types in `types.ts`, and Scenarios 1-7 in the existing `db` test files. Verify:
+   four domain types in `types.ts`, and Scenarios 2-7 in the existing `db` test files
+   (Scenario 1 is already covered by a merged test and only has to stay green). Verify:
    `pnpm --filter @finanzas/mobile test` — read the output and confirm the `db` project runs the
    new cases and that `inclusion-rule-single-definition` and `db-access-boundary` are still
    green (Scenarios 8-9).
@@ -978,7 +981,8 @@ infrastructure with no visible change; the screen appears at Step 9.
 ## Document Quality Gate
 
 - **Spec/brief coverage**: Checked — all five brief acceptance criteria map to implementation
-  steps and tests. AC1 → Verification Log row on `transactions_uncategorized_idx` + Scenario 1;
+  steps and tests. AC1 → Verification Log row on `transactions_uncategorized_idx` + Scenario 1
+  (already satisfied by merged code; the requirement is to keep it satisfied);
   AC2 → Decision 4 + Scenario 10 + runbook Steps 3-6; AC3 → Decision 1 + Scenarios 2, 3, 8, 9;
   AC4 → Decision 6 + Scenario 23; AC5 → the runbook's per-state fidelity steps.
 - **Implementation-order consistency**: Checked — every file named in Layer-by-Layer appears in
