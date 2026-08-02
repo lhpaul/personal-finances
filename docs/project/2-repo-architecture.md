@@ -50,7 +50,7 @@ personal-finances/
 │   └── dev/                        # Local dev helpers (arrives with a later item)
 ├── .maestro/                       # Device E2E flows (arrives with #22)
 ├── turbo.json · pnpm-workspace.yaml · eslint.config.mjs · tsconfig.base.json
-├── .nvmrc · .npmrc · .prettierrc.json · .prettierignore
+├── .nvmrc · .prettierrc.json · .prettierignore
 └── package.json                    # Workspace root; orchestrates via turbo
 ```
 
@@ -62,7 +62,15 @@ personal-finances/
 
 - Toolchain pins match Zeki: `.nvmrc` = `22`, `packageManager: pnpm@11.12.0`,
   `engines.node >= 22`. Expo SDK 54 / React Native 0.81.
-- `pnpm-workspace.yaml` declares `apps/*` and `packages/*`.
+- `pnpm-workspace.yaml` declares `apps/*` and `packages/*`, and also declares
+  `nodeLinker: hoisted`. pnpm 11 (this repo's pin) reads pnpm-specific settings such as
+  `nodeLinker` only from `pnpm-workspace.yaml` — it does **not** read `node-linker` from
+  `.npmrc` (that migration happened silently, with no warning printed). Metro's resolver is
+  pointed at the workspace root with `disableHierarchicalLookup = true`
+  (`apps/mobile/metro.config.js`), so the installed tree must actually be hoisted or Expo
+  cannot resolve `@expo/metro-runtime`. `pnpm check:layout` (also wired to root `postinstall`
+  and to CI's `bundle` job) verifies the tree really is hoisted, not just declared as such —
+  see [Common Commands](#common-commands) and [Environment Setup](#environment-setup).
 - Package names are scoped: `@finanzas/mobile`, `@finanzas/shared-domain`, …
 - Shared packages are minimal: `src/`, `package.json`, `tsconfig.json`, with
   `build` / `dev` / `clean` / `lint` scripts backed by `tsc`.
@@ -139,6 +147,12 @@ pnpm format                                  # markdown only
 pnpm format:code                             # apps/ and packages/ source
 pnpm clean                                   # per-workspace clean scripts, via Turbo
 
+# node_modules layout check (also runs as postinstall and in CI's bundle job)
+pnpm check:layout
+
+# Local iOS bundle check (Metro only, no native build — the same command CI's bundle job runs)
+cd apps/mobile && pnpm exec expo export:embed --eager --platform ios --dev false
+
 # Database (arrives with the database item, #3 — needs Drizzle, which this item does not add)
 pnpm --filter @finanzas/mobile db:generate   # generate a Drizzle migration
 pnpm --filter @finanzas/mobile db:check      # apply migrations to a fixture DB
@@ -154,13 +168,66 @@ pnpm mobile:build:production-store
 
 ## Environment Setup
 
-1. **Node 22** (`.nvmrc`) and **pnpm 11.12.0** (`packageManager` in the root
+The sequence below was run end to end on macOS under #35 (2026-08-02) to a booted iOS Simulator
+running the app — not merely asserted. Tool versions used: Node `v26.5.0` (satisfies the
+`.nvmrc`/`engines.node >= 22` pin — `.nvmrc` itself pins `22`), pnpm `11.12.0`, Xcode `26.6`
+(build `17F113`), CocoaPods `1.16.2`, macOS `26.5.2`.
+
+1. **Node ≥ 22** (`.nvmrc` pins `22`) and **pnpm 11.12.0** (`packageManager` in the root
    `package.json`) — matching `zeki-platform`. Node 20 is end-of-life and must not be pinned.
    Plus Xcode (iOS Simulator) and/or Android Studio.
    See [React Native environment setup](https://reactnative.dev/docs/set-up-your-environment).
 2. `pnpm install` — no environment variable is required; the skeleton reads none (spec AC1).
-3. `cp .ai-dev-workflow.local.example.yaml .ai-dev-workflow.local.yaml` (AI workflow only)
-4. `pnpm dev:mobile`, then `i` / `a`
+   `postinstall` runs `pnpm check:layout` automatically; a plain install that somehow ends
+   isolated fails here with an actionable message rather than failing later inside Metro.
+3. `pnpm check:layout` — explicit confirmation the tree is hoisted.
+4. `cd apps/mobile && pnpm exec expo prebuild --platform ios --clean` — creates `ios/` and runs
+   `pod install`. `--clean` is required on a second run: `expo prebuild` refuses to run over an
+   existing `ios/` directory without it (`ios/` and `android/` are gitignored, so every clone
+   starts without them).
+5. **If CocoaPods fails inside `prebuild` or when run standalone** with
+   `Encoding::CompatibilityError: Unicode Normalization not appropriate for ASCII-8BIT` — this is
+   a CocoaPods/Ruby locale issue, not a project issue. Fix by exporting a UTF-8 locale before
+   invoking `pod`:
+
+   ```bash
+   export LANG=en_US.UTF-8
+   export LC_ALL=en_US.UTF-8
+   cd apps/mobile/ios && pod install --repo-update && cd ..
+   ```
+
+   (CocoaPods itself prints this exact remediation as a warning; it is not optional on a shell
+   whose locale is unset.)
+6. `pnpm exec expo run:ios` — builds and boots the simulator. If this fails with
+   `unable to attach DB: ... database is locked. Possibly there are two concurrent builds
+   running in the same filesystem location`, an earlier build was interrupted and left an
+   orphaned `SWBBuildService` process holding Xcode's DerivedData lock. Find and kill it, then
+   retry:
+
+   ```bash
+   lsof "$HOME/Library/Developer/Xcode/DerivedData/Finanzas-*/Build/Intermediates.noindex/XCBuildData/build.db"
+   ```
+
+   `kill -9` terminates immediately and without cleanup, and `lsof` can also return the PID of a
+   build that is still legitimately running. **Verify the reported PID belongs to a stale,
+   interrupted process (check `ps -p <pid>` and how long it has been idle) before terminating it,
+   and confirm with whoever owns the machine before running `kill -9` on it** — do not run it
+   automatically from a script or agent session:
+
+   ```bash
+   kill -9 <pid from lsof, verified stale>
+   ```
+7. Once a dev build exists on the simulator, `pnpm dev:mobile:ios` (equivalently
+   `pnpm dev:mobile`, then `i`) starts Metro only and reopens the existing build — it does not
+   rebuild the native project. Use step 6 again after any native dependency change.
+8. `cp .ai-dev-workflow.local.example.yaml .ai-dev-workflow.local.yaml` (AI workflow only, not
+   required to run the app).
+
+Verified outcome: the app boots on the simulator (iPhone 17, iOS 26.5) and lands on the
+`onboarding-intro` placeholder, matching
+[`1-bootstrap-monorepo-expo-app.smoke-test.md`](../testing/mobile/1-bootstrap-monorepo-expo-app.smoke-test.md)
+Step 4's expected result. Evidence (full transcript, screenshot) is in the implementation PR for
+#35.
 
 Stack details and rationale: [3-software-architecture.md](3-software-architecture.md).
 

@@ -1,6 +1,7 @@
 // Monorepo Metro resolution: the app must see the workspace root's node_modules and the
-// hoisted (Decision 1, .npmrc `node-linker=hoisted`) packages, or it fails to resolve
-// `@finanzas/shared-domain` / `@finanzas/shared-utils` / `@finanzas/bank-scraper`.
+// hoisted (pnpm-workspace.yaml `nodeLinker: hoisted`, enforced by `pnpm check:layout`)
+// packages, or it fails to resolve `@finanzas/shared-domain` / `@finanzas/shared-utils` /
+// `@finanzas/bank-scraper`.
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
