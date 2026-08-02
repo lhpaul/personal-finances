@@ -12,12 +12,19 @@
  * - **B**: `isNull(` or `isNotNull(` applied to any expression ending in `.excludedAt`.
  * - **C**: the snake_case literals `excluded_at` or `included_amount` anywhere in the file.
  *
- * Four files are allowlisted by `filePath` (hard-coded here, not read from source, so a source
+ * Five files are allowlisted by `filePath` (hard-coded here, not read from source, so a source
  * file cannot add itself to it — Decision 8's "no suppression directive" applies to this scanner
  * too): `src/db/fragments.ts` (the definition), `src/db/schema.ts` (the column declaration),
  * this file itself (its own rule definitions necessarily contain the literal spellings this
- * scanner is written to detect), and its own test file (whose edge-case fixtures deliberately
- * restate the rule as scanner *input*, not application code).
+ * scanner is written to detect), its own test file (whose edge-case fixtures deliberately
+ * restate the rule as scanner *input*, not application code), and
+ * `src/db/__tests__/schema.test.ts` — its AC28 table-and-column census asserts the expected
+ * column set **written out longhand** (a design requirement of Testing Strategy scenario 28, so a
+ * schema edit that diverges from the data model fails loudly rather than silently), which
+ * necessarily lists `excluded_at` and `included_amount` as plain column-name strings. That is a
+ * column *declaration*, the same class of statement `schema.ts` itself makes — not a restatement
+ * of the rule's semantics (no `WHERE`, no `COALESCE`, no read of the column's value) — so it is
+ * allowlisted for the same reason `schema.ts` is.
  */
 
 export type InclusionRuleFindingRule = 'A' | 'B' | 'C';
@@ -34,6 +41,7 @@ const ALLOWLISTED_SUFFIXES = [
   'src/db/schema.ts',
   'src/db/checks/inclusion-rule-scan.ts',
   'src/db/checks/__tests__/inclusion-rule-scan.test.ts',
+  'src/db/__tests__/schema.test.ts',
 ];
 
 function isAllowlisted(filePath: string): boolean {

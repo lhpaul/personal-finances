@@ -138,4 +138,11 @@ describe('findInclusionRuleRestatements', () => {
       ),
     ).toEqual([]);
   });
+
+  it('allowlists src/db/__tests__/schema.test.ts, whose AC28 census lists the columns by name (0 findings)', () => {
+    const source = "transactions: [/* ... */ 'excluded_at', 'included_amount' /* ... */],";
+    expect(
+      findInclusionRuleRestatements(source, 'apps/mobile/src/db/__tests__/schema.test.ts'),
+    ).toEqual([]);
+  });
 });

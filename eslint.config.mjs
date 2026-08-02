@@ -212,3 +212,32 @@ export const sharedUtilsPurity = {
     ],
   },
 };
+
+/**
+ * SQL access boundary (implementation plan Decision 19, AC26). `apps/mobile/src/db/` is the only
+ * place allowed to import a SQL library — `AGENTS.md`'s layering contract
+ * (`app/ → feature hooks → src/db → SQLite`) says screens never import Drizzle. Applied only by
+ * `apps/mobile/eslint.config.mjs`, from `app/**` and `src/**`, with `src/db/**` ignored there (the
+ * `ignores` entry lives beside the `files` entry that applies this export, not here, so this
+ * export stays reusable if a second app is ever added to the workspace).
+ *
+ * A companion test, `apps/mobile/src/db/__tests__/db-access-boundary.test.ts`, scans the same
+ * tree for the same import specifiers, so the guarantee survives a lint-config regression.
+ */
+export const dbAccessBoundary = {
+  files: ['**/*.{ts,tsx}'],
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            group: ['drizzle-orm', 'drizzle-orm/*', 'expo-sqlite', 'better-sqlite3'],
+            message:
+              'Only apps/mobile/src/db/ may import a SQL library. Screens and feature hooks call a src/db repository function instead (AGENTS.md layering: app/ → feature hooks → src/db → SQLite).',
+          },
+        ],
+      },
+    ],
+  },
+};
