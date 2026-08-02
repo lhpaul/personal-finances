@@ -11,6 +11,10 @@ import en from './en.json';
 import es from './es.json';
 import { resolveDeviceLocale, type SupportedLocale } from './locale';
 
+// `i18n.use`/`i18n.changeLanguage` (member access on the default export), not the named
+// `use`/`changeLanguage` re-exports i18next also offers: `eslint-plugin-react-hooks` treats a
+// bare `use(...)` call as a React Hook by its naming convention and errors on it being called
+// at module scope, which a named import of i18next's `use` would trigger here.
 void i18n.use(initReactI18next).init({
   resources: {
     es: { translation: es },
