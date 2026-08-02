@@ -285,7 +285,8 @@ Consequences, all of which simplify this item:
 - No `QueryProvider`, no `QueryClient`, no `DatabaseProvider`, no change to
   `apps/mobile/app/_layout.tsx`.
 - One feature hook, `useHomeData(params)` in
-  `apps/mobile/src/features/home/use-home-data.ts`, awaits `getAppDatabase()` once and then calls
+  `apps/mobile/src/features/home/use-home-data.ts`, delegates its cancellation-guarded read to
+  the file's other export, `loadHomeData`, which awaits `getAppDatabase()` once and then calls
   the repository functions. Because the driver is synchronous
   (`BaseSQLiteDatabase<'sync', …>`), every read after the handle resolves is a plain call — there
   is no per-query async machinery to cache.
@@ -293,9 +294,39 @@ Consequences, all of which simplify this item:
   screen focus: `useFocusEffect` bumps a `reloadToken`, which is a dependency of the hook's
   effect. That is the whole invalidation contract this screen needs; it is precise by
   construction, because the hook only ever re-reads `home`'s own data.
+- A stored rejection is re-thrown **during render**, not inside the async callback — throwing
+  inside the callback would produce an unhandled rejection instead of reaching the route's
+  `ErrorBoundary` (concurrency addendum, Decision 15's precedent from item #8).
 
 ```ts
 // apps/mobile/src/features/home/use-home-data.ts — Illustrative, adapt during implementation
+interface LoadHomeDataArgs {
+  getAppDatabase: () => Promise<AppDatabase>;
+  params: HomeDataParams;
+  isCancelled: () => boolean;
+}
+
+/**
+ * The cancellation-guarded read, extracted from the hook so the guard itself is testable
+ * without a renderer (Scenario 26) — the same hook/pure split item #8 established between
+ * `use-launch-decision.ts` and `launch-decision.ts`. Returns `undefined` once `isCancelled()`
+ * flips true, so the caller never `setState`s a superseded run's result.
+ */
+export async function loadHomeData({
+  getAppDatabase,
+  params,
+  isCancelled,
+}: LoadHomeDataArgs): Promise<HomeDataState | undefined> {
+  try {
+    const db = await getAppDatabase();
+    if (isCancelled()) return undefined; // teardown raced the handle — discard, do not setState
+    return { status: 'ready', data: readHomeData(db, params) };
+  } catch (error: unknown) {
+    if (isCancelled()) return undefined;
+    return { status: 'error', error };
+  }
+}
+
 export function useHomeData({ period, previousPeriod, locale }: HomeDataParams): HomeDataState {
   const [state, setState] = useState<HomeDataState>({ status: 'pending' });
   const [reloadToken, setReloadToken] = useState(0);
@@ -304,27 +335,29 @@ export function useHomeData({ period, previousPeriod, locale }: HomeDataParams):
 
   useEffect(() => {
     let cancelled = false;
-    getAppDatabase()
-      .then((db) => {
-        if (cancelled) return; // teardown raced the handle — discard, do not setState
-        setState({ status: 'ready', data: readHomeData(db, { period, previousPeriod, locale }) });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setState({ status: 'error', error });
-      });
+    loadHomeData({
+      getAppDatabase,
+      params: { period, previousPeriod, locale },
+      isCancelled: () => cancelled,
+    }).then((next) => {
+      if (next !== undefined) setState(next);
+    });
     return () => {
       cancelled = true;
     };
   }, [period, previousPeriod, locale, reloadToken]);
 
+  // Surfaces a bootstrap failure to the route's `ErrorBoundary` (concurrency addendum,
+  // "Error propagation across async boundaries").
+  if (state.status === 'error') throw state.error;
   return state;
 }
 ```
 
-`readHomeData(db, params)` is the pure composition of the six repository calls — separated from
-the hook so it is testable without React, exactly as item #8 split `use-launch-decision.ts` from
-`launch-decision.ts`.
+`loadHomeData` is the exported, hook-free async race the hook delegates to — Scenario 26 calls it
+directly with a stubbed `getAppDatabase` and a manually-flipped `isCancelled`, with no renderer
+involved. `readHomeData(db, params)` is the pure composition of the six repository functions it
+awaits — separated the same way item #8 split `use-launch-decision.ts` from `launch-decision.ts`.
 
 ### Decision 8 — the displayed month comes from `getMonthPeriod(deriveDateLocal(now))`, never from UTC
 
@@ -585,13 +618,17 @@ no query client.
 **`apps/mobile/src/features/home/`** — new.
 
 - [ ] `use-home-data.ts` — `useHomeData(params): HomeDataState`, the single feature hook
-      (Decision 7): awaits `getAppDatabase()`, calls `readHomeData`, is cancellation-guarded, and
-      re-reads when `useFocusEffect` bumps its `reloadToken`.
-- [ ] `read-home-data.ts` — `readHomeData(db, params): HomeData`, the pure composition of the six
-      repository calls (`countUncategorized`, `sumIncludedByDirectionAndCategory` for the current
-      period, `sumIncludedByDirectionAndDay` for the current and previous periods,
-      `listRecentMovements`, `listBankConnections`, `listCategories`). No React, so it is testable
-      against a real in-memory store in the `db` tier.
+      (Decision 7): re-reads when `useFocusEffect` bumps its `reloadToken`, throws a stored
+      rejection during render so the route's `ErrorBoundary` sees it (Assumption A15), and
+      delegates the cancellation-guarded read to the file's other export, `loadHomeData`, which
+      awaits `getAppDatabase()` and calls `readHomeData` — extracted so Scenario 26 can drive the
+      race without a renderer.
+- [ ] `read-home-data.ts` — `readHomeData(db, params): HomeData`, the pure composition of six
+      repository functions, called eight times in total because two of them run once per period
+      (`countUncategorized`; `sumIncludedByDirectionAndCategory` for the current period;
+      `sumIncludedByDirectionAndDay` for the current **and** previous periods;
+      `listRecentMovements`; `listBankConnections`; `listCategories` for **both** directions). No
+      React, so it is testable against a real in-memory store in the `db` tier.
 - [ ] `home-state.ts` — `HomeState` and `resolveHomeState` (Decision 4).
 - [ ] `summary.ts` — `buildFinancialSummary(totals)` (income total, expense total, per-direction
       movement counts, balance) and `buildCategoryBreakdown(totals, catalogue)` (buckets sorted
@@ -700,8 +737,8 @@ the returned element tree, and everything else is a pure function or a real-SQLi
 | 22 | `es` and `en` carry identical key sets and every new key matches the flat snake_case pattern | Non-negotiable 8 | `apps/mobile/src/i18n/__tests__/catalogue-parity.test.ts` (existing) | app |
 | 23 | `TrendCard` and `CategoryBreakdownCard` are wrapped in `React.memo`, and `LineChart` receives a `useMemo`-stabilised points object — asserted by a source scan over `src/features/home/` plus a referential-stability test on `buildCumulativeSeries`'s memo input | brief AC4 ("Charts are memoized; no recomputation on unrelated re-renders") | `apps/mobile/src/features/home/__tests__/memoization.test.ts` | app |
 | 24 | All four manifest states render — the runbook's per-state fidelity comparison | brief AC2, AC5, non-negotiable 6 | `docs/testing/mobile/12-home-screen.smoke-test.md` | smoke |
-| 25 | `readHomeData` composes the six repository calls over a **real** in-memory store and returns one internally consistent snapshot: the stat-tile totals, the category buckets and the trend series all describe the same set of movements | Decision 7 | `apps/mobile/src/features/home/__tests__/read-home-data.db.test.ts` — the `.db.test.ts` suffix routes it to the Node/`better-sqlite3` Jest project (Infrastructure below) | db |
-| 26 | `useHomeData` discards a resolved read after unmount and does not `setState`; a second focus event supersedes an in-flight read rather than racing it | Concurrency addendum | `apps/mobile/src/features/home/__tests__/use-home-data.test.ts` — the cancellation guard is exercised as a plain function over a stubbed `getAppDatabase`, following item #2's no-renderer precedent | app |
+| 25 | `readHomeData` composes its eight repository calls over a **real** in-memory store and returns one internally consistent snapshot: the stat-tile totals, the category buckets and the trend series all describe the same set of movements | Decision 7 | `apps/mobile/src/features/home/__tests__/read-home-data.db.test.ts` — the `.db.test.ts` suffix routes it to the Node/`better-sqlite3` Jest project (Infrastructure below) | db |
+| 26 | `loadHomeData` returns `undefined` (so the hook it backs never calls `setState`) once `isCancelled()` flips true, for both a resolved and a rejected `getAppDatabase()`; called a second time with a fresh `isCancelled` it models a second focus event superseding an in-flight read | Concurrency addendum | `apps/mobile/src/features/home/__tests__/use-home-data.test.ts` — `loadHomeData` is called directly with a stubbed `getAppDatabase` and a manually-flipped `isCancelled`, so the cancellation guard is exercised as a plain async function with no renderer, following item #2's no-renderer precedent for what can be asserted without one | app |
 
 **Seed data for the automated tiers**: the `db` scenarios build their own fixtures with the
 existing `createTestConnection` / `createTestProduct` helpers from
@@ -753,13 +790,15 @@ state (the hook's `state` and `reloadToken`).
   and nothing needs draining.
 - **Error propagation across async boundaries** — `getAppDatabase()` rejects with the typed
   `DatabaseBootstrapError` from `bootstrap.ts` (and clears its own memo, so the next mount
-  genuinely retries rather than replaying a cached failure). The hook stores the rejection as
-  `status: 'error'` and re-throws it during render, which is what makes it reachable by the
-  route's `ErrorBoundary` — throwing inside the async callback would produce an unhandled
-  rejection instead. It is never `console.log`ged (`no-console` is on) and carries no credential,
-  because none is in scope here. This screen renders no read-error state of its own: the mockup
-  declares none for `home`, and a failed read against a local SQLite file after a successful
-  bootstrap is not a modelled product state.
+  genuinely retries rather than replaying a cached failure). `loadHomeData` catches it and
+  resolves to `{ status: 'error', error }` rather than rejecting itself, so the hook's `.then`
+  always runs; the hook stores that value with `setState` and re-throws it **during render** on
+  the next pass, which is what makes it reachable by the route's `ErrorBoundary` — throwing
+  inside the async callback would produce an unhandled rejection instead. It is never
+  `console.log`ged (`no-console` is on) and carries no credential, because none is in scope here.
+  This screen renders no read-error state of its own: the mockup declares none for `home`, and a
+  failed read against a local SQLite file after a successful bootstrap is not a modelled product
+  state.
 
 **New concurrent patterns**: none. This mirrors the cancellation-guarded,
 `getAppDatabase()`-awaiting hook shape item #8 established for `useLaunchDecision` /
@@ -952,8 +991,8 @@ export function buildCategoryBreakdown(
 }
 ```
 
-The read composition — six repository calls, one snapshot, no inclusion rule stated anywhere in
-this file:
+The read composition — six repository functions, eight calls, one snapshot, no inclusion rule
+stated anywhere in this file:
 
 ```ts
 // apps/mobile/src/features/home/read-home-data.ts — Illustrative, adapt during implementation
@@ -974,7 +1013,7 @@ export function readHomeData(db: AppDatabase, params: HomeDataParams): HomeData 
 }
 ```
 
-Every call is synchronous (the driver is `BaseSQLiteDatabase<'sync', …>`), so the six reads
+Every call is synchronous (the driver is `BaseSQLiteDatabase<'sync', …>`), so all eight reads
 happen in one uninterrupted pass: the stat tiles, the chart and the category rows are guaranteed
 to describe the same store state, with no interleaved write. That is the mechanism behind
 Scenario 25's "one internally consistent snapshot" — not a transaction, and not luck.
@@ -1058,11 +1097,11 @@ infrastructure with no visible change; the screen appears at Step 9.
   AC4 → Decision 6 + Scenario 23; AC5 → the runbook's per-state fidelity steps.
 - **Implementation-order consistency**: Checked — every file named in Layer-by-Layer appears in
   exactly one Implementation Order step; the five primitive names, the four repository function
-  names, the four domain type names, `useHomeData`, `readHomeData`, `resolveHomeState`,
-  `HomeState`, `buildCategoryBreakdown`, `buildFinancialSummary`, `buildCumulativeSeries`,
-  `toPolylinePoints`, `describeSyncTime` and `formatPercentTenths` are spelled identically in
-  the Summary, Decisions, Layer-by-Layer, Testing Strategy, Code Samples and Implementation
-  Order sections. Decision indices 1-14 are referenced consistently. Route paths
+  names, the four domain type names, `useHomeData`, `loadHomeData`, `readHomeData`,
+  `resolveHomeState`, `HomeState`, `buildCategoryBreakdown`, `buildFinancialSummary`,
+  `buildCumulativeSeries`, `toPolylinePoints`, `describeSyncTime` and `formatPercentTenths` are
+  spelled identically in the Summary, Decisions, Layer-by-Layer, Testing Strategy, Code Samples
+  and Implementation Order sections. Decision indices 1-14 are referenced consistently. Route paths
   (`app/(tabs)/home.tsx`, `app/(dev)/sample-data.tsx`, `/(dev)/sample-data`) and directory
   paths (`apps/mobile/src/features/home/`, `apps/mobile/src/db/repositories/`,
   `apps/mobile/src/components/ui/`) agree everywhere. **Re-verified after the data-access
@@ -1081,9 +1120,12 @@ infrastructure with no visible change; the screen appears at Step 9.
   total order in Decision 4; "the database is opened and bootstrapped once" names item #8's
   memoized `getAppDatabase()` promise wrapping `bootstrap.ts`'s existing module-level
   single-flight promise (concurrency addendum); "a superseded read cannot race a later one"
-  names React's run-cleanup-before-next-effect ordering plus the `cancelled` flag; "the dev
-  surface never ships" names the `__DEV__` + inline-`require()` pattern and the parity test that
-  asserts it.
+  names React's run-cleanup-before-next-effect ordering plus the `cancelled` flag; "a bootstrap
+  failure reaches the route's `ErrorBoundary`" names the specific mechanism — `loadHomeData`
+  resolves to `{ status: 'error', error }` rather than rejecting, and `useHomeData` re-throws
+  that stored error **during render** (Decision 7's illustrative code, concurrency addendum); "the
+  dev surface never ships" names the `__DEV__` + inline-`require()` pattern and the parity test
+  that asserts it.
 - **Complex workflow decision-gate matrix**: Not applicable — this plan changes no workflow
   documentation, protocol or decision gate. Its only multi-input decision table
   (`resolveHomeState`, Decision 4) is product behaviour and is enumerated exhaustively there and
