@@ -1,5 +1,10 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+# pnpm 11 reads its settings from this file. A `node-linker` line in .npmrc is silently
+# ignored (see implementation plan for #35), which is why the app could not bundle.
+# Metro resolves from the workspace root with disableHierarchicalLookup, so the tree must
+# be hoisted. Enforced by `pnpm check:layout` (also run as postinstall and in CI).
+nodeLinker: hoisted
 allowBuilds:
   unrs-resolver: true
