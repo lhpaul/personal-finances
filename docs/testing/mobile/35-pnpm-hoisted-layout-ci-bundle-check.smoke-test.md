@@ -272,8 +272,9 @@ script, comment or current doc still points at `.npmrc` as the linker declaratio
 
 ## Assertions Checklist
 
-Each checkbox maps to an acceptance criterion of issue #35. Status recorded 2026-08-02, during
-implementation, ahead of the implementation PR being opened.
+Each checkbox maps to an acceptance criterion of issue #35. Status initially recorded 2026-08-02
+during implementation, ahead of implementation PR #39 being opened; AC3/AC4 updated the same day
+after PR #39 opened and E4's CI evidence (Step 5) was captured.
 
 - [x] **AC1** — A plain `pnpm install` (no flags) produces a hoisted layout with
       `@expo/metro-runtime` at the workspace root (Steps 1, 3). PASS — verified directly (real
