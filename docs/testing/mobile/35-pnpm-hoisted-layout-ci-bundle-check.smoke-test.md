@@ -134,12 +134,12 @@ run was 1022 modules, 3.9 MB, 22 assets, and a large deviation is worth a look.
 > rm -rf node_modules apps/*/node_modules packages/*/node_modules
 > pnpm install --ignore-scripts
 > cd apps/mobile && pnpm exec expo export:embed --eager --platform ios --dev false; echo "exit=$?"
-> cd ..
+> cd ../..
 > sed -i '' 's/^nodeLinker: isolated$/nodeLinker: hoisted/' pnpm-workspace.yaml
 > rm -rf node_modules apps/*/node_modules packages/*/node_modules
 > pnpm install
 > cd apps/mobile && pnpm exec expo export:embed --eager --platform ios --dev false; echo "exit=$?"
-> cd ..
+> cd ../..
 > ```
 
 ### Step 5: The CI bundle job fails on an isolated tree and passes on a hoisted one
