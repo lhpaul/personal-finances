@@ -20,6 +20,18 @@ CHECK_ONLY="false"
 SIMULATOR_NAME=""
 PROFILE_WIDTH=""
 PROFILE_HEIGHT=""
+PROFILE_QUERY_STDERR=""
+TMP_DIR=""
+
+# One combined handler for every temp path this script may create — a second `trap ... EXIT`
+# would silently replace this one instead of adding to it, leaking whichever temp files the
+# earlier trap owned. Empty variables are safe no-ops for `rm -f`/`rm -rf`.
+cleanup() {
+  [[ -n "$PROFILE_QUERY_STDERR" ]] && rm -f "$PROFILE_QUERY_STDERR"
+  [[ -n "$TMP_DIR" ]] && rm -rf "$TMP_DIR"
+  return 0
+}
+trap cleanup EXIT
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -62,7 +74,8 @@ done
 
 # Read the profile's dimensions, simulator_name, device_types and settle_ms default from the
 # fidelity contract, so this script never hand-duplicates them (Decision 4/5).
-PROFILE_JSON="$(node -e "
+PROFILE_QUERY_STDERR="$(mktemp -t fidelity-profile-query-stderr)"
+if ! PROFILE_JSON="$(node -e "
 import('${REPO_ROOT}/scripts/mobile-ui/fidelity-contract.mjs').then((m) => {
   const v = m.validateFidelityContract({});
   const profile = v.contract.profiles[process.argv[1]];
@@ -75,7 +88,11 @@ import('${REPO_ROOT}/scripts/mobile-ui/fidelity-contract.mjs').then((m) => {
     settleMs: v.contract.defaults.settle_ms,
   }));
 });
-" "$PROFILE")" || { echo "Error: unknown fidelity profile '$PROFILE'" >&2; exit 1; }
+" "$PROFILE" 2>"$PROFILE_QUERY_STDERR")"; then
+  echo "Error: failed to resolve profile '$PROFILE' from the fidelity contract:" >&2
+  cat "$PROFILE_QUERY_STDERR" >&2
+  exit 1
+fi
 
 PROFILE_WIDTH="$(node -e "console.log(JSON.parse(process.argv[1]).width)" "$PROFILE_JSON")"
 PROFILE_HEIGHT="$(node -e "console.log(JSON.parse(process.argv[1]).height)" "$PROFILE_JSON")"
@@ -94,7 +111,18 @@ fi
 mkdir -p "$(dirname "$OUTPUT")"
 
 find_udid_by_name() {
-  xcrun simctl list devices booted | awk -v pattern="$1" 'index($0, pattern) { if (match($0, /\([0-9A-F-]+\)/)) { print substr($0, RSTART + 1, RLENGTH - 2); exit } }'
+  # Exact device-name match, not `index()` substring matching — "iPhone 16" must not match a
+  # booted "iPhone 16 Pro Max". The UDID is the first parenthesised token; everything before it,
+  # trimmed, is the device name.
+  xcrun simctl list devices booted | awk -v pattern="$1" '
+    match($0, /\([0-9A-Fa-f-]+\)/) {
+      name = substr($0, 1, RSTART - 1)
+      gsub(/^[ \t]+|[ \t]+$/, "", name)
+      if (name == pattern) {
+        print substr($0, RSTART + 1, RLENGTH - 2)
+        exit
+      }
+    }'
 }
 
 print_create_hint() {
@@ -137,9 +165,9 @@ fi
 # target; the floor prevents locking onto a static splash screen.
 sleep "$(node -e "console.log(Number(process.argv[1]) / 1000)" "$SETTLE_MS")"
 
-TMP_A="$(mktemp -t fidelity-poll-a).png"
-TMP_B="$(mktemp -t fidelity-poll-b).png"
-trap 'rm -f "$TMP_A" "$TMP_B"' EXIT
+TMP_DIR="$(mktemp -d -t fidelity-poll)"
+TMP_A="${TMP_DIR}/a.png"
+TMP_B="${TMP_DIR}/b.png"
 
 STABLE="false"
 DEADLINE=$(($(date +%s) + 20))

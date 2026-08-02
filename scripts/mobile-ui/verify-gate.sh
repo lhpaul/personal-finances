@@ -19,6 +19,13 @@ PROFILE="iphone-393x852"
 
 mkdir -p "$OUTPUT_DIR"
 
+# Fail fast: V4 needs `sips` to distort the app capture. Checking here, before any Playwright
+# capture runs, avoids wasting several browser launches only to abort on the V4 step.
+if ! command -v sips >/dev/null 2>&1; then
+  echo "Error: 'sips' is required for V4 (wrong device size) and was not found on PATH" >&2
+  exit 1
+fi
+
 # Read home--pending's actual contract threshold and the shared pixel threshold, so this proof
 # uses the same numbers the real gate would (Decision 4) rather than the comparator's defaults.
 THRESHOLDS_JSON="$(node -e "
@@ -102,10 +109,6 @@ V3_PCT="$(pct_from_stdout "${OUTPUT_DIR}/gate-v3-report.md.stdout")"
 echo "== V4: wrong device size (393x852 vs the same capture distorted to 375x667) =="
 capture_mock "${OUTPUT_DIR}/gate-v4-mock.png"
 cp "${OUTPUT_DIR}/gate-v4-mock.png" "${OUTPUT_DIR}/gate-v4-app.png"
-if ! command -v sips >/dev/null 2>&1; then
-  echo "Error: 'sips' is required for V4 (wrong device size) and was not found on PATH" >&2
-  exit 1
-fi
 sips -z 667 375 "${OUTPUT_DIR}/gate-v4-app.png" >/dev/null
 V4_EXIT="$(run_compare "gate-v4" "${OUTPUT_DIR}/gate-v4-mock.png" "${OUTPUT_DIR}/gate-v4-app.png" "${OUTPUT_DIR}/gate-v4-diff.png" "${OUTPUT_DIR}/gate-v4-report.md")"
 V4_ASPECT_NOTE="not checked"

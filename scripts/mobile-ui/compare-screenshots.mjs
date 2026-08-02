@@ -53,6 +53,9 @@ export function parseArgs(argv) {
   if (!Number.isFinite(options.maxMismatchPct) || options.maxMismatchPct <= 0) {
     throw new Error('--max-mismatch-pct must be a positive finite number.');
   }
+  if (!Number.isFinite(options.pixelThreshold) || options.pixelThreshold < 0 || options.pixelThreshold > 1) {
+    throw new Error('--pixel-threshold must be a finite number between 0 and 1.');
+  }
   const base = path.basename(options.mock, path.extname(options.mock)).replace(/^mock-/, '');
   options.mock = path.resolve(options.mock);
   options.app = path.resolve(options.app);

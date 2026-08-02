@@ -3,8 +3,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
-import { compareScreenshots } from './compare-screenshots.mjs';
+import { compareScreenshots, parseArgs } from './compare-screenshots.mjs';
 
 function writePng(filePath, width, height, fill) {
   const png = new PNG({ width, height });
@@ -107,6 +108,24 @@ test('C5: a different aspect ratio hard-fails without resampling', async (t) => 
   assert.match(report, /40×80/);
 });
 
+test('parseArgs rejects a non-numeric or out-of-range --pixel-threshold', () => {
+  const base = ['node', 'compare-screenshots.mjs', '--mock', 'mock.png', '--app', 'app.png'];
+  assert.throws(
+    () => parseArgs([...base, '--pixel-threshold', 'not-a-number']),
+    /--pixel-threshold must be a finite number between 0 and 1/,
+  );
+  assert.throws(
+    () => parseArgs([...base, '--pixel-threshold', '1.5']),
+    /--pixel-threshold must be a finite number between 0 and 1/,
+  );
+  assert.throws(
+    () => parseArgs([...base, '--pixel-threshold', '-0.1']),
+    /--pixel-threshold must be a finite number between 0 and 1/,
+  );
+  const options = parseArgs([...base, '--pixel-threshold', '0.2']);
+  assert.equal(options.pixelThreshold, 0.2);
+});
+
 // C6: Any run — the report file exists and contains the target id, profile, verdict, mismatch,
 // and threshold.
 test('C6: the report contains target, profile, verdict, mismatch, and threshold', async (t) => {
@@ -130,7 +149,7 @@ test('exits 1 via CLI on a failing comparison, 0 on a passing one', async (t) =>
   writePng(path.join(root, 'app-different.png'), 20, 20, solid(0, 255, 0));
 
   const { execFileSync } = await import('node:child_process');
-  const scriptPath = new URL('./compare-screenshots.mjs', import.meta.url).pathname;
+  const scriptPath = fileURLToPath(new URL('./compare-screenshots.mjs', import.meta.url));
 
   assert.doesNotThrow(() =>
     execFileSync(process.execPath, [

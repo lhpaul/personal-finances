@@ -485,6 +485,24 @@ test('rejects "initial" on a screen with zero or two initial states', (t) => {
   );
 });
 
+test('"initial" uses the same strict state.initial === true predicate as load-manifest.mjs', (t) => {
+  // A truthy-but-not-boolean `initial` (e.g. `initial: 1`) must not resolve as the initial
+  // state — expandCoverage delegates to the shared initialStateForScreen, so there is exactly
+  // one predicate for "is this the initial state" across the whole kit.
+  expectInvalid(
+    t,
+    (contract, manifest) => {
+      const screen = manifest.screens.find((s) => s.screen_id === 'multi');
+      screen.states[0].initial = 1;
+      screen.states[1].initial = false;
+      contract.coverage_sets[0].targets = contract.coverage_sets[0].targets.map((target) =>
+        target.screen_id === 'multi' ? { screen_id: 'multi', states: 'initial' } : target,
+      );
+    },
+    /exactly one initial state/,
+  );
+});
+
 // 26. states: [] or a non-array, non-"all", non-"initial" value.
 test('rejects an invalid states declaration', (t) => {
   expectInvalid(

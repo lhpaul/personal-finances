@@ -12,7 +12,7 @@
  */
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assertScreenInManifest, assertStateInManifest, initialStateForScreen, loadManifest } from './load-manifest.mjs';
 import { validateFidelityContract } from './fidelity-contract.mjs';
 
@@ -87,7 +87,7 @@ async function main() {
       viewport: { width: Math.max(1280, dimensions.width), height: Math.max(960, dimensions.height) },
     });
 
-    await page.goto(`file://${MOCKUP_HTML}`, { waitUntil: 'networkidle' });
+    await page.goto(pathToFileURL(MOCKUP_HTML).href, { waitUntil: 'networkidle' });
     await page.waitForFunction(() => typeof globalThis.go === 'function');
 
     if (options.overrideCss) {

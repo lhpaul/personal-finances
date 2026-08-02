@@ -87,26 +87,21 @@ export function artifactPaths(outputDir, target, profile) {
   };
 }
 
+async function spawnProcess(command, args) {
+  const { spawn } = await import('node:child_process');
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { cwd: REPO_ROOT, stdio: 'inherit' });
+    child.on('error', reject);
+    child.on('exit', (code, signal) => resolve({ code, signal }));
+  });
+}
+
 function runNode(scriptArgs) {
-  return import('node:child_process').then(
-    ({ spawn }) =>
-      new Promise((resolve, reject) => {
-        const child = spawn(process.execPath, scriptArgs, { cwd: REPO_ROOT, stdio: 'inherit' });
-        child.on('error', reject);
-        child.on('exit', (code, signal) => resolve({ code, signal }));
-      }),
-  );
+  return spawnProcess(process.execPath, scriptArgs);
 }
 
 function runBash(scriptArgs) {
-  return import('node:child_process').then(
-    ({ spawn }) =>
-      new Promise((resolve, reject) => {
-        const child = spawn('bash', scriptArgs, { cwd: REPO_ROOT, stdio: 'inherit' });
-        child.on('error', reject);
-        child.on('exit', (code, signal) => resolve({ code, signal }));
-      }),
-  );
+  return spawnProcess('bash', scriptArgs);
 }
 
 async function runTarget(target, outputDir) {
@@ -176,7 +171,11 @@ export async function main(argv = process.argv) {
     return;
   }
   const validation = validateFidelityContract({ root: REPO_ROOT });
-  const targets = resolveTargets(validation, options).map((target) => ({
+  const resolved = resolveTargets(validation, options);
+  if (options.appFrom && resolved.length > 1) {
+    throw new Error('--app-from applies to a single target; narrow the selection with --screen/--state');
+  }
+  const targets = resolved.map((target) => ({
     ...target,
     contract: validation.contract,
     appFrom: options.appFrom,

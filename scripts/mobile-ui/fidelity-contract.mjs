@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadManifest, mvpTargets } from './load-manifest.mjs';
+import { initialStateForScreen, loadManifest, mvpTargets } from './load-manifest.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const CONTRACT_PATH = 'scripts/mobile-ui/fidelity-targets.json';
@@ -32,16 +32,6 @@ function mvpStateIds(screen) {
   return (screen.states ?? [])
     .filter((state) => state.mvp !== false)
     .map((state) => state.state_id);
-}
-
-function initialStateId(screen) {
-  const states = screen.states ?? [];
-  if (states.length === 0) return null;
-  const initialStates = states.filter((state) => state.initial);
-  if (initialStates.length !== 1) {
-    fail(`Screen "${screen.screen_id}" must have exactly one initial state`);
-  }
-  return initialStates[0].state_id;
 }
 
 /** `screenId` alone for a stateless target, `screenId--stateId` otherwise (Decision 1). */
@@ -82,7 +72,7 @@ export function expandCoverage(contract, manifest) {
       if (requested.states === 'all') {
         requestedStates = knownMvpStates.length > 0 ? knownMvpStates : [null];
       } else if (requested.states === 'initial') {
-        const initial = initialStateId(screen);
+        const initial = initialStateForScreen(manifest, screen.screen_id);
         if (initial != null && !knownMvpStates.includes(initial)) {
           fail(`Coverage set #${coverageSet.issue} names mvp:false state "${initial}"`);
         }
@@ -114,7 +104,7 @@ export function expandCoverage(contract, manifest) {
   return targets;
 }
 
-function assertExclusions(contract, manifest, targetIds) {
+function assertExclusions(contract, manifest) {
   const screens = screenIndex(manifest);
   for (const exclusion of contract.exclusions ?? []) {
     const screen = screens.get(exclusion.screen_id);
@@ -122,14 +112,9 @@ function assertExclusions(contract, manifest, targetIds) {
     if (typeof exclusion.reason !== 'string' || exclusion.reason.trim() === '') {
       fail(`Exclusion for "${exclusion.screen_id}" must have a non-empty reason`);
     }
-    if (exclusion.states === null) {
-      const id = targetId(exclusion.screen_id, null);
-      if (targetIds.has(id) === false && (screen.states ?? []).length > 0) {
-        // Whole-screen exclusion of a screen that does carry states: nothing further to check
-        // here — completeness is verified target-by-target below.
-      }
-      continue;
-    }
+    // A whole-screen exclusion needs no further per-state checks; completeness is verified
+    // target-by-target in validateFidelityContract.
+    if (exclusion.states === null) continue;
     if (!Array.isArray(exclusion.states) || exclusion.states.length === 0) {
       fail(`Exclusion for "${exclusion.screen_id}" must set "states" to null or a non-empty array`);
     }
@@ -285,7 +270,7 @@ export function validateFidelityContract({ root = REPO_ROOT, contract, manifest 
   const targets = expandCoverage(resolvedContract, resolvedManifest);
   const targetIds = new Set(targets.map((target) => target.id));
 
-  assertExclusions(resolvedContract, resolvedManifest, targetIds);
+  assertExclusions(resolvedContract, resolvedManifest);
   const excluded = excludedTargetIds(resolvedContract);
 
   for (const id of targetIds) {
