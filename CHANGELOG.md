@@ -21,3 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `shared-utils` and `bank-scraper` packages, placeholder routes for every MVP mockup screen,
   an enforced shared-domain import restriction, and lint / type-check / test checks on pull
   requests
+- **shared-utils: CLP money, dates and RUT** (#4): `@finanzas/shared-utils` now ships CLP formatting (`formatClp`, `formatClpAbbreviated`), Chilean date helpers (`deriveDateLocal`, month/week period boundaries, es-CL labels) and RUT normalization, modulo-11 validation and display formatting. Locale formatting via `toLocaleString` is now an ESLint error repository-wide.
+- **Theme and design-system primitives** (#2): `apps/mobile/src/theme.ts` as a parity-tested
+  mirror of `design/tokens.json`, 23 UI primitives under `apps/mobile/src/components/ui/`
+  matching the mockup `mu-*` classes, seven new design tokens, and a dev-only design-system
+  gallery route at `/gallery`

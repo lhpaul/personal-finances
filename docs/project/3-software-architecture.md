@@ -79,11 +79,14 @@ apps/mobile/
 ├── app/                        # Expo Router — routes mirror the manifest
 │   ├── (onboarding)/…          # intro → value → connect-bank → … → ready
 │   ├── (tabs)/home.tsx · transactions.tsx
+│   ├── (dev)/gallery.tsx       # __DEV__-gated design-system gallery; no product screen links to it
 │   ├── categorize/…            # intro · index · merchant/[merchantId] · complete
 │   ├── transactions/[transactionId].tsx
 │   ├── dashboard.tsx
 │   └── settings/…
 ├── src/
+│   ├── components/ui/           # Design-system primitives (theme.ts-driven, mirrors mu-* mockup classes)
+│   ├── dev/                      # __DEV__-only surfaces (DesignSystemGallery, gallery.strings) — never ships
 │   ├── features/                # One folder per domain area
 │   │   └── <feature>/{components,hooks,queries}.ts
 │   ├── i18n/                    # es / en catalogues — all user-facing copy

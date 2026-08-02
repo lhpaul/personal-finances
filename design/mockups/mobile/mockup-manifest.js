@@ -11,6 +11,8 @@
  *    (auth / budgets / planning / benefits). They stay in the mockups on purpose.
  *  - The tab bar is drawn with four tabs. The MVP renders only Inicio and
  *    Transacciones; Presupuestos and Beneficios appear when those ship.
+ *  - A state may also carry `mvp: false` — today only `categorize/advanced`,
+ *    whose partial-inclusion UI is drawn but not built in the MVP.
  */
 window.__MOCKUP_MANIFEST__ = {
   $status: 'complete',
@@ -283,7 +285,7 @@ window.__MOCKUP_MANIFEST__ = {
         { state_id: 'expense', label: 'Gasto · con sugerencia', initial: true },
         { state_id: 'income', label: 'Ingreso' },
         { state_id: 'not-sure', label: '¿No estás seguro? abierto' },
-        { state_id: 'advanced', label: 'Opciones avanzadas · inclusión parcial' },
+        { state_id: 'advanced', label: 'Opciones avanzadas · inclusión parcial — FUERA DEL MVP', mvp: false },
         { state_id: 'exclude-sheet', label: 'Sheet «Excluir del análisis»' },
       ],
     },

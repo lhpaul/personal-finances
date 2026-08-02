@@ -31,7 +31,7 @@ things the UI does that the model never described.
 
 ## Validation verdict
 
-**The original model covers roughly 70% of what the MVP screens need.** Nine gaps are blocking,
+**The original model covers roughly 70% of what the MVP screens need.** Eight gaps are blocking,
 and five entities are correct but out of MVP scope.
 
 ### Blocking gaps
@@ -40,7 +40,6 @@ and five entities are correct but out of MVP scope.
 |---|-----|----------------------|------------|
 | 1 | **No re-sync identity.** Nothing stops a movement being inserted twice on every scrape. | Every sync after the first (`bank-syncing`) | `transactions.external_id` + `UNIQUE(user_financial_product_id, external_id)`. The scraper already emits a per-bank `Transaction.id`. Fallback `dedup_hash` when a bank gives no id |
 | 2 | **No exclusion model.** The model can only null a category. | `categorize/exclude-sheet`, `transaction-detail/excluded`, the "Mostrar excluidas" filter | `transactions.excluded_at`, `exclusion_reason`, `exclusion_note` |
-| 3 | **No partial inclusion.** | `categorize/advanced` — "compartido con otras personas", 50% / monto | `transactions.included_amount` (null = full) |
 | 4 | **No categorization provenance.** The UI distinguishes *sugerida automáticamente* from *confirmada por ti*. | `transaction-detail/categorized` ("Categoría sugerida automáticamente"), the suggestion chip in `categorize` | `transactions.category_source` (`auto` \| `user` \| `rule`) |
 | 5 | **No "review later" state.** | `categorize/not-sure` — "Revisar más tarde", "No recuerdo" | `transactions.review_flag` (`review_later` \| `uncertain` \| null) |
 | 6 | **User note vs bank description conflated.** The model has one `description`. | `transaction-detail` shows the raw bank string **and** an editable "Nota" | `raw_description` (immutable, from the bank) + `note` (user) |
@@ -64,8 +63,8 @@ and five entities are correct but out of MVP scope.
 
 ### Correct but out of MVP scope
 
-`user_budgets`, `user_recurring_transactions`, `persons` / `user_persons`, and the
-community-merchant layer. `user_budgets` and `user_recurring_transactions` ship as **tables
+`user_budgets`, `user_recurring_transactions`, `persons` / `user_persons`, the
+community-merchant layer, and **partial inclusion**. `user_budgets` and `user_recurring_transactions` ship as **tables
 with no UI** so the schema does not churn later; Persons is not created at all.
 
 ---
@@ -260,7 +259,7 @@ The core table.
 | `excluded_at` | `TEXT` | Gap #2 — non-null = out of every total and chart |
 | `exclusion_reason` | `TEXT` | `personal_transfer` \| `shared_expense` \| `not_relevant` \| `cash_withdrawal` \| `other` |
 | `exclusion_note` | `TEXT` | Free text when reason = `other` |
-| `included_amount` | `INTEGER` | Gap #3 — null = the full amount counts |
+| `included_amount` | `INTEGER` | **No UI in the MVP** — always null. Kept as a column so the inclusion rule below never has to change when partial inclusion ships |
 | `metadata` | `TEXT` (JSON) | Bank-specific extras the scraper returns |
 | `is_manual` | `INTEGER NOT NULL DEFAULT 0` | Added by hand, not scraped |
 | `created_at` | `TEXT NOT NULL` | |
@@ -354,5 +353,10 @@ pnpm --filter @finanzas/mobile db:seed       # regenerate the bundled seed fixtu
 ## Open questions
 
 Tracked in [`design/mockups/mobile/INVENTORY.md`](../../design/mockups/mobile/INVENTORY.md):
-whether partial inclusion (#3) ships in the MVP, and whether the community-merchant layer
-implies a server later — which would make the collapsed `merchants` table a migration target.
+whether the community-merchant layer implies a server later, which would make the collapsed
+`merchants` table a migration target.
+
+**Resolved:** partial inclusion is **out of the MVP**. `included_amount` still ships as a
+column and the inclusion rule still reads `COALESCE(included_amount, amount)` — the column is
+simply always null, so the day the feature lands nothing about the rule or the aggregates has
+to change. `#screen=categorize&state=advanced` stays drawn, flagged `mvp: false`.

@@ -1,0 +1,24 @@
+import DevGalleryRoute from '../gallery';
+
+// `__DEV__` is declared `const` by React Native's ambient types, so it can't be reassigned
+// through the bare identifier. It is a real, writable `globalThis` property at runtime (Metro
+// defines it as a plain global), so a cast through `globalThis` lets this test flip it safely.
+const globalWithDev = globalThis as unknown as { __DEV__: boolean };
+
+describe('DevGalleryRoute (Decision 6 — production gating)', () => {
+  const originalDev = globalWithDev.__DEV__;
+
+  afterEach(() => {
+    globalWithDev.__DEV__ = originalDev;
+  });
+
+  it('returns null when __DEV__ is false, without rendering anything', () => {
+    globalWithDev.__DEV__ = false;
+    expect(DevGalleryRoute()).toBeNull();
+  });
+
+  it('returns the gallery element when __DEV__ is true', () => {
+    globalWithDev.__DEV__ = true;
+    expect(DevGalleryRoute()).not.toBeNull();
+  });
+});

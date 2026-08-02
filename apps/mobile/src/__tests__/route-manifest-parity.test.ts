@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { getMvpRoutes, getOutOfMvpScreens, loadMockupManifest } from '../test-utils/mockup-manifest';
-import { listRouteFiles, toRoutePath } from '../test-utils/route-inventory';
+import { DEV_ONLY_ROUTES, listRouteFiles, toRoutePath } from '../test-utils/route-inventory';
 
 const APP_DIR = path.resolve(__dirname, '..', '..', 'app');
 const MANIFEST_PATH = path.resolve(
@@ -43,13 +43,28 @@ describe('route / manifest parity (AC5, AC6, AC14, Business Rule 3)', () => {
     expect(mvpRoutes).toHaveLength(25);
   });
 
-  it('the derived route-file set equals the manifest MVP route set exactly (AC5)', () => {
-    const derived = derivedRoutes();
+  it('the derived route-file set, minus DEV_ONLY_ROUTES, equals the manifest MVP route set exactly (AC5)', () => {
+    const derived = derivedRoutes().filter(
+      (route) => !(DEV_ONLY_ROUTES as readonly string[]).includes(route),
+    );
 
     // Set equality, not just a count match — two different route strings could still
     // produce the same count.
     expect(new Set(derived)).toEqual(new Set(mvpRoutes));
     expect(derived).toHaveLength(mvpRoutes.length);
+  });
+
+  it('every DEV_ONLY_ROUTES entry resolves to an existing, __DEV__-guarded route file (item #2 Decision 6)', () => {
+    for (const route of DEV_ONLY_ROUTES) {
+      // '/(dev)/gallery' -> 'apps/mobile/app/(dev)/gallery.tsx'
+      const relativePath = `${route.slice(1)}.tsx`;
+      const filePath = path.resolve(APP_DIR, relativePath);
+
+      expect(fs.existsSync(filePath)).toBe(true);
+
+      const source = fs.readFileSync(filePath, 'utf8');
+      expect(source).toMatch(/__DEV__/);
+    }
   });
 
   it('no route exists for any of the eight out-of-MVP manifest screens (AC6)', () => {

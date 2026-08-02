@@ -24,6 +24,7 @@ personal-finances/
 │       ├── src/
 │       │   ├── components/         # Shared components; components/ui/ = design-system primitives
 │       │   ├── db/                 # Drizzle schema, migrations, seeds, repositories
+│       │   ├── dev/                # __DEV__-only surfaces (design-system gallery); never ships
 │       │   ├── features/           # One folder per domain area (screens' logic)
 │       │   ├── hooks/
 │       │   ├── lib/                # Query client, formatters, logger
@@ -106,6 +107,10 @@ apps/mobile → @finanzas/{shared-domain, shared-utils, bank-scraper}
 `@finanzas/shared-domain` must never import from `apps/mobile`, from `expo-*`, or from any
 SQL library. Enforced by the `sharedDomainPurity` `no-restricted-imports` rule, defined in the
 root `eslint.config.mjs` and applied by `packages/shared-domain/eslint.config.mjs`.
+
+`@finanzas/shared-utils` purity (no React, no Expo/React Native modules, no SQL library, no
+Node I/O) is enforced the same way, by the `sharedUtilsPurity` `no-restricted-imports` rule,
+defined in the root `eslint.config.mjs` and applied by `packages/shared-utils/eslint.config.mjs`.
 
 ## Common Commands
 

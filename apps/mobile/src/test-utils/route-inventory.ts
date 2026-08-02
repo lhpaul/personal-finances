@@ -2,6 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
+ * Dev-only routes that exist in `apps/mobile/app` but are never part of the manifest's MVP
+ * route set — subtracted from the derived route set before the route/manifest parity
+ * set-equality assertion. Each entry must (a) resolve to an existing route file and (b) that
+ * file's source must contain a `__DEV__` guard — see the implementation plan's Decision 6.
+ */
+export const DEV_ONLY_ROUTES = ['/(dev)/gallery'] as const;
+
+/**
  * Derives a manifest-style route path from a file path relative to `apps/mobile/app`.
  *
  * Returns `null` when the file is not a routable Expo Router file (layouts, non-route

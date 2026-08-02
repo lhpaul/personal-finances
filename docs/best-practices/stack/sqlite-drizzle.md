@@ -93,6 +93,12 @@ Store `occurred_at` as ISO-8601 UTC and `date_local` as `YYYY-MM-DD` from the ba
 day. Group and filter by `date_local`. Deriving the local day from the UTC timestamp at query
 time reintroduces the timezone bug the column exists to prevent.
 
+`deriveDateLocal` from `@finanzas/shared-utils` is the one sanctioned way to produce a
+`date_local` value from an instant — it converts a UTC instant to Chilean wall-clock fields via
+`Intl.DateTimeFormat(...).formatToParts` (`SANTIAGO_TIME_ZONE`), correctly across both DST
+transitions and month/year boundaries. Do not hand-roll a UTC-offset calculation at the call
+site.
+
 ## What never goes in the database
 
 Credentials — including **the RUT**, which is half of what logs into the bank. Not encrypted,
