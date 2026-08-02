@@ -16,9 +16,19 @@
   "dependencies": {
     "@finanzas/shared-utils": "workspace:*"
   },
+  "peerDependencies": {
+    "react": ">=19.1.0",
+    "react-native": ">=0.81.0",
+    "react-native-webview": ">=13.0.0"
+  },
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "@types/react": "~19.1.0",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-webview": "^13.16.0",
     "ts-jest": "^29.4.12",
     "typescript": "~5.9.2"
   }
