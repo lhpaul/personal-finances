@@ -1,7 +1,7 @@
 /**
  * Sole manifest source for the `mobile` mockup.
  * Loaded with a classic <script> tag so the viewer works from file:// and HTTP.
- * Framework: ~/Git/Cerebro/LH/40 - Conocimiento/Topics/HTML Mockup Framework.md
+ * Framework: ~/Git/Cerebro/LH/40 - Conocimiento/Estándares/HTML Mockup Framework.md
  *
  * Rules:
  *  - `navigation` / `screens[]` hold REAL destinations only.

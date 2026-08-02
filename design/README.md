@@ -4,7 +4,7 @@ Visual design artifacts for **Finanzas**: **tokens** (canonical) and **interacti
 
 This tree lives in the **product repo** because the AI development workflow (`docs/`, backlog, implementation agents) runs here — agents need tokens, mockups and specs in a single clone.
 
-**Canonical framework:** `~/Git/Cerebro/LH/40 - Conocimiento/Topics/HTML Mockup Framework.md`
+**Canonical framework:** `~/Git/Cerebro/LH/40 - Conocimiento/Estándares/HTML Mockup Framework.md`
 
 No build step. Open `mockups/mobile/index.html` directly (`file://`) or serve `mockups/` over HTTP. Keep the `mockups/` folder together when sharing (`shared/` + `mobile/`).
 

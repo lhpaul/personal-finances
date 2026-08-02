@@ -2,7 +2,7 @@
 
 Interactive mockups for design review and implementation alignment. Couples with the specs in `docs/project/`.
 
-Parent: [design/README.md](../README.md) · Framework: `~/Git/Cerebro/LH/40 - Conocimiento/Topics/HTML Mockup Framework.md`
+Parent: [design/README.md](../README.md) · Framework: `~/Git/Cerebro/LH/40 - Conocimiento/Estándares/HTML Mockup Framework.md`
 
 ---
 
