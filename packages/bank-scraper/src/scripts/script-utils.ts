@@ -1,4 +1,5 @@
 import { PRODUCT_ID_DOMAIN_SEPARATOR, MAX_STEP_ATTEMPTS, MAX_ELEMENT_ATTEMPTS, STEP_RETRY_DELAY_MS, ELEMENT_RETRY_DELAY_MS } from '../engine/constants';
+import { toJsStringLiteral } from '../security/js-string-literal';
 import { ScraperEventType } from '../types/protocol.types';
 
 /**
@@ -72,8 +73,8 @@ export function generateExecutableStepFunction(
     await (async function() {
       const maxRetries = ${maxRetries};
       const retryDelay = ${retryDelay};
-      ${stepName ? `const stepName = '${stepName}';` : ''}
-      const logGroup = '${logGroup}';
+      ${stepName ? `const stepName = ${toJsStringLiteral(stepName)};` : ''}
+      const logGroup = ${toJsStringLiteral(logGroup)};
       let lastError = null;
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
