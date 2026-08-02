@@ -125,3 +125,77 @@ describe('@finanzas/shared-domain purity rule (no-restricted-imports)', () => {
     }
   });
 });
+
+/**
+ * Issue #5, Decision 8 — the two additive `sharedDomainPurity` restrictions this item adds:
+ * a React import ban and a `Date` global ban. Added as a new `describe` block per the
+ * implementation plan's `MERGED` re-verification outcome, following the existing stdin-driven
+ * pattern above without touching any of that block's assertions.
+ */
+describe('@finanzas/shared-domain purity rule — React and Date bans (issue #5)', () => {
+  it('fires on a bare `react` import', () => {
+    const probe = "import 'react';\n";
+
+    const { messages, result } = runEslintOnStdin(probe, packageRoot);
+
+    expect(result.status).toBe(1);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.ruleId).toBe('no-restricted-imports');
+    expect(messages[0]?.message).toContain('@finanzas/shared-domain may not depend on React.');
+  });
+
+  it('fires on a `react-dom` import', () => {
+    const probe = "import 'react-dom';\n";
+
+    const { messages, result } = runEslintOnStdin(probe, packageRoot);
+
+    expect(result.status).toBe(1);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.ruleId).toBe('no-restricted-imports');
+  });
+
+  it('does not double-count react-native as a React-ban finding (negative control)', () => {
+    // react-native already fires once, from the existing group above (AC7's probe asserts the
+    // combined finding count is exactly 4). This test isolates that a react-native import
+    // produces exactly one finding, not two, confirming the React group's pattern list
+    // ('react', 'react/*', 'react-dom', 'react-dom/*') deliberately excludes 'react-*'.
+    const probe = "import 'react-native';\n";
+
+    const { messages, result } = runEslintOnStdin(probe, packageRoot);
+
+    expect(result.status).toBe(1);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.message).not.toContain('@finanzas/shared-domain may not depend on React.');
+  });
+
+  it('does not over-fire on an unrestricted import (negative control)', () => {
+    const probe = "import '@finanzas/shared-utils';\n";
+
+    const { messages, result } = runEslintOnStdin(probe, packageRoot);
+
+    expect(result.status).toBe(0);
+    expect(messages).toHaveLength(0);
+  });
+
+  it('fires once per occurrence on `Date.now()` and `new Date()`', () => {
+    const probe = ['export const t = Date.now();', 'export const d = new Date();', ''].join('\n');
+
+    const { messages, result } = runEslintOnStdin(probe, packageRoot);
+    const clockMessages = messages.filter((m) => m.ruleId === 'no-restricted-globals');
+
+    expect(result.status).toBe(1);
+    expect(clockMessages).toHaveLength(2);
+    for (const message of clockMessages) {
+      expect(message.message).toContain('must not read the clock');
+    }
+  });
+
+  it('does not fire on code that only uses DateLocal strings (negative control)', () => {
+    const probe = ["const dateLocal: string = '2025-01-01';", 'export { dateLocal };', ''].join('\n');
+
+    const { messages, result } = runEslintOnStdin(probe, packageRoot);
+
+    expect(result.status).toBe(0);
+    expect(messages).toHaveLength(0);
+  });
+});
