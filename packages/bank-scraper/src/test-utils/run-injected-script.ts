@@ -84,6 +84,12 @@ export function resetScriptGlobals(): void {
 // `setTimeout`-based wait and a genuinely async `crypto.subtle.digest` call — without needing
 // fake timers or arbitrary polling.
 function runIndirectEval(source: string): unknown {
+  // Intentional indirect eval (see the comment above this function): reproduces
+  // injectJavaScript's global-scope semantics and exposes the completion value; test-only, never
+  // shipped code. This repo's own ESLint config has no eval-restriction rule to suppress here
+  // (verified: no `no-eval` / `no-restricted-syntax` entry in this package's eslint.config.mjs);
+  // this comment is the stated reason a different linter's eval check would otherwise ask for
+  // (CodeRabbit finding #37).
   return window.eval(source);
 }
 

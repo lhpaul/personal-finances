@@ -40,8 +40,19 @@ function installConsoleSpies(): ConsoleSpies {
 }
 
 function consoleCallsContain(spies: ConsoleSpies, needle: string): boolean {
+  // Compare against the JSON-escaped form of the needle too (CodeRabbit finding #32): a
+  // punctuation-bearing needle (PUNCTUATION_PASSWORD below contains a literal '"' and '\')
+  // would never appear as a raw substring of a JSON.stringify'd console argument — JSON.stringify
+  // escapes both characters — which silently made this assertion vacuous for exactly the
+  // credential shape AC4 cares most about testing.
+  const escapedNeedle = JSON.stringify(needle).slice(1, -1);
   return Object.values(spies).some((spy) =>
-    spy.mock.calls.some((call: unknown[]) => call.some((arg) => JSON.stringify(arg).includes(needle))),
+    spy.mock.calls.some((call: unknown[]) =>
+      call.some((arg) => {
+        const serialized = JSON.stringify(arg);
+        return serialized.includes(needle) || serialized.includes(escapedNeedle);
+      }),
+    ),
   );
 }
 
@@ -126,6 +137,20 @@ describe('credential-leak', () => {
     expect(result.products.length).toBeGreaterThan(0);
     expect(JSON.stringify(result.products)).toContain('••••1111');
     expect(result.outcome).toBe('complete');
+  });
+
+  it('consoleCallsContain detects a punctuation-bearing needle even after JSON.stringify escapes it (CodeRabbit finding #32)', () => {
+    const spies = installConsoleSpies();
+    try {
+      // Simulate a real leak: the punctuation password reaches a console call nested inside an
+      // object, exactly as an accidental console.log(payload) would produce. Calls the installed
+      // spy directly (not a literal console.log(...) call) — this package's own lint fence
+      // treats a stray console.log as a credential-leak vector (no-console: 'error').
+      (spies.log as unknown as (arg: unknown) => void)({ leaked: PUNCTUATION_PASSWORD });
+      expect(consoleCallsContain(spies, PUNCTUATION_PASSWORD)).toBe(true);
+    } finally {
+      Object.values(spies).forEach((spy) => spy.mockRestore());
+    }
   });
 
   it('credentials are cleared once the read ends, regardless of the outcome', async () => {

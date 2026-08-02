@@ -33,10 +33,16 @@ function stripForbiddenKeys<T>(value: T): T {
 
 function replaceNeedles<T>(value: T, needles: readonly string[]): T {
   if (needles.length === 0) return value;
+  // Longest needle first (CodeRabbit finding #35): if one credential value contains another
+  // (e.g. password '1234' and rut '12345678-1'), applying the shorter needle first would split
+  // the longer one apart mid-string (redacting '1234' inside '12345678-1' leaves '[REDACTED]5678-1'
+  // in the trace — the rest of the rut, unredacted). Sorting by descending length guarantees the
+  // longest, most-specific match always wins first.
+  const sortedNeedles = [...needles].sort((a, b) => b.length - a.length);
   return walk(value, (_key, v) => {
     if (typeof v !== 'string') return v;
     let result = v;
-    for (const needle of needles) {
+    for (const needle of sortedNeedles) {
       if (needle.length === 0) continue;
       result = result.split(needle).join(REDACTED_VALUE_MARKER);
     }
@@ -44,7 +50,14 @@ function replaceNeedles<T>(value: T, needles: readonly string[]): T {
   });
 }
 
-/** Recursively rebuilds `value`, applying `transform` to every leaf (string/primitive) node. */
+/**
+ * Recursively rebuilds `value`, applying `transform` to every node — not only leaf
+ * (string/primitive) nodes (corrected per CodeRabbit finding #36). Applying `transform` to every
+ * node, including objects and arrays, is required: `stripForbiddenKeys` must redact an entire
+ * object that sits under a forbidden key, not only its string leaves. Moving `transform` into
+ * only the primitive branch would silently stop redacting non-string values under a forbidden
+ * key.
+ */
 function walk<T>(value: T, transform: (key: string | undefined, v: unknown) => unknown, key?: string): T {
   const transformed = transform(key, value);
   if (transformed !== value) {

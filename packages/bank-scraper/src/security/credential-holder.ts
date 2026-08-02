@@ -32,7 +32,10 @@ export class CredentialHolder {
     if (this.#fields === null) {
       throw new CredentialsClearedError();
     }
-    return fn(this.#fields);
+    // A frozen shallow copy, not `this.#fields` itself (CodeRabbit finding #31): the `Readonly<>`
+    // type is erased at runtime, so without this, a callback could mutate the holder's internal
+    // object or retain the reference beyond the call — enforced at runtime, not by convention.
+    return fn(Object.freeze({ ...this.#fields }));
   }
 
   /** Idempotent. Drops every reference to the plaintext values. */

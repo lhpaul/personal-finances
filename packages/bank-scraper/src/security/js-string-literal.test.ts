@@ -18,11 +18,13 @@ describe('toJsStringLiteral', () => {
     expect(new Function(`return ${literal};`)()).toBe(value);
   });
 
-  it('escapes U+2028 and U+2029 so the literal is not split across lines', () => {
-    const value = 'a b c';
+  it('escapes U+2028 and U+2029 so the literal is not split across lines (CodeRabbit finding #33: escape sequences, not raw characters)', () => {
+    // Escape sequences instead of the raw characters: both are invisible in review, and the two
+    // raw code points were previously visually indistinguishable from each other in source.
+    const value = 'a\u2028b\u2029c';
     const literal = toJsStringLiteral(value);
-    expect(literal).not.toContain(' ');
-    expect(literal).not.toContain(' ');
+    expect(literal).not.toContain('\u2028');
+    expect(literal).not.toContain('\u2029');
     expect(new Function(`return ${literal};`)()).toBe(value);
   });
 

@@ -8,8 +8,13 @@
  * result is always a syntactically valid, single JS string literal regardless of engine version.
  */
 
-const LINE_SEPARATOR = ' ';
-const PARAGRAPH_SEPARATOR = ' ';
+// Escape sequences, not the raw characters (CodeRabbit finding #34): both are invisible in
+// source and in review. Any editor, formatter, or copy-paste that replaces one with an ASCII
+// space would change production behavior silently — this constant would then rewrite every
+// space in a credential into a literal U+2028/U+2029 instead of only the two characters this
+// function exists to escape.
+const LINE_SEPARATOR = '\u2028';
+const PARAGRAPH_SEPARATOR = '\u2029';
 const LINE_SEPARATOR_PATTERN = new RegExp(LINE_SEPARATOR, 'gu');
 const PARAGRAPH_SEPARATOR_PATTERN = new RegExp(PARAGRAPH_SEPARATOR, 'gu');
 

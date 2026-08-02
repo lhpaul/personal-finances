@@ -80,4 +80,24 @@ describe('TraceRedactor', () => {
     const trace: ScraperTrace = { logGroup: 'g', type: 'info', message: 'unrelated text', timestamp: 0 };
     expect(redactor.redactTrace(trace).message).toBe('unrelated text');
   });
+
+  it('fully redacts a credential value when a shorter credential value is one of its substrings (CodeRabbit finding #35)', () => {
+    // password '1234' is a substring of rut '12345678-1'. Field insertion order matters here:
+    // password is declared first so Object.values(fields) naturally yields the shorter needle
+    // first, which is exactly the ordering that would leak part of the rut without the
+    // descending-length sort — a needle order that happened to put the longer value first would
+    // not exercise the bug at all.
+    const credentials = new CredentialHolder({ password: '1234', rut: '12345678-1' });
+    const redactor = new TraceRedactor(credentials);
+    const trace: ScraperTrace = {
+      logGroup: 'login',
+      type: 'info',
+      message: 'submitted rut 12345678-1 with password 1234',
+      timestamp: 0,
+    };
+    const redacted = redactor.redactTrace(trace);
+    expect(redacted.message).not.toContain('12345678-1');
+    expect(redacted.message).not.toContain('5678-1'); // no leftover fragment of the longer credential
+    expect(redacted.message).not.toContain('1234');
+  });
 });
