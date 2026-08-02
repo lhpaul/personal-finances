@@ -138,14 +138,16 @@ checked out from `origin/develop`). Verified 2026-08-01.
 | Artifact base branch for this plan | `develop` | Parent orchestrator handoff; branch created from `origin/develop` at `dc4eac6` | 2026-08-01, `dc4eac6` | Current invocation only: batch `[#2 impl, #3 plan, #6 spec, #35 this item]` | `Verified` |
 | Artifact owner / repository mode | Current repository owns the plan (`single_repo`; no `repository.mode` hub configuration in `.ai-dev-workflow.yaml`) | `.ai-dev-workflow.yaml`, orchestrator handoff | 2026-08-01, `dc4eac6` | Same bounded batch | `Verified` |
 | Canonical package-manager pin | `pnpm@11.12.0` (`package.json` `packageManager`), Node 22 (`.nvmrc`) | `package.json`, `.nvmrc` | 2026-08-01, `dc4eac6` | Same bounded batch; no in-flight item changes the toolchain pin | `Verified` |
-| Canonical node-linker declaration surface | `pnpm-workspace.yaml` (`nodeLinker: hoisted`) — **changed by this plan** from `.npmrc` | V3–V6 in the Verification Log | 2026-08-01, `dc4eac6` | Same bounded batch; open PRs #31, #32, #33 touch none of `.npmrc`, `pnpm-workspace.yaml`, `.github/workflows/`, `eslint.config.mjs`, `docs/project/2-repo-architecture.md` (evidence supplied by the parent orchestrator with the dispatch) | `Verified` |
+| Canonical node-linker declaration surface | `pnpm-workspace.yaml` (`nodeLinker: hoisted`) — **changed by this plan** from `.npmrc` | V3–V6 in the Verification Log | 2026-08-01, `dc4eac6` | Same bounded batch; `git diff`/`gh pr diff` re-checked directly (not taken from the dispatch summary alone). PR #31 (plan for #4) is **merged**, so its content is already baked into `dc4eac6` and carries no open-PR risk. PR #32 (open, plan for #3) touches none of `.npmrc`, `pnpm-workspace.yaml`, `.github/workflows/`, `eslint.config.mjs`, `docs/project/2-repo-architecture.md`. PR #33 (open, implementation for #2) touches none of `.npmrc`, `pnpm-workspace.yaml`, `.github/workflows/`, `eslint.config.mjs` — but **does** touch `docs/project/2-repo-architecture.md`, adding one directory-tree line (`apps/mobile/src/dev/`) around line 26. That is non-overlapping with this plan's own edits to the same file (repository-tree line 52, the Conventions section, and Environment Setup, all at line 60+) | `Verified` (corrected: the original row wrongly claimed PR #33 touched none of these files; re-verified against the live PR diff, no line-range overlap, no merge risk) |
 | CI workflow ownership for this item | `.github/workflows/` is owned by #35 for this batch | Orchestrator scoping in the dispatch | 2026-08-01, `dc4eac6` | Same bounded batch | `Verified` |
 
-No conflict found inside the bounded scope. This check was **not** expanded into a repository-wide
-scan of every open pull request; the bounded scope above is the whole of it. If the implementer
-finds, at implementation start, that any row's source has changed (in particular the
-`packageManager` pin or `.github/workflows/ci.yml` structure), stop before editing files and
-return the evidence to the orchestrator rather than resolving it in-flight.
+No unresolved conflict found inside the bounded scope; one row's evidence (PR #33 vs.
+`docs/project/2-repo-architecture.md`) was corrected during plan review after re-checking `gh pr
+diff 33` directly — see that row for the corrected scope and result. This check was **not**
+expanded into a repository-wide scan of every open pull request; the bounded scope above is the
+whole of it. If the implementer finds, at implementation start, that any row's source has changed
+(in particular the `packageManager` pin or `.github/workflows/ci.yml` structure), stop before
+editing files and return the evidence to the orchestrator rather than resolving it in-flight.
 
 ---
 
