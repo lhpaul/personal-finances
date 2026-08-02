@@ -1,4 +1,10 @@
-import { formatClp, formatClpAbbreviated, formatThousands, isValidMoneyMinorUnits } from './money';
+import {
+  divideRoundHalfUp,
+  formatClp,
+  formatClpAbbreviated,
+  formatThousands,
+  isValidMoneyMinorUnits,
+} from './money';
 
 describe('money', () => {
   describe('formatClp — Group A: every mockup literal', () => {
@@ -200,5 +206,38 @@ describe('money', () => {
         expect(() => formatClpAbbreviated(input as unknown as number)).toThrow(TypeError);
       },
     );
+  });
+
+  describe('divideRoundHalfUp — promoted export, widened contract (issue #5)', () => {
+    it.each([
+      [5, 3, 2],
+      [1, 3, 0],
+      [2, 3, 1],
+    ])('divideRoundHalfUp(%p, %p) -> %p (odd denominator)', (numerator, denominator, expected) => {
+      expect(divideRoundHalfUp(numerator, denominator)).toBe(expected);
+    });
+
+    it.each([
+      [1, 2, 1],
+      [3, 2, 2],
+    ])('divideRoundHalfUp(%p, %p) -> %p (exact-half tie rounds up)', (numerator, denominator, expected) => {
+      expect(divideRoundHalfUp(numerator, denominator)).toBe(expected);
+    });
+
+    it('divideRoundHalfUp(0, 3) -> 0 (zero numerator)', () => {
+      expect(divideRoundHalfUp(0, 3)).toBe(0);
+    });
+
+    it('divideRoundHalfUp(7, 1) -> 7 (denominator of 1)', () => {
+      expect(divideRoundHalfUp(7, 1)).toBe(7);
+    });
+
+    it('the promotion changes no existing formatClpAbbreviated behaviour', () => {
+      // Same assertions already covered above by the formatClpAbbreviated Group tests; this is a
+      // targeted spot-check that the K/M tiers (which call divideRoundHalfUp internally) are
+      // unchanged after the export.
+      expect(formatClpAbbreviated(3_700_000)).toBe('3.7M');
+      expect(formatClpAbbreviated(279_000, { withCurrencySymbol: true })).toBe('$279K');
+    });
   });
 });
