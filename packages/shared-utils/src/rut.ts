@@ -14,6 +14,7 @@ const NORMALIZE_STRIP_PATTERN = /[.\-\s]/gu;
 const RUT_BODY_PATTERN = /^[1-9][0-9]{5,7}$/;
 const CHECK_DIGIT_PATTERN = /^[0-9K]$/;
 const DIGITS_ONLY_PATTERN = /^[0-9]+$/;
+const RUT_SHAPE_PATTERN = /^([0-9]+)([0-9K])$/;
 const CHECK_DIGIT_WEIGHT_CYCLE = [2, 3, 4, 5, 6, 7];
 
 /**
@@ -47,18 +48,32 @@ export function computeRutCheckDigit(bodyDigits: string): string {
 }
 
 /**
+ * Shared structural-parse step for `isValidRut` and `formatRut`: normalizes, splits into body
+ * and check digit via `RUT_SHAPE_PATTERN`, strips the body's leading zeros, then requires the
+ * result to satisfy `RUT_BODY_PATTERN`. Returns `null` when the input is structurally malformed
+ * at any of those steps — this is the single place the "what counts as a well-formed RUT body"
+ * contract lives; `isValidRut` and `formatRut` never re-derive it themselves.
+ */
+function parseRutParts(input: string): { body: string; checkDigit: string } | null {
+  const normalized = normalizeRut(input);
+  const match = RUT_SHAPE_PATTERN.exec(normalized);
+  if (!match) return null;
+  const rawBody = match[1] as string;
+  const checkDigit = match[2] as string;
+  const body = rawBody.replace(/^0+/, '');
+  if (!RUT_BODY_PATTERN.test(body)) return null;
+  return { body, checkDigit };
+}
+
+/**
  * Never throws — returns `false` for any malformed input. A typo filter, not a registry
  * (Decision 10): normalizes, strips leading zeros from the body, then requires a 6-8-digit body
  * and a `0`-`9`/`K` check digit before running modulo-11.
  */
 export function isValidRut(input: string): boolean {
-  const normalized = normalizeRut(input);
-  const match = /^([0-9]+)([0-9K])$/.exec(normalized);
-  if (!match) return false;
-  const rawBody = match[1] as string;
-  const checkDigit = match[2] as string;
-  const body = rawBody.replace(/^0+/, '');
-  if (!RUT_BODY_PATTERN.test(body)) return false;
+  const parts = parseRutParts(input);
+  if (!parts) return false;
+  const { body, checkDigit } = parts;
   if (!CHECK_DIGIT_PATTERN.test(checkDigit)) return false;
   let expected: string;
   try {
@@ -75,17 +90,11 @@ export function isValidRut(input: string): boolean {
  * in the `error` state, so formatting must succeed on it (Decision 10).
  */
 export function formatRut(input: string): string {
-  const normalized = normalizeRut(input);
-  const match = /^([0-9]+)([0-9K])$/.exec(normalized);
-  if (!match) {
+  const parts = parseRutParts(input);
+  if (!parts) {
     throw new TypeError('formatRut: malformed RUT input');
   }
-  const rawBody = match[1] as string;
-  const checkDigit = match[2] as string;
-  const body = rawBody.replace(/^0+/, '');
-  if (!RUT_BODY_PATTERN.test(body)) {
-    throw new TypeError('formatRut: malformed RUT input');
-  }
+  const { body, checkDigit } = parts;
   let grouped = '';
   for (let i = 0; i < body.length; i += 1) {
     const positionFromEnd = body.length - i;
