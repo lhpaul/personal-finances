@@ -120,6 +120,10 @@ export const sharedDomainPurity = {
           },
         ],
         checkGlobalObject: true,
+        // CodeRabbit finding on PR #44: checkGlobalObject only checks globalThis/self/window by
+        // default, not Node's `global` alias — without this, `global.Date.now()` would bypass
+        // the ban this rule exists to enforce.
+        globalObjects: ['global'],
       },
     ],
   },

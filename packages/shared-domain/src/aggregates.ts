@@ -38,11 +38,20 @@ export function countElapsedDaysInPeriod(period: Period, asOf: DateLocal): numbe
  * `TypeError` when `total` is not a safe-integer minor-unit value (Business Rule 8) — checked
  * explicitly rather than relying on `divideRoundHalfUp`'s internal `BigInt` conversion to throw,
  * because that throw is not guaranteed for every non-integer input (see `computePeriodDelta`).
+ * Throws `RangeError` when `total` is negative (CodeRabbit finding on PR #44):
+ * `divideRoundHalfUp`'s documented contract requires a non-negative numerator — passing a
+ * negative `total` straight through would truncate toward zero instead of rounding the magnitude
+ * away from zero (unlike `computePeriodDelta`, which already takes `Math.abs` and re-signs).
+ * `expenseTotal`/`incomeTotal` are always non-negative sums of `contributedAmount`, so a caller
+ * hitting this guard has a bug upstream, not a legitimate negative average to compute.
  * `summarizePeriod` guards `dayCount < 1` and returns `null` instead of calling this in that case.
  */
 export function dailyAverage(total: number, dayCount: number): number {
   if (!isValidMoneyMinorUnits(total)) {
     throw new TypeError('dailyAverage: total must be a safe-integer minor-unit value');
+  }
+  if (total < 0) {
+    throw new RangeError('dailyAverage: total must be non-negative');
   }
   if (dayCount < 1) {
     throw new RangeError('dailyAverage: dayCount must be at least 1');

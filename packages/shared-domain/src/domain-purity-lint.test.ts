@@ -190,6 +190,19 @@ describe('@finanzas/shared-domain purity rule — React and Date bans (issue #5)
     }
   });
 
+  it("fires on `global.Date.now()` (Node's global alias, CodeRabbit finding on PR #44)", () => {
+    // checkGlobalObject: true only checks globalThis/self/window by default — globalObjects:
+    // ['global'] is what makes Node's own alias for the global object reportable too.
+    const probe = "export const t = global.Date.now();\n";
+
+    const { messages, result } = runEslintOnStdin(probe, packageRoot);
+    const clockMessages = messages.filter((m) => m.ruleId === 'no-restricted-globals');
+
+    expect(result.status).toBe(1);
+    expect(clockMessages.length).toBeGreaterThan(0);
+    expect(clockMessages[0]?.message).toContain('must not read the clock');
+  });
+
   it('does not fire on code that only uses DateLocal strings (negative control)', () => {
     const probe = ["const dateLocal: string = '2025-01-01';", 'export { dateLocal };', ''].join('\n');
 

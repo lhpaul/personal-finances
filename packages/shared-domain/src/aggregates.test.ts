@@ -284,6 +284,13 @@ describe('Business Rule 8 — amounts are integers in minor units', () => {
     expect(() => dailyAverage(total, 10)).toThrow(TypeError);
   });
 
+  it('dailyAverage throws RangeError when total is a negative safe integer (CodeRabbit finding on PR #44)', () => {
+    // Without this guard, divideRoundHalfUp(-3, 2) truncates toward zero (-1), not the
+    // magnitude-based -2 that computePeriodDelta produces for the same ratio via Math.abs +
+    // resign — an inconsistency between the two functions' negative-input behaviour.
+    expect(() => dailyAverage(-3, 2)).toThrow(RangeError);
+  });
+
   it.each([1.5, NaN, Infinity])('computePeriodDelta throws TypeError when currentTotal is %p', (currentTotal) => {
     expect(() => computePeriodDelta(currentTotal, 1000)).toThrow(TypeError);
   });
