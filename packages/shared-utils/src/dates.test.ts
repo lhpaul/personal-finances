@@ -469,5 +469,53 @@ describe('dates', () => {
         expect(toDateLocal(parseDateLocal(input))).toBe(input);
       },
     );
+
+    describe('toDateLocal numeric-input validation (invalid year/month/day never silently pass)', () => {
+      const invalidCivilDates: Array<[Partial<Record<'year' | 'month' | 'day', number>>, string]> = [
+        [{ year: NaN }, 'NaN year'],
+        [{ year: Infinity }, 'Infinity year'],
+        [{ year: -Infinity }, '-Infinity year'],
+        [{ year: 2025.5 }, 'non-integer year'],
+        [{ month: NaN }, 'NaN month'],
+        [{ month: Infinity }, 'Infinity month'],
+        [{ month: 1.5 }, 'non-integer month'],
+        [{ month: 0 }, 'month below range'],
+        [{ month: 13 }, 'month above range'],
+        [{ day: NaN }, 'NaN day'],
+        [{ day: Infinity }, 'Infinity day'],
+        [{ day: 1.5 }, 'non-integer day'],
+        [{ day: 0 }, 'day below range'],
+        [{ day: 32 }, 'day above range'],
+      ];
+
+      it.each(invalidCivilDates)('toDateLocal rejects %s', (overrides) => {
+        const civil = { year: 2025, month: 1, day: 5, ...overrides };
+        expect(() => toDateLocal(civil)).toThrow(RangeError);
+      });
+    });
+  });
+
+  describe('Group H — arithmetic entry points reject non-integer shift amounts', () => {
+    it.each([NaN, Infinity, -Infinity, 1.5])('addDays("2025-01-01", %p) throws RangeError', (days) => {
+      expect(() => addDays('2025-01-01', days)).toThrow(RangeError);
+    });
+
+    it.each([NaN, Infinity, -Infinity, 1.5])(
+      'shiftMonthPeriod(period, %p) throws RangeError',
+      (months) => {
+        expect(() =>
+          shiftMonthPeriod({ start: '2025-01-01', end: '2025-01-31' }, months),
+        ).toThrow(RangeError);
+      },
+    );
+
+    it.each([NaN, Infinity, -Infinity, 1.5])(
+      'shiftWeekPeriod(period, %p) throws RangeError',
+      (weeks) => {
+        expect(() =>
+          shiftWeekPeriod({ start: '2025-01-20', end: '2025-01-26' }, weeks),
+        ).toThrow(RangeError);
+      },
+    );
   });
 });

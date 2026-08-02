@@ -81,18 +81,25 @@ export function parseDateLocal(dateLocal: DateLocal): CivilDate {
 }
 
 /**
- * Zero-pads month and day. Throws `RangeError` if `civil.year` falls outside 0100-9999 — the
- * single construction-side guard every `DateLocal`-returning function in this file routes
- * through (Decision 3, "Arithmetic self-consistency at the range boundary"). Callers that reach
- * this guard through arithmetic (`addDays`, `getWeekPeriod`, `shiftMonthPeriod`,
+ * Zero-pads month and day. Throws `RangeError` if `civil.year` falls outside 0100-9999, or if
+ * `year`, `month`, or `day` is not an integer (rejects `NaN`, `Infinity`, and non-integer
+ * values) — the single construction-side guard every `DateLocal`-returning function in this file
+ * routes through (Decision 3, "Arithmetic self-consistency at the range boundary"). Callers that
+ * reach this guard through arithmetic (`addDays`, `getWeekPeriod`, `shiftMonthPeriod`,
  * `shiftWeekPeriod`) do not catch or wrap the error — it propagates to the caller unchanged.
  */
 export function toDateLocal(civil: CivilDate): DateLocal {
   const { year, month, day } = civil;
-  if (year < MIN_SUPPORTED_YEAR || year > MAX_SUPPORTED_YEAR) {
+  if (!Number.isInteger(year) || year < MIN_SUPPORTED_YEAR || year > MAX_SUPPORTED_YEAR) {
     throw new RangeError(
       `toDateLocal: year ${year} is outside the supported range ${MIN_SUPPORTED_YEAR}-${MAX_SUPPORTED_YEAR}`,
     );
+  }
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    throw new RangeError(`toDateLocal: month ${month} must be an integer in the range 1-12`);
+  }
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    throw new RangeError(`toDateLocal: day ${day} must be an integer in the range 1-31`);
   }
   const yyyy = String(year).padStart(4, '0');
   const mm = String(month).padStart(2, '0');
@@ -100,8 +107,14 @@ export function toDateLocal(civil: CivilDate): DateLocal {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/** Signed day addition. Throws `RangeError` (via `toDateLocal`) at the 0100/9999 boundary. */
+/**
+ * Signed day addition. Throws `RangeError` if `days` is not a safe integer (`NaN`, `Infinity`,
+ * or non-integer), or (via `toDateLocal`) at the 0100/9999 boundary.
+ */
 export function addDays(dateLocal: DateLocal, days: number): DateLocal {
+  if (!Number.isSafeInteger(days)) {
+    throw new RangeError('addDays: days must be a safe integer');
+  }
   const { year, month, day } = parseDateLocal(dateLocal);
   const shifted = new Date(Date.UTC(year, month - 1, day + days));
   return toDateLocal({
@@ -141,9 +154,12 @@ export function getWeekPeriod(dateLocal: DateLocal): Period {
  * Shifts a month period by `months` (signed). Drives the mockup's `‹ ›` month nav. Throws
  * `RangeError` if `period.start` is not the first of a month (it always anchors on day 1, so it
  * needs no end-of-month clamping), or (via `toDateLocal`) if the shifted month's year would fall
- * outside 0100-9999.
+ * outside 0100-9999. Throws `RangeError` if `months` is not a safe integer.
  */
 export function shiftMonthPeriod(period: Period, months: number): Period {
+  if (!Number.isSafeInteger(months)) {
+    throw new RangeError('shiftMonthPeriod: months must be a safe integer');
+  }
   const { year, month, day } = parseDateLocal(period.start);
   if (day !== 1) {
     throw new RangeError('shiftMonthPeriod: period.start must be the first day of a month');
@@ -160,9 +176,13 @@ export function shiftMonthPeriod(period: Period, months: number): Period {
 
 /**
  * Shifts a week period by `weeks` (signed). Drives the `S-1` / `S-2` chart columns. Throws
- * `RangeError` (via `addDays`) if the shifted week would cross 0100-9999.
+ * `RangeError` if `weeks` is not a safe integer, or (via `addDays`) if the shifted week would
+ * cross 0100-9999.
  */
 export function shiftWeekPeriod(period: Period, weeks: number): Period {
+  if (!Number.isSafeInteger(weeks)) {
+    throw new RangeError('shiftWeekPeriod: weeks must be a safe integer');
+  }
   const days = weeks * 7;
   return {
     start: addDays(period.start, days),
