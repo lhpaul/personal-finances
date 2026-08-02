@@ -476,7 +476,9 @@ A stopped read records no failure reason at all.
       day updates those on the stored movement, while leaving the person's decision layer
       untouched.
 - [ ] **AC5.** A recorded read containing two movements on the same product, day, amount, direction
-      and description stores two movements; applying that read again still leaves two.
+      and description stores two movements; applying that read again still leaves two. Two movements
+      alike in every one of those facts *except* direction — a charge and its refund, described
+      identically — are likewise stored as two, and stay two when the read is applied again.
 - [ ] **AC6.** A recorded read whose movements come back in a different order, or at different
       positions, than a previous read of the same pages stores no new movement.
 - [ ] **AC7.** A recorded read reporting two products of the same kind under one connection stores
@@ -525,7 +527,8 @@ A stopped read records no failure reason at all.
       to `idle`, with no failure recorded, before the automatic-sync check runs.
 - [ ] **AC27.** A connection that is disconnected or inactive is never synced automatically.
 - [ ] **AC28.** Asking to sync a connection that is already syncing does not start a second read and
-      does not change the connection's record.
+      does not change the connection's record. Asking to sync a *different* connection while a read
+      is running likewise starts no second read.
 - [ ] **AC29.** No credential value appears anywhere in the stored data or in a recorded failure
       message, asserted by a test that runs a full sync with a recognisable credential in the
       secure store and scans the whole store afterwards.
@@ -727,7 +730,7 @@ Discrete requirement bullets from work item #10, plus the constraints supplied w
 | 3. Never overwrite the person's own columns | AC3, AC4, AC19, AC20, AC21; Business Rules 14, 15, 18; Use Case 2 |
 | 4. Merchant resolution and automatic category on first storage | AC16, AC17, AC18, AC19; Business Rules 18-20; [Conflict 4](#conflict-4--how-an-automatic-category-is-marked) |
 | 5. Connection sync bookkeeping | AC10, AC11, AC12, AC13, AC26; Business Rules 23, 25; [Connection sync state](#connection-sync-state) |
-| 6. One indivisible write per sync | AC14, AC15; Business Rules 21, 22; AC28 |
+| 6. One indivisible write per sync | AC14, AC15, AC28; Business Rules 21, 22 |
 | 7. The same read applied twice leaves the count unchanged | AC2, AC5, AC6 |
 | 8. Category and note survive a re-sync | AC3, AC4, AC20 |
 | 9. A failed run records the failure and leaves prior data intact | AC9, AC10, AC11; Use Cases 3 and 4 |
