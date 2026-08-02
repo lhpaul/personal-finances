@@ -65,8 +65,8 @@ the same things; the implementation plan uses the best-practices vocabulary.
 **Actor**: The person, through the connect-a-bank flow (built by a separate item); the scraper
 does the work on their behalf.
 **Preconditions**: The person has chosen Banco de Chile and entered their RUT and password. The
-credentials have been written to the device's secure store by the connect flow. The device has
-network access.
+credentials have been written to the device's secure store by the connect flow, which holds them
+encrypted at rest (`expo-secure-store`'s own guarantee). The device has network access.
 
 **Steps**:
 
@@ -108,6 +108,13 @@ accumulated during it are gone.
   not read.
 - The RUT is credential material exactly as the password is. It is not stored anywhere by this
   item, does not appear in anything the scraper reports, and is not kept after the read ends.
+- The credentials exist as plaintext in exactly two places for exactly the lifetime of one read:
+  the connect flow's own memory, from the moment it reads them out of the secure store until it
+  hands them to the scraper, and the scraper's own memory, from the moment it receives them until
+  the read ends. Both the connect flow and the scraper clear their plaintext copy after the read
+  ends — on success, on failure, and on cancellation alike (Business Rule 1). Neither ever writes
+  the plaintext value anywhere else. The secure store itself holds only the encrypted copy, and is
+  read again, not reused from memory, on the next sync.
 
 ---
 
@@ -224,6 +231,13 @@ missed. Nothing that was successfully read is discarded because something else f
 - If the failure is that the bank ended the session — it signed the person out mid-read, or
   navigated the browser somewhere that is not the bank — that is a different reason from markup
   that no longer matches, and the scraper must say which.
+- Not every failure permits moving on to the next product (Business Rule 31). A failure scoped to
+  the product being read — the page not matching, or fewer movements parsed than the bank's own
+  page states — is retried, then recorded, and the read continues to the next product, as this use
+  case describes. A failure that is not scoped to one product — the bank ending the session, or the
+  bank's site becoming unreachable — ends the read for every product not yet attempted; the
+  products and movements already gathered before that point are still returned, reported as a
+  partial result (Business Rule 19), not discarded because the rest could not be read.
 
 ---
 
@@ -292,8 +306,11 @@ directory. The app's own code is unaffected by any of it.
 - The scraper reports products and movements in the product's own shared vocabulary — the same
   product types and the same movement direction the rest of the app already uses — not in Banco
   de Chile's.
-- The scraper never reports copy. Every value it hands over that a person will eventually read as
-  a label is a stable code, resolved to Spanish by the app's catalogue.
+- The scraper never reports copy of its own. Every value it hands over that a person will
+  eventually read as a label — a reason, a kind, a direction — is a stable code, resolved to
+  Spanish by the app's catalogue. Text the bank itself supplies — a movement's description, a
+  product's display name — is data the scraper passes through unchanged, not a label it invents;
+  it is shown to the person exactly as the bank wrote it (Business Rule 17).
 
 ---
 
@@ -303,7 +320,11 @@ directory. The app's own code is unaffected by any of it.
    only in memory, only for one read.** The credentials are handed to it when a read starts and
    are gone when that read ends — whether it succeeded, failed, or was stopped. They are never
    written to the local database, never kept beyond the read, and never held anywhere that
-   outlives it.
+   outlives it. Before the read starts, the same credentials exist as plaintext only in the
+   calling connect-flow code's memory, for only as long as it takes to read them out of the
+   secure store (where they are held encrypted) and hand them to the scraper; the connect flow
+   clears its own plaintext copy once that handoff is made, exactly as the scraper clears its
+   copy once the read ends.
 2. **The RUT is credential material.** Every rule in this section that applies to the password
    applies to the RUT identically. Nothing in this item stores a RUT, reports a RUT, or keeps one
    after a read.
@@ -316,9 +337,17 @@ directory. The app's own code is unaffected by any of it.
    recognisable credential values and asserts that neither value, in any form the scraper could
    produce, appears in any trace, any failure report or any console output. A change that
    reintroduces a credential into a diagnostic fails the suite.
-5. **A credential is typed into the bank's own page and nowhere else.** The scraper only ever
-   fills a sign-in form on a page served by the configured bank. If the browser is anywhere else,
-   no credential is entered and the read stops.
+5. **A credential is typed into the bank's own page and nowhere else, checked against an exact
+   allowlist, not a description of what the page looks like.** For Banco de Chile the allowlist
+   is the single HTTPS origin `https://login.portales.bancochile.cl` — the sign-in host the proven
+   source implementation already uses, and the only host its reading routines' page paths resolve
+   against. Before either credential field is filled, the scraper checks the browser's current URL
+   against that allowlist: the scheme must be `https`, the host must match that origin exactly —
+   no other subdomain of `bancochile.cl`, and no lookalike host that merely contains or resembles
+   `bancochile` — and the page must not be the result of a redirect that left that origin. If the
+   check fails for any reason, no credential is entered and the read stops: as `session_closed` if
+   it happens after a session was established, or as the appropriate read-level failure if it
+   happens before one was.
 6. **A credential value never changes what the scraper does.** A password or RUT containing
    quotes, backslashes or any other punctuation reaches the bank's form exactly as the person
    typed it, and cannot alter the instructions the scraper is running.
@@ -341,7 +370,16 @@ directory. The app's own code is unaffected by any of it.
     reverse.
 12. **Amounts are parsed for Chilean presentation**: thousands separated by dots, no decimals in
     pesos, currency symbols and stray whitespace stripped. A peso amount that parses to something
-    with a decimal part is a defect, not a rounding question.
+    with a decimal part is a defect, not a rounding question. **A foreign-currency card movement
+    (AC10) is parsed with the same separator convention** — thousands separated by dots, decimals
+    separated by a comma, currency symbols and codes (`US$`, `USD`) and stray whitespace stripped —
+    because Banco de Chile presents its one supported foreign currency, US dollars, in that same
+    Chilean style, unlike the decimal-point convention English-language sites use. The parsed
+    decimal value is then converted to whole minor units of that currency by its own exponent (2
+    for US dollars) — multiplying by the matching power of ten. Because the bank never states more
+    decimal digits than the currency's exponent allows, this conversion is always exact: a foreign
+    amount that would need rounding to reach a whole minor unit is a defect, exactly as a peso
+    amount with a decimal part is.
 13. **The scraper reports a bank-supplied identity for a movement only when the bank actually
     supplies one.** It never manufactures one out of the movement's own content and presents it as
     if the bank had given it. When the bank supplies none, the scraper reports the facts the
@@ -349,19 +387,39 @@ directory. The app's own code is unaffected by any of it.
     direction and the description exactly as the bank wrote it.
 14. **Two movements the bank lists separately are reported separately.** Identical day, amount and
     description do not make them one movement, and the scraper also reports each movement's
-    position within the bank's own listing so they can be told apart downstream.
+    position within the bank's own listing so they can be told apart within that one read. That
+    position is a same-read disambiguator only — reported from a single snapshot of the bank's
+    listing taken during this read. It carries no promise of stability across two separate reads
+    (a reordered page, an inserted movement, or a pagination change can all change it), and must
+    never be treated as a cross-read identity ([Conflict 2](#conflict-2--what-identifies-a-movement)).
 15. **A product is reported with a stable identity of its own, separate from what kind of product
-    it is.** Two accounts of the same kind are two products, and each is recognisable as the same
-    product on the next read.
+    it is, and that identity is opaque.** It is never the bank's own raw account or card number —
+    it is derived from the bank's identifier (for example, by a one-way hash) so it stays stable
+    across reads of the same product without being, or being reversible to, the number it is
+    derived from. The raw account or card number never appears in a result, a diagnostic, or
+    anything handed downstream to persistence (Decision 10). Two accounts of the same kind are two
+    products, and each is recognisable as the same product on the next read by this opaque
+    identity — the separately reported masked identifier (last four digits) is what a screen or a
+    trace is allowed to display; the opaque identity itself is never shown to a person.
 16. **Products and movements are reported in the product's shared vocabulary.** Product kind is
     one of the enumerated product types; movement direction is the enumerated debit/credit pair.
     Bank-specific wording is translated into those. A product whose kind the scraper cannot place
     in that set is not reported as a product at all, and is recorded in the diagnostic trail so it
-    can be added deliberately; no new kind is invented.
-17. **The scraper never reports copy.** Every reason, kind and direction it reports is a stable
-    code. Extra bank-specific details it passes through are keyed by stable identifiers, not by
-    the Spanish words the bank's table happened to use. No sentence the scraper produces is ever
-    shown to a person.
+    can be added deliberately; no new kind is invented. **This is a scoped, not an unscoped,
+    completeness contract**: `complete` means every product of a *supported* kind was read, and
+    every one of those products' movements was read — not that nothing on the bank's page was
+    skipped. A product kind outside the enumerated set is a known, expected MVP limitation, named
+    in the diagnostic trail, and does not by itself turn a read that otherwise finished cleanly
+    into a `partial` or `failed` one ([Read outcome](#read-outcome)).
+17. **The scraper never produces copy of its own.** Every reason, kind and direction it reports is
+    a stable code, resolved to Spanish elsewhere by the app's catalogue — never a sentence the
+    scraper wrote itself. Extra bank-specific details it passes through are keyed by stable
+    identifiers, not by the Spanish words the bank's table happened to use. **This does not apply
+    to text the bank itself supplies as data**: a movement's description and a product's display
+    name are the bank's own words, not the scraper's, and are preserved verbatim and shown to the
+    person exactly as the bank wrote them ("Per movement" and "Per product" tables) — the scraper
+    does not translate, summarize or interpret that text, it only refuses to invent sentences of
+    its own alongside it.
 18. **Failure is reported as one of four reasons**: the credentials were rejected, the bank ended
     the session, the bank could not be reached, or the bank's page did not match what the scraper
     expects. These are exactly the reasons a connection can record, and the scraper introduces no
@@ -388,8 +446,9 @@ directory. The app's own code is unaffected by any of it.
     something on a bank page has a test that runs it against a captured page and asserts what it
     produces.
 26. **No recorded page contains anyone's real information.** Every RUT, name, balance and account
-    number in a committed page is synthetic. This is enforced by a test that fails on a real-looking
-    identifier, not by review alone.
+    number in a committed page is synthetic. This is enforced by four deterministic tests, one per
+    class — RUT, name, balance, account number — each proven by planting a synthetic violation of
+    that class and asserting the test catches it, not by review alone.
 27. **The scraper refuses work it does not support.** Asked to read a bank or a country it has no
     configuration for, it refuses before opening anything, without navigating and without touching
     the credentials. That refusal is a rejected request, not one of the four sync failure reasons.
@@ -401,6 +460,23 @@ directory. The app's own code is unaffected by any of it.
     and within it only the products that bank lists for that person. It never visits another
     institution, another person's data, or any part of the bank's site outside the pages its
     reading routines declare.
+31. **A product-local failure does not stop the read; a read-level failure does.** Once sign-in
+    has succeeded, a failure while reading one product's movements — the bank's page not matching
+    what the scraper expects, or the bank stating more movements than the scraper could parse — is
+    scoped to that product: it is retried, recorded as that product's failure reason once retries
+    are exhausted, and the read moves on to the next product. A failure that is not scoped to one
+    product — the bank ending the session, or the bank's site becoming unreachable — ends the read
+    for every product not yet attempted; whatever was already gathered before that point is still
+    returned, reported as a partial result (Business Rule 19), never discarded.
+32. **Every retried step is bounded, so a stalled page cannot hold credentials or browser
+    resources indefinitely.** A step's own attempts are capped and timed — the proven source
+    implementation's defaults are 3 attempts with a 1-second wait between them for a page-level
+    step, and 10 attempts with a 200-millisecond wait for waiting on a single element — after which
+    that step is a failure. Independently, the read as a whole has a fixed overall deadline
+    (Decision 16); a read not finished by then ends as a failure using whichever reason its
+    last-attempted step would have reported, rather than continuing to wait past it.
+    `invalid_credentials` is retried zero times regardless of any of these budgets, per Business
+    Rule 22 — it is non-retryable outright, not merely subject to the same caps as everything else.
 
 ---
 
@@ -414,7 +490,7 @@ decision; the facts below are not.
 
 | Fact | Why it is needed |
 | --- | --- |
-| A stable identity for this product within this bank | So the same account is recognised as the same account on the next read (Business Rule 15). |
+| A stable, opaque identity for this product within this bank — never the raw account or card number | So the same account is recognised as the same account on the next read, without exposing or persisting the raw identifier it is derived from (Business Rule 15). |
 | What kind of product it is, from the enumerated product types | Drives how it is displayed and how movements are filtered. |
 | A display name for it | Shown wherever the product is named. |
 | Its currency | `CLP` for every Banco de Chile product in the MVP. |
@@ -434,7 +510,7 @@ decision; the facts below are not.
 | Its currency | `CLP`, or the foreign currency for an international card movement. |
 | The description exactly as the bank wrote it | The person sees it verbatim, and merchant resolution reads it. |
 | A bank-supplied identity, when and only when the bank supplies one | Lets the storing item recognise a repeat by identity (Business Rule 13). |
-| Its position within the bank's own listing for that product and day | Lets the storing item tell two identical movements apart (Business Rule 14). |
+| Its position within the bank's own listing for that product and day, valid only within this one read's snapshot | Lets the storing item tell two identical movements apart within this read (Business Rule 14) — not a cross-read identity. |
 | Bank-specific extras, keyed by stable identifiers | Cuotas, movement kind, city, country, foreign-currency original amount, and whether a card movement is billed or not yet billed. |
 
 ### Per read
@@ -444,7 +520,7 @@ decision; the facts below are not.
 | The step the read is currently in, and its progress | Drives the syncing screen (Business Rule 23). |
 | Everything read so far, at every step | Makes a partial result possible (Business Rule 19). |
 | Whether the read completed fully, completed partially, or failed before gathering anything | Decides what the connection records. |
-| For a failure: which of the four reasons, and which product it happened on | Decides the copy shown and whether a repair is needed. |
+| For a failure: which of the four reasons, and — only when the failure is scoped to a product rather than to the read itself — which product it happened on | Decides the copy shown and whether a repair is needed. A read-level failure (Business Rule 31), most notably `invalid_credentials`, happens before any product is discovered and reports no product at all — there is none to name. |
 | The diagnostic trail of the read, with credentials already removed | Makes a broken bank diagnosable (Business Rules 3 and 4). |
 
 ---
@@ -475,9 +551,10 @@ reported failure, not by a step of its own.
 
 | Code value | Proposed display label | Description |
 | --- | --- | --- |
-| `complete` | (the screen advances) | Every product was read and every product's movements were read. |
-| `partial` | Sincronización incompleta | At least one product was read, and at least one product's movements were not. The result carries both. |
+| `complete` | (the screen advances) | Every product of a *supported* kind was read and every one of those products' movements was read (Business Rule 16). A product kind outside the enumerated set is a known MVP limitation, named in the diagnostic trail, and does not by itself prevent `complete`. |
+| `partial` | Sincronización incompleta | At least one product was read, and at least one product's movements were not — or a read-level failure ended the read after some products had already been read. The result carries both. |
 | `failed` | Error de conexión | Nothing usable was gathered. |
+| `cancelled` | (the screen leaves the flow) | The caller stopped the read before it finished. See [Cancellation](#cancellation). Carries whatever was already gathered, exactly as `partial` does, but is never a failure reason and never populates `last_error_code`. |
 
 ### Failure reason
 
@@ -517,6 +594,33 @@ product kind outside this table is skipped and named in the diagnostic trail (Bu
 
 ---
 
+## Cancellation
+
+A read can be stopped while it is in progress — the person navigates away from the syncing
+screen, or the app decides to give up. This section is the read-level contract for that; the
+stop mechanism's exact shape (a function, a signal, a promise) is the implementation plan's
+decision.
+
+- **The caller can ask an in-flight read to stop at any time**, from any read step ([Read
+  step](#read-step)), including mid-navigation and mid-injection — before a reading routine's
+  script has finished posting back a state change. The scraper does not wait for that step to
+  finish on its own: it interrupts the in-flight navigation or script execution and discards any
+  response that arrives from it after the stop was requested.
+- **Credential release happens before or atomically with tearing down the browser session — never
+  after.** The order is: clear the credentials held in memory, then tear down the WebView and the
+  bank session — or clear and tear down as one inseparable step. A stop request never leaves a
+  credential in memory while the browser session is still being unwound.
+- **A stopped read reports the outcome `cancelled`**, a fourth value alongside `complete`,
+  `partial` and `failed` ([Read outcome](#read-outcome)). It carries whatever products and
+  movements had already been gathered before the stop arrived — the same shape a `partial`
+  result's data is in — but is never one of the four failure reasons and never populates
+  `last_error_code`: stopping a read is the caller's choice, not the bank failing.
+- **Everything Business Rule 1 promises about a read's end applies identically to a stopped
+  read**: the credentials are gone, and the bank session and everything the hidden browser
+  accumulated during it are gone, whether the read completed, failed, or was stopped.
+
+---
+
 ## Operational Visibility
 
 - **Progress**: every step the scraper enters is announced to the caller, along with how far
@@ -548,12 +652,19 @@ product kind outside this table is skipped and named in the diagnostic trail (Bu
       recorded. This is asserted by an automated test that fails if a credential is reintroduced
       into any diagnostic.
 - [ ] **AC3.** The scraper holds no credential after a read ends, in success, in failure, or when
-      the caller stops the read. Nothing this item produces is written to the local database.
+      the caller stops the read. Nothing this item produces is written to the local database. A
+      read the caller stops reports the outcome `cancelled`, carrying whatever was already
+      gathered before the stop, and credential release happens before or atomically with
+      tearing down the browser session (see [Cancellation](#cancellation)).
 - [ ] **AC4.** A credential value containing quotes, backslashes and other punctuation reaches the
       bank's form unchanged and does not alter what the scraper executes.
 - [ ] **AC5.** No committed recorded page contains a valid real-looking RUT, a real person's name,
-      a real balance or a real account number. A test scans every committed page and fails on a
-      RUT-shaped identifier outside the synthetic set.
+      a real balance or a real account number. This is enforced by four deterministic automated
+      checks, one per prohibited class — a RUT-shaped identifier, a real-looking name, a
+      real-looking balance, and a real-looking account number, each outside its own synthetic
+      allowlist — and each check is proven by planting a synthetic violation of that specific
+      class into a fixture and asserting the check catches it, not merely that a fixture looks
+      clean.
 - [ ] **AC6.** Every reading routine for Banco de Chile — sign in, product list, account movements,
       card movements — has a test that runs it against a recorded page and asserts what it finds
       and what it produces.
@@ -566,7 +677,9 @@ product kind outside this table is skipped and named in the diagnostic trail (Bu
       including for a card movement, which is not assumed to be one direction.
 - [ ] **AC10.** A card statement containing movements in a second currency reports those movements
       in that currency, as whole minor units of that currency, with no conversion applied and no
-      peso amount invented for them.
+      peso amount invented for them. Amounts are parsed with the Chilean separator convention
+      (dots for thousands, comma for decimals) and converted to that currency's own minor-unit
+      exponent exactly, with no rounding loss (Business Rule 12).
 - [ ] **AC11.** A recorded page for a product with no movements in the window, where the bank's
       own page says so, produces a successful read of that product with zero movements and no
       failure.
@@ -579,13 +692,17 @@ product kind outside this table is skipped and named in the diagnostic trail (Bu
       discarded.
 - [ ] **AC14.** A read where the bank rejects the sign-in reports `invalid_credentials`, gathers
       nothing, does not retry the sign-in, and does not attach the bank's own error text to the
-      failure.
+      failure. Because this is a read-level failure that happens before any product is discovered,
+      the result reports no product for it — there is none to name.
 - [ ] **AC15.** A read where the bank's site never finishes loading reports `network`; a read where
       the browser ends up on a page that is not the bank's own site, or the bank signs the person
       out mid-read, reports `session_closed`; a read where a page loads but does not match reports
       `parse_failed`. Each is asserted separately.
-- [ ] **AC16.** No credential is entered into a form on a page that is not served by the configured
-      bank; the read stops instead. A read visits only the bank the caller named and only the page
+- [ ] **AC16.** No credential is entered into a form on a page outside the bank's exact allowlisted
+      origin (Business Rule 5); the read stops instead. This is asserted for three cases: the
+      bank's own allowlisted origin (allowed), a redirect that lands the browser off that origin
+      partway through the sign-in navigation (rejected), and a lookalike hostname that is not on
+      the allowlist (rejected). A read visits only the bank the caller named and only the page
       addresses that bank's reading routines declare.
 - [ ] **AC17.** Every failure of a started read is reported as one of the four enumerated reasons.
       No fifth reason exists in that set. The refusal in AC18 is not a read failure and is reported
@@ -595,25 +712,34 @@ product kind outside this table is skipped and named in the diagnostic trail (Bu
       four sync failure reasons.
 - [ ] **AC19.** A step that does not succeed at first is retried with a wait between attempts
       before any failure is reported, and the number of attempts is visible in the diagnostic
-      trail.
+      trail. Retries are bounded: no step retries beyond its fixed maximum attempts, and no read
+      continues past its overall deadline (Business Rule 32). `invalid_credentials` is asserted
+      separately as never retried, at all (AC14).
 - [ ] **AC20.** The scraper announces every step it enters, in order, and its reported progress
       never decreases across a read.
 - [ ] **AC21.** Reading the same recorded pages twice produces two results that describe every
       movement identically — same product, same calendar day, same amount, same direction, same
-      description, same position in the bank's listing.
+      description, same position in the bank's listing. This is about a fixed, byte-identical
+      fixture, not a live site that can reorder between reads — position's stability here does not
+      extend to two reads of the live site ([Conflict 2](#conflict-2--what-identifies-a-movement)).
 - [ ] **AC22.** Two movements the bank lists separately with the same day, amount and description
       are reported as two movements, distinguishable by their position in the bank's listing.
 - [ ] **AC23.** No movement carries a bank-supplied identity that the bank did not actually supply.
 - [ ] **AC24.** Two accounts of the same kind in the same bank are reported as two products with
       different identities, and each keeps that identity across two reads of the same recorded
-      pages.
+      pages. Neither identity is the raw account or card number: only the opaque instance identity
+      and the separately masked display form appear in the result (Business Rule 15).
 - [ ] **AC25.** Every product is reported with one of the enumerated product types, and every
       movement with one of the enumerated directions. A recorded page containing a product kind
       outside that set yields no product for it and a diagnostic entry naming it, and never a
-      product carrying an invented kind.
-- [ ] **AC26.** Nothing the scraper reports is a user-facing sentence: reasons, kinds and directions
-      are stable codes, and bank-specific extras are keyed by stable identifiers rather than the
-      bank's Spanish column headings.
+      product carrying an invented kind. A recorded page that mixes a supported and an unsupported
+      product kind still yields a `complete` outcome for the supported ones, per the scoped
+      completeness contract in Business Rule 16.
+- [ ] **AC26.** Nothing the scraper produces itself is a user-facing sentence: reasons, kinds and
+      directions are stable codes, and bank-specific extras are keyed by stable identifiers rather
+      than the bank's Spanish column headings. This does not apply to bank-supplied text passed
+      through as data — a movement's description, a product's display name — which is preserved
+      verbatim and is shown to the person (Business Rule 17).
 - [ ] **AC27.** All Banco de Chile knowledge — its address, page addresses, selectors and parsing —
       lives under that bank's own directory. A search of the rest of the repository finds no Banco
       de Chile selector, address or parsing rule, and no code outside this package reaches into a
@@ -682,7 +808,9 @@ product kind outside this table is skipped and named in the diagnostic trail (Bu
 **Resolution taken in this spec**: the scraper reports two separate facts — a stable identity for
 the product instance, and the kind of product it is (Business Rules 15 and 16). The instance
 identity is what recognises a product across reads; the kind is what the app displays and filters
-on.
+on. The instance identity is opaque (Business Rule 15) rather than the raw account or card
+number, so it is safe to persist and to compare across reads without exposing or reconstructing
+the number it is derived from.
 
 **Consequence this spec absorbs**: whoever amends the data model should point the stored external
 identifier at the instance identity rather than the product kind. That edit belongs to the
@@ -703,14 +831,23 @@ database or sync item, not to this one, which owns only `packages/bank-scraper/`
 
 **Resolution taken in this spec**: the scraper reports a bank-supplied identity only when the bank
 genuinely supplies one — which Banco de Chile does not today — and instead reports the facts the
-storing item needs to recognise a repeat, plus each movement's position within the bank's own
-listing so two identical movements can be told apart (Business Rules 13 and 14, AC22, AC23).
+storing item needs to recognise a repeat: the product, the calendar day, the amount in minor
+units, the direction, and the description exactly as the bank wrote it (Business Rule 13). Because
+none of those five facts is guaranteed unique among a day's movements, the scraper also reports
+each movement's position within the bank's own listing (Business Rule 14) — but only as a
+disambiguator within that single read's snapshot of the listing. A reordered page, a movement the
+bank inserts earlier on a later read, or a change in pagination can all change a position between
+two separate reads of the live site, so position carries no promise of stability across reads and
+must never be used as part of a cross-read identity.
 
-**Consequence this spec absorbs**: the storing item (#10) decides whether to use that position
-when computing its fingerprint. This item's obligation is only to make the distinction available
-and stable across reads. Two identical same-day movements collapsing into one is a real, everyday
-possibility — two coffees at the same café — so the information has to exist for #10 to be able to
-solve it.
+**Consequence this spec absorbs**: the storing item (#10) computes its fingerprint from the five
+stable facts above, using position only to break a tie within one read's results — never across
+two reads. This item's obligation is only to make that distinction available within one read, not
+to make position itself stable over time. Two identical same-day movements collapsing into one
+within a single read is a real, everyday possibility — two coffees at the same café — so the
+information has to exist for #10 to be able to solve that specific case; two reads of the live
+site producing a different position for the same movement is a different, expected situation #10
+must tolerate, not an error.
 
 **Human confirmation requested**: yes.
 
@@ -759,13 +896,14 @@ implementation. Each is listed so the product owner can revisit it.
 | 6 | Foreign-currency card movements are reported in their own currency, unconverted. | [Conflict 4](#conflict-4--a-second-currency-in-a-clp-only-mvp). | Yes |
 | 7 | No manufactured bank identity for movements; position within the bank's listing is reported instead. | [Conflict 2](#conflict-2--what-identifies-a-movement). | Yes |
 | 8 | An unsupported bank or country is refused as an invalid request, not reported as one of the four failure reasons. | The four reasons are exactly what a connection can record. Inventing a fifth would either change the data model or persist a value the screens cannot render. The bank picker only offers available banks, so this is a programming error, not a person-facing outcome. | No |
-| 9 | The scraper must be stoppable, and stopping it releases the credentials and ends the session. | Business Rule 1 needs an end to "for one read". The source has no such affordance, so a person who leaves the syncing screen leaves a session and a credential in memory. | No |
+| 9 | The scraper must be stoppable, and stopping it releases the credentials and ends the session. See [Cancellation](#cancellation) for the outcome, cleanup ordering and mid-navigation/mid-injection behavior. | Business Rule 1 needs an end to "for one read". The source has no such affordance, so a person who leaves the syncing screen leaves a session and a credential in memory. | No |
 | 10 | Diagnostic entries mask account identifiers as well as credentials. | The source traces whole product payloads, including full account numbers, and the diagnostic trail travels with a failure that the connection may record. | No |
 | 11 | Bank-specific extras are keyed by stable identifiers rather than the bank's Spanish column headings. | The source uses keys like `Tipo de Movimiento`, which are the bank's display copy and change when the bank rewords a column. Business Rule 17. | No |
 | 12 | Falabella and Pelotillehue are not ported at all, rather than ported and disabled. | Work item #6 says the MVP ships one bank; unported code is code that cannot rot, and their recorded pages would have to be scrubbed and maintained for no shipped value. | No |
 | 13 | The result carries an explicit outcome — complete, partial or failed — rather than leaving the caller to infer it from the presence of an error. | The source reports either completion or failure and returns early on failure, discarding the partial data it had already merged. Work item #6 requires a partial scrape to report partial data. | No |
 | 14 | Parsing zero rows where the bank states a count is a failure of that product's read. | [`bank-scraper.md`](../../../best-practices/stack/bank-scraper.md) requires it, and the bank's own paginator already states the count the source reads. | No |
 | 15 | The línea de crédito is not reported as a product in the MVP. | The source implementation deliberately skips it: at Banco de Chile the line is a facility attached to a cuenta corriente, and its movements already appear on that account, so reporting it as a second product would double-count them. The enumerated type stays reserved. | Yes — if the product owner wants the line shown with its own cupo on the bank detail screen, this becomes a fifth reading routine and an addition to the product-type mapping. |
+| 16 | The whole read has a fixed overall deadline, in addition to each step's own retry bound, so a stalled page cannot hold the browser and credentials open indefinitely (Business Rule 32). | The source implementation bounds individual steps (3 attempts / 1-second wait for a page-level step, 10 attempts / 200-millisecond wait for a single element) but has no ceiling on the read as a whole. | Yes — the exact deadline trades a slower connection's chance of succeeding against how long a person watches the syncing screen; the implementation plan sets the number within this bound. |
 
 ---
 
@@ -825,7 +963,7 @@ Discrete requirement bullets from work item #6, plus the constraints supplied wi
 | 9. Parsers cover separators, `DD/MM/YYYY`, card movements and empty statements | AC7, AC8, AC9, AC10, AC11 |
 | 10. A partial read reports partial data | AC13; Business Rule 19; Decision 13; Use Case 4 |
 | 11. Depends on #1 and #4, consumed by package name | AC29; Depends-on line; Business Rule 24 |
-| 12. Credentials, including the RUT, only in memory for one read | AC2, AC3, AC16, AC32; Business Rules 1, 2, 5, 7; Decision 9 |
+| 12. Credentials, including the RUT, only in memory for one read | AC2, AC3, AC16, AC32; Business Rules 1, 2, 5, 7; Decision 9; [Cancellation](#cancellation) |
 | 13. Whole minor units; Chilean amount and date parsing | AC7, AC8, AC9; Business Rules 9, 11, 12 |
 | 14. Bank knowledge confined to the bank's own directory | AC27; Business Rule 24; Use Case 6 |
 | 15. Enough identity for the sync engine to recognise repeats | AC21, AC22, AC23, AC24; Business Rules 13, 14, 15; [Conflicts 1 and 2](#documented-conflicts) |
