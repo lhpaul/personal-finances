@@ -123,18 +123,27 @@ describe('rut', () => {
 
   describe('Group F — privacy (Decision 9, AGENTS.md non-negotiable 1)', () => {
     // Empty string is excluded: it is vacuously "contained" in every string, so the
-    // not-echoed-in-the-message assertion below is meaningless for it. Non-empty malformed
-    // inputs are what this guarantee actually protects against.
-    const throwingInputs = ['12a45678', '12.345.678', 'abc'];
+    // not-echoed-in-the-message assertion below is meaningless for it. '12.345.678' is excluded
+    // too: it is structurally malformed for computeRutCheckDigit (contains non-digit separators)
+    // but, after normalizeRut strips the separators, it is a structurally *well-formed* RUT body
+    // for formatRut — so formatRut('12.345.678') does not throw and contributes no coverage to
+    // this privacy-specific "never throws with the input in the message" guarantee. That
+    // non-throwing behaviour is asserted separately below, in its own case. Every input kept in
+    // `throwingInputs` is asserted (via `.toThrow`) to actually throw for *both* functions, so a
+    // regression that stops either function from throwing fails this test instead of silently
+    // passing.
+    const throwingInputs = ['12a45678', 'abc'];
 
     it.each(throwingInputs)(
       'computeRutCheckDigit/formatRut error messages for %p never contain the input',
       (input) => {
+        expect(() => computeRutCheckDigit(input)).toThrow(TypeError);
         try {
           computeRutCheckDigit(input);
         } catch (error) {
           expect((error as Error).message).not.toContain(input);
         }
+        expect(() => formatRut(input)).toThrow(TypeError);
         try {
           formatRut(input);
         } catch (error) {
@@ -142,6 +151,10 @@ describe('rut', () => {
         }
       },
     );
+
+    it("formatRut('12.345.678') does not throw — its normalized form is a structurally well-formed RUT body", () => {
+      expect(formatRut('12.345.678')).toBe('1.234.567-8');
+    });
 
     it('computeRutCheckDigit("") and formatRut("") both throw without a value to echo', () => {
       expect(() => computeRutCheckDigit('')).toThrow(TypeError);
