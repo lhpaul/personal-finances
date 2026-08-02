@@ -26,12 +26,17 @@ A route file that contains business logic or a SQL query is in the wrong place.
 built)**: a feature hook calls `getAppDatabase()` (`apps/mobile/src/db/runtime.ts`) and then
 calls `src/db` repository functions directly — no TanStack Query, no `QueryProvider`, no
 `DatabaseProvider`, and no `app/_layout.tsx` change. `@tanstack/react-query` is not a dependency
-of `@finanzas/mobile`. See `use-launch-decision.ts`, `use-onboarding-summary.ts` and
-`use-complete-onboarding.ts` for the reference shape: a hook that awaits `getAppDatabase()`,
-reads/writes through repository functions, and returns a small discriminated-union status
-(`{ status: 'pending' } | { status: 'resolved'; ... }`). Whether the app adopts TanStack Query at
-all for caching/invalidation is a separate, not-yet-made decision — this pattern is what ships
-until that decision changes it.
+of `@finanzas/mobile`. Two hook shapes follow this pattern:
+
+- **Read hooks** — `use-launch-decision.ts` and `use-onboarding-summary.ts`: await
+  `getAppDatabase()`, read through repository functions, and return a small discriminated-union
+  status (`{ status: 'pending' } | { status: 'resolved'; ... }`).
+- **Command hooks** — `use-complete-onboarding.ts`: return an action function (`{ complete }`)
+  that awaits `getAppDatabase()` and writes/navigates when called; no status union, since there is
+  nothing to render while idle.
+
+Whether the app adopts TanStack Query at all for caching/invalidation is a separate, not-yet-made
+decision — this pattern is what ships until that decision changes it.
 
 ## Screen states are not optional
 

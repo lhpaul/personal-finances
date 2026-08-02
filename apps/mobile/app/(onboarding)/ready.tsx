@@ -5,11 +5,17 @@ import { formatWallClockLabel } from '@finanzas/shared-utils';
 
 import { Button, Card, Text } from '../../src/components/ui';
 import { ReadySummaryRow } from '../../src/features/onboarding/components/ReadySummaryRow';
-import { REMINDER_DAY_SEPARATOR } from '../../src/features/onboarding/ready-summary';
+import {
+  REMINDER_DAY_SEPARATOR,
+  banksProductsKey,
+  banksTitleKey,
+  reminderDayKeys,
+  reminderDaysKey,
+} from '../../src/features/onboarding/ready-summary';
 import { useCompleteOnboarding } from '../../src/features/onboarding/use-complete-onboarding';
 import { useOnboardingSummary } from '../../src/features/onboarding/use-onboarding-summary';
 import type { ConnectedBanksSummary, ReminderSettings } from '../../src/db/types';
-import { summarizeReminderDays, type ReminderDaysSummary } from '../../src/features/reminders/summary';
+import { summarizeReminderDays } from '../../src/features/reminders/summary';
 import { screenMetrics, theme } from '../../src/theme';
 
 /** Decorative glyphs, not user-facing copy (implementation plan Decision 11). */
@@ -30,41 +36,48 @@ const DISABLED_REMINDERS: ReminderSettings = { enabled: false, timeOfDay: undefi
  * Every branch below calls the translation function with a literal key (never a variable key),
  * per Decision 13 ("two explicit keys and a `count === 1` check **in code**") — this is what
  * lets `onboarding-catalogue-keys.test.ts`'s static scan verify every key against the catalogue.
+ *
+ * The **decision** of which key applies is delegated to `ready-summary.ts`'s pure, unit-tested
+ * selectors (`reminderDaysKey`, `reminderDayKeys`) — this screen only maps an already-resolved
+ * catalogue key to its literal translation call. That keeps the day-ordering rule defined in
+ * exactly one place (found in review: an earlier revision reimplemented the day-sort and the
+ * weekdays/everyday/custom classification here too, unreachable by `ready-summary.ts`'s own
+ * tests and able to silently drift from them).
  */
-function reminderDaysLabel(
-  t: ReturnType<typeof useTranslation>['t'],
-  summary: ReminderDaysSummary,
-): string {
-  switch (summary.kind) {
-    case 'weekdays':
-      return t('reminders.days_weekdays');
-    case 'everyday':
-      return t('reminders.days_everyday');
-    case 'custom':
-      return summary.days
-        .map((day) => {
-          switch (day) {
-            case 1:
-              return t('reminders.day_1');
-            case 2:
-              return t('reminders.day_2');
-            case 3:
-              return t('reminders.day_3');
-            case 4:
-              return t('reminders.day_4');
-            case 5:
-              return t('reminders.day_5');
-            case 6:
-              return t('reminders.day_6');
-            case 7:
-              return t('reminders.day_7');
-            default:
-              return '';
-          }
-        })
-        .filter((label) => label !== '')
-        .join(REMINDER_DAY_SEPARATOR);
+function translateReminderDayKey(t: ReturnType<typeof useTranslation>['t'], key: string): string {
+  switch (key) {
+    case 'reminders.day_1':
+      return t('reminders.day_1');
+    case 'reminders.day_2':
+      return t('reminders.day_2');
+    case 'reminders.day_3':
+      return t('reminders.day_3');
+    case 'reminders.day_4':
+      return t('reminders.day_4');
+    case 'reminders.day_5':
+      return t('reminders.day_5');
+    case 'reminders.day_6':
+      return t('reminders.day_6');
+    case 'reminders.day_7':
+      return t('reminders.day_7');
+    default:
+      return '';
   }
+}
+
+function reminderDaysLabel(t: ReturnType<typeof useTranslation>['t'], days: number[]): string {
+  const summary = summarizeReminderDays(days);
+  const key = reminderDaysKey(summary);
+  if (key === 'reminders.days_weekdays') return t('reminders.days_weekdays');
+  if (key === 'reminders.days_everyday') return t('reminders.days_everyday');
+  // `reminderDaysKey` returns `undefined` exactly when `summary.kind === 'custom'` (its own
+  // documented contract) — `summary.kind` is narrowed here only for TypeScript, not re-deciding
+  // the classification.
+  return summary.kind === 'custom'
+    ? reminderDayKeys(summary.days)
+        .map((dayKey) => translateReminderDayKey(t, dayKey))
+        .join(REMINDER_DAY_SEPARATOR)
+    : '';
 }
 
 /**
@@ -84,12 +97,14 @@ export default function OnboardingReady() {
   const reminders = summary.status === 'ready' ? summary.reminders : DISABLED_REMINDERS;
 
   const showBanksRow = banks.connectionCount > 0;
+  // The pluralization threshold (`count === 1`) lives once, in `banksTitleKey`/`banksProductsKey`
+  // (`ready-summary.ts`) — this screen only maps the returned key to its literal translation call.
   const banksTitle =
-    banks.connectionCount === 1
+    banksTitleKey(banks.connectionCount) === 'onboarding_ready.banks_title_single'
       ? t('onboarding_ready.banks_title_single', { count: banks.connectionCount })
       : t('onboarding_ready.banks_title_plural', { count: banks.connectionCount });
   const banksProducts =
-    banks.productCount === 1
+    banksProductsKey(banks.productCount) === 'onboarding_ready.banks_products_single'
       ? t('onboarding_ready.banks_products_single', { count: banks.productCount })
       : t('onboarding_ready.banks_products_plural', { count: banks.productCount });
   const banksSubtitle = t('onboarding_ready.banks_subtitle', {
@@ -102,7 +117,7 @@ export default function OnboardingReady() {
     reminders.timeOfDay !== undefined && reminders.days !== undefined
       ? t('reminders.summary', {
           time: formatWallClockLabel(reminders.timeOfDay),
-          days: reminderDaysLabel(t, summarizeReminderDays(reminders.days)),
+          days: reminderDaysLabel(t, reminders.days),
         })
       : undefined;
 
