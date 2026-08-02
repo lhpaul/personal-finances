@@ -39,9 +39,12 @@ row-level security, connection pooling and staged production migrations. None of
 
 - **Money is `INTEGER` minor units.** CLP has no cents. A decimal in an amount is a bug —
   including inside a JSON column.
-- **The inclusion rule is written once.** Totals count a transaction when `excluded_at IS NULL`,
-  at `COALESCE(included_amount, amount)`. Import the shared fragment; a hand-written filter
-  that forgets exclusions is a review blocker, not a nit.
+- **The inclusion rule is written once per layer.** Totals count a transaction when
+  `excluded_at IS NULL`, at `COALESCE(included_amount, amount)`. In SQL, import the shared query
+  fragment from `apps/mobile/src/db`; in-memory code that already has a `Movement` object uses
+  `@finanzas/shared-domain`'s `isIncludedInAnalysis` / `effectiveAmount` / `contributedAmount`
+  instead. A hand-written filter — SQL or JavaScript — that forgets exclusions is a review
+  blocker, not a nit.
 - **Writes from sync are idempotent.** Upsert on `(user_financial_product_id, external_id)`,
   falling back to `dedup_hash`. Never overwrite user-owned columns on conflict.
 - Wrap multi-table writes in a transaction — a sync run touches three tables.

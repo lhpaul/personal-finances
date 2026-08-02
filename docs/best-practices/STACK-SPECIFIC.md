@@ -40,16 +40,25 @@ The rules most likely to be violated in this codebase. Detail lives in the `stac
   `@finanzas/shared-utils` are the only sanctioned CLP formatters — a hand-built amount string
   anywhere else is a review blocker.
 
-- **The inclusion rule is written once.** Totals and charts count a transaction when
-  `excluded_at IS NULL`, at `COALESCE(included_amount, amount)`. Import the shared query
-  fragment from `apps/mobile/src/db`. A hand-rolled `WHERE` that forgets exclusions is a review
-  blocker, not a nit.
+- **The inclusion rule is written once per layer.** Totals and charts count a transaction when
+  `excluded_at IS NULL`, at `COALESCE(included_amount, amount)`. There are exactly two sanctioned
+  statements of this rule: the shared query fragment in `apps/mobile/src/db` for set-based SQL
+  queries, and `isIncludedInAnalysis` / `effectiveAmount` / `contributedAmount` in
+  `@finanzas/shared-domain`'s `inclusion.ts` for in-memory plain objects. Use the SQL fragment
+  inside a repository query; use the domain functions everywhere else (aggregates, screens,
+  tests) that already have a `Movement`-shaped object in hand. A hand-rolled `WHERE`, or a
+  hand-rolled JavaScript restatement of `excludedAt` / `includedAmount`, is a review blocker, not
+  a nit — a third statement of the rule anywhere is exactly the anti-pattern this bullet exists
+  to prevent.
 
 - **Screens never import Drizzle.** `screen → feature hook (TanStack Query) →
   src/db repository`. A `db.select()` inside `app/` fails review.
 
-- **`@finanzas/shared-domain` stays pure.** No React, no SQL, no `expo-*`, no `Date.now()` — pass the
-  clock in. This is what makes the domain rules testable in milliseconds.
+- **`@finanzas/shared-domain` stays pure.** No React, no SQL, no `expo-*`, no `Date.now()` — the
+  clock enters the package as a `DateLocal` string (never a `Date`); ESLint's `sharedDomainPurity`
+  bans the `Date` global outright, in addition to Expo, React (including bare `react`/`react-dom`),
+  React Native, `@finanzas/mobile`, `apps/*` and every SQL library. This is what makes the domain
+  rules testable in milliseconds.
 
 - **Every screen state in the manifest is a real render branch.** A screen is not done until
   each `state_id` under its entry in

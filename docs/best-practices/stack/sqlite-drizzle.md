@@ -56,7 +56,11 @@ calculation.
 ## The inclusion rule
 
 Totals and charts count a transaction when `excluded_at IS NULL`, at
-`COALESCE(included_amount, amount)`. This exists exactly once:
+`COALESCE(included_amount, amount)`. In SQL, this exists exactly once — as the shared query
+fragment below. (The same rule has a second, independently-verified statement over in-memory
+plain objects: `@finanzas/shared-domain`'s `isIncludedInAnalysis` / `effectiveAmount` /
+`contributedAmount`, used by code that already has a `Movement` object instead of a query to
+write. Those are the only two sanctioned statements; a third anywhere is a review blocker.)
 
 ```ts
 // apps/mobile/src/db/fragments.ts

@@ -22,6 +22,14 @@ Applies to every app and package. Adapted from the same conventions in `zeki-pla
 - Money is `number` in minor units at the type level, but treat it as a distinct concept: a
   formatted string never flows back into a calculation. See
   [`sqlite-drizzle.md`](sqlite-drizzle.md).
+- **Temporary exception (tracked as a follow-up, issue #5 Decision 16):** `@finanzas/shared-domain`'s
+  `src/types.ts` is the canonical home for `CategorySource`, `ReviewFlag`, `ExclusionReason` and
+  the `merchant_aliases.match_type` union. `apps/mobile/src/db/types.ts` holds item #3's own
+  pre-promotion copies of the same four closed-set unions, because item #3 was already
+  mid-implementation when this package was filled in and this package cannot import from `apps/`.
+  Promoting `apps/mobile/src/db/types.ts` to re-export from `@finanzas/shared-domain` is a pure
+  move with no schema consequence — file it as a follow-up rather than letting the duplication go
+  unnoticed.
 
 ## Untrusted input
 

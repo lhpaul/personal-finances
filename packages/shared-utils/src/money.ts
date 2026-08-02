@@ -96,11 +96,14 @@ export function formatClp(amountMinorUnits: number, options: FormatClpOptions = 
 
 /**
  * Exact half-up division on the magnitude, over `BigInt` so it stays exact across the full
- * safe-integer range (Decision 6). `denominator` is always one of this module's two
- * compile-time constants (1_000 or 100_000), both even, so `BigInt(denominator) / 2n` has no
- * remainder to lose. Operates on non-negative inputs only — callers pass `Math.abs(...)`.
+ * safe-integer range (Decision 6; contract widened for issue #5's `@finanzas/shared-domain`
+ * consumers). `denominator` may be any positive integer, not just this module's two internal
+ * compile-time constants (1_000 or 100_000): an odd `denominator` has no exact `.5` tie for an
+ * integer `numerator` (`n / d = k + 0.5` requires `d` even), so the truncating
+ * `BigInt(denominator) / 2n` loses nothing even for an odd denominator. Operates on non-negative
+ * inputs only — callers pass `Math.abs(...)`.
  */
-function divideRoundHalfUp(numerator: number, denominator: number): number {
+export function divideRoundHalfUp(numerator: number, denominator: number): number {
   const quotient =
     (BigInt(numerator) + BigInt(denominator) / 2n) / BigInt(denominator);
   return Number(quotient);

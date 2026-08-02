@@ -2,6 +2,7 @@ import {
   addDays,
   deriveDateLocal,
   deriveZonedParts,
+  differenceInDays,
   formatLongDate,
   formatMonthAbbreviation,
   formatMonthYear,
@@ -549,5 +550,43 @@ describe('dates', () => {
         ).toThrow(RangeError);
       },
     );
+  });
+
+  describe('differenceInDays — issue #5 addition', () => {
+    it('same-day difference is 0', () => {
+      expect(differenceInDays('2025-01-15', '2025-01-15')).toBe(0);
+    });
+
+    it('crosses a month boundary', () => {
+      expect(differenceInDays('2025-01-31', '2025-02-01')).toBe(1);
+    });
+
+    it('crosses a leap February', () => {
+      expect(differenceInDays('2024-02-28', '2024-03-01')).toBe(2);
+    });
+
+    it('crosses a non-leap February', () => {
+      expect(differenceInDays('2025-02-28', '2025-03-01')).toBe(1);
+    });
+
+    it('crosses a year boundary', () => {
+      expect(differenceInDays('2024-12-31', '2025-01-01')).toBe(1);
+    });
+
+    it('is negative when `to` precedes `from`', () => {
+      expect(differenceInDays('2025-01-31', '2025-01-01')).toBe(-30);
+    });
+
+    it('matches the plan-quoted example', () => {
+      expect(differenceInDays('2025-01-01', '2025-01-31')).toBe(30);
+    });
+
+    it('throws RangeError on an invalid `from`', () => {
+      expect(() => differenceInDays('2025-02-30', '2025-03-01')).toThrow(RangeError);
+    });
+
+    it('throws RangeError on an invalid `to`', () => {
+      expect(() => differenceInDays('2025-01-01', 'not-a-date')).toThrow(RangeError);
+    });
   });
 });

@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decisions, a ledger-driven starter-content seeder that neither overwrites an edit nor
   resurrects a deletion, and `db:generate` / `db:check` / `db:seed` with a four-mode check that
   mechanically rejects any non-additive change to the stored shape
+- **shared-domain: rules, matching and aggregates** (#5): `@finanzas/shared-domain` now ships the inclusion rule as domain logic (the twin of the SQL fragment in `apps/mobile/src/db/fragments.ts`), merchant alias matching with `prefix` / `contains` / `exact` strategies and normalization, category suggestion with `auto` / `rule` / `user` provenance, and period aggregates — totals, per-category breakdown with largest-remainder percentages that sum to exactly 100%, period-over-period deltas and daily average. The clock is injected as a `DateLocal`; ESLint bans the `Date` global and React imports inside the package.
 
 ### Fixed
 

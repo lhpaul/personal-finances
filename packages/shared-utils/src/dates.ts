@@ -178,6 +178,22 @@ export function shiftMonthPeriod(period: Period, months: number): Period {
 }
 
 /**
+ * Signed day difference: `differenceInDays(from, to) === to - from`, in days
+ * (`differenceInDays('2025-01-01', '2025-01-31') === 30`). Pure UTC civil-date arithmetic
+ * (Decision 3) — issue #5's `@finanzas/shared-domain` depends on this instead of computing day
+ * counts itself, which is what lets that package ban the `Date` global outright. Throws
+ * `RangeError` (via `parseDateLocal`) if either argument is not a valid `DateLocal`.
+ */
+export function differenceInDays(from: DateLocal, to: DateLocal): number {
+  const a = parseDateLocal(from);
+  const b = parseDateLocal(to);
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  const utcFrom = Date.UTC(a.year, a.month - 1, a.day);
+  const utcTo = Date.UTC(b.year, b.month - 1, b.day);
+  return Math.round((utcTo - utcFrom) / millisecondsPerDay);
+}
+
+/**
  * Shifts a week period by `weeks` (signed). Drives the `S-1` / `S-2` chart columns. Throws
  * `RangeError` if `weeks` is not a safe integer, or (via `addDays`) if the shifted week would
  * cross 0100-9999.
