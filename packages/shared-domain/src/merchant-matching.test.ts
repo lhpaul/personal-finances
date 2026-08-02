@@ -182,3 +182,24 @@ describe('resolveMerchant', () => {
     expect(resolveMerchant('UBER BV', [])).toBeNull();
   });
 });
+
+describe('Business Rule 1 — no thrown message interpolates its input', () => {
+  it('an unreachable matchType throws a fixed sentence, not the injected value', () => {
+    const injectedSecretLookingValue = 'super-secret-token-do-not-log-me';
+    const invalidAlias = {
+      id: 'a1',
+      merchantId: 'm1',
+      // Cast past the closed union to reach the defensive branch — a bad DB row could produce
+      // an out-of-union value at runtime even though the type forbids it.
+      matchType: injectedSecretLookingValue as unknown as MerchantMatchType,
+      rawPattern: 'UBER',
+    };
+    expect(() => aliasMatches('UBER BV', invalidAlias)).toThrow(RangeError);
+    try {
+      aliasMatches('UBER BV', invalidAlias);
+    } catch (error) {
+      expect((error as Error).message).toBe('aliasMatches: unknown matchType');
+      expect((error as Error).message).not.toContain(injectedSecretLookingValue);
+    }
+  });
+});

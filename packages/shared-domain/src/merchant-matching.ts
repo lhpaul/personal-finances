@@ -55,8 +55,12 @@ export function aliasMatches(
     case 'contains':
       return ` ${description} `.includes(` ${pattern} `);
     default: {
+      // Fixed sentence, no interpolation of the input (Business Rule 1 — no thrown message in
+      // this module ever echoes caller-supplied content, even for a value this defensive branch
+      // cannot reach through the TypeScript-typed API).
       const exhaustive: never = alias.matchType;
-      throw new RangeError(`aliasMatches: unknown matchType "${String(exhaustive)}"`);
+      void exhaustive;
+      throw new RangeError('aliasMatches: unknown matchType');
     }
   }
 }
