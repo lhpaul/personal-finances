@@ -13,7 +13,9 @@
  *   exists by running it into a scratch copy of `drizzle/` (the real folder is never a write
  *   target).
  * - Mode 2 — additive-only: runs the additivity analyser over every consecutive snapshot pair.
- * - Mode 3 — preservation: added in Step 8, once the committed store snapshot exists.
+ * - Mode 3 — preservation: for every committed `src/db/__fixtures__/store-v*.sql` snapshot,
+ *   migrates an empty store, loads the fixture, takes a census, re-runs the (idempotent) full
+ *   migration history, re-censuses, and asserts nothing pre-existing was lost or altered.
  *
  * Fails on the first failing mode with exit code 1, printing what would be lost.
  */
@@ -32,14 +34,18 @@ import {
   type IntrospectedTable,
   type IntrospectionResult,
 } from '../../src/db/checks/declared-shape';
+import { findPreservationViolations, type Census, type CensusTable } from '../../src/db/checks/preservation';
 import type { SqliteSnapshot } from '../../src/db/checks/snapshot-types';
 import { runMigrations } from '../../src/db/migrate';
+import { loadFixture } from '../../src/db/testing/load-fixture';
+import { DUMP_TABLE_ORDER } from './dump';
 
 const MOBILE_ROOT = path.resolve(__dirname, '..', '..');
 const DRIZZLE_DIR = path.join(MOBILE_ROOT, 'drizzle');
 const META_DIR = path.join(DRIZZLE_DIR, 'meta');
 const CONFIG_PATH = path.join(MOBILE_ROOT, 'drizzle.config.ts');
 const DRIZZLE_KIT_BIN = path.resolve(MOBILE_ROOT, '..', '..', 'node_modules/drizzle-kit/bin.cjs');
+const FIXTURES_DIR = path.join(MOBILE_ROOT, 'src', 'db', '__fixtures__');
 
 interface JournalEntry {
   idx: number;
@@ -259,11 +265,89 @@ function runMode2(): void {
 }
 
 // -------------------------------------------------------------------------------------------
+// Mode 3 — preservation
+// -------------------------------------------------------------------------------------------
+function primaryKeyColumn(sqlite: Database.Database, table: string): string {
+  const columns = sqlite
+    .prepare<[], { name: string; pk: number }>(`PRAGMA table_info(${quoteIdent(table)})`)
+    .all();
+  const pk = columns.find((c) => c.pk === 1);
+  if (!pk) throw new Error(`Table '${table}' has no single-column primary key to census by.`);
+  return pk.name;
+}
+
+function buildCensus(sqlite: Database.Database): Census {
+  const tables: CensusTable[] = DUMP_TABLE_ORDER.map((table) => {
+    const pkColumn = primaryKeyColumn(sqlite, table);
+    const rows = sqlite.prepare(`SELECT * FROM ${quoteIdent(table)}`).all() as Record<string, unknown>[];
+    const byPk: Record<string, Record<string, unknown>> = {};
+    for (const row of rows) {
+      byPk[String(row[pkColumn])] = row;
+    }
+    return { name: table, rows: byPk };
+  });
+  return { tables };
+}
+
+function runMode3(): void {
+  if (!fs.existsSync(FIXTURES_DIR)) {
+    fail('mode 3 (preservation)', `Fixtures directory '${FIXTURES_DIR}' does not exist.`);
+  }
+  const fixtureFiles = fs
+    .readdirSync(FIXTURES_DIR)
+    .filter((name) => /^store-v\d+\.sql$/.test(name))
+    .sort();
+  if (fixtureFiles.length === 0) {
+    fail('mode 3 (preservation)', `No 'store-v*.sql' fixture found under '${FIXTURES_DIR}'.`);
+  }
+
+  const journal = readJournal();
+  const lastEntry = journal.entries[journal.entries.length - 1];
+  if (!lastEntry) fail('mode 3 (preservation)', 'drizzle/meta/_journal.json has no entries.');
+
+  for (const fixtureFile of fixtureFiles) {
+    const fixturePath = path.join(FIXTURES_DIR, fixtureFile);
+    const sqlite = new Database(':memory:');
+    sqlite.pragma('foreign_keys = ON');
+    const db = drizzle(sqlite);
+    try {
+      // The fixture is INSERT-only (Decision 18) — the store it loads into must already have the
+      // full migration history's schema (tables, indexes, triggers) in place.
+      runMigrations(() => migrate(db, { migrationsFolder: DRIZZLE_DIR }), lastEntry.tag);
+      loadFixture(sqlite, fixturePath);
+
+      const before = buildCensus(sqlite);
+      // Idempotent: every migration this fixture's __drizzle_migrations already recorded is
+      // skipped; only a genuinely new migration (added after this fixture was committed) would
+      // run here — which is exactly the case mode 3 exists to prove safe.
+      runMigrations(() => migrate(db, { migrationsFolder: DRIZZLE_DIR }), lastEntry.tag);
+      const after = buildCensus(sqlite);
+
+      const findings = findPreservationViolations(before, after);
+      if (findings.length > 0) {
+        fail(
+          'mode 3 (preservation)',
+          `${fixtureFile}:\n` +
+            findings
+              .map((f) => `- [${f.kind}] ${f.table}${f.primaryKey ? `#${f.primaryKey}` : ''}${f.column ? `.${f.column}` : ''}: ${f.detail}`)
+              .join('\n'),
+        );
+      }
+    } finally {
+      sqlite.close();
+    }
+  }
+
+  ok('mode 3 (preservation)', `${fixtureFiles.length} committed snapshot(s) survive the full migration history unchanged.`);
+}
+
+// -------------------------------------------------------------------------------------------
 function main(): void {
   runMode0();
   runMode1();
   runMode2();
-  console.log('\ndb:check passed (modes 0-2; mode 3 arrives once the store snapshot fixture exists).\n');
+  runMode3();
+  console.log('\ndb:check passed (modes 0-3).\n');
 }
 
 main();
