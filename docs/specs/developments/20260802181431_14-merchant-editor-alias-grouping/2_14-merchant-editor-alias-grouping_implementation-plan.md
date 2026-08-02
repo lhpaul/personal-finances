@@ -41,6 +41,7 @@ semantics need real tests.
 | #34 — i18n infrastructure | Merged | Flat-key catalogues and `i18next/no-literal-string` |
 | #8 — onboarding | **Interface, first-lander creates** | `apps/mobile/src/db/runtime.ts` (`getAppDatabase()`) is specified by #8's merged plan but does not exist on `develop`. See [Decision 2](#decision-2--getappdatabase-is-created-by-whichever-item-lands-first) |
 | #13 — categorization flow | Sequencing only, **not blocking** | #13 provides the in-app entry point and must pass the `categoryId` route param defined in [Decision 3](#decision-3--the-a9-seam-is-one-optional-route-param-named-categoryid). #14 imports nothing from #13 and is reachable by deep link without it |
+| #12 — home screen | Sequencing only, **not blocking** | #12 ships the `__DEV__`-only `/(dev)/sample-data` route that loads the committed fixture onto a device. The smoke runbook uses it; nothing in this item's code depends on it, and the repository tests do not need it |
 
 ---
 
@@ -262,6 +263,13 @@ So `MonthlyBars` lives at `apps/mobile/src/features/merchants/components/Monthly
 `View`s with percentage heights, colours and radii read from `apps/mobile/src/theme.ts`, no literal
 hex or spacing. When #17 promotes a real chart primitive it replaces this file; the PR description
 says so.
+
+**Do not touch `apps/mobile/src/test-utils/mu-class-map.ts`.** Its six `mu-bars*` entries are
+`status: 'deferred'` with the note "Deferred to #17 (Dashboard charts)." (Verification Log).
+`mu-class-coverage.test.ts` asserts that every `primitive` entry's `owners` resolve to barrel
+exports of `src/components/ui/index.ts`; a screen-local component is deliberately not a barrel
+export, so reclassifying these entries to `primitive` would fail that assertion. They stay
+`deferred` until #17 ships the real primitive.
 
 ### Decision 12 — The statistics window is the current month and the two before it, anchored to today
 
@@ -504,6 +512,18 @@ The hook test opens an in-memory store with `openMigratedMemoryDb()` from
 `apps/mobile/src/db/testing/memory-db.ts` and mocks `apps/mobile/src/db/runtime` so
 `getAppDatabase()` resolves to it. No test loads a native module.
 
+**Existing repo-wide guard tests the new files must satisfy** — none of them needs editing, but
+each constrains how the screen is written:
+
+| Guard | Constraint on this item |
+| --- | --- |
+| `apps/mobile/src/__tests__/no-style-literals.test.ts` | Scanner B scans `app/` and `src/` and flags a numeric literal assigned directly to `height`, `width`, `padding*`, `margin*`, `gap`, `border*Radius`, `border*Width`, `fontSize`, `lineHeight`, `top`/`right`/`bottom`/`left`, plus any hex or `rgb()` colour. `MonthlyBars` must express bar heights as percentage **strings** (`'55%'`) or read numbers from `theme.ts` / `componentMetrics`. Where a literal is genuinely correct, use the scanner's `// style-literal-allow: <reason>` directive rather than disabling the test |
+| `apps/mobile/src/__tests__/no-naked-text.test.ts` | Every string renders through the `Text` primitive, never a bare React Native `Text` or a naked string child |
+| `apps/mobile/src/__tests__/mu-class-coverage.test.ts` | Leave the six `mu-bars*` entries in `mu-class-map.ts` as `deferred` — see [Decision 11](#decision-11--the-monthly-bar-chart-is-screen-local-not-a-design-system-primitive) |
+| `apps/mobile/src/__tests__/route-manifest-parity.test.ts` | Asserts the derived route-file set equals the manifest's 25 MVP routes. This item replaces the body of an existing route file and adds no route, so the test is unaffected — do not add or move a route file |
+| `apps/mobile/src/db/__tests__/db-access-boundary.test.ts` | No file outside `src/db/` may import `drizzle-orm`, `expo-sqlite` or `better-sqlite3` — the feature hook calls repository functions only |
+| `apps/mobile/src/db/__tests__/inclusion-rule-single-definition.test.ts` | The monthly totals must read through `isIncluded` / `includedAmount` from `src/db/fragments.ts`, never restate the condition |
+
 **Regression suite**: the repository has no separate automated regression suite beyond Jest and the
 fidelity gate; both are covered above.
 
@@ -642,9 +662,10 @@ the singular is required by i18next and is the honest Spanish for a count of one
 and the two `not_found_*` keys have no mockup source and are recorded as
 [A6](#assumption-register) / [A7](#assumption-register).
 
-Category names and emoji come from `listCategories(db, locale)` in
-`apps/mobile/src/db/repositories/categories.ts` — they are data, not copy, and never enter the
-catalogues.
+Category names and emoji come from `listCategories(db, { income, locale })` in
+`apps/mobile/src/db/repositories/categories.ts` (verified signature — the second argument is an
+object, not a bare locale) — they are data, not copy, and never enter the catalogues. The `income`
+flag is `0 | 1`, which is exactly the direction selector [A5](#assumption-register) needs.
 
 ---
 

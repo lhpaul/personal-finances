@@ -95,8 +95,8 @@ confirmed"
    by hand as **Comida**.
 2. Re-open the editor and change the default category to **Supermercado** (Step 3's mechanics), then
    tap **Guardar**.
-3. Navigate to the transactions list (`finanzas:///(tabs)/transactions`) and find the 2026-01-16
-   `MERCADOLIBRE` movement, and also the 2026-01-14 one.
+3. Open the **Transacciones** tab from the tab bar and find the 2026-01-16 `MERCADOLIBRE` movement,
+   and also the 2026-01-14 one.
 
 **Expected result**: Both movements keep the category they had before Step 4. The hand-categorized
 one still reads **Comida**. No movement was re-categorized to **Supermercado**. The new default is
@@ -139,7 +139,7 @@ disclosure count N equals the number of rows in the card.
 candidate to alias, and the count is aliases plus candidates. No navigation happened and no
 confirmation dialog appeared.
 
-2. Tap **Cerrar**, then navigate to the transactions list and find the two `MERPAGO*MERCADOLIBRE`
+2. Tap **Cerrar**, then open the **Transacciones** tab and find the two `MERPAGO*MERCADOLIBRE`
    movements (2025-12-20 and 2026-01-06).
 
 **Expected result**: Both now show **MercadoLibre Chile** as their merchant. Their category, note,
@@ -280,9 +280,15 @@ Each checkbox maps to an acceptance criterion from the work item brief.
 | Entity | Scenario | How to load |
 | --- | --- | --- |
 | `merchants` / `merchant_aliases` starter content | `mercadolibre` → `MercadoLibre Chile`, default category **Compras**, alias `MERCADOLIBRE COMPRA` | Applied automatically on first launch by the bootstrap seed path |
-| Merchant-editor movements | Four attributed to `mercadolibre` (one of them hand-categorized as **Comida**), two `MERPAGO*MERCADOLIBRE` and one `ML CHILE SPA` with no merchant | `pnpm --filter @finanzas/mobile db:seed` rebuilds `apps/mobile/src/db/__fixtures__/store-v1.sql`; load it into the dev build the same way the other mobile runbooks do |
+| Merchant-editor movements | Four attributed to `mercadolibre` (one of them hand-categorized as **Comida**), two `MERPAGO*MERCADOLIBRE` and one `ML CHILE SPA` with no merchant | `pnpm --filter @finanzas/mobile db:seed` rebuilds `apps/mobile/src/db/__fixtures__/store-v1.sql`. On device, load it from the `__DEV__`-only sample-data route that item #12 ships (`/(dev)/sample-data`) — the same panel #12's runbook uses |
 
 Re-running `db:seed` twice must leave `git status` clean — the fixture is byte-deterministic.
+
+> **Dependency**: the on-device fixture loader is #12's `__DEV__` sample-data route, and there is no
+> other way to produce movements without live bank credentials until #10 (the sync engine) ships. If
+> #12 has not landed when this runbook is executed, load the fixture with whatever `__DEV__` loader
+> the build provides and record which one was used; do not run the app against live credentials to
+> satisfy a smoke test.
 
 ---
 
