@@ -99,7 +99,27 @@ identical to `origin/develop` at that moment.
 | #14's merchant route and its param name | `git show origin/implementation-plan/14-merchant-editor-alias-grouping:…/2_14-merchant-editor-alias-grouping_implementation-plan.md`, Decision 3 | Route `/categorize/merchant/[merchantId]`, with one **optional** param named `categoryId`. This item pushes the route with no param at all, so the #13/#14 param-name difference cannot affect it (Decision 8) |
 | Catalogue key rules | `apps/mobile/src/i18n/__tests__/catalogue-parity.test.ts` | Flat dotted snake_case keys matching `^[a-z0-9]+(?:_[a-z0-9]+)*(?:\.[a-z0-9]+(?:_[a-z0-9]+)*)*$`; identical `es` / `en` key sets; every value a non-empty string; no nested objects. 122 keys today |
 | React render-testing library availability | `grep -rn "testing-library" apps/mobile/package.json package.json` | Absent. Screens are verified through pure functions, static source scans and the device runbook (precedent: #2, #34, #8, #13) |
+| The in-memory test helpers this plan names | `grep -rn "export function loadFixture\|export async function openBootstrappedMemoryDb" apps/mobile/src/db/testing/*.ts` | `testing/load-fixture.ts:12` and `testing/memory-db.ts:60`. Both exist today; Decision 11 and Scenario 22 consume them unchanged |
+| The typed bootstrap rejection the concurrency addendum names | `grep -n "DatabaseBootstrapError" apps/mobile/src/db/bootstrap.ts` | `export class DatabaseBootstrapError extends Error` at line 22, thrown at lines 63 and 73. The error-propagation claim is not hypothetical |
 | Open pull requests at plan time (bounded same-surface scope) | `gh pr list --state open --json number,title,headRefName` | #64 `implementation-plan/15-transactions-list`, #63 `implementation-plan/19-…`, #62 `implementation-plan/14-…`, #61 `feature/47-design-fidelity-gate`, #60 `fix/12-plan-post-merge-review`, #46 `feature/6-…`, #44 `feature/5-…` |
+
+### Unverified claims — the implementer must confirm before proceeding
+
+Every symbol in the table below is described by a **merged plan document**, not by code that
+exists on `develop` at `09fb7dd`. Each is therefore recorded here as *unverified*, and
+[Implementation Order Step 0](#implementation-order) re-checks it against merged `develop` and
+**stops the run** on a mismatch rather than adapting silently. No claim in this plan about these
+symbols should be read as a claim about shipped code.
+
+| Symbol | Recorded shape | Owner (and its state) |
+| --- | --- | --- |
+| `getAppDatabase(): Promise<AppDatabase>` in `src/db/runtime.ts` | Memoized, clears its memo on failure, rejects with `DatabaseBootstrapError` | #8 — plan merged, implementation pending |
+| `ExcludeSheet` and its props | `visible`, `onCancel`, `onConfirm({ reason, note })`, plus this item's additive `reasons` / `showNote` | #13 — plan merged, implementation pending |
+| `CategoryGrid` | Presentational chip grid rendering a `CategoryChoice[]` plus the *Elegir otra* tile | #13 — same |
+| `buildCategoryChoices({ suggestion, used, taxonomy })`, `MAX_CATEGORY_CHIPS` | Pure; suggestion first, capped at seven | #13 — same |
+| `setUserCategory(db, id, categoryId, ports)`, `excludeTransaction(db, id, { reason, note }, ports)`, `listMostUsedCategories(db, …)` | #13 Decision 5's signatures | #13 — same |
+| `useFidelityPreview()`, `fidelityTestId(screenId)` in `src/lib/fidelity-preview.ts` | `{ active, state }`; `fidelity-<screenId>` | #47 — plan merged, implementation open on PR #61 |
+| `suggestCategory({ currentCategorySource, merchant })` | Returns `null` for a user-sourced category, no merchant, or no default | #5 — open PR #44; reaches this screen only through `buildCategoryChoices` |
 
 ---
 
@@ -114,7 +134,7 @@ identical to `origin/develop` at that moment.
 | Ownership of the `*.db.test.ts` Jest routing | The two additive lines in `apps/mobile/jest.config.js` belong to **#12**; later items reuse the convention and add the lines only if #12's implementation has not landed them | #12's merged plan, Infrastructure block (`f1fc56e`); #13 Decision 16 records the same | 2026-08-02T18:39Z, repo `09fb7dd` | Same-surface siblings #12, #13, #15. The two lines are byte-identical in every plan, so the later lander is a no-op | `Verified` |
 | Fidelity contract path, lifecycle vocabulary, preview helpers, and the #16 coverage set | `scripts/mobile-ui/fidelity-targets.json`; `status: "planned" \| "wired"`; `apps/mobile/src/lib/fidelity-preview.ts` exports `useFidelityPreview()` and `fidelityTestId()`; #16 owns **4** targets | #47's merged implementation plan (Decisions 2, 6, 9 and the coverage-set table) | 2026-08-02T18:39Z, repo `09fb7dd` | Same-surface open PRs: #61 (#47's own implementation) and #64 (#15's four `transactions` targets). #15's `screen_id` set is disjoint from `transaction-detail` | `Verified` — Step 0 re-verifies against merged `develop`, not against the plan document |
 | Function-name ownership inside `src/db/repositories/transactions.ts` | This item claims `getTransactionContext`, `setTransactionNote`, `reincludeTransaction` | The four sibling plan documents (Verification Log row *"Function names other in-flight items add…"*) | 2026-08-02T18:39Z, repo `09fb7dd` | Same-surface items #10, #12, #13 (plans merged) and #15 (plan PR #64). Enumerated and disjoint | `Verified` |
-| Reusable categorization surfaces | `src/features/categorization/components/ExcludeSheet.tsx`, `components/CategoryGrid.tsx`, `category-choices.ts` (`buildCategoryChoices`, `MAX_CATEGORY_CHIPS`), and the repository writes `setUserCategory` / `excludeTransaction` | #13's merged implementation plan, Decisions 5–8 and its Layer-by-Layer block | 2026-08-02T18:39Z, repo `09fb7dd` | Current invocation item `{#16}`; #13's implementation has not opened a PR yet, so no competing definition exists | `Verified` at plan time against a **merged plan, unimplemented code**. Step 0 re-verifies each symbol against merged `develop` and stops on a mismatch (Risk R1) |
+| Reusable categorization surfaces | `src/features/categorization/components/ExcludeSheet.tsx`, `components/CategoryGrid.tsx`, `category-choices.ts` (`buildCategoryChoices`, `MAX_CATEGORY_CHIPS`), and the repository writes `setUserCategory` / `excludeTransaction` | #13's merged implementation plan, Decisions 5–8 and its Layer-by-Layer block | 2026-08-02T18:39Z, repo `09fb7dd` | Current invocation item `{#16}`; #13's implementation has not opened a PR yet, so no competing definition exists | `Verified` at plan time against a **merged plan, unimplemented code** — every such symbol is listed in [Unverified claims](#unverified-claims--the-implementer-must-confirm-before-proceeding). Step 0 re-verifies each against merged `develop` and stops on a mismatch (Risk R1) |
 | `mu-list` / `mu-item*` / `mu-topbar*` ownership | Stay `deferred`; screens compose these rows locally in their feature folder | `apps/mobile/src/test-utils/mu-class-map.ts` at `09fb7dd`; #13 Decision 13; #15 Decision 11; #9's Layer-by-Layer | 2026-08-02T18:39Z, repo `09fb7dd` | Same-surface open PRs #62, #63, #64 — all leave these entries `deferred` | `Verified` — this plan leaves `MU_CLASS_MAP` unchanged (Decision 10) |
 | Navigation seam into this screen | A movement row in `#screen=transactions` pushes `/transactions/[transactionId]`; #15 creates no route file and plans nothing about this screen's internals | #15's plan Decision 13, on open PR #64 | 2026-08-02T18:39Z, PR #64 head | Same-surface open PR: #64 only | `Verified` at plan time against an **open** PR. Step 0 re-verifies the seam against whatever #15 merged and, if #15 has not merged, the runbook's Step 2 falls back to the deep link (runbook *Known Limitations*) |
 | **Exclusion-reason vocabulary offered by this screen** | The detail sheet offers the **four** reasons the mockup draws (`personal_transfer`, `shared_expense`, `not_relevant`, `other`); the *display* mapping covers all **five** stored values, so a movement excluded as `cash_withdrawal` elsewhere still renders its reason | `design/mockups/mobile/index.html#screen=transaction-detail&state=exclude-sheet` (four radios) vs `#screen=categorize&state=exclude-sheet` (five radios) vs the `exclusion_reason` column's five-value domain in `docs/project/4-database-model.md` line 270 | 2026-08-02T18:39Z, repo `09fb7dd` | Current invocation item `{#16}`; same-surface sibling #13 (plan merged) offers all five from its own sheet. No open PR changes either drawing | `Resolved` — decision owner: this run's tech-lead, under the run's *"no human available; decisions yours within the brief"* instruction. AGENTS.md non-negotiable 6 makes the drawing the contract, and the fidelity capture of `exclude-sheet` would fail against a fifth radio. Recorded as **Decision 5** and **Assumption A3**, and raised for LH in the PR body |
@@ -181,9 +201,10 @@ second category mapper would be a duplicate of logic that already exists.
 Four guarantees these writes carry, each with a named enforcement mechanism:
 
 - **Never a delete.** No `delete` statement is added anywhere. The existing file-level comment in
-  `repositories/transactions.ts` — *"There is no `deleteTransaction` export anywhere in this
-  file"* — stays true, and Scenario 18's guard asserts the vocabulary is absent from this item's
-  screen tier too. "Eliminar" appears in no catalogue key this item adds (BR3).
+  `repositories/transactions.ts` — *"There is no `deleteTransaction` export anywhere in this file
+  or in `src/db` … a movement is never deleted, only excluded"* — stays true, and Scenario 18's
+  guard asserts the vocabulary is absent from this item's screen tier too. "Eliminar" appears in
+  no catalogue key this item adds (BR3).
 - **Never a bank fact.** Neither write's `set` object names `rawDescription`, `amount`, `type`,
   `occurredAt`, `dateLocal`, `externalId` or `dedupHash`. Scenario 5 asserts this at the store
   level by comparing every bank-owned column before and after each write; Scenario 18 asserts it
@@ -239,7 +260,9 @@ Rather than write a second sheet, this item adds two **optional** props to #13's
 defaulted so #13's own call site is unchanged:
 
 ```ts
-// Illustrative — adapt during implementation.
+// Illustrative — adapt during implementation. UNVERIFIED: #13's component does not exist on
+// develop yet, so these prop names are read from #13's merged plan, not from code. Step 0
+// re-checks them and stops on a mismatch.
 // apps/mobile/src/features/categorization/components/ExcludeSheet.tsx (#13 owns this file)
 export type ExcludeSheetProps = {
   visible: boolean;
