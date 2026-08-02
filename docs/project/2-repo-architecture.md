@@ -112,9 +112,12 @@ apps/mobile → @finanzas/{shared-domain, shared-utils, bank-scraper}
 @finanzas/shared-domain → @finanzas/shared-utils
 ```
 
-`@finanzas/shared-domain` must never import from `apps/mobile`, from `expo-*`, or from any
-SQL library. Enforced by the `sharedDomainPurity` `no-restricted-imports` rule, defined in the
-root `eslint.config.mjs` and applied by `packages/shared-domain/eslint.config.mjs`.
+`@finanzas/shared-domain` must never import from `apps/mobile`, from `expo-*`, from React
+(including bare `react` / `react-dom`), or from any SQL library, and it must never read the
+`Date` global — the clock enters the package as a `DateLocal` string produced by
+`@finanzas/shared-utils`'s `deriveDateLocal`. Enforced by the `sharedDomainPurity`
+`no-restricted-imports` and `no-restricted-globals` rules, defined in the root
+`eslint.config.mjs` and applied by `packages/shared-domain/eslint.config.mjs`.
 
 `@finanzas/shared-utils` purity (no React, no Expo/React Native modules, no SQL library, no
 Node I/O) is enforced the same way, by the `sharedUtilsPurity` `no-restricted-imports` rule,

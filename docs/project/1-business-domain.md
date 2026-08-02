@@ -64,8 +64,10 @@ and cannot be deleted.
    (with a reason) but the record stays. "Eliminar" does not exist as a concept for scraped
    movements.
 4. **A transaction counts toward totals and charts when `excluded_at IS NULL`**, at
-   `COALESCE(included_amount, amount)`. This rule is implemented once and every aggregate reads
-   through it.
+   `COALESCE(included_amount, amount)`. This rule is implemented once per layer — the SQL fragment
+   in `apps/mobile/src/db/fragments.ts` for set-based queries, and `isIncludedInAnalysis` /
+   `effectiveAmount` / `contributedAmount` in `@finanzas/shared-domain`'s `inclusion.ts` for
+   in-memory plain objects — and every aggregate reads through one of the two.
 5. **Re-syncing is idempotent.** A movement already stored must never be inserted twice —
    identified by the bank's id, or by a content hash when the bank provides none.
 6. **Categorization is never mandatory.** Every categorization screen offers "omitir",

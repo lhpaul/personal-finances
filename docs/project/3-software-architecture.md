@@ -41,8 +41,11 @@ change: one directory, unit-tested script generators, no app code touched.
 
 ### 3. Domain logic is pure and separate
 
-`@finanzas/shared-domain` holds merchant matching, category suggestion, the inclusion rule and period
-aggregates as pure functions over plain data. No React, no SQL, no I/O.
+`@finanzas/shared-domain` holds merchant matching (`merchant-matching.ts`), category suggestion
+(`category-suggestion.ts`), the inclusion rule (`inclusion.ts`) and period aggregates
+(`aggregates.ts`, `apportionment.ts`) as pure functions over plain data. No React, no SQL, no I/O,
+and no `Date` global — every date-dependent function takes the instant as an injected `DateLocal`
+parameter.
 
 **Why:** these are the rules most likely to be wrong and the cheapest to test. They run in
 milliseconds in Jest without a simulator.
@@ -123,8 +126,10 @@ screen → feature hook (TanStack Query) → src/db repository → Drizzle → S
 
 - `src/db` is the only module that emits SQL. Repository functions return domain types.
 - Aggregates used by `home` and `dashboard` are SQL, not JS loops over the full table.
-- The inclusion rule (`excluded_at IS NULL`, `COALESCE(included_amount, amount)`) is
-  implemented **once**, in a shared query fragment. Duplicating it is a review blocker.
+- The inclusion rule (`excluded_at IS NULL`, `COALESCE(included_amount, amount)`) has exactly
+  **two** sanctioned statements: the shared SQL query fragment (`apps/mobile/src/db`) for
+  set-based aggregates, and `@finanzas/shared-domain`'s `inclusion.ts` for in-memory plain
+  objects. A third statement anywhere is a review blocker.
 - Writes go through repositories so sync bookkeeping (`updated_at`, dedup) stays in one place.
 
 ## Security Model
@@ -202,7 +207,9 @@ pnpm --filter @finanzas/mobile exec maestro test .maestro/   # device flows, req
 Non-negotiable cases:
 
 - **Re-sync is idempotent** — run the same scrape fixture twice, assert the row count is stable.
-- **Excluded and partially-included movements** are honoured by every aggregate.
+- **Excluded and partially-included movements** are honoured by every aggregate — see
+  `packages/shared-domain/src/inclusion.ts`'s `INCLUSION_RULE_CASES` and the Fixture A/B
+  assertions in `aggregates.test.ts` for the hand-derived expected numbers.
 - **Deleting a category** re-parents its transactions to ✨ Otros.
 - **No credential ever reaches the database or a log line** — asserted in the scraper tests.
 - **Migrations are additive** — open a fixture DB from the previous schema version and migrate.
