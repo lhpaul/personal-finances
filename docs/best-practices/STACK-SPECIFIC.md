@@ -4,7 +4,8 @@
 
 TypeScript (strict) · Expo SDK 54 / React Native · Expo Router · SQLite (`expo-sqlite`) +
 Drizzle ORM · `expo-secure-store` · `react-native-webview` (on-device bank scraping) ·
-TanStack Query · `react-native-svg` · Jest + Maestro · Turborepo + pnpm workspaces.
+feature hooks over `getAppDatabase()` + repositories (TanStack Query is a possible future
+direction, not installed) · `react-native-svg` · Jest + Maestro · Turborepo + pnpm workspaces.
 
 Architecture and rationale: [`../project/3-software-architecture.md`](../project/3-software-architecture.md).
 
@@ -51,8 +52,8 @@ The rules most likely to be violated in this codebase. Detail lives in the `stac
   a nit — a third statement of the rule anywhere is exactly the anti-pattern this bullet exists
   to prevent.
 
-- **Screens never import Drizzle.** `screen → feature hook (TanStack Query) →
-  src/db repository`. A `db.select()` inside `app/` fails review.
+- **Screens never import Drizzle.** `screen → feature hook (getAppDatabase() + repository
+  functions) → src/db repository`. A `db.select()` inside `app/` fails review.
 
 - **`@finanzas/shared-domain` stays pure.** No React, no SQL, no `expo-*`, no `Date.now()` — the
   clock enters the package as a `DateLocal` string (never a `Date`); ESLint's `sharedDomainPurity`
