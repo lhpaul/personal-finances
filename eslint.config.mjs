@@ -177,11 +177,27 @@ export const sharedUtilsPurity = {
               'readline/*',
               'repl',
               'vm',
+              'node:process',
+              'process',
+              'node:os',
+              'os',
             ],
             message:
               '@finanzas/shared-utils must stay pure: no React, no Expo/React Native modules, no SQL library, and no Node I/O.',
           },
         ],
+      },
+    ],
+    'no-restricted-globals': [
+      'error',
+      {
+        name: 'process',
+        message:
+          '@finanzas/shared-utils must stay pure: no Node I/O. Do not read process.env or any other process global; pass configuration in as an explicit function argument instead.',
+      },
+      {
+        name: 'global',
+        message: '@finanzas/shared-utils must stay pure: no Node globals.',
       },
     ],
   },
