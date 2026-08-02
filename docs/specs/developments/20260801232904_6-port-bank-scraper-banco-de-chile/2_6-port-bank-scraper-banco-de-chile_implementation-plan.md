@@ -801,10 +801,14 @@ the same function.
 In the page: `'01/03/2026'` → `'2026-03-01'` by pure string manipulation (split on `/`,
 zero-pad, reorder). No `new Date`, no `toISOString`.
 
-On the RN side: `parseBankDateLocal(text)` re-validates the result with `isValidDateLocal` and
-`toDateLocal` from `@finanzas/shared-utils`, which reject a non-calendar day (`31/02/2026`) with
-a `RangeError`. A rejected date yields `parse_failed` for that product rather than a silently
-wrong movement.
+On the RN side: `parseBankDateLocal(text)` splits the digits into `{ year, month, day }` itself
+(no `@finanzas/shared-utils` call is needed for that split) and passes that `CivilDate` to
+`@finanzas/shared-utils`'s `toDateLocal`, which is the function that actually throws `RangeError`
+for a non-calendar day (`31/02/2026`) — verified against `packages/shared-utils/src/dates.ts`,
+where `toDateLocal` validates `year`/`month`/`day` and throws before returning the canonical
+`DateLocal` string. (`isValidDateLocal` is a plain boolean predicate over an already-formatted
+`DateLocal` string, not a throwing validator, and is not what does the rejecting here.) A rejected
+date yields `parse_failed` for that product rather than a silently wrong movement.
 
 This replaces the source's `formatDate`, which did
 `new Date(+year, +month - 1, +day).toISOString()` — a local-zone construction rendered as UTC,
