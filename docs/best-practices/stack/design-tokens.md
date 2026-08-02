@@ -11,7 +11,9 @@ No hardcoded colour, spacing, radius, font size or shadow in app code. If a valu
 2. Mirror it in `design/mockups/mobile/index.html` `:root`
 3. Expose it in `apps/mobile/src/theme.ts`
 
-All three in the **same commit**. A drifting token file is worse than no token file.
+All three in the **same commit**. A drifting token file is worse than no token file. A token
+added without a `theme.ts` mirror fails `theme-tokens-parity.test.ts` in CI — see
+[`theme.ts`'s parity guarantee](#themets-theme-vs-componentmetrics) below.
 
 ```ts
 // ✅
@@ -20,25 +22,97 @@ All three in the **same commit**. A drifting token file is worse than no token f
 <View style={{ padding: 16, borderRadius: 20 }} />
 ```
 
+## `theme.ts`: `theme` vs `componentMetrics`
+
+`apps/mobile/src/theme.ts` exports two values:
+
+- **`theme`** — a hand-written, parity-tested mirror of `design/tokens.json`'s ten token groups
+  (`colors`, `gradients`, `chart`, `typography`, `space`, `radius`, `shadow`, `layout`,
+  `touchTarget`, `categoryIcons`). `theme-tokens-parity.test.ts` asserts deep equality in both
+  directions, so `theme` can never silently drift from the token file, and a new top-level
+  token group fails the test until someone decides whether to mirror or explicitly exclude it.
+- **`componentMetrics`** — per-primitive geometry read off the mockup's `mu-*` CSS that is
+  **not** a design token: border widths, control sizing (button heights, chip dimensions, …),
+  glyph sizes, letter-spacing/line-height overrides, and decomposed shadow layers (React
+  Native's shadow API has no single `box-shadow` equivalent). Every entry's doc comment cites
+  its `.mu-*` selector and `design/mockups/mobile/index.html` line number. `componentMetrics` is
+  deliberately **not** parity-tested against `tokens.json` — it would defeat its purpose as a
+  geometry scratchpad distinct from the token contract.
+
+**Graduation rule**: a `componentMetrics` value graduates to `design/tokens.json` when it is a
+colour, or when two unrelated primitives use the same value for the same semantic reason (this
+is why shadow decompositions live in a shared `componentMetrics.shadow.{sm,card}` group rather
+than being duplicated per primitive).
+
+Both `theme` and `componentMetrics` live in `theme.ts`, so "no hardcoded literal" holds
+literally: `no-style-literals.test.ts` scans every `.ts`/`.tsx` file under `apps/mobile/app/`
+and `apps/mobile/src/` (excluding `theme.ts` itself and test files) for hex colours,
+`rgb()`/`rgba()` colours, and numeric literals assigned to a tracked style property
+(`padding*`, `margin*`, `fontSize`, `borderRadius`, `width`, `height`, …).
+
+## Touch targets: visual box vs `hitSlop`
+
+Several mockup controls are visually smaller than the 44pt minimum touch target
+(`theme.touchTarget.min`): `Button` `size="sm"` is 40pt tall, `Checkbox`/`Radio` are 22×22,
+`Switch` is 27pt tall. Shrinking these to "look right" per the mockup would fail accessibility;
+enlarging them to 44pt would break mockup fidelity. The fix is
+`apps/mobile/src/components/ui/_internal/touch-metrics.ts`:
+
+- `withMinTarget({ width?, height })` computes a symmetric `hitSlop` that expands the
+  **invisible** press area to reach `theme.touchTarget.min`, without changing the primitive's
+  **visual** box.
+- `TOUCH_METRICS` is a single record — one entry per pressable primitive — that every
+  pressable's `hitSlop` prop reads from. `touch-targets.test.ts` iterates that same record and
+  asserts every entry reaches the minimum on both axes, so there is one enumeration and no
+  drift between what a component uses and what the test checks.
+
+`Checkbox`, `Radio` and `Switch` are the one exception: each may render as a plain `View` (no
+`hitSlop`) when rendered inside an external pressable row that owns the press (e.g. a settings
+list item) — only the component that owns the press applies `hitSlop`.
+
 ## Component layer
 
-`apps/mobile/src/components/ui/` mirrors the `mu-*` primitives in the mockups one-to-one. Building a screen means
-composing these, not restyling from scratch:
+`apps/mobile/src/components/ui/` mirrors the `mu-*` primitives in the mockups one-to-one (23
+components — see the theme and design-system primitives implementation plan for the full
+`mu-class` classification of every stylesheet class into `primitive` / `utility` / `deferred`).
+Building a screen means composing these, not restyling from scratch:
 
-| Mockup class | Component |
+| Mockup class(es) | Component |
 |--------------|-----------|
-| `.mu-btn` + modifiers | `<Button variant="primary\|outline\|ghost\|danger">` |
-| `.mu-card` | `<Card>` |
-| `.mu-tx` | `<TransactionRow>` |
-| `.mu-badge` | `<Badge tone="ok\|warn\|danger\|info\|celebration">` |
-| `.mu-chip` | `<CategoryChip selected suggested>` |
+| `.mu-h1`…`.mu-xs`, `.mu-eyebrow`, `.mu-label`, `.mu-hint`, `.mu-mono`, `.mu-center` | `<Text variant="h1\|h2\|h3\|body\|bodyLead\|small\|xs\|eyebrow\|label\|hint\|mono" center>` |
+| `.mu-btn` + modifiers | `<Button variant="primary\|muted\|outline\|ghost\|danger\|dangerSoft" size="md\|sm">` |
+| `.mu-card` + modifiers | `<Card variant="default\|tight\|flat">` |
+| `.mu-hero` | `<Hero gradient="challenge\|income\|expense\|celebration\|brand">` |
+| `.mu-badge` | `<Badge tone="neutral\|ok\|warn\|danger\|info\|celebration">` |
+| `.mu-chip` | `<CategoryChip state="default\|selected\|suggested">` |
 | `.mu-stat` | `<StatTile tone="income\|expense">` |
-| `.mu-note` | `<Note tone>` |
-| `.mu-input`, `.mu-check`, `.mu-radio`, `.mu-switch` | `<TextField>`, `<Checkbox>`, `<Radio>`, `<Switch>` |
+| `.mu-note` | `<Note tone="info\|ok\|warn\|danger">` |
+| `.mu-tx` | `<TransactionRow direction="in\|out" state="default\|pending\|excluded">` |
+| `.mu-field`, `.mu-input` | `<TextField>` |
+| `.mu-check` | `<Checkbox>` |
+| `.mu-radio` | `<Radio>` |
+| `.mu-switch` | `<Switch>` |
+| `.mu-segment` | `<Segment>` |
+| `.mu-pill` | `<Pill>` |
+| `.mu-overlay` | `_internal/Overlay` (shared by `Sheet`/`Modal`, not in the public barrel) |
+| `.mu-sheet` | `<Sheet>` |
+| `.mu-modal` | `<Modal>` |
 | `.mu-tabbar` | `<TabBar>` |
+| `.mu-progress` | `<Progress>` |
+| `.mu-steps` | `<Steps>` |
+| `.mu-dots` | `<Dots>` |
+| `.mu-empty` | `<EmptyState>` |
+| `.mu-amount` | `<Amount>` — `formatted` string or `minorUnits` + a required `format` callback; never a default CLP formatter (that seam belongs to `@finanzas/shared-utils`) |
 
 A one-off style inside a feature is a signal the primitive is missing. Add it to
 `src/components/ui/` and to `#screen=ds-components`.
+
+### Checking a primitive before writing a screen
+
+Run the app and open `finanzas://gallery` (or navigate to `/gallery`) — a `__DEV__`-only route
+that renders every primitive with sample data, grouped to match `#screen=ds-components` and
+`#screen=ds-typography`. It never ships in a release build (see
+[`mobile-ui-fidelity.md`](mobile-ui-fidelity.md)).
 
 ## Colour semantics
 

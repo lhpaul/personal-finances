@@ -61,6 +61,7 @@ apps/mobile/                # @finanzas/mobile — the only shippable artifact
   src/
     components/ui/          # Design-system primitives mirroring design/tokens.json
     db/                     # Drizzle schema, migrations, seeds, repositories — the only SQL
+    dev/                    # __DEV__-only surfaces (design-system gallery) — never ships
     features/               # One folder per domain area
     lib/ · hooks/ · i18n/ · types/ · test-utils/
     theme.ts                # Mirror of design/tokens.json
@@ -185,6 +186,10 @@ pnpm dev:mobile
 
 # Mockups (the UI contract — open before implementing any screen)
 open design/mockups/mobile/index.html
+
+# Design-system gallery (dev build only — every apps/mobile/src/components/ui/ primitive with
+# sample data; never reachable in a release build). With `pnpm dev:mobile` running, navigate to
+# /gallery (finanzas://gallery) from the dev client's URL bar or deep-link tooling.
 
 # Build
 pnpm build

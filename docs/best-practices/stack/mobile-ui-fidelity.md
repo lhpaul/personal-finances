@@ -42,6 +42,9 @@ open 'design/mockups/mobile/index.html#screen=transactions&state=filters'
 
 - Compose the shared primitives in `src/components/ui/` before writing a one-off style. A
   one-off is a signal the primitive is missing — add it there and to `#screen=ds-components`.
+  Before writing a screen, check the primitive in the running app at `finanzas://gallery`
+  (`/gallery`) — a `__DEV__`-only route rendering every primitive with sample data. It has no
+  reachable entry point in a release build. See [`design-tokens.md`](design-tokens.md#checking-a-primitive-before-writing-a-screen).
 - Tokens come from `apps/mobile/src/theme.ts`, mirroring `design/tokens.json`. No literal hex,
   spacing or radius. See [`design-tokens.md`](design-tokens.md).
 - **No user-facing literals in JSX.** Copy comes from the i18n catalogues, and the Spanish
