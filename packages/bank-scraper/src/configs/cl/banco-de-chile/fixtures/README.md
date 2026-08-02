@@ -40,6 +40,8 @@ not by review alone — see the "Rules an author must follow" table below and
 | `account-transactions-empty.html` | `banco-de-chile.account-transactions.script.ts` | AC11: a product with no movements in the window is a successful read of zero movements. |
 | `account-transactions-count-mismatch.html` | `banco-de-chile.account-transactions.script.ts` | AC12: the paginator states more movements than are present, producing `parse_failed` for that product rather than an empty success. |
 | `account-transactions-duplicate-rows.html` | `banco-de-chile.account-transactions.script.ts` | AC22: two rows with identical date, amount and description are reported as two movements, distinguishable by position. |
+| `account-transactions-detail-row.html` | `banco-de-chile.account-transactions.script.ts` | The paired-row shape the live Angular Material table uses: a movement row followed by a differently-shaped detail/expansion row, which the structural row filter skips instead of misreading. |
+| `account-transactions-unparsable-label.html` | `banco-de-chile.account-transactions.script.ts` | A paginator label present but with no parseable stated total — normalized to `null` (not `NaN`) so the AC12 stated-count check stays active, and the read still succeeds with the row actually present. |
 | `credit-card-details.html` | `banco-de-chile.credit-card-details.script.ts` | AC1, AC6, AC9: the national balance/cupo summary and the card header; an unbilled and a billed movement, direction read from the populated column. |
 | `credit-card-details-international.html` | `banco-de-chile.credit-card-details.script.ts` | AC10: an international (more-than-7-column) table reports its movement in USD, unconverted, with no peso amount invented. |
 

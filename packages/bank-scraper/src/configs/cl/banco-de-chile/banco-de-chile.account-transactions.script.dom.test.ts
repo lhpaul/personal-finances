@@ -99,6 +99,30 @@ describe('accountTransactionsScript — AC12: stated count exceeds parsed rows',
   });
 });
 
+describe('accountTransactionsScript — unparsable paginator label (CodeRabbit finding #6)', () => {
+  it('normalizes an unparsable stated total to null instead of leaking NaN, and still succeeds', async () => {
+    resetScriptGlobals();
+    renderFixture(loadFixtureHtml(FIXTURES_DIR, 'account-transactions-unparsable-label.html'));
+    const { messages } = await runWithProduct(accountTransactionsScript());
+    const movements = movementsFromMessages(messages);
+    expect(movements).toHaveLength(1);
+    expect(messages.filter((m) => m.eventType === 'error')).toEqual([]);
+    expect(messages.some((m) => m.eventType === 'state-change' && m.stepId === 'get-transactions-start')).toBe(true);
+  });
+});
+
+describe('accountTransactionsScript — structural row filter (CodeRabbit finding #9)', () => {
+  it('skips a differently-shaped detail/expansion row instead of producing a garbage movement', async () => {
+    resetScriptGlobals();
+    renderFixture(loadFixtureHtml(FIXTURES_DIR, 'account-transactions-detail-row.html'));
+    const { messages } = await runWithProduct(accountTransactionsScript());
+    const movements = movementsFromMessages(messages);
+    expect(movements).toHaveLength(1);
+    expect(movements[0]).toMatchObject({ dateText: '03/03/2026', outgoingText: '$10.000', incomingText: null });
+    expect(messages.filter((m) => m.eventType === 'error')).toEqual([]);
+  });
+});
+
 describe('accountTransactionsScript — AC22: two identical-looking movements stay two', () => {
   it('reports both rows, distinguishable only by position', async () => {
     resetScriptGlobals();

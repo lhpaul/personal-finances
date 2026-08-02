@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!--
+  Hand-authored fixture, not captured from a live session (Documented Deviation D3). See
+  fixtures/README.md for provenance. The paginator label is present but does not contain "de "
+  (a wording or markup change on the bank's side). Proves Number.parseInt(undefined, 10) is
+  normalized to null rather than leaking NaN into the stated-count-vs-parsed check (CodeRabbit
+  finding #6) — this must still succeed with the one row actually present, not silently disable
+  the AC12 check while returning success.
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Banco de Chile - Movimientos</title>
+  </head>
+  <body>
+    <fenix-movimientos-cuenta>
+      <table>
+        <tbody>
+          <tr>
+            <td>05/03/2026</td>
+            <td>Compra Farmacia</td>
+            <td></td>
+            <td><span>$5.000</span></td>
+            <td><span></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </fenix-movimientos-cuenta>
+    <div class="mat-paginator-label">Sin informacion adicional</div>
+  </body>
+</html>

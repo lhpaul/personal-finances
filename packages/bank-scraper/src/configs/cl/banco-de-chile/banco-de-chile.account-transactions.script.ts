@@ -25,6 +25,17 @@ const MOVEMENTS_TABLE_TAG = 'fenix-movimientos-cuenta';
 const MOVEMENTS_TABLE_LABEL = 'MovementsTable';
 const MOVEMENTS_TABLE_SELECTOR = `document.getElementsByTagName('${MOVEMENTS_TABLE_TAG}')[0]`;
 const LOG_GROUP = 'account-transactions';
+// A generous, explicit bound on paginator clicks. No real statement has this many pages; this
+// exists only to guarantee the pagination loop below always terminates (CodeRabbit finding #7)
+// even if the bank ever renders the "next page" control in a state this script's disabled check
+// does not recognize.
+const MAX_PAGES = 500;
+// A movement row always has exactly five <td> cells (date, description, blank, outgoing,
+// incoming — see fetchTransactionsOfPageHelper). The live Angular Material table pairs each
+// movement row with a hidden detail/expansion row (documented simplification below); checking
+// the cell count structurally filters out any row shape other than a movement row, rather than
+// assuming every <tr> is one (CodeRabbit finding #9).
+const MOVEMENT_ROW_CELL_COUNT = 5;
 
 export function accountTransactionsScript(input: { priorMonths?: number } = {}): string {
   // `priorMonths` is accepted for signature compatibility (spec Decision 4) but not yet wired to
@@ -66,13 +77,18 @@ export function accountTransactionsScript(input: { priorMonths?: number } = {}):
 
       const paginatorLabels = document.getElementsByClassName('mat-paginator-label');
       const paginatorLabel = paginatorLabels[1] || paginatorLabels[0];
-      const statedTotal = paginatorLabel
+      // Number.parseInt(undefined, 10) is NaN, not null — normalize explicitly so the
+      // stated-count check below can distinguish "no stated total" from "unparsable label"
+      // instead of silently disabling itself (movements.length < NaN is always false).
+      const parsedStatedTotal = paginatorLabel
         ? Number.parseInt((paginatorLabel.textContent || '').trim().split('de ')[1], 10)
-        : null;
+        : Number.NaN;
+      const statedTotal = Number.isNaN(parsedStatedTotal) ? null : parsedStatedTotal;
 
       const movements = [];
       let position = 0;
       let page = 1;
+      let hitPageLimit = false;
       while (true) {
         const rowsInPage = fetchTransactionsOfPage(logGroup, position);
         for (let i = 0; i < rowsInPage.length; i++) {
@@ -81,12 +97,32 @@ export function accountTransactionsScript(input: { priorMonths?: number } = {}):
         }
         sendTrace({ logGroup, message: 'Found ' + rowsInPage.length + ' rows in page ' + page });
         const nextPageButton = document.getElementsByClassName('mat-paginator-navigation-next')[0];
-        if (!nextPageButton || nextPageButton.disabled) {
+        // Angular Material does not guarantee the exhausted-page signal is an
+        // HTMLButtonElement's disabled property — check aria-disabled and the disabled CSS
+        // class too, so a markup change does not turn this into an infinite loop.
+        const nextPageExhausted = !nextPageButton
+          || nextPageButton.disabled
+          || nextPageButton.getAttribute('aria-disabled') === 'true'
+          || nextPageButton.classList.contains('mat-button-disabled');
+        if (nextPageExhausted) {
+          break;
+        }
+        if (page >= ${MAX_PAGES}) {
+          hitPageLimit = true;
           break;
         }
         nextPageButton.click();
         await wait(200);
         page++;
+      }
+
+      if (hitPageLimit) {
+        sendTrace({ logGroup, type: 'error', message: 'Reached the ' + ${MAX_PAGES} + '-page pagination limit without an exhausted paginator; stopping' });
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          eventType: 'error',
+          data: { code: 'parse_failed', productInstanceId: window.productId, attempts: 1 },
+        }));
+        return;
       }
 
       if (statedTotal !== null && movements.length < statedTotal) {
@@ -108,7 +144,15 @@ export function accountTransactionsScript(input: { priorMonths?: number } = {}):
     })().then(function () {
       sendTrace({ logGroup: '${LOG_GROUP}', message: 'Account transactions script finished' });
     }).catch(function (error) {
+      // An unguarded DOM dereference above throws into this catch instead of the retry wrapper
+      // (that code deliberately runs outside generateExecutableStepFunction — pagination and the
+      // stated-count check need to see the accumulated movements). Without this ERROR, the engine
+      // would see only a TRACE and wait for the full read deadline (CodeRabbit finding #8).
       sendTrace({ logGroup: '${LOG_GROUP}', type: 'error', message: 'Account transactions script failed: ' + error.message });
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        eventType: 'error',
+        data: { code: 'parse_failed', productInstanceId: window.productId },
+      }));
     });
   `;
 }
@@ -124,10 +168,16 @@ function fetchTransactionsOfPageHelper(): string {
       const rows = body.getElementsByTagName('tr');
       // Documented simplification: the source skips every other <tr> (rows[i += 2]) because the
       // live Angular Material table pairs each movement row with a hidden detail/expansion row.
-      // Hand-authored fixtures have no reason to replicate that specific DOM quirk — one <tr>
-      // per movement here.
+      // Rather than assuming every <tr> is a movement row (or hard-coding a stride that could be
+      // wrong), filter structurally: only a row with exactly MOVEMENT_ROW_CELL_COUNT cells is
+      // treated as a movement (CodeRabbit finding #9) — a differently-shaped detail/expansion row
+      // is skipped with a trace instead of producing a garbage movement or throwing.
       for (let i = 0; i < rows.length; i += 1) {
         const row = rows[i];
+        if (row.children.length !== ${MOVEMENT_ROW_CELL_COUNT}) {
+          sendTrace({ logGroup, message: 'Skipped a row with ' + row.children.length + ' cells (expected ' + ${MOVEMENT_ROW_CELL_COUNT} + ')' });
+          continue;
+        }
         const dateText = row.children[0].innerHTML.trim();
         const rawDescription = row.children[1].innerHTML.trim();
         const outgoingCell = row.children[3] && row.children[3].children[0];
