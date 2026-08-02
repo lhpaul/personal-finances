@@ -41,6 +41,7 @@ open 'design/mockups/mobile/index.html#screen=transactions&state=filters'
 
 ### Commands
 
+<!-- workflow-shell-contract: bash -->
 ```bash
 pnpm fidelity:contract                          # validates scripts/mobile-ui/fidelity-targets.json
                                                  # against design/mockups/mobile/mockup-manifest.js
@@ -50,6 +51,7 @@ pnpm fidelity --screen home --state pending      # full gate: mockup + simulator
 pnpm fidelity --issue 12                         # every target owned by one issue
 pnpm fidelity --all --dry-run                    # lists every target, its profile, fixture and status
 pnpm fidelity:verify-gate                        # proves the comparator discriminates, both directions
+bash scripts/mobile-ui/verify-gate.sh            # equivalent direct invocation of fidelity:verify-gate
 ```
 
 `pnpm fidelity:contract` and `pnpm fidelity:test` run in CI on every PR (no browser, no
@@ -63,10 +65,12 @@ The gate uses a single profile, `iphone-393x852` (matching the mockup's `393×85
 so no capture ever needs resampling to compare), on a dedicated simulator named
 `Finanzas Fidelity`:
 
+<!-- workflow-shell-contract: bash -->
 ```bash
 xcrun simctl create "Finanzas Fidelity" "iPhone 16" "<runtime id, e.g. com.apple.CoreSimulator.SimRuntime.iOS-26-5>"
 xcrun simctl boot "Finanzas Fidelity"
 npx expo run:ios --device "Finanzas Fidelity"   # native dev build; Expo Go is not sufficient
+bash scripts/mobile-ui/capture-simulator.sh --profile iphone-393x852 --check-only   # verify resolution
 ```
 
 If `iPhone 16` is not creatable on the installed runtime, retry with `iPhone 15`, then
