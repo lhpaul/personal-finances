@@ -94,7 +94,8 @@ lists `7b14899`, `1bacb6e`, `98a29d2`, all `docs/specs/**` plan edits for items 
 | Every `mu-*` class this screen draws already has an owner | `grep -nE "'mu-(segment\|chip\|sheet\|modal\|overlay\|field\|input\|label\|grid-3\|btn-row\|list\|item\|topbar)" apps/mobile/src/test-utils/mu-class-map.ts` | `mu-segment*`→`Segment`; `mu-chip*`→`CategoryChip`; `mu-sheet*`/`mu-overlay`→`Sheet`; `mu-modal*`/`mu-overlay--center`→`Modal`; `mu-field`/`mu-input`→`TextField`; `mu-label`→`Text`; `mu-grid-3`/`mu-btn-row`→`utility`; `mu-list`/`mu-item*`/`mu-topbar*`→**`deferred` to #19/#12**. → **`MU_CLASS_MAP` needs no edit by this item** (Decision 13) |
 | `CategoryChip` cannot draw an emoji-only chip today | `sed -n '15,70p' apps/mobile/src/components/ui/CategoryChip.tsx` | `label: string` is **required** and is rendered as a second `Text` plus the `accessibilityLabel`. The mockup's icon-grid chip has no label → Decision 9 makes `label` optional (additive) |
 | Primitive prop shapes this plan composes | `grep -nE "export type .*Props" -A8 apps/mobile/src/components/ui/{Segment,Sheet,Modal,TextField,Button}.tsx` | `Segment { options: {value,label}[]; value; onChange }`; `Sheet { visible; onRequestClose; children }`; `Modal { visible; onRequestClose; icon?; title; children? }`; `TextField { label?; value; onChangeText; placeholder?; hint?; error?; locked?; secureTextEntry? }`; `ButtonVariant = 'primary'\|'muted'\|'outline'\|'ghost'\|'danger'\|'dangerSoft'` (camelCase) |
-| No gesture/animation library is installed | `grep -nE "gesture-handler\|reanimated\|draggable" apps/mobile/package.json pnpm-lock.yaml` | `0 matches` in `apps/mobile/package.json`; item #8's merged plan line 384 states they *"are not installed and are not needed"* → Decision 10 |
+| No gesture/animation library is installed | `grep -cE "gesture-handler\|reanimated\|draggable" apps/mobile/package.json`; `grep -nE "react-native-gesture-handler\|react-native-reanimated\|draggable-flatlist" pnpm-lock.yaml` | `0` in the app manifest. The lockfile has **4** matches, all inside `expo-router`'s `peerDependencies` / `peerDependenciesMeta` blocks (lines 3198-3213) and all marked `optional: true` — declared as optional peers, **not installed**. Item #8's merged plan (line 384) states they *"are not installed and are not needed"* → Decision 10 |
+| **Runtime APIs this plan names but cannot execute here** | `ls node_modules/react-native node_modules/expo-router` from the repo root | **Not installed in the current tree** — the same situation items #8 and #19 recorded. `PanResponder`, `Animated`, `View.onLayout` (React Native core) and `useFocusEffect` (re-exported by `expo-router`) are therefore **unverified — the implementer must confirm each against the installed packages before proceeding** (Implementation Order steps 3 and 6; Risks table). All four are used by items #8/#12's merged plans under the same flag |
 | The `db` Jest project's match rules | `cat apps/mobile/jest.config.js` | Two projects: `app` (`jest-expo`, ignores `src/db/`) and `db` (`testEnvironment: 'node'`, `testMatch: ['<rootDir>/src/db/**/*.test.ts']`). The `src/features/**/*.db.test.ts` routing is **item #12's** two additive lines and is **not present yet** (Decision 12) |
 | The inclusion-rule scanner's three rules | `sed -n '1,50p' apps/mobile/src/db/checks/inclusion-rule-scan.ts` | A: a `sql` template mentioning `excluded` / `included_amount` / `includedAmount`; B: `isNull(`/`isNotNull(` on `.excludedAt`; C: the literals `excluded_at` / `included_amount`. A `count(*)` that names none of them is trivially compliant → Decision 6 |
 | Aggregate-in-SQL rule | `sed -n '117,124p' docs/best-practices/stack/sqlite-drizzle.md` | *"Aggregate in SQL, not in JS"*, *"Repository functions return domain types, not Drizzle rows"*, *"Wrap multi-table writes"* → Decisions 2 and 6 |
@@ -289,8 +290,8 @@ mockup's coincidence hide it:
 
 - **`monthCount`** — movements of this category whose `date_local` falls inside the current month
   window (`getMonthPeriod(deriveDateLocal(new Date()))`). Rendered as the row subtitle **only when
-  it is greater than zero**, which is exactly how the mockup draws it (3 of the 7 non-fallback
-  expense rows have no subtitle).
+  it is greater than zero**, which is exactly how the mockup draws it (only 3 of the 7 non-fallback
+  expense rows carry a subtitle; the other 4 rows have none).
 - **`totalCount`** — every movement of this category, all time. This is the number the delete modal
   must state, because deletion re-parents *all* of them, not this month's.
 
@@ -469,7 +470,7 @@ place.
 | A1 | 🟡 ✨ Otros cannot be deleted **or renamed**, there is exactly one per direction, and it is the system fallback | `BEHAVIOR.md` → `settings-categories` (🟡); `docs/project/1-business-domain.md` *Transaction category*; the `protect_otros_categories` trigger | The plan does not survive its reversal |
 | A2 | The ✨ Otros row's `onclick="go(…,'edit')"` in the mockup is navigation boilerplate, not an affordance (Resolution R2) | Every `mu-item` in the mockup carries the same handler; the ✨ Otros row is the only one without a `☰` handle and the only one whose subtitle says *"no se puede eliminar"* | One `onPress` in `app/settings/categories.tsx` |
 | A3 | The create flow reuses the edit sheet's two fields (*Nombre*, *Ícono*) with the create button's own copy as the sheet title, and **no** *Eliminar categoría* button | The mockup draws a create **button** but no create sheet. Inventing a different form would add fields the drawing does not have | The `mode` branch in `CategoryEditorSheet.tsx` and two catalogue keys |
-| A4 | A row's subtitle is rendered only when its month count is greater than zero | Exactly how the mockup draws it — 3 of 7 non-fallback expense rows have no `mu-item__sub` | One conditional in the row mapper |
+| A4 | A row's subtitle is rendered only when its month count is greater than zero | Exactly how the mockup draws it — only 3 of the 7 non-fallback expense rows carry a `mu-item__sub`; the other 4 have none | One conditional in the row mapper |
 | A5 | The delete modal's number is the **all-time** count of the category's movements, not the month count (Decision 6) | The modal copy says *"de esta categoría"* with no period qualifier, and deletion re-parents every movement. The mockup's two `5`s coincide because its sample device has only current-month data | One field in `CategoryWithUsage` and one catalogue argument |
 | A6 | The mockup's 8-row / 5-row lists are sample data; the screen renders all 10 and 6 seeded categories plus user-created ones (Decision 15) | `BEHAVIOR.md` *"16 categorías seed desde `design/tokens.json`"*; the tokens file lists 10 + 6 | Not reversible in code — it is what the store contains |
 | A7 | The icon grid offers the direction's seeded glyphs (from `design/tokens.json`, ✨ excluded because it is the fallback's identity), plus the edited category's current emoji when it is not among them, pre-selected | The mockup's six chips are food glyphs for a category called *Comida* — contextual sample data. The tokens file is the only shipped glyph set in the design contract | One constant in `emoji-palette.ts` |
@@ -737,6 +738,7 @@ The developer updates these **after** implementation; they are not edited during
 | Item #47 (PR #61) merges with a different mapping shape than the one read at plan time | Low | Low | Re-verification step 5 re-reads the contract file rather than trusting this plan's table; the flip is R3-contingent either way |
 | A sibling item adds its own reorder or usage-count function to `repositories/categories.ts`, causing a merge conflict | Low | Low | Re-verification step 3 lists the file's exports before editing; #13's `listMostUsedCategories` is the only known sibling addition and does not overlap |
 | The optimistic reorder and a focus re-read disagree, showing a flicker back to the old order | Med | Low | The `reloadToken` stamp in the concurrency table discards a stale read; scenario 16 pins the failure branch |
+| Four runtime APIs are **unverified** because `node_modules` is absent from the plan-time tree: `PanResponder`, `Animated`, `View.onLayout` and `useFocusEffect` | Med | Low | Flagged as *unverified — the implementer must confirm before proceeding* in the Verification Log. The plan names the **responsibility and the owning file**, not the call signature: the gesture stays inside `components/CategoryReorderList.tsx` whatever the API turns out to be, and if `useFocusEffect` is unavailable from `expo-router` the fallback is the `reloadToken` bump on screen mount, which items #8 and #12 already rely on |
 
 ---
 
@@ -865,6 +867,14 @@ Each step ends in a state where `pnpm lint && pnpm typecheck && pnpm test` passe
   repository already provides, that the trigger is `BEFORE DELETE` only, that no gesture library is
   installed, and what #47's live contract file already contains for this screen (read from PR #61's
   branch, not from its plan prose).
+- **Technical accuracy**: Checked — every repository signature, primitive prop, variant string,
+  trigger definition, lint-scanner rule and best-practice quote this plan names was read from the
+  actual source file at `961cc69` and recorded in the Verification Log, including #47's contract and
+  validator, which were read from PR #61's branch rather than from its plan prose. The four runtime
+  APIs whose packages are absent from the plan-time `node_modules` tree (`PanResponder`, `Animated`,
+  `View.onLayout`, `useFocusEffect`) and item #19's not-yet-written `ListRow` prop names are
+  explicitly flagged **unverified — the implementer must confirm before proceeding**, each with an
+  owning Implementation Order step, a re-verification check and a named fallback.
 - **Behavioural guarantees**: Checked — "never orphans, never cascades" names its mechanism (the
   merged `deleteCategory` transaction, unmodified); "✨ Otros cannot be deleted or renamed" names
   three mechanisms and the one level where each applies (Decision 3's table); "✨ Otros stays last"
