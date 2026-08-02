@@ -529,6 +529,39 @@ preset that cannot load the native driver.
       consumed as they are.
 - [ ] `packages/bank-scraper` — **not modified.** Consumed type-only (Decision 16).
 
+### Application — the headless feature module
+
+All of these are new, under `apps/mobile/src/features/sync/` (the first folder under
+`src/features/`). None of them imports `drizzle-orm`, `expo-sqlite`, `better-sqlite3`,
+`expo-secure-store` or any React module; the database is reached only through
+`src/db/repositories/*`, and `@finanzas/bank-scraper` is imported type-only (Decision 16).
+
+- [ ] `types.ts` — `ScraperRunner` (Decision 16), `SyncDeps`
+      (`{ db, ports, runner, ready }`), `SyncRequest`, `SyncRunResult` and `SyncSummary`. The
+      summary is the spec's Operational Visibility list, exactly:
+      `{ productsDiscovered, productsRefreshed, movementsStored, movementsAlreadyKnown,
+      foreignCurrencyMovementsStored, failedProductInstanceIds }`. `SyncRunResult` is
+      `{ status: 'completed'; summary; connectionState }` or
+      `{ status: 'refused'; reason: 'read_in_progress' }`. The summary is returned, never
+      persisted (spec Decision 12).
+- [ ] `sync-lock.ts` — `acquireReadLock`, `isReadInProgress`, `__resetReadLockForTests`
+      (Decision 13).
+- [ ] `auto-sync.ts` — `AUTOMATIC_SYNC_INTERVAL_MS`, `isDueForAutomaticSync`,
+      `selectConnectionsDueForAutomaticSync` (Decision 12). Pure; takes no database handle.
+- [ ] `map-read-result.ts` — pure mapping from `ScrapeResult` to `SyncWriteInput`: product and
+      movement field mapping, `occurred_at` derivation via `canonicalInstantForDateLocal`
+      (Decision 14), `extras` → `metadata`, the `foreignCurrencyMovementsStored` tally, plus
+      `selectFailureReason`, `SYNC_FAILURE_PRECEDENCE` and `composeFailureMessageKey`
+      (Decision 9) and the connection record each outcome implies (Decision 8).
+- [ ] `sync-engine.ts` — `runSync(deps, request)`: await `deps.ready`, acquire the lock, load the
+      connection, `markConnectionSyncing`, run the injected scraper, map the result, call
+      `applySyncWrite`, release the lock in `finally`. Catches `MovementValidationError` and a
+      runner rejection into the standalone failure-record branch (Decisions 5, 6, 13).
+- [ ] `app-open.ts` — `runAppOpenSync(deps)`: `clearStuckSyncingConnections` first, then
+      `selectConnectionsDueForAutomaticSync`, then `runSync` per connection in sequence
+      (Decisions 11, 12).
+- [ ] `index.ts` — the feature barrel: `runSync`, `runAppOpenSync`, the types, and nothing else.
+
 ### Frontend / UI
 
 - [ ] **None.** This item renders nothing, adds no route, no screen state and no i18n catalogue
@@ -573,8 +606,10 @@ same connection row.
   success, failure, refusal and throw.
 - **Race conditions at initialization** — a sync requested before `ensureDatabaseReady()` resolves
   would query tables that may not exist. `runSync` therefore awaits the caller-supplied
-  `deps.ready` promise (the bootstrap single-flight promise `src/db/bootstrap.ts` already exposes)
-  before touching the database, and the app-open sweep is defined to run after it.
+  `deps.ready` promise before touching the database. That promise is whatever the app shell got
+  back from its own `ensureDatabaseReady(deps)` call: `src/db/bootstrap.ts` keeps its single-flight
+  promise module-private and returns it from that function, so the caller holds it and this feature
+  does not re-derive it.
 - **Race conditions at teardown** — a result that arrives after cancellation is item #6's problem
   and it already drops it (`isFinalized()` guard). On this side, a cancelled read still returns a
   `ScrapeResult`, so the engine has exactly one code path: store what was gathered, set `idle`. There
@@ -971,7 +1006,12 @@ export async function applySyncWrite(
   `canonicalInstantForDateLocal`, `isPesoDenominated`, `isDueForAutomaticSync`,
   `selectFailureReason`, `composeFailureMessageKey`, `clearStuckSyncingConnections`,
   `acquireReadLock`) is spelled identically in the Decisions, the Layer-by-Layer list, the Code
-  Samples and the Implementation Order.
+  Samples and the Implementation Order. Two inconsistencies were found by this gate and fixed
+  before the PR was opened: Phase A had no way to know a brand-new product's id before hashing
+  (resolved by `listProductIdsByExternalId` plus id reservation), and the feature-module files
+  appeared only in the Implementation Order (resolved by the
+  [Application layer](#application--the-headless-feature-module) subsection, which also pins the
+  `SyncSummary` shape to the spec's Operational Visibility list).
 - Verification support: Checked — every claim about existing behaviour (one `buildDedupInput`
   caller, literal fixture hashes, no delete path, absent `features/` folder, the two dependency
   contracts) cites a Verification Log command and its result.
