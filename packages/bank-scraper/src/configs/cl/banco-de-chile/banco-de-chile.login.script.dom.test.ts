@@ -5,6 +5,9 @@ import { BANCO_DE_CHILE_CREDENTIAL_ENTRY_ORIGIN } from './banco-de-chile.constan
 import { loginScript } from './banco-de-chile.login.script';
 
 const FIXTURES_DIR = join(__dirname, 'fixtures');
+// The login script includes one real, unmocked wait(1000) before checking for a rejection
+// banner (see banco-de-chile.login.script.ts) — runInjectedScript awaits it for real.
+const TEST_TIMEOUT_MS = 10000;
 
 function getRutInput(): HTMLInputElement {
   return document.getElementById('ppriv_per-login-click-input-rut') as HTMLInputElement;
@@ -20,76 +23,76 @@ describe('loginScript — against login.html (AC1, AC6)', () => {
   beforeEach(() => {
     resetScriptGlobals();
     renderFixture(loadFixtureHtml(FIXTURES_DIR, 'login.html'));
-    jest.useFakeTimers();
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
+  it(
+    'fills the rut and password inputs unchanged and clicks submit exactly once',
+    async () => {
+      let clickCount = 0;
+      getSubmitButton().addEventListener('click', () => {
+        clickCount += 1;
+      });
+      await runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
 
-  it('fills the rut and password inputs unchanged and clicks submit exactly once', async () => {
-    let clickCount = 0;
-    getSubmitButton().addEventListener('click', () => {
-      clickCount += 1;
-    });
-    const resultPromise = runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
-    await jest.advanceTimersByTimeAsync(2000);
-    await resultPromise;
+      expect(getRutInput().value).toBe('12.345.678-5');
+      expect(getPasswordInput().value).toBe('clave1234');
+      expect(clickCount).toBe(1);
+    },
+    TEST_TIMEOUT_MS,
+  );
 
-    expect(getRutInput().value).toBe('12.345.678-5');
-    expect(getPasswordInput().value).toBe('clave1234');
-    expect(clickCount).toBe(1);
-  });
+  it(
+    'a password containing quotes, backslashes and angle brackets reaches the form unchanged (AC4)',
+    async () => {
+      const punctuationPassword = `ZZ"\\'<>&ZZ`;
+      await runInjectedScript(loginScript({ rut: '12.345.678-5', password: punctuationPassword }));
+      expect(getPasswordInput().value).toBe(punctuationPassword);
+    },
+    TEST_TIMEOUT_MS,
+  );
 
-  it('a password containing quotes, backslashes and angle brackets reaches the form unchanged (AC4)', async () => {
-    const punctuationPassword = `ZZ"\\'<>&ZZ`;
-    const resultPromise = runInjectedScript(loginScript({ rut: '12.345.678-5', password: punctuationPassword }));
-    await jest.advanceTimersByTimeAsync(2000);
-    await resultPromise;
-    expect(getPasswordInput().value).toBe(punctuationPassword);
-  });
-
-  it('does not post invalid_credentials when no rejection banner is present', async () => {
-    const resultPromise = runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
-    await jest.advanceTimersByTimeAsync(2000);
-    const { messages } = await resultPromise;
-    const errorMessages = messages.filter((m) => m.eventType === 'error');
-    expect(errorMessages).toEqual([]);
-  });
+  it(
+    'does not post invalid_credentials when no rejection banner is present',
+    async () => {
+      const { messages } = await runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
+      const errorMessages = messages.filter((m) => m.eventType === 'error');
+      expect(errorMessages).toEqual([]);
+    },
+    TEST_TIMEOUT_MS,
+  );
 });
 
 describe('loginScript — against login-invalid-credentials.html (AC14)', () => {
   beforeEach(() => {
     resetScriptGlobals();
     renderFixture(loadFixtureHtml(FIXTURES_DIR, 'login-invalid-credentials.html'));
-    jest.useFakeTimers();
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
+  it(
+    'posts invalid_credentials with no message field, and clicks submit exactly once',
+    async () => {
+      let clickCount = 0;
+      getSubmitButton().addEventListener('click', () => {
+        clickCount += 1;
+      });
+      const { messages } = await runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
 
-  it('posts invalid_credentials with no message field, and clicks submit exactly once', async () => {
-    let clickCount = 0;
-    getSubmitButton().addEventListener('click', () => {
-      clickCount += 1;
-    });
-    const resultPromise = runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
-    await jest.advanceTimersByTimeAsync(2000);
-    const { messages } = await resultPromise;
+      const errorMessages = messages.filter((m) => m.eventType === 'error');
+      expect(errorMessages).toHaveLength(1);
+      expect(errorMessages[0]?.data).toEqual({ code: 'invalid_credentials', step: 'check-for-login-errors' });
+      expect(clickCount).toBe(1);
+    },
+    TEST_TIMEOUT_MS,
+  );
 
-    const errorMessages = messages.filter((m) => m.eventType === 'error');
-    expect(errorMessages).toHaveLength(1);
-    expect(errorMessages[0]?.data).toEqual({ code: 'invalid_credentials', step: 'check-for-login-errors' });
-    expect(clickCount).toBe(1);
-  });
-
-  it('never attaches the bank\'s own rejection text anywhere in the posted messages', async () => {
-    const resultPromise = runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
-    await jest.advanceTimersByTimeAsync(2000);
-    const { messages } = await resultPromise;
-    expect(JSON.stringify(messages)).not.toContain('datos ingresados no son correctos');
-  });
+  it(
+    "never attaches the bank's own rejection text anywhere in the posted messages",
+    async () => {
+      const { messages } = await runInjectedScript(loginScript({ rut: '12.345.678-5', password: 'clave1234' }));
+      expect(JSON.stringify(messages)).not.toContain('datos ingresados no son correctos');
+    },
+    TEST_TIMEOUT_MS,
+  );
 });
 
 describe('loginScript — Decision 4 checkpoint 3 (in-page origin gate)', () => {

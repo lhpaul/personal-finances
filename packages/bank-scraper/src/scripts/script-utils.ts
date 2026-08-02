@@ -51,11 +51,12 @@ export function commonHelperFunctions(): string {
  * exhaustion, posts an `ERROR` with `code: 'parse_failed'` (a step-level failure — the specific
  * `invalid_credentials` / `session_closed` / `network` reasons are posted by dedicated,
  * non-retried code paths elsewhere, never by this generic wrapper) and `attempts` equal to the
- * configured maximum. `productInstanceId` is included automatically when a page-global `productId`
- * variable is in scope (set by the home script before navigating to a product's own page) — this
- * is what lets the very same wrapper serve both a read-level script (login, home) and a
- * product-scoped one (account-transactions, credit-card-details) without the wrapper itself
- * knowing which.
+ * configured maximum. `productInstanceId` is read from `window.productId` (set by the home
+ * script before clicking into a product's own page) — this is what lets the very same wrapper
+ * serve both a read-level script (login, home) and a product-scoped one (account-transactions,
+ * credit-card-details) without the wrapper itself knowing which. `window.productId` is used
+ * explicitly, rather than an implicit bare-variable global, so this works whether or not the
+ * generated script text happens to run in strict mode.
  *
  * If `stepName` is `null`, the wrapper assumes the variable `stepName` already exists in scope
  * (used by the account-transactions script's `for` loop, which sets `stepName` itself per
@@ -107,7 +108,7 @@ export function generateExecutableStepFunction(
           code: 'parse_failed',
           step: stepName,
           attempts: maxRetries,
-          productInstanceId: (typeof productId !== 'undefined' ? productId : undefined),
+          productInstanceId: window.productId,
         }
       }));
       throw lastError;

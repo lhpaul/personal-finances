@@ -37,7 +37,7 @@ export function loginScript(credentials: { rut: string; password: string }): str
       ${generateWaitForElementHelperFunctions({ label: RUT_INPUT_LABEL, selector: RUT_INPUT_SELECTOR })}
       ${generateLoginInvalidCredentialsErrorFunction()}
 
-      (async function () {
+      return (async function () {
         sendTrace({ logGroup: '${LOG_GROUP}', message: 'Starting login script' });
 
         ${generateExecutableStepFunction({
