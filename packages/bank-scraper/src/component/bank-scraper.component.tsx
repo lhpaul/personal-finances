@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { ComponentType, Ref } from 'react';
 import { StyleSheet, View } from 'react-native';
 import RNWebView from 'react-native-webview';
@@ -69,8 +69,15 @@ export const BankScraperComponent = forwardRef<BankScraperHandle, BankScraperPro
   );
 
   const sessionRef = useRef<ScrapeSession | null>(null);
-  if (sessionRef.current === null) {
-    sessionRef.current = new ScrapeSession(config, port, {
+  // Session creation and startup moved into an effect (CodeRabbit findings #4, #5): creating and
+  // starting a ScrapeSession directly in the render body is a side effect during render, and —
+  // more importantly — had no unmount cleanup at all. If this component unmounted before the
+  // read finished, the session's deadline timer, WebView driver state, and cleared credentials
+  // would never happen; cancel() now runs as the effect's cleanup. Deliberately mount-only ([]):
+  // ScrapeSession is a one-shot object for a single read, not meant to be recreated if a prop
+  // (e.g. onProgress) changes identity mid-read.
+  useEffect(() => {
+    const session = new ScrapeSession(config, port, {
       countryCode: 'cl',
       credentials,
       priorMonths,
@@ -78,8 +85,13 @@ export const BankScraperComponent = forwardRef<BankScraperHandle, BankScraperPro
       onResult,
       onProgress,
     });
-    sessionRef.current.start();
-  }
+    sessionRef.current = session;
+    session.start();
+    return () => {
+      session.cancel();
+      sessionRef.current = null;
+    };
+  }, []);
 
   useImperativeHandle(ref, () => ({
     cancel: () => sessionRef.current?.cancel(),
