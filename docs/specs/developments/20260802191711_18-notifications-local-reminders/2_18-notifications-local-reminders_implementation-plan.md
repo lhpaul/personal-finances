@@ -107,7 +107,7 @@ All commands were run in the plan worktree
 | `expo-linking` can open the OS settings page | `grep -rn "openSettings" node_modules/.pnpm/expo-linking@8.0.12_*/node_modules/expo-linking/build/Linking.d.ts` | `export declare function openSettings(): Promise<void>` — **installed and verified**; the `disabled` note's "Abrir ajustes del teléfono" needs no new dependency |
 | `expo-notifications` API surface for SDK 54 | `npm pack expo-notifications@0.32.17` and read `build/*.d.ts` (see the API table below) | Every symbol this plan names was read from the published typings of the SDK-54 line, not assumed |
 | Which `expo-notifications` version `expo install` will pick | `npm view expo-notifications versions` | The SDK-54-aligned line is `0.32.x`, newest `0.32.17`. The implementer runs `npx expo install expo-notifications` and records the resolved range rather than hand-pinning (Implementation Order step 1) |
-| Fidelity targets for this item, and the wired-target rules | `git show origin/feature/47-design-fidelity-gate:scripts/mobile-ui/fidelity-targets.json`; same branch's `scripts/mobile-ui/fidelity-contract.mjs` lines 178-222 | The contract already carries this item's seven mappings, all `status: "planned"`, `fixture: "seed-default"`. A `wired` mapping must carry `app_file`, `deep_link` and `ready_test_id`; the validator accepts the literal selector **or** a `fidelityTestId('<screen_id>')` call in `app_file`, and requires `deep_link` to be a `finanzas:` URL with `fidelity=1`, `fidelityScreen=<screen_id>` and a matching `fidelityState` |
+| Fidelity targets for this item, and the wired-target rules | `git show origin/feature/47-design-fidelity-gate:scripts/mobile-ui/fidelity-targets.json`; same branch's `scripts/mobile-ui/fidelity-contract.mjs` lines 163-205 | The contract already carries this item's seven mappings, all `status: "planned"`, `fixture: "seed-default"`. A `wired` mapping must carry `app_file`, `deep_link` and `ready_test_id`; the validator accepts the literal selector **or** a `fidelityTestId('<screen_id>')` call in `app_file`, and requires `deep_link` to be a `finanzas:` URL with `fidelity=1`, `fidelityScreen=<screen_id>` and a matching `fidelityState` |
 | `useFidelityPreview` / `fidelityTestId` signatures | `git show origin/feature/47-design-fidelity-gate:apps/mobile/src/lib/fidelity-preview.ts` | `fidelityTestId(screenId) === 'fidelity-' + screenId`; `useFidelityPreview(): { active: boolean; state: string \| null }`, inert unless `__DEV__ && params.fidelity === '1'` |
 | Feature-layer test convention | Item #12's merged plan, *Infrastructure*; item #9's merged plan, Decision 14 | `*.db.test.ts` under `src/features/` is routed to the Node/`better-sqlite3` `db` Jest project and excluded from the `app` project. This item follows it (Decision 17) |
 | Bounded same-surface open PRs | `gh pr list --state open --json number,title,headRefName,baseRefName` | Three: **#61** (item #47 implementation — same surface: `scripts/mobile-ui/fidelity-targets.json`, `apps/mobile/src/lib/fidelity-preview.ts`), **#68** (a docs-only fix to item #12's merged plan), **#46** (`packages/bank-scraper`). Only #61 touches a surface this plan names |
@@ -142,7 +142,7 @@ prose; both have a mechanical evidence source the implementation PR must paste:
 | --- | --- | --- |
 | Every declared state is implemented | `apps/mobile/src/features/reminders/__tests__/view-state-manifest-parity.test.ts` — loads the manifest through the existing `src/test-utils/mockup-manifest` loader and asserts that each screen's `VIEW_STATES` tuple deep-equals the manifest's declared state ids, in order | The test's pass line and the three state tuples it printed |
 | Rescheduling converges rather than duplicates | `apps/mobile/src/features/reminders/__tests__/apply-schedule.test.ts` — applies the same plan twice, then a changed plan, against the in-memory port and asserts the resulting identifier set each time | The final identifier sets for all three applications |
-| The `expo-notifications` import boundary holds | `apps/mobile/src/__tests__/notifications-boundary.test.ts` — scans every file under `app/**` and `src/**` and asserts exactly one importer, printing the list it found so a vacuous pass on a broken walk is visible | The list of importers the test printed |
+| The `expo-notifications` import boundary holds, and the permission is requested from only two call sites | `apps/mobile/src/__tests__/notifications-boundary.test.ts` — scans every file under `app/**` and `src/**` for two things: that exactly one file imports `expo-notifications`, and that `requestPermission` is called from exactly the two files named in Decision 7. Both lists are printed, so a vacuous pass on a broken walk is visible | The importer list and the `requestPermission` call-site list the test printed |
 | Every copy string comes from the catalogue | `apps/mobile/src/features/reminders/__tests__/reminders-catalogue-keys.test.ts`, using the merged `src/test-utils/catalogue-key-scan` helper over the three route files and the feature folder | The test's pass line and the number of keys scanned |
 | Fidelity targets are wired (R2-contingent) | `pnpm fidelity:contract` output showing seven fewer `planned` targets | The command output, or the R2 not-applicable note plus the runbook's manual comparison record |
 
@@ -157,7 +157,7 @@ prose; both have a mechanical evidence source the implementation PR must paste:
 | Repository mode / artifact owner | `single_repo` (no `mode` key) — this repository owns the plan and the plan PR | `.ai-dev-workflow.yaml` (no `mode`, no `workflow_hub`, no `product_repo` block) | 2026-08-02, `961cc69` | Current invocation (item #18) only | `Verified` |
 | Plan artifact base branch | `develop` | `AGENTS.md` → "Integration branch: `develop` (spec/plan/feature/fix PRs target `develop`)"; all three open PRs target `develop` | 2026-08-02, `961cc69` | The three open PRs (#61, #68, #46) — all base `develop` | `Verified` |
 | Ownership of `settings-notifications` | Owned by **this item**; no exclusion entry is needed in the fidelity contract | Issue #18 comment 2026-08-02T17:39:39Z ("This item (#18 …) is its natural owner"), and item #47's merged plan coverage table `#18 → 7 targets` | 2026-08-02, `961cc69` | Same-surface artifacts only: issue #18, item #47's merged plan, PR #61's `fidelity-targets.json` — all three agree | `Verified` |
-| The seven fidelity targets exist as `planned` and their wired-target rules | Seven `planned` mappings, `fixture: "seed-default"`; wired targets need `app_file` + `deep_link` + `ready_test_id`, with `fidelityTestId('<screen_id>')` accepted in place of the literal | `git show origin/feature/47-design-fidelity-gate:scripts/mobile-ui/fidelity-targets.json` and `…:scripts/mobile-ui/fidelity-contract.mjs` lines 178-222 | 2026-08-02, `961cc69` | Bounded to PR #61, the only open PR touching this surface | `Verified` — the contract is not on `develop` yet, which is exactly why the flip is contingent (Resolution R2), not a conflict |
+| The seven fidelity targets exist as `planned` and their wired-target rules | Seven `planned` mappings, `fixture: "seed-default"`; wired targets need `app_file` + `deep_link` + `ready_test_id`, with `fidelityTestId('<screen_id>')` accepted in place of the literal | `git show origin/feature/47-design-fidelity-gate:scripts/mobile-ui/fidelity-targets.json` and `…:scripts/mobile-ui/fidelity-contract.mjs` lines 163-205 | 2026-08-02, `961cc69` | Bounded to PR #61, the only open PR touching this surface | `Verified` — the contract is not on `develop` yet, which is exactly why the flip is contingent (Resolution R2), not a conflict |
 | The reminder value contract (`reminder_enabled` boolean, `reminder_time` `"HH:mm"`, `reminder_days` ISO weekday integers with Monday = 1) | Adopted verbatim; this item is the writer, item #8 is the reader | Item #8's merged plan, Decision 8 | 2026-08-02, `961cc69` | Same-surface artifacts: item #8's merged plan (the only artifact defining these keys) and item #19's merged plan, which reads the same keys through `summarizeReminderDays` | `Verified` |
 
 No `Conflict` rows. The two contingencies above (R2, R3) are **sequencing** facts recorded with
@@ -455,7 +455,8 @@ export const notificationsBoundary = {
 ```
 
 plus `src/__tests__/notifications-boundary.test.ts`, a source scan that fails if a second importer
-appears — the lint rule alone can be disabled inline, the test cannot be disabled quietly.
+appears **or** if `requestPermission` is called from anywhere other than the two call sites named in
+Decision 7 — the lint rule alone can be disabled inline, the test cannot be disabled quietly.
 
 ### Decision 2 — Rescheduling is cancel-owned-then-schedule over deterministic identifiers
 
@@ -561,11 +562,17 @@ reached the only way it can honestly be reached: the OS answered `denied`.
 
 Acceptance criterion: *"Permission is requested at `notifications-intro`, never on launch."*
 
-The only two calls to `requestPermission()` in the codebase are the `notifications-intro` "Habilitar
-notificaciones" press and the `settings-notifications` toggle turning on while the permission is
-`undetermined`. There is **no** launch hook, **no** `useEffect` request, and this item adds nothing
-to `app/index.tsx`. `notifications-boundary.test.ts`'s scan doubles as the evidence: the adapter is
-the only file that can call the API at all, and its two callers are named in the plan.
+The call graph is fixed, in two layers, so "nowhere else" is a checkable statement rather than a
+promise:
+
+| Symbol | Allowed call sites |
+| --- | --- |
+| `NotificationsPort.requestPermission()` | exactly one: `src/features/reminders/use-notification-permission.ts` |
+| the hook's returned `request()` | exactly two: the `notifications-intro` **Habilitar notificaciones** press (`app/(onboarding)/notifications/index.tsx`) and the `settings-notifications` toggle turning on while the permission is `undetermined` (`app/settings/notifications.tsx`) |
+
+Both rows are asserted by `notifications-boundary.test.ts`'s scan. There is **no** launch hook,
+**no** `useEffect` that requests on mount (the hook *reads* the permission on mount; reading never
+prompts), and this item adds nothing to `app/index.tsx`.
 
 A consequence worth stating: because there is no launch-time re-sync, a schedule that the OS dropped
 (app reinstall, restore from backup) is re-established the next time the person opens
@@ -734,7 +741,7 @@ and cold-start-plus-listener cases.
 | --- | --- | --- | --- |
 | Pure planner, presets, view-state, weekday mapping, manifest parity, catalogue scan | `app` | `*.test.ts` | No React renderer is installed (item #8, Decision 14) and none is needed — every one of these is a pure function or a static scan |
 | `saveReminders` over a real in-memory store plus the memory port | `db` | `save-reminders.db.test.ts` | Item #12 established `.db.test.ts` under `src/features/` as the routing convention to the Node/`better-sqlite3` project |
-| Import-boundary scan | `app` | `notifications-boundary.test.ts` | Mirrors `db-access-boundary.test.ts` |
+| Import-boundary and permission-call-site scan | `app` | `notifications-boundary.test.ts` | Mirrors `db-access-boundary.test.ts`, with the extra `requestPermission` call-site assertion that makes AC1 mechanical |
 
 No test imports `expo-notifications`; the memory port is what every test uses (Decision 1).
 
@@ -758,11 +765,13 @@ Two things the implementer must not get wrong:
    accepts either the literal `fidelity-<screen_id>` or a `fidelityTestId('<screen_id>')` call. Putting
    the `testID` on a component inside `src/features/reminders/` and not in the route file fails
    validation even though the app behaves correctly.
-2. **Expo Router group segments are not part of the URL.** `/(onboarding)/notifications` is reachable
-   as `finanzas:///notifications`, not `finanzas:///(onboarding)/notifications`. The contract
-   validator only checks the query parameters, so a wrong path fails later, at capture time, with a
-   confusing blank screenshot. Implementation Order step 8 verifies each deep link opens the right
-   screen **before** the flip is committed.
+2. **Expo Router group segments are not part of the URL.** `/(onboarding)/notifications` is expected
+   to be reachable as `finanzas:///notifications`, not `finanzas:///(onboarding)/notifications`.
+   This is framework behaviour that no file in this repository asserts, so it is **unverified — the
+   implementer must confirm it before the flip**. The contract validator only checks the query
+   parameters, so a wrong path fails later, at capture time, with a confusing blank screenshot.
+   Implementation Order step 8 opens each of the seven links on a dev build and records the result
+   **before** the flip is committed.
 
 No `max_mismatch_pct` override is proposed: none of these screens draws a chart or an animation, so
 the 3.0 default should hold. If a capture exceeds it, the fix is the screen, not the threshold
@@ -823,9 +832,10 @@ on a dev build) + the design-fidelity gate when Resolution R2 applies.
 
 **Key scenarios**:
 
-1. **Permission is never requested on launch** (AC1) — the boundary scan proves `expo-notifications`
-   has exactly one importer, and a source scan asserts that `requestPermission` is referenced only by
-   the intro screen and the settings toggle.
+1. **Permission is never requested on launch** (AC1) — the scan proves `expo-notifications` has
+   exactly one importer, that `NotificationsPort.requestPermission()` is called only from
+   `use-notification-permission.ts`, and that the hook's `request()` is called only from the two
+   screen files named in Decision 7's table.
    *(`apps/mobile/src/__tests__/notifications-boundary.test.ts`)*
 2. **Denial is a state, not an error** (AC2) — `resolveIntroState('denied')` is `'denied'`,
    `resolveIntroState('undetermined')` and `resolveIntroState('granted')` are `'default'`; no branch
@@ -987,7 +997,7 @@ To be executed by the developer during implementation, not now.
 | The installed `expo-notifications` differs from the typings this plan read | Low | Med | Every symbol is listed in the API table with its published shape; Implementation Order step 1 re-reads the **installed** `.d.ts` files before any adapter code is written, and the plan names responsibilities and file owners rather than exact call signatures |
 | The platform weekday numbering is not what the typings say | Low | High | Unit test 8 pins the mapping, and runbook step 5 fires a real reminder on a real day; a wrong mapping shows up as a reminder on the wrong day, which the runbook checks explicitly |
 | A dev client built before this item lacks the native module | High | Med | Stated in the runbook's prerequisites: adding `expo-notifications` requires a **rebuilt** dev client, not a Metro reload. The symptom (a "native module missing" error) is in the troubleshooting table |
-| iOS's 64-pending-notification limit is approached | Low | Low | At most seven registrations exist at any time, and Decision 2 cancels before scheduling so the count cannot grow. Recorded here because `weekly-per-day` is the strategy that consumes more slots (Decision 3) |
+| iOS's pending-local-notification limit is approached | Low | Low | Apple documents a 64-pending limit for `UNUserNotificationCenter`; that figure is **unverified from this repository** and the implementer should not design around the exact number. What matters is bounded by construction: at most seven registrations exist at any time, and Decision 2 cancels before scheduling so the count cannot grow. Recorded because `weekly-per-day` is the strategy that consumes more slots (Decision 3) |
 | A DST transition shifts the reminder by an hour | Low | Low | Platform weekly and daily triggers are wall-clock triggers, so they follow the device's local time through a transition. Chile's transitions are recorded in the runbook's known limitations rather than engineered around |
 | Item #47 lands mid-flight and `pnpm fidelity:contract` fails on unflipped targets | Med | Low | Resolution R2 makes the flip conditional and checked at implementation start; the contract itself fails loudly and names the target |
 | `ScreenTopBar` / `ListGroup` / `ListRow` arrive from #19 mid-flight, causing duplicated local compositions | Med | Low | Resolution R3: consume them if present, compose locally if not, record the choice in the PR body. `MU_CLASS_MAP` is untouched either way |
