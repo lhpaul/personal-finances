@@ -56,7 +56,7 @@ and five entities are correct but out of MVP scope.
 | `FinancialInstitutions` vs `UserFinancialInstitutions`. | **Kept split**, with the original names. The institution catalog is genuinely shared, versionable, seedable data; the user's link to it is not |
 | `Merchants` (global) vs `UserMerchants` (per-user override). | **Collapsed into `merchants`**, distinguished by `user_id` — null = seeded, set = created by the user. Same pattern as `transaction_categories`. The community-suggestion layer shown in `merchant-edit` needs a server and is deferred |
 | `currency_code` FKs to a `currencies` table absent from the diagram. | **Kept as a plain `TEXT` code**, `'CLP'` for the MVP. No lookup table until a second currency exists |
-| `TransactionCategories` has no ordering and no stable identity for seeds. | Added `sort_order` (the ☰ drag handles in `settings-categories`) and `slug` (stable seed identity; also how the ✨ Otros fallback is found). "Cannot delete" is `user_id IS NULL`, so no extra flag is needed |
+| `TransactionCategories` has no ordering and no stable identity for seeds. | Added `sort_order` (the ☰ drag handles in `settings-categories`) and `slug` (stable seed identity; also how the ✨ Otros fallback is found). "Cannot delete" is **not** every `user_id IS NULL` row — a person-created category has `user_id` set but a great many seeded categories are perfectly deletable. The undeletable set is exactly the two ✨ Otros categories, found by `slug IN ('otros-gasto', 'otros-ingreso')`, enforced by a `BEFORE DELETE` trigger (see *Deleting a category*) so a raw delete that bypasses the app is rejected too, not only an app-level guard |
 | `Transactions.type` is `debit`/`credit` (bank vocabulary). | **Kept** — it is what the scraper emits. The UI's income/expense reads from the category's `income` together with `type` |
 | `AuthenticationMethods` is a separate table. | **Dropped.** The MVP has no sign-in at all, so there is nothing to model. `users.email` is kept nullable for when identity ships with sync |
 | Storing the RUT in the database. | **Not stored at all.** See [`users`](#users) — the RUT is credential material and belongs in `expo-secure-store` |
@@ -197,10 +197,20 @@ Follows the original model, so names can be per-locale.
 | `income` | `INTEGER NOT NULL` | 0 = expense, 1 = income. Drives the tabs in `settings-categories` |
 | `labels` | `TEXT NOT NULL` (JSON) | Name per locale: `{"es":"Comida","en":"Food"}`, seeded from `tokens.json → categoryLabels`. The app reads the device locale and falls back to `es` |
 | `assets` | `TEXT` (JSON) | `{"emoji":"🍔"}` from `tokens.json → categoryIcons`; an icon URL can join it without a migration |
-| `user_id` | `TEXT REFERENCES users(id)` | **Null = system category.** System categories cannot be deleted; the ✨ Otros pair are system |
+| `user_id` | `TEXT REFERENCES users(id)` | Null = seeded (starter content); set = created by the person. **Not** a deletability flag by itself |
 | `parent_category_id` | `TEXT REFERENCES transaction_categories(id)` | Reserved for subcategories; unused in MVP |
 | `sort_order` | `INTEGER NOT NULL` | Drag handles in `settings-categories`. A real column because it is an `ORDER BY` |
 | `created_at` | `TEXT NOT NULL` | |
+
+**Deleting a category.** Every category except the two ✨ Otros (`slug IN ('otros-gasto',
+'otros-ingreso')`) can be deleted, seeded or person-created alike. Deleting a category is a
+transaction that, in one commit: re-parents its movements to the ✨ Otros of the same direction
+(`income`), clears `transaction_category_id`/`transaction_category_id` references on any
+`merchants` row that pointed at it, and deletes its `user_budgets` and
+`user_recurring_transactions` rows — it deletes no merchant and no movement. The two ✨ Otros
+categories cannot be deleted at all: the app-level guard checks the slug, and a first-migration
+`BEFORE DELETE` trigger raises `ABORT` for the same two slugs, so a raw `DELETE` that bypasses the
+app is rejected by the store itself, not only by the caller that is expected to check first.
 
 ### `merchants`
 
@@ -244,7 +254,7 @@ The core table.
 | `id` | `TEXT PK` | |
 | `user_financial_product_id` | `TEXT NOT NULL REFERENCES user_financial_products(id) ON DELETE CASCADE` | |
 | `external_id` | `TEXT` | Gap #1 — the bank's id |
-| `dedup_hash` | `TEXT NOT NULL` | `sha256(user_financial_product_id, date_local, amount, raw_description)` — fallback identity |
+| `dedup_hash` | `TEXT NOT NULL` | `sha256(user_financial_product_id, date_local, String(amount), raw_description, external_id ?? '', is_manual ? id : '')` — fallback identity |
 | `amount` | `INTEGER NOT NULL` | Minor units, **always positive**. Direction comes from `type` |
 | `type` | `TEXT NOT NULL` | `debit` \| `credit` — the scraper's vocabulary |
 | `currency_code` | `TEXT NOT NULL DEFAULT 'CLP'` | |
@@ -271,6 +281,15 @@ Indexes: `(date_local DESC)`, `(transaction_category_id)`, `(merchant_id)`, plus
 index on `transaction_category_id IS NULL AND excluded_at IS NULL` — the "por categorizar"
 count on `home` runs on every app open.
 
+`dedup_hash`'s input folds in `external_id` (and, for a manual entry, the row's own `id`) rather
+than stopping at `(user_financial_product_id, date_local, amount, raw_description)` alone. Those
+four fields by themselves reject a second genuinely-distinct movement that happens to share a
+product, day, amount and description — two identical coffees on the same day, each with its own
+bank identifier, would otherwise collide. For a bank that supplies no identifier, and for a
+non-manual row, the formula reduces exactly to the four-field version, so the fallback route's
+meaning is unchanged; for a bank that does supply one, identity is the identifier and the
+fingerprint stops colliding.
+
 **Analysis rule (single source of truth):** a transaction counts toward totals and charts when
 `excluded_at IS NULL`, at `COALESCE(included_amount, amount)`.
 
@@ -286,11 +305,70 @@ Gap #9. Key-value; avoids a migration per new preference.
 MVP keys: `onboarding_completed`, `reminder_enabled`, `reminder_time`, `reminder_days`,
 `last_categorization_session_at`, `schema_version`, `first_launch_at`.
 
-### `user_budgets`, `user_recurring_transactions`
+### `user_budgets`
 
-Created by the migrations, **no UI in the MVP**. Columns follow the original domain model
-(`period`, `amount`, `transaction_category_id`, plus `income` / `description` / `due_day` for
-recurring).
+Created by the migrations, **no UI in the MVP**. Neither table has any seed data, so a later
+column correction is an additive change on empty tables.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `TEXT PK` | |
+| `transaction_category_id` | `TEXT NOT NULL REFERENCES transaction_categories(id) ON DELETE CASCADE` | |
+| `period` | `TEXT NOT NULL` | e.g. `2026-01` (calendar month) |
+| `amount` | `INTEGER NOT NULL` | Minor units |
+| `currency_code` | `TEXT NOT NULL DEFAULT 'CLP'` | |
+| `user_id` | `TEXT REFERENCES users(id)` | |
+| `created_at` | `TEXT NOT NULL` | |
+| `updated_at` | `TEXT NOT NULL` | |
+
+### `user_recurring_transactions`
+
+Created by the migrations, **no UI in the MVP**.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `TEXT PK` | |
+| `transaction_category_id` | `TEXT NOT NULL REFERENCES transaction_categories(id) ON DELETE CASCADE` | |
+| `description` | `TEXT NOT NULL` | |
+| `amount` | `INTEGER NOT NULL` | Minor units |
+| `currency_code` | `TEXT NOT NULL DEFAULT 'CLP'` | |
+| `income` | `INTEGER NOT NULL DEFAULT 0` | 0 = expense, 1 = income |
+| `due_day` | `INTEGER NOT NULL` | Day of the month |
+| `user_id` | `TEXT REFERENCES users(id)` | |
+| `created_at` | `TEXT NOT NULL` | |
+| `updated_at` | `TEXT NOT NULL` | |
+
+### `seed_ledger`
+
+Records what starter content each seed run has written, per stable seed key — the mechanism
+behind the *Seed Data* refresh guarantee below. `user_id IS NULL` alone cannot distinguish "never
+seeded on this device" from "starter row the person deleted"; the ledger can.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `seed_key` | `TEXT PK` | `financial_institution:banco-de-chile`, `transaction_category:comida`, `merchant:lider`, `merchant_alias:lider:LIDER` |
+| `entity_type` | `TEXT NOT NULL` | `financial_institution` \| `transaction_category` \| `merchant` \| `merchant_alias` |
+| `entity_id` | `TEXT NOT NULL` | The primary key of the row this seed created |
+| `seeded_hash` | `TEXT NOT NULL` | Digest of the seed-owned field values as last written |
+| `created_at` | `TEXT NOT NULL` | |
+| `updated_at` | `TEXT NOT NULL` | |
+
+The whole seed run is one transaction. Per seed record, on every run:
+
+1. **No ledger row** → never applied on this device → insert the entity row and the ledger row.
+   Covers both a fresh install and a later app version adding a new starter record.
+2. **Ledger row exists, entity row missing** → the person deleted it → do nothing. The ledger row
+   stays, so no later run resurrects it.
+3. **Ledger row exists, entity row present, current seed-owned values hash equal to
+   `seeded_hash`** → untouched by the person → update it to the current catalogue values and
+   refresh `seeded_hash`. This is what lets a corrected label reach existing users.
+4. **Ledger row exists, entity row present, hash differs** → the person edited it → do nothing,
+   and do not refresh `seeded_hash`.
+
+Rows the person created are never read by the seeder at all — it only ever touches ids it finds
+in its own ledger. `user_id` is never written by a seed. A transaction category's `income`
+(direction) column is deliberately excluded from the update statement in case 3, so no catalogue
+change can ever flip an existing category's direction.
 
 ---
 
@@ -314,16 +392,42 @@ decision to revisit. Demoting a column is not.
 ## Migrations
 
 Drizzle migrations bundled with the app, run on first launch after an update.
-`app_settings.schema_version` records the applied version.
+`app_settings.schema_version` records the applied version — the count of applied journal entries,
+written only after `migrate()` succeeds.
 
 ```bash
 pnpm --filter @finanzas/mobile db:generate   # generate a Drizzle migration
-pnpm --filter @finanzas/mobile db:check      # apply migrations to a fixture DB
+pnpm --filter @finanzas/mobile db:check      # apply migrations to a fixture DB, in four modes
+pnpm --filter @finanzas/mobile db:seed       # regenerate the bundled seed fixture, deterministically
 ```
 
 Because the database is on-device, **a bad migration is unrecoverable for that user**. Every
 migration must be additive (new tables, new nullable columns) and covered by a test that opens
 a seeded fixture DB from the previous version. There is no "reset production" command.
+
+`db:check` is a custom CLI (not `drizzle-kit check` alone, which only validates journal
+integrity) that runs four modes, in order, failing on the first failure:
+
+1. **Journal integrity** — shells out to `drizzle-kit check`, catching snapshot-version drift,
+   malformed snapshots and parent-snapshot-id collisions.
+2. **History vs. declared shape** — applies the full migration history to an empty store,
+   introspects it, and compares the result against the newest snapshot; then proves there is no
+   pending `drizzle-kit generate` diff by running it into a scratch copy of the migration folder.
+3. **Additive-only** — walks every consecutive pair of committed snapshots and mechanically
+   rejects a non-additive change (a removed table or column, a type change, a column made
+   mandatory, a new mandatory column on an existing table even with a default, a tightened
+   uniqueness or check constraint, a foreign key added to an existing table, or a mandatory
+   column losing its default). A new table, a new nullable column, and a new or removed
+   non-unique index are all explicitly allowed.
+4. **Preservation** — loads a committed store snapshot, takes a census, re-applies the (already
+   applied, so idempotent) migration history, re-censuses, and asserts nothing pre-existing was
+   lost or altered.
+
+`PRAGMA foreign_keys = ON` is set on every connection the app or the test tier opens. SQLite
+disables foreign-key enforcement by default; without this pragma, every `ON DELETE CASCADE` named
+on this page — the connection → products → movements cascade, the merchant → aliases cascade, the
+category → budgets/recurring-transactions cascade — is decorative and would pass in review and
+fail on a device.
 
 Local reset during development: delete and reinstall the app, or run the in-app
 `Ajustes → Acerca de → Reset local database` action available in dev builds only.
@@ -343,12 +447,19 @@ Shipped with the app, applied on first launch:
    (Líder, Jumbo, Uber, Copec, Netflix…) so the first categorization session already has
    suggestions. `country_code` is `CL` for local chains, null for international ones.
 
-Seeds are keyed by `slug` / `id`, so re-running them after an app update refreshes seeded rows
-without touching user-created ones.
+Every seed is recorded in `seed_ledger` (see that table's own section, above) and re-running the
+seed on a later app version follows its four-case algorithm: a genuinely new starter record is
+always inserted; a starter row the person deleted is never resurrected; a starter row the person
+edited is never overwritten; a starter row nobody has touched is corrected to the current
+catalogue values. This is a stronger guarantee than "keyed by slug/id" alone — a plain
+upsert-by-slug would silently resurrect a row the person deliberately deleted, and would silently
+overwrite a row the person edited.
 
-```bash
-pnpm --filter @finanzas/mobile db:seed       # regenerate the bundled seed fixtures
-```
+`db:seed` (`pnpm --filter @finanzas/mobile db:seed`) rebuilds the committed store snapshot used by
+`db:check`'s preservation mode and by the smoke runbook: it runs the normal bootstrap path (so it
+carries all starter content) plus a representative set of person-owned data, then dumps the result
+as deterministic, dependency-ordered SQL text. Running it twice with no source change produces a
+byte-identical file.
 
 ## Open questions
 

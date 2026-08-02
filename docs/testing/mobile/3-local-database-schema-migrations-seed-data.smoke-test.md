@@ -199,10 +199,13 @@ assertion.
    `apps/mobile/src/db/__fixtures__/store-v1.sql`.
 2. Run `git status`. Then run `pnpm --filter @finanzas/mobile db:seed` a second time and run
    `git status` again.
-3. Load the snapshot into a scratch database and inspect it. With the `sqlite3` CLI:
+3. Load the snapshot into a scratch database and inspect it. The fixture (Decision 18) is
+   **`INSERT`-only text** — it carries no `CREATE TABLE` — so the schema has to be applied first,
+   the same way `db:check` mode 3 does it (migrate, then load). With the `sqlite3` CLI:
 
    ```bash
    rm -f /tmp/finanzas-smoke.db
+   sqlite3 /tmp/finanzas-smoke.db < apps/mobile/drizzle/0000_*.sql
    sqlite3 /tmp/finanzas-smoke.db < apps/mobile/src/db/__fixtures__/store-v1.sql
    sqlite3 /tmp/finanzas-smoke.db ".tables"
    sqlite3 /tmp/finanzas-smoke.db "select id, scraper_status from financial_institutions order by id;"
@@ -211,9 +214,16 @@ assertion.
    sqlite3 /tmp/finanzas-smoke.db "select key, value from app_settings order by key;"
    ```
 
-   Without the `sqlite3` CLI, run the same queries through
-   `apps/mobile/src/db/testing/load-fixture.ts` from a `tsx` one-liner, or read the `.sql` file
-   directly — it is plain text and every `INSERT` is on its own line.
+   The second `sqlite3` invocation above prints one parse error, on its very last statement:
+   `no such table: __drizzle_migrations`. That is expected and harmless — the raw migration
+   `.sql` file declares only the twelve application tables; `__drizzle_migrations` is Drizzle's
+   own bookkeeping table, created by its `migrate()` function at runtime, not by the static SQL
+   file. All twelve application tables load and query correctly regardless.
+
+   Without the `sqlite3` CLI, run the same load through
+   `apps/mobile/src/db/testing/load-fixture.ts` (after `runMigrations`, as `db:check` mode 3
+   does) from a `tsx` one-liner, or read the `.sql` file directly — it is plain text and every
+   `INSERT` is on its own line.
 4. Read the fixture file itself and search it for anything resembling a credential:
 
    ```bash
@@ -266,11 +276,13 @@ that reads no files at all.
 1. Add `import { drizzle } from 'drizzle-orm/expo-sqlite';` to `apps/mobile/app/dashboard.tsx`.
 2. Run `pnpm lint`.
 3. Remove the import and re-run `pnpm lint`.
-4. Run `grep -rln "drizzle-orm\|expo-sqlite\|better-sqlite3" apps/mobile/app apps/mobile/src packages`.
+4. Run `grep -rln "drizzle-orm\|expo-sqlite\|better-sqlite3" apps/mobile/app apps/mobile/src apps/mobile/scripts packages`.
 
 **Expected result**: Step 2 fails with the `dbAccessBoundary` restriction message. Step 3 passes.
-Step 4 lists files only under `apps/mobile/src/db/`, plus `apps/mobile/scripts/db/` — no route
-file, no feature hook, no component and no shared package.
+Step 4 lists files only under `apps/mobile/src/db/` and `apps/mobile/scripts/db/` — no route
+file, no feature hook, no component, and no *actual import* in a shared package (a package's own
+purity-lint test may still contain the string as a fixture input it asserts gets rejected, which
+is not a violation of the boundary).
 
 ### Step 12: Re-syncing the same bank response changes nothing a person decided
 

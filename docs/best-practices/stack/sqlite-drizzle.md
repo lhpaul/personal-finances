@@ -25,7 +25,16 @@ it('migrates 0003 → 0004 without data loss', async () => {
 ```
 
 A migration that throws on a user's device leaves the app permanently unusable for them.
-`pnpm --filter @finanzas/mobile db:check` runs this suite; it is a required check.
+`pnpm --filter @finanzas/mobile db:check` runs this suite; it is a required check, in four modes:
+journal integrity, history-vs-declared-shape (with no pending `drizzle-kit generate` diff),
+additive-only across every consecutive snapshot pair, and preservation against the committed
+store snapshot.
+
+**There is no suppression directive for a non-additive change, by design.** No comment, pragma or
+allowlist file lets a change that removes a column, tightens a constraint, or adds a mandatory
+column to an existing table pass the additivity check — that is exactly the one class of change
+that cannot be repaired on a user's phone. The recovery path is always the "remove" / "rename"
+recipe above, never an inline exception.
 
 ## Money
 
@@ -60,21 +69,45 @@ queries is how the numbers on `home` and `dashboard` start disagreeing.
 
 ## Idempotent sync
 
-The scraper re-reads the same movements on every run. All writes from sync go through the
-repository upsert:
+The scraper re-reads the same movements on every run. SQLite's `ON CONFLICT` takes a single
+conflict target, and there are genuinely two identity routes — `(user_financial_product_id,
+external_id)` when the bank supplies an identifier, `dedup_hash` when it does not — so the upsert
+is **lookup-then-write inside one transaction**, not `onConflictDoUpdate`:
 
 ```ts
-await db.insert(transactions).values(rows)
-  .onConflictDoUpdate({
-    target: [transactions.userFinancialProductId, transactions.externalId],
-    set: { balanceFields… },      // never overwrite user decisions
-  });
+// Per row, inside one transaction:
+const existing = row.externalId
+  ? await findByExternalId(tx, row.userFinancialProductId, row.externalId)
+  : await findByDedupHash(tx, row.dedupHash);
+
+const write = existing
+  ? tx
+      .update(transactions)
+      .set({
+        amount: row.amount,
+        type: row.type,
+        currencyCode: row.currencyCode,
+        occurredAt: row.occurredAt,
+        dateLocal: row.dateLocal,
+        rawDescription: row.rawDescription,
+        metadata: row.metadata,
+        dedupHash: row.dedupHash,
+        updatedAt: now(),
+      })
+      .where(eq(transactions.id, existing.id))
+  : tx.insert(transactions).values(row);
+
+await write;
 ```
 
-**Never overwrite user-owned columns on conflict**: `transaction_category_id`,
-`category_source`, `note`, `excluded_at`, `exclusion_reason`, `included_amount`,
-`review_flag`, `merchant_id`. The bank
-owns `raw_description`, `amount`, `type`, `occurred_at`; the user owns everything else.
+**Never overwrite person-owned columns on conflict**: `transaction_category_id`,
+`category_source`, `note`, `review_flag`, `excluded_at`, `exclusion_reason`, `exclusion_note`,
+`included_amount`, `merchant_id` — plus `is_manual`, which a sync row never sets. None of these
+appear in the update statement's `set` object under any circumstance. The bank owns
+`amount`, `type`, `currency_code`, `occurred_at`, `date_local`, `raw_description`, `metadata`,
+`dedup_hash`, `updated_at`; the person owns everything else. The unique indexes on
+`(user_financial_product_id, external_id)` and `(dedup_hash)` are the store-level backstop: a raw
+insert that bypasses the repository is rejected too, not only a call through it.
 
 ## Queries
 
@@ -86,6 +119,10 @@ owns `raw_description`, `amount`, `type`, `occurred_at`; the user owns everythin
   name.
 - Wrap multi-table writes (a sync run touches `user_financial_products`, `transactions`,
   `user_financial_institutions`) in a transaction.
+- `PRAGMA foreign_keys = ON` must be set on every connection, in every environment (the runtime
+  client and the test client both issue it immediately after opening). SQLite disables
+  foreign-key enforcement by default; without this pragma, every `ON DELETE CASCADE` in the data
+  model is decorative and the deletion guarantees would pass in review and fail on a device.
 
 ## Dates
 

@@ -2,7 +2,7 @@
 import expoConfig from 'eslint-config-expo/flat.js';
 import i18nextPlugin from 'eslint-plugin-i18next';
 
-import rootConfig from '../../eslint.config.mjs';
+import rootConfig, { dbAccessBoundary } from '../../eslint.config.mjs';
 
 export default [
   ...rootConfig,
@@ -25,5 +25,14 @@ export default [
         },
       }],
     },
+  },
+  // SQL access boundary (implementation plan Decision 19, AC26). Applied to `app/**` and
+  // `src/**`, with `src/db/**` ignored — that is the one directory allowed to import a SQL
+  // library. See `dbAccessBoundary`'s own doc comment in the root `eslint.config.mjs` for the
+  // rationale and the companion test.
+  {
+    ...dbAccessBoundary,
+    files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
+    ignores: ['src/db/**'],
   },
 ];

@@ -33,7 +33,10 @@ personal-finances/
 │       │   ├── test-utils/
 │       │   └── theme.ts            # Mirror of design/tokens.json
 │       ├── assets/
-│       ├── scripts/                # dev-*.sh, eas-build-*.sh (arrives with a later item)
+│       ├── drizzle/                # Generated migrations: 0000_*.sql, meta/, migrations.js
+│       ├── scripts/
+│       │   └── db/                 # db:check (four-mode CLI), db:seed (fixture builder), dump.ts
+│       │                           # dev-*.sh, eas-build-*.sh still arrive with a later item
 │       ├── app.config.js · eas.json · metro.config.js
 │       ├── jest.config.js · eslint.config.mjs · tsconfig.json · expo-env.d.ts
 │       └── package.json
@@ -153,9 +156,10 @@ pnpm check:layout
 # Local iOS bundle check (Metro only, no native build — the same command CI's bundle job runs)
 cd apps/mobile && pnpm exec expo export:embed --eager --platform ios --dev false
 
-# Database (arrives with the database item, #3 — needs Drizzle, which this item does not add)
+# Database
 pnpm --filter @finanzas/mobile db:generate   # generate a Drizzle migration
-pnpm --filter @finanzas/mobile db:check      # apply migrations to a fixture DB
+pnpm --filter @finanzas/mobile db:check      # apply migrations to a fixture DB, in four modes
+pnpm --filter @finanzas/mobile db:seed       # regenerate the bundled seed fixture, deterministically
 
 # Mockups
 pnpm mockups:mobile                          # open design/mockups/mobile/index.html

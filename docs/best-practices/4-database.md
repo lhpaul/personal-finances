@@ -24,8 +24,14 @@ row-level security, connection pooling and staged production migrations. None of
   rename one, never tighten a constraint on existing data.
 - Every migration ships with a test that opens a fixture database at the previous schema
   version and migrates it, asserting no data loss.
-- `db:check` is a required check. A migration that throws on a user's device leaves the app
-  permanently unusable for that user.
+- `db:check` is a required check, in four modes: **journal integrity** (`drizzle-kit check`),
+  **history vs. declared shape** (an empty store migrated and introspected must match the newest
+  snapshot with no pending diff), **additive-only** (every consecutive committed snapshot pair is
+  mechanically checked — no removed table or column, no type change, no column made mandatory, no
+  new mandatory column on an existing table even with a default, no tightened uniqueness or check
+  constraint, no foreign key added to an existing table), and **preservation** (the committed
+  store snapshot survives the full migration history with nothing lost or altered). A migration
+  that throws on a user's device leaves the app permanently unusable for that user.
 - To "remove" a column: stop writing it, stop reading it, leave it. To "rename" one: add the
   new column, backfill in the migration, write both for one release, then stop reading the old.
 
@@ -57,5 +63,10 @@ value lives in `expo-secure-store`.
 
 ## Seed data
 
-Seeds are keyed by `slug` / `id` so re-running them after an app update refreshes seeded rows
-without touching user-created ones. A seed must never overwrite a row where `user_id` is set.
+A `seed_ledger` table records what each seed run last wrote, per stable seed key. That is a
+stronger guarantee than "never overwrite a row where `user_id` is set": re-running the seeds
+after an app update inserts a genuinely new starter record, corrects a starter row nobody has
+touched, and **never** overwrites a starter row the person edited or resurrects one they deleted
+— even though both of those rows have `user_id IS NULL`, same as an untouched starter row. Rows
+the person created are never read by the seeder at all; it only ever touches ids in its own
+ledger.

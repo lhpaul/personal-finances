@@ -31,6 +31,6 @@ module.exports = {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: ['expo-router', 'expo-localization'],
+    plugins: ['expo-router', 'expo-localization', 'expo-sqlite'],
   },
 };
