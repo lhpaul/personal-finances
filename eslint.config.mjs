@@ -96,7 +96,30 @@ export const sharedDomainPurity = {
             message:
               '@finanzas/shared-domain may not depend on the app, on Expo modules, or on any SQL library.',
           },
+          {
+            // NOT 'react-*': that would also match 'react-native', which the group above already
+            // matches, producing two findings for one import (issue #5, Decision 8).
+            group: ['react', 'react/*', 'react-dom', 'react-dom/*'],
+            message: '@finanzas/shared-domain may not depend on React.',
+          },
         ],
+      },
+    ],
+    // Issue #5, Decision 8 — AC3 "no Date.now()": the clock is injected as a DateLocal produced
+    // by @finanzas/shared-utils' deriveDateLocal(instant); nothing in this package may read the
+    // host clock. checkGlobalObject: true also catches globalThis.Date.
+    'no-restricted-globals': [
+      'error',
+      {
+        globals: [
+          {
+            name: 'Date',
+            message:
+              '@finanzas/shared-domain must not read the clock. The instant is injected as a ' +
+              'DateLocal produced by @finanzas/shared-utils deriveDateLocal(instant).',
+          },
+        ],
+        checkGlobalObject: true,
       },
     ],
   },
