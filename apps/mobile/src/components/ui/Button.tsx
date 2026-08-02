@@ -96,7 +96,9 @@ export function Button({
     >
       <RNText
         style={{
-          fontSize: componentMetrics.button.fontSize,
+          // `.mu-btn--sm` (L360) overrides font-size to `var(--base)` (14); the default
+          // `.mu-btn` (L351) literal 15 applies to every other size.
+          fontSize: size === 'sm' ? theme.typography.size.base : componentMetrics.button.fontSize,
           fontWeight: String(theme.typography.weight.semibold) as TextStyle['fontWeight'],
           letterSpacing: componentMetrics.button.letterSpacing,
           color: VARIANT_TEXT_COLOR[variant],

@@ -39,6 +39,7 @@ export function StatTile({ tone, label, value, sub, arrow }: StatTileProps) {
         tone="inverse"
         style={{
           fontSize: theme.typography.scale.amount.stat.fontSize,
+          lineHeight: theme.typography.scale.amount.stat.lineHeight,
           fontWeight: String(
             theme.typography.scale.amount.stat.fontWeight,
           ) as TextStyle['fontWeight'],
