@@ -80,21 +80,24 @@ const existing = row.externalId
   ? await findByExternalId(tx, row.userFinancialProductId, row.externalId)
   : await findByDedupHash(tx, row.dedupHash);
 
-if (existing) {
-  await tx.update(transactions).set({
-    amount: row.amount,
-    type: row.type,
-    currencyCode: row.currencyCode,
-    occurredAt: row.occurredAt,
-    dateLocal: row.dateLocal,
-    rawDescription: row.rawDescription,
-    metadata: row.metadata,
-    dedupHash: row.dedupHash,
-    updatedAt: now(),
-  }).where(eq(transactions.id, existing.id));
-} else {
-  await tx.insert(transactions).values(row);
-}
+const write = existing
+  ? tx
+      .update(transactions)
+      .set({
+        amount: row.amount,
+        type: row.type,
+        currencyCode: row.currencyCode,
+        occurredAt: row.occurredAt,
+        dateLocal: row.dateLocal,
+        rawDescription: row.rawDescription,
+        metadata: row.metadata,
+        dedupHash: row.dedupHash,
+        updatedAt: now(),
+      })
+      .where(eq(transactions.id, existing.id))
+  : tx.insert(transactions).values(row);
+
+await write;
 ```
 
 **Never overwrite person-owned columns on conflict**: `transaction_category_id`,
