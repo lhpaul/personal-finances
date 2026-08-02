@@ -1,7 +1,7 @@
 # Categorization flow — Spec
 
 **Depends on**: 2-theme-design-system-primitives, 5-shared-domain-rules-matching-aggregates,
-10-sync-engine
+10-sync-engine-idempotent-persistence
 
 ---
 
@@ -492,7 +492,14 @@ and no penalty, streak loss or warning is recorded.
   single-choice list with one pre-selected, an optional note field, and a cancel/confirm pair where
   confirm is styled as destructive. Cancel returns to the previous state with nothing recorded.
 - **Bottom actions**: "Omitir" (secondary) and "Siguiente →" (primary) are present in every state
-  of the screen. "Omitir" is always enabled.
+  of the screen. "Omitir" is always enabled. "Siguiente →" is inert until a category is selected,
+  so the two controls never mean the same thing: confirming requires a decision, moving on without
+  one is always "Omitir". This is the only control in the flow whose availability depends on a
+  selection, and it never traps the person, because "Omitir" sits beside it.
+- **Immediate versus confirmed decisions**: the three options under "¿No estás seguro?" act the
+  moment they are chosen — each is a single unambiguous act and each is reversible in a later
+  stage — while a category selection is confirmed with "Siguiente →" (A10), because a category is
+  the one decision the person is expected to get exactly right.
 - **The advanced disclosure and its panel are not rendered at all** — not disabled, not hidden
   behind a flag: absent.
 - **Loading**: the screen never shows a half-populated card. Until the next movement is ready to
@@ -630,8 +637,8 @@ data, or by an automated test over the same data.
       and the time estimate; the count equals the number of movements with no category that are
       not excluded.
 - [ ] AC2. Starting a stage opens the categorization screen on the first movement of a batch of at
-      most ten (A1); with fewer than ten pending, the batch is the whole queue and the progress
-      line and step indicator both say so.
+      most ten (A1), most recent pending movement first (A3); with fewer than ten pending, the
+      batch is the whole queue and the progress line and step indicator both say so.
 - [ ] AC3. The progress line reads "Transacción 1 de N" on the first movement and increases by one
       per movement handled, ending the stage after the Nth.
 - [ ] AC4. No movement is offered twice within one stage, including movements that were skipped or
@@ -657,7 +664,8 @@ data, or by an automated test over the same data.
 **Never blocking**
 
 - [ ] AC12. "Omitir" is present and enabled on every movement, in the `expense`, `income` and
-      `not-sure` states, whether or not a category is selected.
+      `not-sure` states, whether or not a category is selected; "Siguiente →" does nothing until a
+      category is selected, so no movement is ever confirmed with no decision behind it.
 - [ ] AC13. Skipping records nothing: the movement's category, deferral mark and exclusion are all
       unchanged, and it is still pending after the stage ends.
 - [ ] AC14. "Revisar más tarde" marks the movement accordingly, assigns no category, advances the
