@@ -86,7 +86,7 @@ export const BankScraperComponent = forwardRef<BankScraperHandle, BankScraperPro
   }));
 
   const handleShouldStartLoadWithRequest = useCallback((request: ShouldStartLoadRequest) => {
-    return sessionRef.current?.handleShouldStartLoadWithRequest(request.url) ?? false;
+    return sessionRef.current?.handleShouldStartLoadWithRequest(request.url, request.isTopFrame) ?? false;
   }, []);
 
   const handleLoadStart = useCallback((event: { nativeEvent: WebViewNavigation }) => {

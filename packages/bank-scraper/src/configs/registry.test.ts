@@ -29,4 +29,13 @@ describe('BANK_CONFIGS registry — AC18: refusal for an unsupported bank or cou
     expect(result).not.toHaveProperty('reason');
     expect((result as { id: string }).id).toBe('banco-de-chile');
   });
+
+  it.each(['constructor', 'toString', 'hasOwnProperty', '__proto__'])(
+    'refuses the inherited Object.prototype key %s as an unsupported country, rather than throwing (CodeRabbit finding #23)',
+    (countryCode) => {
+      expect(() => resolveBankConfigOrReject(BANK_CONFIGS, countryCode, 'banco-de-chile')).not.toThrow();
+      const result = resolveBankConfigOrReject(BANK_CONFIGS, countryCode, 'banco-de-chile');
+      expect(result).toEqual({ reason: 'unsupported_country', countryCode, bankId: 'banco-de-chile' });
+    },
+  );
 });

@@ -6,6 +6,7 @@ import { parseBankDateLocal } from '../parsing/date';
 import type { BankConfig, WebViewPort } from '../types/bank-config.types';
 import {
   NON_RETRYABLE_ERROR_CODES,
+  VALID_STEP_TRANSITIONS,
   type FailureReasonCode,
   type ScraperRequestRejection,
   type ScraperStepId,
@@ -62,7 +63,12 @@ export function resolveBankConfigOrReject(
   countryCode: string,
   bankId: string,
 ): BankConfig | ScraperRequestRejection {
-  const countryConfigs = configsByCountry[countryCode];
+  // Object.hasOwn guards against an inherited Object.prototype key (e.g. countryCode ===
+  // 'constructor' or 'toString'): a plain bracket lookup would resolve through the prototype
+  // chain to an inherited function, pass the truthiness check below, and then throw a TypeError
+  // when .find() is called on it — defeating the very purpose of this function, which exists to
+  // return a clean rejection for an unsupported country (CodeRabbit finding #23).
+  const countryConfigs = Object.hasOwn(configsByCountry, countryCode) ? configsByCountry[countryCode] : undefined;
   if (!countryConfigs) {
     return { reason: 'unsupported_country', countryCode, bankId };
   }
@@ -133,12 +139,20 @@ export class ScrapeSession {
     return [...this.#traces];
   }
 
-  /** Checkpoint 1 (navigation gate): `onShouldStartLoadWithRequest`. */
-  handleShouldStartLoadWithRequest(url: string): boolean {
+  /**
+   * Checkpoint 1 (navigation gate): `onShouldStartLoadWithRequest`. `isTopFrame` defaults to
+   * `true` for callers that predate it (backward compatible). On iOS,
+   * `onShouldStartLoadWithRequest` also fires for iframe (non-top-frame) requests — an
+   * off-origin ad, tracker, or embedded widget inside the bank's own page must not finalize the
+   * whole read the way an off-origin top-level navigation does (CodeRabbit finding #24). A
+   * blocked non-top-frame request is simply not loaded; only a blocked top-frame request records
+   * an origin failure.
+   */
+  handleShouldStartLoadWithRequest(url: string, isTopFrame = true): boolean {
     if (this.#finalized) return false;
     if (url === 'about:blank') return true;
     const allowed = isAllowedOrigin(url, this.#config.allowedOrigins);
-    if (!allowed) {
+    if (!allowed && isTopFrame) {
       this.#recordOriginBlocked(url);
     }
     return allowed;
@@ -227,6 +241,17 @@ export class ScrapeSession {
 
   #handleStateChange(payload: StateChangePayload): void {
     const result = this.#stateManager.updateState({ stepId: payload.stepId, progress: payload.progress });
+    // Ingest any products/movements the payload carries BEFORE checking whether the step
+    // transition itself was accepted (CodeRabbit finding #25). `home` is configured with
+    // singleExecution: false, so a second get-products-start for another product page is real,
+    // reachable data — rejecting the *step* transition must not also discard the *data* that
+    // rode along with it.
+    if (payload.data?.products) {
+      this.#ingestProducts(payload.data.products);
+    }
+    if (payload.data?.movements) {
+      this.#ingestMovements(payload.data.movements);
+    }
     if (!result.accepted) {
       this.#addTrace({
         logGroup: 'state-manager',
@@ -240,21 +265,19 @@ export class ScrapeSession {
     if (this.#stepAtLeast(result.stepId, SESSION_ESTABLISHED_STEP)) {
       this.#sessionEstablished = true;
     }
-    if (payload.data?.products) {
-      this.#ingestProducts(payload.data.products);
-    }
-    if (payload.data?.movements) {
-      this.#ingestMovements(payload.data.movements);
-    }
     this.#onProgress?.({ stepId: result.stepId, progress: result.progress });
     if (result.stepId === 'ready') {
       this.#finalize();
     }
   }
 
+  /**
+   * Reuses the single source of truth for step order (`VALID_STEP_TRANSITIONS`) instead of
+   * restating a second copy that could silently drift from it if a step were ever added or
+   * reordered (CodeRabbit finding #26).
+   */
   #stepAtLeast(stepId: ScraperStepId, threshold: ScraperStepId): boolean {
-    const order: ScraperStepId[] = ['load-start', 'login-start', 'get-products-start', 'get-transactions-start', 'ready'];
-    return order.indexOf(stepId) >= order.indexOf(threshold);
+    return VALID_STEP_TRANSITIONS.indexOf(stepId) >= VALID_STEP_TRANSITIONS.indexOf(threshold);
   }
 
   #ingestProducts(rawList: unknown[]): void {

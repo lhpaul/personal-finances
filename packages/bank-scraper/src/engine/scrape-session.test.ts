@@ -239,6 +239,17 @@ describe('ScrapeSession — AC16: origin allowlist at the navigation and injecti
     expect(session.handleShouldStartLoadWithRequest('about:blank')).toBe(true);
   });
 
+  it('checkpoint 1 blocks (but does not finalize the read for) an off-origin non-top-frame request (CodeRabbit finding #24)', () => {
+    const { session, results } = drive();
+    session.start();
+    const allowed = session.handleShouldStartLoadWithRequest('https://ads.example/tracker', false);
+    expect(allowed).toBe(false);
+    expect(results).toEqual([]); // the read is not finalized — no origin failure recorded
+    expect(session.isFinalized()).toBe(false);
+    // A subsequent top-frame request to the real origin still proceeds normally.
+    expect(session.handleShouldStartLoadWithRequest(`${ORIGIN}/login`, true)).toBe(true);
+  });
+
   it('checkpoint 2 (onLoadEnd) rejects a redirect that lands off-origin partway through and never injects', () => {
     const { session, port, results } = drive();
     session.start();
@@ -376,6 +387,29 @@ describe('ScrapeSession — AC20: progress never decreases', () => {
     for (let i = 1; i < progresses.length; i += 1) {
       expect(progresses[i]).toBeGreaterThanOrEqual(progresses[i - 1] as number);
     }
+  });
+});
+
+describe('ScrapeSession — a rejected step transition still ingests the data it carried (CodeRabbit finding #25)', () => {
+  it('keeps products/movements from a state-change payload even when the step itself is rejected as backwards', () => {
+    const { session, results } = drive();
+    session.start();
+    session.handleWebViewMessage(JSON.stringify({ eventType: 'state-change', stepId: 'login-start', progress: 0.1 }));
+    session.handleWebViewMessage(
+      JSON.stringify({ eventType: 'state-change', stepId: 'get-transactions-start', progress: 0.9 }),
+    );
+    // A later message names an earlier step (rejected as backwards by StateManagerService) but
+    // still carries a genuine product — this must not be discarded along with the step.
+    session.handleWebViewMessage(
+      JSON.stringify({
+        eventType: 'state-change',
+        stepId: 'get-products-start',
+        progress: 0.5,
+        data: { products: [rawProduct()] },
+      }),
+    );
+    session.handleWebViewMessage(JSON.stringify({ eventType: 'state-change', stepId: 'ready', progress: 1 }));
+    expect(results[0]?.products.map((p) => p.instanceId)).toContain(VALID_ID_1);
   });
 });
 
