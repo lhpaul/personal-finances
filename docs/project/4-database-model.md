@@ -305,6 +305,20 @@ Gap #9. Key-value; avoids a migration per new preference.
 MVP keys: `onboarding_completed`, `reminder_enabled`, `reminder_time`, `reminder_days`,
 `last_categorization_session_at`, `schema_version`, `first_launch_at`.
 
+**Value shapes** (issue #8's implementation plan Decision 8 — recorded here so item #18, the
+first writer of the reminder keys, inherits the contract instead of re-deciding it):
+
+| Key | Value shape | Read behaviour when absent or malformed |
+|-----|-------------|------------------------------------------|
+| `onboarding_completed` | `true` (boolean JSON) | Treated as `false` (first launch) |
+| `reminder_enabled` | boolean | Treated as `false` — the reminder row is not rendered |
+| `reminder_time` | `"HH:mm"`, 24-hour, zero-padded | The reminder row renders with title only |
+| `reminder_days` | array of ISO weekday integers, `1` = Monday … `7` = Sunday | The reminder row renders with title only |
+
+`apps/mobile/src/db/repositories/settings.ts`'s `isOnboardingCompleted`, `markOnboardingCompleted`
+and `readReminderSettings` are the sanctioned accessors for these keys; no caller reads
+`app_settings` directly for them.
+
 ### `user_budgets`
 
 Created by the migrations, **no UI in the MVP**. Neither table has any seed data, so a later

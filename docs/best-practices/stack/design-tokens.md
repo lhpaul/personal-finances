@@ -44,6 +44,17 @@ colour, or when two unrelated primitives use the same value for the same semanti
 is why shadow decompositions live in a shared `componentMetrics.shadow.{sm,card}` group rather
 than being duplicated per primitive).
 
+- **`screenMetrics`** — the same idea as `componentMetrics`, but namespaced per **screen**
+  rather than per `components/ui/` primitive (added by issue #8's implementation plan, Decision
+  10). `componentMetrics` cannot host screen-level measurements: every one of its groups is
+  named after a primitive, and `theme` itself cannot grow a group —
+  `theme-tokens-parity.test.ts` asserts `Object.keys(theme).sort()` equals an exact ten-group
+  allowlist mirrored from `design/tokens.json`. `screenMetrics` is a sibling export with the
+  same doc-comment contract and the same graduation rule as `componentMetrics`. Example:
+  `screenMetrics.onboarding.heroGlyphSize` (the 62px hero glyph shared by `onboarding-intro`,
+  `onboarding-value` and `onboarding-ready`). Every later screen item follows this pattern
+  instead of stretching `componentMetrics` past its documented meaning.
+
 Both `theme` and `componentMetrics` live in `theme.ts`, so "no hardcoded literal" holds
 literally: `no-style-literals.test.ts` scans every `.ts`/`.tsx` file under `apps/mobile/app/`
 and `apps/mobile/src/` (excluding `theme.ts` itself and test files) for hex colours,

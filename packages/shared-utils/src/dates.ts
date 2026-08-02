@@ -305,6 +305,34 @@ export function formatTimeOfDay(instant: Date, timeZone: string = SANTIAGO_TIME_
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
+const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+/**
+ * `"09:00"` -> `"9:00 AM"`, `"18:00"` -> `"6:00 PM"`, `"00:30"` -> `"12:30 AM"`. Numeric only, so
+ * it takes no `locale` — the mockup's format is fixed (`index.html:1102`, and the presets at
+ * `index.html:1048-1052`).
+ *
+ * Unlike {@link formatTimeOfDay}, this takes the **stored setting string**, not an instant — the
+ * onboarding-ready summary (and item #18's `notifications-schedule`) format a persisted
+ * `app_settings.reminder_time` value, not a live clock read. Throws `RangeError` if `timeOfDay`
+ * is not a zero-padded 24-hour `"HH:mm"` string — this function is only ever called with a value
+ * already validated by `readReminderSettings` (`apps/mobile/src/db/repositories/settings.ts`), so
+ * a malformed input here is a caller bug, not tolerable data drift.
+ */
+export function formatWallClockLabel(timeOfDay: string): string {
+  const match = TIME_OF_DAY_PATTERN.exec(timeOfDay);
+  if (!match) {
+    throw new RangeError(
+      `formatWallClockLabel: expected a 24-hour "HH:mm" string, got "${timeOfDay}"`,
+    );
+  }
+  const hour24 = Number(match[1]);
+  const minute = match[2];
+  const period = hour24 < 12 ? 'AM' : 'PM';
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${hour12}:${minute} ${period}`;
+}
+
 function getLabelFormatter(
   locale: SupportedLocale,
   options: Intl.DateTimeFormatOptions,

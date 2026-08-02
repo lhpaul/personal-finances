@@ -34,6 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resurrects a deletion, and `db:generate` / `db:check` / `db:seed` with a four-mode check that
   mechanically rejects any non-additive change to the stored shape
 - **shared-domain: rules, matching and aggregates** (#5): `@finanzas/shared-domain` now ships the inclusion rule as domain logic (the twin of the SQL fragment in `apps/mobile/src/db/fragments.ts`), merchant alias matching with `prefix` / `contains` / `exact` strategies and normalization, category suggestion with `auto` / `rule` / `user` provenance, and period aggregates — totals, per-category breakdown with largest-remainder percentages that sum to exactly 100%, period-over-period deltas and daily average. The clock is injected as a `DateLocal`; ESLint bans the `Date` global and React imports inside the package.
+- **Onboarding: intro, value carousel and ready** (#8): the app now opens on a real
+  first-launch gate — `app_settings.onboarding_completed` decides between
+  `(onboarding)/intro` and `(tabs)/home`, and the device database is bootstrapped at launch
+  for the first time. The intro, three-step value carousel (swipe or CTA, with "Saltar") and
+  ready screens are built from the mockup, with all copy in the `es`/`en` catalogues;
+  `onboarding-ready` summarises the real connection and reminder state. Completing onboarding
+  writes the flag and replaces the route so the flow is never re-entered.
 
 ### Fixed
 

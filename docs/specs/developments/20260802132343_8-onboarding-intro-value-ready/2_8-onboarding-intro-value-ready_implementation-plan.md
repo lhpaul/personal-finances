@@ -131,7 +131,12 @@ No migration. `app_settings` is key-value; `onboarding_completed` is a new key, 
       typed result (Decision 8).
 - [ ] `apps/mobile/src/db/repositories/connections.ts` (**new**) — read-only
       `getConnectedBanksSummary(db): ConnectedBanksSummary`, joining `user_financial_institutions`
-      (status `connected`) to `financial_institutions` for names and counting
+      (status `active` — **implementation correction**: this line originally read status
+      `connected`, a value `docs/project/4-database-model.md`'s
+      `active | inactive | disconnected` enumeration does not define; corrected during
+      implementation before any code was written against the wrong value, and confirmed against
+      the merged item #9 plan's Resolution R2, which records `'active'` as the value item #9
+      writes on connect) to `financial_institutions` for names and counting
       `user_financial_products` rows. Write-side connection functions belong to #9.
 - [ ] `apps/mobile/src/db/types.ts` — add the `ConnectedBanksSummary` and `ReminderSettings`
       domain types so no caller ever sees a Drizzle row shape.

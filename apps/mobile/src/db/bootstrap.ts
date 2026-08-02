@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 
-import { runMigrations } from './migrate';
+import { runMigrationsAsync } from './migrate';
 import { getSetting, setSetting } from './repositories/settings';
 import { applySeeds } from './seeds/apply';
 import { users } from './schema';
@@ -28,8 +28,12 @@ export class DatabaseBootstrapError extends Error {
 
 export interface BootstrapDeps {
   db: AppDatabase;
-  /** Driver-bound thunk that runs Drizzle's `migrate()` for this store (see `migrate.ts`). */
-  migrate: () => void;
+  /** Driver-bound thunk that runs Drizzle's `migrate()` for this store (see `migrate.ts`).
+   * Widened to allow an async thunk (implementation plan Decision 2) — the Expo runtime's
+   * `drizzle-orm/expo-sqlite/migrator` is genuinely `async`; the existing synchronous
+   * `better-sqlite3` thunk still works unchanged because `await`ing a returned `undefined` is a
+   * no-op. */
+  migrate: () => void | Promise<void>;
   /** The newest entry's tag from `drizzle/meta/_journal.json`, for error attribution only. */
   latestMigrationTag: string;
   newId: () => string;
@@ -56,7 +60,7 @@ function ensureFirstLaunchAt(db: AppDatabase, now: () => string): void {
 
 async function runBootstrap(deps: BootstrapDeps): Promise<void> {
   try {
-    runMigrations(deps.migrate, deps.latestMigrationTag);
+    await runMigrationsAsync(deps.migrate, deps.latestMigrationTag);
   } catch (cause) {
     // Already a typed DatabaseMigrationError (migrate.ts); surface it as the bootstrap
     // failure's cause rather than swallowing it (Business Rule 12, AC16).

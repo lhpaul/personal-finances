@@ -60,8 +60,8 @@ pnpm dev:mobile
           no server of ours in this diagram
 ```
 
-**Stack:** Expo SDK 54 · React Native · Expo Router · SQLite + Drizzle · TanStack Query ·
-Turborepo + pnpm. Details in
+**Stack:** Expo SDK 54 · React Native · Expo Router · SQLite + Drizzle · feature hooks over
+`getAppDatabase()` + repositories (no TanStack Query yet) · Turborepo + pnpm. Details in
 [`docs/project/3-software-architecture.md`](docs/project/3-software-architecture.md).
 
 ## MVP scope

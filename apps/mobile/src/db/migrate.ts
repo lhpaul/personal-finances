@@ -40,3 +40,30 @@ export function runMigrations(migrate: () => void, latestMigrationTag: string): 
     );
   }
 }
+
+/**
+ * `async` sibling of {@link runMigrations} (implementation plan Decision 2). `drizzle-orm`'s
+ * Expo migrator (`drizzle-orm/expo-sqlite/migrator`) is genuinely `async` — confirmed against
+ * `node_modules/drizzle-orm/expo-sqlite/migrator.d.ts` at implementation time:
+ * `migrate<TSchema>(db, config): Promise<void>` — so `src/db/runtime.ts` (the Expo runtime)
+ * awaits this instead of {@link runMigrations}. The existing synchronous export above is left
+ * byte-identical: `src/db/testing/memory-db.ts` and every test that depends on it keep working
+ * unchanged.
+ *
+ * @param migrate Driver-bound thunk that runs Drizzle's `migrate()` for this store; may return
+ *   `void` or `Promise<void>` — `await`ing a returned `undefined` is a no-op.
+ * @param latestMigrationTag Same attribution semantics as {@link runMigrations}.
+ */
+export async function runMigrationsAsync(
+  migrate: () => void | Promise<void>,
+  latestMigrationTag: string,
+): Promise<void> {
+  try {
+    await migrate();
+  } catch (cause) {
+    throw new DatabaseMigrationError(
+      `Failed to apply database migration '${latestMigrationTag}'`,
+      { cause },
+    );
+  }
+}
