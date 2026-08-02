@@ -71,7 +71,7 @@ no trend card, no category card, no recent list, no banks card, no hero, no dots
 
 **Expected result**: the panel reports success; home now renders the full set of cards.
 The screen must **not** require an app restart to pick up the new data — returning to the tab
-re-reads it (plan Decision 7, focus invalidation).
+re-reads it, because `useHomeData` re-runs on screen focus (plan Decision 7).
 
 ### Step 3: The `pending` state
 
@@ -302,7 +302,7 @@ Each checkbox maps to an acceptance criterion in the work item brief.
 | --- | --- | --- |
 | `Unable to resolve "react-native-svg"` at runtime | The dev client predates the dependency | Rebuild the dev build; Expo Go cannot run this screen |
 | The screen is blank with no error | The database is still bootstrapping, or bootstrap failed | Home renders nothing until the database is ready (plan Assumption A15). Check the Metro log for `DatabaseBootstrapError` |
-| Totals do not change after excluding a movement | A write bypassed the repository, or the query cache was not invalidated | Confirm the exclusion wrote `excluded_at`, then confirm home invalidates its query keys on focus |
+| Totals do not change after excluding a movement | A write bypassed the repository, or the screen did not re-read on focus | Confirm the exclusion wrote `excluded_at`, then confirm `useHomeData`'s `useFocusEffect` bumped its `reloadToken` when the tab regained focus |
 | `home` and `dashboard` disagree | Someone hand-wrote an exclusion filter | Both must call `sumIncludedByDirectionAndCategory`; `inclusion-rule-single-definition.test.ts` should already have failed |
 | Amounts are off by a factor of 100, or show decimals | A float entered the money pipeline upstream | `formatClp` throws a `TypeError` on non-integer input by design — fix the producer, not the formatter |
 | A movement shows up in the wrong month | The local day was derived from the UTC timestamp | Every boundary must come from `deriveDateLocal` + `getMonthPeriod` (plan Decision 8) |
@@ -319,9 +319,10 @@ Each checkbox maps to an acceptance criterion in the work item brief.
 - **The sample-data path is not the production path.** It loads a committed fixture rather than
   the output of a real sync. Once item #10 ships, re-run Steps 3-6 against a genuine Banco de
   Chile sync before treating the screen as production-verified.
-- **Home is reached by deep link**, because `app/index.tsx` still redirects unconditionally to
-  onboarding. The launch gate belongs to item #8; re-run Step 1 through the normal launch path
-  once it lands.
+- **The deep link is a convenience, not the product path.** Item #8 is a blocking dependency and
+  ships the launch gate that sends a returning user straight to `/(tabs)/home`, so home is
+  reachable normally; the runbook deep-links only to reach a specific state without replaying
+  onboarding each time.
 - **Fidelity comparison is manual.** The automated mockup capture/compare tooling is tracked
   separately (issue #47); until it lands this runbook is the check, and the PR must say so.
 - **D2 is still open.** The abbreviation scope this screen implements is the reversible default
