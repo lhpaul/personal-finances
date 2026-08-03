@@ -1,0 +1,57 @@
+{
+  "outcome": "partial",
+  "countryCode": "CL",
+  "bankId": "banco-de-chile",
+  "products": [
+    {
+      "instanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "kind": "checking",
+      "displayName": "Cuenta Corriente",
+      "currencyCode": "CLP",
+      "maskedIdentifier": "•••1111"
+    },
+    {
+      "instanceId": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+      "kind": "checking",
+      "displayName": "Cuenta Corriente 2",
+      "currencyCode": "CLP",
+      "maskedIdentifier": "•••2222"
+    }
+  ],
+  "movements": [
+    {
+      "productInstanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "dateLocal": "2026-03-01",
+      "amountMinorUnits": 4200,
+      "direction": "debit",
+      "currencyCode": "CLP",
+      "rawDescription": "LIDER",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 0,
+      "extras": {}
+    },
+    {
+      "productInstanceId": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+      "dateLocal": "2026-03-01",
+      "amountMinorUnits": 800000,
+      "direction": "credit",
+      "currencyCode": "CLP",
+      "rawDescription": "PAGO SUELDO",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 1,
+      "extras": {}
+    }
+  ],
+  "readFailure": null,
+  "productFailures": [
+    {
+      "productInstanceId": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+      "reasonCode": "parse_failed",
+      "attempts": 1
+    }
+  ],
+  "skippedProductKinds": [],
+  "traces": [
+    { "logGroup": "get-transactions-start", "type": "error", "message": "BANK-INTERNAL-TRACE-TEXT-DO-NOT-STORE", "timestamp": 1 }
+  ]
+}

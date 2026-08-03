@@ -1,0 +1,31 @@
+{
+  "outcome": "complete",
+  "countryCode": "CL",
+  "bankId": "banco-de-chile",
+  "products": [
+    {
+      "instanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "kind": "checking",
+      "displayName": "Cuenta Corriente",
+      "currencyCode": "CLP",
+      "maskedIdentifier": "•••1111"
+    }
+  ],
+  "movements": [
+    {
+      "productInstanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "dateLocal": "2026-03-11",
+      "amountMinorUnits": 1500.5,
+      "direction": "debit",
+      "currencyCode": "CLP",
+      "rawDescription": "MONTO INVALIDO",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 0,
+      "extras": {}
+    }
+  ],
+  "readFailure": null,
+  "productFailures": [],
+  "skippedProductKinds": [],
+  "traces": []
+}
