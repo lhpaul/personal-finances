@@ -156,7 +156,7 @@ screen → feature hook (getAppDatabase() + repository functions) → src/db rep
 
 | Concern | Approach |
 |---------|----------|
-| Bank credentials | `expo-secure-store` only. Keyed `bank_creds:<institutionId>`. Read exclusively by the scraper, in memory, for the duration of one sync |
+| Bank credentials | `expo-secure-store` only. Keyed `bank_creds:<institutionId>`. Read exclusively by the scraper, in memory, for the duration of one sync. Every write uses `keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY` (the library's own default has no `…ThisDeviceOnly` suffix, and would otherwise carry the entry into an encrypted device backup). Exactly one module, `apps/mobile/src/lib/secure-store/expo-secure-store.adapter.ts`, may import `expo-secure-store` — enforced by an ESLint rule and a source-text boundary scan (item #9) |
 | Credentials in logs | The scraper's trace log redacts credential fields before any `console` call. `no-console` is enabled; traces go through a logger that strips known secret keys |
 | Database | SQLite in the app sandbox. Not encrypted at rest in the MVP — the OS sandbox plus device passcode is the boundary. **SQLCipher is a fast follow, tracked in the backlog** |
 | Auth | None. There is no account, no session and no authorization surface |

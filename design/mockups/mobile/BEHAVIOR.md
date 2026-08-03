@@ -75,7 +75,11 @@
 - **Acciones:** seleccionar banco habilitado → `bank-credentials` con la institución elegida.
 - **Datos:** catálogo de instituciones (tabla `institutions`, seed de #3). En el MVP solo Banco
   de Chile está operativo.
-- **Pendiente:** 🔴 **D4** — bancos "Próximamente": ¿visibles deshabilitados u ocultos?
+- **Pendiente:** 🔴 **D4** — bancos "Próximamente": ¿visibles deshabilitados u ocultos? **Implementado
+  (#9) con el default reversible**: visibles, debajo de los disponibles, con la nota
+  "Próximamente" y no seleccionables (anunciados como no disponibles para lectores de pantalla,
+  sin `accessibilityRole="button"`). La confirmación del dueño de producto sigue pendiente — si
+  cambia, el ajuste es un filtro de una línea sobre la lista ya ordenada.
 
 ### bank-credentials
 

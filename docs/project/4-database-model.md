@@ -158,6 +158,14 @@ The user's link to one institution on this device. **Holds no secrets** — only
 
 Unique: `(financial_institution_id)` — one connection per bank.
 
+**Item #9 is the only writer of `status`, `credentials_key` and the `idle → syncing` transition.**
+Connecting a bank creates the row (`status: 'active'`, `sync_status: 'idle'`) or, if one already
+exists for that institution, updates only `status` — `credentials_key`, `last_sync_at`,
+`last_success_at` and the error columns survive a reconnect untouched. `credentials_key` is
+deterministic (`bank_creds:<financial_institution_id>`), which is what lets a reconnect resolve
+to the same secure-store entry instead of creating a second one. Item #10 owns every
+`ok` / `error` transition and the last-attempt/last-success bookkeeping that follows a real sync.
+
 **No `auto_sync` column.** Syncing is implicit: an `active` connection syncs on app open when
 its last successful sync is more than six hours old. The per-connection toggle has been removed
 from `#screen=bank-review` so the mockups and the schema agree. If per-bank control is wanted

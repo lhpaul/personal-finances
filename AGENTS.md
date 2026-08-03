@@ -195,6 +195,10 @@ open design/mockups/mobile/index.html
 # sample data; never reachable in a release build). With `pnpm dev:mobile` running, navigate to
 # /gallery (finanzas://gallery) from the dev client's URL bar or deep-link tooling.
 
+# Connect-a-bank dev fixtures (dev build only — plants a credential entry, one or two synced
+# connections, or enters the flow as if from settings; never reachable in a release build).
+# With `pnpm dev:mobile` running, navigate to /connect-fixtures (finanzas://connect-fixtures).
+
 # Build
 pnpm build
 
@@ -309,7 +313,8 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 | `home` and `dashboard` totals disagree | Someone hand-wrote an exclusion filter. A SQL query must use the shared `isIncluded` / `includedAmount` fragments from `apps/mobile/src/db`; in-memory code that already has a `Movement` object must use `isIncludedInAnalysis` / `effectiveAmount` / `contributedAmount` from `@finanzas/shared-domain`. These are the only two sanctioned statements of the rule — a third one anywhere is a review blocker |
 | Amounts off by a factor of 100, or with decimals | Something treated CLP as having cents. Minor unit is the peso; amounts are `INTEGER`. `@finanzas/shared-utils`'s `formatClp` throws a `TypeError` on a non-integer input by design — that throw means a float already entered the money pipeline upstream, not a formatter bug |
 | A transaction shows up in the wrong month | The local day was derived from the UTC timestamp instead of `@finanzas/shared-utils`'s `deriveDateLocal` |
-| Native module missing at runtime | Needs a dev build, not Expo Go. `expo-sqlite`, `expo-crypto` and (since item #12's home screen trend chart) `react-native-svg` all need a native rebuild after install — a stale dev client fails to resolve the newest one |
+| Native module missing at runtime | Needs a dev build, not Expo Go. `expo-sqlite`, `expo-crypto`, `react-native-svg` (item #12's trend chart) and (item #9) `expo-secure-store` all need a native rebuild after install — a stale dev client fails to resolve the newest one, with `Cannot find native module 'ExpoSecureStore'` for the last one |
 | App crashes on launch after an update | A migration threw. This is unrecoverable in the field — that is why `db:check` is a required check |
+| The RUT field on `bank-credentials` is locked and you want it editable | A credential entry already exists in the secure store for some bank | Clear the app's data, or use `finanzas://connect-fixtures` → "Limpiar fixtures plantados" |
 | `Unable to resolve "@expo/metro-runtime"` from `expo-router/entry-classic.js` | The installed `node_modules` tree is isolated, not hoisted (pnpm 11 does not read `node-linker` from `.npmrc`; it reads `nodeLinker` from `pnpm-workspace.yaml`) | Run `pnpm check:layout` to confirm, then `pnpm install` (plain, no `--node-linker` flag) |
 | `pnpm fidelity` captures the wrong device, or fails with "no booted simulator matches profile" | The booted simulator is not named `Finanzas Fidelity` | `xcrun simctl list devices booted`; boot or create `Finanzas Fidelity` per `docs/best-practices/stack/mobile-ui-fidelity.md` — `scripts/mobile-ui/capture-simulator.sh --check-only` prints the exact `simctl create` command |
