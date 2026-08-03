@@ -59,6 +59,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shared `isIncluded` / `includedAmount` fragments. Adds five design-system primitives
   (`ScreenHeader`, `CategoryRow`, `LineChart`, `Legend`, `BankRow`), `formatPercentTenths`
   in `@finanzas/shared-utils`, and a `__DEV__`-only sample-data route
+- **Connect a bank: picker, credentials and secure storage** (#9): the connect-bank
+  introduction with its security accordion, the bank picker over the seeded institution
+  catalogue, the credential form with shared RUT validation, the rejection and RUT-locked
+  states, and the connected screen. Credentials are written only to `expo-secure-store`,
+  under a deterministic per-bank key, and the connection row holds the key and never a
+  value. Adds the `TopBar` design-system primitive, extends `BankRow` and `TextField`
+  additively, and adds a dev-only connect-flow fixtures route
 
 ### Fixed
 
