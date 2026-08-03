@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AliasCandidate } from '@finanzas/shared-domain';
 import type { DateLocal } from '@finanzas/shared-utils';
@@ -96,9 +96,20 @@ export function useMerchantEditor(params: UseMerchantEditorParams): UseMerchantE
   const [busy, setBusy] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
 
-  const applySnapshot = useCallback(
+  // `true` once the draft fields have been seeded for the current `merchantId` (concurrent-event
+  // -source addendum, "the load useEffect" note): a reload triggered by a successful
+  // `groupCandidate` (Decision 13 — "the snapshot is re-read only after groupAliasIntoMerchant
+  // succeeds") must refresh the aliases/candidates/stats the person reads, but must never stomp
+  // an in-progress, unsaved rename or category change the person is still composing for the
+  // bottom "Guardar" (Decision 4). Reset whenever the subject merchant itself changes.
+  const draftSeededRef = useRef(false);
+
+  useEffect(() => {
+    draftSeededRef.current = false;
+  }, [params.merchantId]);
+
+  const applyInitialDraft = useCallback(
     (next: MerchantEditorSnapshot) => {
-      setSnapshot(next);
       setDraftName(next.merchant.name);
       setDraftCategoryId(
         resolveCarriedCategoryId(next.categories, next.merchant.transactionCategoryId, params.initialCategoryId),
@@ -113,7 +124,11 @@ export function useMerchantEditor(params: UseMerchantEditorParams): UseMerchantE
     void loadMerchantEditor({ merchantId: params.merchantId, today: params.today, locale }).then((result) => {
       if (cancelled) return;
       if (result.status === 'ready') {
-        applySnapshot(result.snapshot);
+        setSnapshot(result.snapshot);
+        if (!draftSeededRef.current) {
+          draftSeededRef.current = true;
+          applyInitialDraft(result.snapshot);
+        }
         setStatus('ready');
       } else {
         setStatus(result.status);
@@ -123,7 +138,7 @@ export function useMerchantEditor(params: UseMerchantEditorParams): UseMerchantE
     return () => {
       cancelled = true;
     };
-  }, [params.merchantId, params.today, locale, reloadToken, applySnapshot]);
+  }, [params.merchantId, params.today, locale, reloadToken, applyInitialDraft]);
 
   function setName(name: string): void {
     setDraftName(name);
