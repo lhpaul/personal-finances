@@ -94,6 +94,7 @@ apps/mobile/
 │   ├── components/ui/           # Design-system primitives (theme.ts-driven, mirrors mu-* mockup classes)
 │   ├── dev/                      # __DEV__-only surfaces (DesignSystemGallery) — never ships
 │   ├── features/                # One folder per domain area
+│   │   ├── sync/                 # Headless: idempotent persistence engine (item #10), no UI
 │   │   └── <feature>/{components,use-*.ts}
 │   ├── i18n/                    # es / en catalogues — all user-facing copy
 │   └── db/runtime.ts            # getAppDatabase(): Promise<AppDatabase> — the app-tier entry point
@@ -131,6 +132,20 @@ dependency, and must never receive credentials.
 screen → feature hook (getAppDatabase() + repository functions) → src/db repository → Drizzle → SQLite
                                                                  ↘ @finanzas/shared-domain (pure rules)
 ```
+
+**The sync engine (item #10) is the one exception that renders nothing.** It sits in the same
+layer as a feature hook, but its own inbound edge is a *read result*, not a screen event:
+
+```
+(a later item's WebView host) → ScraperRunner port → src/features/sync (runSync / runAppOpenSync)
+                                                    → src/db repository → Drizzle → SQLite
+```
+
+`@finanzas/bank-scraper` is imported **type-only** by `src/features/sync` — the concrete
+`ScraperRunner` implementation, and the hidden WebView it wraps, belong to the item that mounts
+it (connect flow / syncing screen). The engine itself never imports `expo-secure-store` or
+`expo-crypto`, and is handed only a connection's `credentials_key` (a secure-store *key name*,
+never a value) — the credential itself never enters this layer.
 
 - `src/db` is the only module that emits SQL. Repository functions return domain types.
 - Aggregates used by `home` and `dashboard` are SQL, not JS loops over the full table.
