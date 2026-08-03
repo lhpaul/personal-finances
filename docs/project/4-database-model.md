@@ -163,6 +163,30 @@ its last successful sync is more than six hours old. The per-connection toggle h
 from `#screen=bank-review` so the mockups and the schema agree. If per-bank control is wanted
 later it belongs here as a real column.
 
+**Sync bookkeeping — what each exit writes (item #10).** Every exit from `syncing` writes
+`last_sync_at` from the same `now` the write phase uses; only a success also advances
+`last_success_at` and clears the two error columns:
+
+| Exit | `sync_status` | `last_sync_at` | `last_success_at` | `last_error_code` / `last_error_message` |
+| --- | --- | --- | --- | --- |
+| Complete | `ok` | `now` | `now` | cleared to `null` |
+| Failed (nothing gathered) | `error` | `now` | untouched | the read's reason + a composed `sync.errors.*` key |
+| Partial (something gathered) | `error` | `now` | untouched | the read's reason + a composed `sync.errors.*` key |
+| Cancelled (stopped) | `idle` | `now` | untouched | untouched |
+| Crash recovery at app open | `idle` | `now` | untouched | untouched |
+
+`last_error_message` never holds the bank's own error text or a value from the read's diagnostic
+trace — it is always one of the four fixed `sync.errors.*` catalogue keys.
+
+**Automatic-sync eligibility.** On app open, a connection syncs automatically when **all** hold:
+`status = 'active'`; `sync_status != 'syncing'`; `last_error_code != 'invalid_credentials'`
+(a credential rejection suspends automatic syncing until the person supplies one again);
+`last_success_at` is null or more than six hours old; **and** `last_sync_at` is null or more than
+six hours old — the last-*attempt* half of the interval exists so a connection that fails every
+time does not read the bank on every app open. "Sincronizar ahora" is never subject to any of
+this. A connection found at `sync_status = 'syncing'` with no read actually in progress (the app
+was killed mid-sync) is returned to `idle` first, before this check runs.
+
 ### `user_financial_products`
 
 Financial products discovered by the scraper. Collapses `FinancialProduct` +
@@ -172,7 +196,7 @@ Financial products discovered by the scraper. Collapses `FinancialProduct` +
 |--------|------|-------|
 | `id` | `TEXT PK` | |
 | `user_financial_institution_id` | `TEXT NOT NULL REFERENCES user_financial_institutions(id) ON DELETE CASCADE` | |
-| `external_id` | `TEXT NOT NULL` | The scraper's `Product.financialProductId` |
+| `external_id` | `TEXT NOT NULL` | The scraper's opaque **per-instance identity** (`ScrapedProduct.instanceId`, item #10) — a 32-hex-character value computed in-page, never the product kind and never a raw account/card number. Two accounts of the same kind are two products, each recognised across reads by this value |
 | `type` | `TEXT NOT NULL` | `checking` \| `sight` \| `savings` \| `credit_card` \| `credit_line`. **A real column** — the transaction filter groups by it |
 | `name` | `TEXT NOT NULL` | "Cuenta corriente" |
 | `currency_code` | `TEXT NOT NULL DEFAULT 'CLP'` | |
@@ -254,7 +278,7 @@ The core table.
 | `id` | `TEXT PK` | |
 | `user_financial_product_id` | `TEXT NOT NULL REFERENCES user_financial_products(id) ON DELETE CASCADE` | |
 | `external_id` | `TEXT` | Gap #1 — the bank's id |
-| `dedup_hash` | `TEXT NOT NULL` | `sha256(user_financial_product_id, date_local, String(amount), raw_description, external_id ?? '', is_manual ? id : '')` — fallback identity |
+| `dedup_hash` | `TEXT NOT NULL` | `sha256('v2', user_financial_product_id, date_local, String(amount), direction, raw_description, external_id ?? '', String(occurrenceIndex), is_manual ? id : '')` — fallback identity (item #10's `v2` input) |
 | `amount` | `INTEGER NOT NULL` | Minor units, **always positive**. Direction comes from `type` |
 | `type` | `TEXT NOT NULL` | `debit` \| `credit` — the scraper's vocabulary |
 | `currency_code` | `TEXT NOT NULL DEFAULT 'CLP'` | |
@@ -289,6 +313,16 @@ bank identifier, would otherwise collide. For a bank that supplies no identifier
 non-manual row, the formula reduces exactly to the four-field version, so the fallback route's
 meaning is unchanged; for a bank that does supply one, identity is the identifier and the
 fingerprint stops colliding.
+
+**Item #10 extends the input with two more facts**, because Banco de Chile supplies no bank
+identifier at all, so in practice every one of its movements is recognised by the fallback route
+above: `direction` (a charge and its identically-described refund on the same day for the same
+amount must never collide) and `occurrenceIndex` (the index of a row within its group of
+otherwise-identical rows *in one read*, derived from a stable identity tuple — never from the
+read's listing position — so N indistinguishable movements in one read produce N distinct hashes
+and stay N on a repeat, independent of reordering). The leading `'v2'` tag exists so a future
+identity scheme can be introduced without ever colliding with a stored `v2` value; a `v1`-shaped
+hash computed before item #10 shipped is never recomputed — nothing had shipped to a device yet.
 
 **Analysis rule (single source of truth):** a transaction counts toward totals and charts when
 `excluded_at IS NULL`, at `COALESCE(included_amount, amount)`.

@@ -6,6 +6,7 @@ import type { BankTransactionInput } from '../repositories/transactions';
 import {
   countUncategorized,
   listRecentMovements,
+  MovementValidationError,
   sumIncludedByDirectionAndCategory,
   sumIncludedByDirectionAndDay,
   totalForCategoryInPeriod,
@@ -340,6 +341,317 @@ describe('transactions repository', () => {
       }
     },
   );
+
+  /**
+   * Issue #10 additions — the v2 dedup identity (Decisions 1-2), AC5, AC6, AC15, AC22.
+   */
+  describe('two indistinguishable movements stay two (Business Rules 9-10, AC5)', () => {
+    const twoIdenticalCoffees: BankTransactionInput[] = [
+      { amount: 2500, type: 'debit', occurredAt: '2026-04-01T12:00:00.000Z', dateLocal: '2026-04-01', rawDescription: 'CAFE CENTRO' },
+      { amount: 2500, type: 'debit', occurredAt: '2026-04-01T12:05:00.000Z', dateLocal: '2026-04-01', rawDescription: 'CAFE CENTRO' },
+    ];
+
+    const chargeAndRefund: BankTransactionInput[] = [
+      { amount: 9900, type: 'debit', occurredAt: '2026-04-02T12:00:00.000Z', dateLocal: '2026-04-02', rawDescription: 'TIENDA ROPA' },
+      { amount: 9900, type: 'credit', occurredAt: '2026-04-02T15:00:00.000Z', dateLocal: '2026-04-02', rawDescription: 'TIENDA ROPA' },
+    ];
+
+    it('two identical coffees in one read store two rows, and stay two on replay', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+
+        const first = await upsertBankTransactions(db, productId, twoIdenticalCoffees, ports);
+        expect(first.storedFirstTime).toBe(2);
+        expect(
+          db.select().from(transactions).where(eq(transactions.rawDescription, 'CAFE CENTRO')).all(),
+        ).toHaveLength(2);
+
+        const second = await upsertBankTransactions(db, productId, twoIdenticalCoffees, ports);
+        expect(second.storedFirstTime).toBe(0);
+        expect(second.alreadyKnown).toBe(2);
+        expect(
+          db.select().from(transactions).where(eq(transactions.rawDescription, 'CAFE CENTRO')).all(),
+        ).toHaveLength(2);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('a charge and its identically-described refund — alike except direction — store two rows, and stay two on replay', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+
+        const first = await upsertBankTransactions(db, productId, chargeAndRefund, ports);
+        expect(first.storedFirstTime).toBe(2);
+        const rows = db.select().from(transactions).where(eq(transactions.rawDescription, 'TIENDA ROPA')).all();
+        expect(rows).toHaveLength(2);
+        expect(new Set(rows.map((r) => r.type))).toEqual(new Set(['debit', 'credit']));
+
+        const second = await upsertBankTransactions(db, productId, chargeAndRefund, ports);
+        expect(second.storedFirstTime).toBe(0);
+        expect(
+          db.select().from(transactions).where(eq(transactions.rawDescription, 'TIENDA ROPA')).all(),
+        ).toHaveLength(2);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('planted-negative: without direction in the identity, a charge and its refund would collide — proves the guard is load-bearing', async () => {
+      // This does not call production code with a broken identity (there is no such code path to
+      // call); it demonstrates why Business Rule 9 exists by hashing the *pre-#10* v1-shaped
+      // identity tuple (no direction) for the two rows above and showing they would collide.
+      const v1Like = (row: BankTransactionInput) =>
+        [row.dateLocal, String(row.amount), row.rawDescription].join('|');
+      const [charge, refund] = chargeAndRefund;
+      expect(v1Like(charge as BankTransactionInput)).toBe(v1Like(refund as BankTransactionInput));
+    });
+  });
+
+  describe('a reordered read stores nothing new (Business Rule 11, AC6)', () => {
+    it('the same rows in reverse order, with no external ids, produce the same stored count', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+
+        const forward = withoutIds.productA.run1;
+        const reversed = [...forward].reverse();
+
+        const first = await upsertBankTransactions(db, productId, forward, ports);
+        expect(first.storedFirstTime).toBe(forward.length);
+
+        const second = await upsertBankTransactions(db, productId, reversed, ports);
+        expect(second.storedFirstTime).toBe(0);
+        expect(second.alreadyKnown).toBe(forward.length);
+        expect(db.select().from(transactions).all()).toHaveLength(forward.length);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('a duplicate group shuffled within the batch still produces the same total row count', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+
+        const group: BankTransactionInput[] = [
+          { amount: 1000, type: 'debit', occurredAt: '2026-04-05T12:00:00.000Z', dateLocal: '2026-04-05', rawDescription: 'A' },
+          { amount: 1000, type: 'debit', occurredAt: '2026-04-05T12:01:00.000Z', dateLocal: '2026-04-05', rawDescription: 'A' },
+          { amount: 1000, type: 'debit', occurredAt: '2026-04-05T12:02:00.000Z', dateLocal: '2026-04-05', rawDescription: 'A' },
+        ];
+        const shuffled = [group[2], group[0], group[1]] as BankTransactionInput[];
+
+        const first = await upsertBankTransactions(db, productId, group, ports);
+        expect(first.storedFirstTime).toBe(3);
+
+        const second = await upsertBankTransactions(db, productId, shuffled, ports);
+        expect(second.storedFirstTime).toBe(0);
+        expect(db.select().from(transactions).where(eq(transactions.rawDescription, 'A')).all()).toHaveLength(3);
+      } finally {
+        sqlite.close();
+      }
+    });
+  });
+
+  describe('a rejected amount fails the whole batch (Business Rule 12, Decision 6, AC15)', () => {
+    it.each([
+      ['a fraction', 1500.5],
+      ['zero', 0],
+      ['negative', -1500],
+      ['NaN', Number.NaN],
+    ])('rejects amount = %s (%p) as a MovementValidationError, before any row is written', async (_label, amount) => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        const before = db.select().from(transactions).all().length;
+
+        await expect(
+          upsertBankTransactions(
+            db,
+            productId,
+            [
+              {
+                amount,
+                type: 'debit',
+                occurredAt: '2026-04-06T12:00:00.000Z',
+                dateLocal: '2026-04-06',
+                rawDescription: 'BAD AMOUNT',
+              },
+            ],
+            ports,
+          ),
+        ).rejects.toBeInstanceOf(MovementValidationError);
+
+        expect(db.select().from(transactions).all()).toHaveLength(before);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('the thrown error never carries the offending value or the description (Business Rules 3, 30)', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+
+        let caught: unknown;
+        try {
+          await upsertBankTransactions(
+            db,
+            productId,
+            [
+              {
+                amount: -999999,
+                type: 'debit',
+                occurredAt: '2026-04-06T12:00:00.000Z',
+                dateLocal: '2026-04-06',
+                rawDescription: 'SENTINEL-DESCRIPTION-DO-NOT-LEAK',
+              },
+            ],
+            ports,
+          );
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(MovementValidationError);
+        const message = (caught as MovementValidationError).message;
+        expect(message).not.toContain('999999');
+        expect(message).not.toContain('SENTINEL-DESCRIPTION-DO-NOT-LEAK');
+        expect((caught as MovementValidationError).field).toBe('transactions.amount');
+      } finally {
+        sqlite.close();
+      }
+    });
+  });
+
+  describe('currency is stored as stated, never converted, and never summed into a peso total (Business Rule 17, Decision 15, AC22)', () => {
+    it('a USD movement is stored with its stated currency and amount, unconverted, and stays out of totalForCategoryInPeriod', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        const now = ports.now();
+
+        db.insert(transactions)
+          .values([
+            {
+              id: 'usd-movement',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 'usd-dedup',
+              amount: 5000,
+              type: 'debit',
+              currencyCode: 'USD',
+              occurredAt: now,
+              dateLocal: '2026-04-10',
+              rawDescription: 'INTERNATIONAL CHARGE',
+              transactionCategoryId: 'entretenimiento',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 'clp-movement',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 'clp-dedup',
+              amount: 7000,
+              type: 'debit',
+              currencyCode: 'CLP',
+              occurredAt: now,
+              dateLocal: '2026-04-10',
+              rawDescription: 'LOCAL CHARGE',
+              transactionCategoryId: 'entretenimiento',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ])
+          .run();
+
+        const stored = db.select().from(transactions).where(eq(transactions.id, 'usd-movement')).get();
+        expect(stored?.currencyCode).toBe('USD');
+        expect(stored?.amount).toBe(5000);
+
+        // Only the CLP row contributes: proof the guard is load-bearing, not merely present.
+        const total = totalForCategoryInPeriod(db, 'entretenimiento', {
+          startDateLocal: '2026-04-01',
+          endDateLocal: '2026-04-30',
+        });
+        expect(total).toBe(7000);
+
+        // Both rows still count toward "needs categorization" once uncategorized — the currency
+        // guard must never hide a foreign-currency movement from the person entirely.
+        db.update(transactions)
+          .set({ transactionCategoryId: null })
+          .where(eq(transactions.id, 'usd-movement'))
+          .run();
+        // Exactly the USD row: the CLP row keeps its category, so any other value means the
+        // currency guard leaked into countUncategorized.
+        expect(countUncategorized(db)).toBe(1);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('a differently-cased or padded currency code is canonicalized before storage, on both insert and update (CodeRabbit finding on PR #78)', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+
+        await upsertBankTransactions(
+          db,
+          productId,
+          [
+            {
+              externalId: 'ext-casing',
+              amount: 3000,
+              type: 'debit',
+              currencyCode: ' clp ',
+              occurredAt: '2026-04-11T12:00:00.000Z',
+              dateLocal: '2026-04-11',
+              rawDescription: 'PADDED CURRENCY INSERT',
+            },
+          ],
+          ports,
+        );
+
+        const afterInsert = db.select().from(transactions).where(eq(transactions.externalId, 'ext-casing')).get();
+        expect(afterInsert?.currencyCode).toBe('CLP');
+
+        await upsertBankTransactions(
+          db,
+          productId,
+          [
+            {
+              externalId: 'ext-casing',
+              amount: 3000,
+              type: 'debit',
+              currencyCode: 'usd',
+              occurredAt: '2026-04-11T12:00:00.000Z',
+              dateLocal: '2026-04-11',
+              rawDescription: 'PADDED CURRENCY UPDATE',
+            },
+          ],
+          ports,
+        );
+
+        const afterUpdate = db.select().from(transactions).where(eq(transactions.externalId, 'ext-casing')).get();
+        expect(afterUpdate?.currencyCode).toBe('USD');
+      } finally {
+        sqlite.close();
+      }
+    });
+  });
 
   /**
    * Home-screen implementation plan (issue #12) Scenarios 2-6: the two new aggregates and

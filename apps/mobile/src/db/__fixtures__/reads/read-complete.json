@@ -1,0 +1,84 @@
+{
+  "outcome": "complete",
+  "countryCode": "CL",
+  "bankId": "banco-de-chile",
+  "products": [
+    {
+      "instanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "kind": "checking",
+      "displayName": "Cuenta Corriente",
+      "currencyCode": "CLP",
+      "maskedIdentifier": "•••1111"
+    },
+    {
+      "instanceId": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+      "kind": "checking",
+      "displayName": "Cuenta Corriente 2",
+      "currencyCode": "CLP",
+      "maskedIdentifier": "•••2222"
+    },
+    {
+      "instanceId": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+      "kind": "credit_card",
+      "displayName": "Tarjeta de Crédito",
+      "currencyCode": "CLP",
+      "maskedIdentifier": "•••3333",
+      "balanceMinorUnits": -50000,
+      "creditLimitMinorUnits": 500000,
+      "availableCreditMinorUnits": 450000,
+      "cardBrand": "Visa",
+      "cardCategory": "classic",
+      "cardLast4": "3333"
+    }
+  ],
+  "movements": [
+    {
+      "productInstanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "dateLocal": "2026-03-01",
+      "amountMinorUnits": 4200,
+      "direction": "debit",
+      "currencyCode": "CLP",
+      "rawDescription": "LIDER",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 0,
+      "extras": {}
+    },
+    {
+      "productInstanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "dateLocal": "2026-03-02",
+      "amountMinorUnits": 15000,
+      "direction": "debit",
+      "currencyCode": "CLP",
+      "rawDescription": "JUMBO",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 1,
+      "extras": {}
+    },
+    {
+      "productInstanceId": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+      "dateLocal": "2026-03-01",
+      "amountMinorUnits": 800000,
+      "direction": "credit",
+      "currencyCode": "CLP",
+      "rawDescription": "PAGO SUELDO",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 2,
+      "extras": {}
+    },
+    {
+      "productInstanceId": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+      "dateLocal": "2026-03-03",
+      "amountMinorUnits": 9900,
+      "direction": "debit",
+      "currencyCode": "CLP",
+      "rawDescription": "NETFLIX.COM",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 3,
+      "extras": {}
+    }
+  ],
+  "readFailure": null,
+  "productFailures": [],
+  "skippedProductKinds": [],
+  "traces": []
+}

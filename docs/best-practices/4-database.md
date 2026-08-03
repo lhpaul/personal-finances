@@ -46,7 +46,9 @@ row-level security, connection pooling and staged production migrations. None of
   instead. A hand-written filter — SQL or JavaScript — that forgets exclusions is a review
   blocker, not a nit.
 - **Writes from sync are idempotent.** Upsert on `(user_financial_product_id, external_id)`,
-  falling back to `dedup_hash`. Never overwrite user-owned columns on conflict.
+  falling back to `dedup_hash` — whose input carries direction and an occurrence-index-within-
+  identity-group, never a read's listing position (item #10). Never overwrite user-owned columns
+  on conflict.
 - Wrap multi-table writes in a transaction — a sync run touches three tables.
 - Aggregate in SQL, not in JavaScript. These tables grow unbounded.
 

@@ -1,3 +1,5 @@
+import { eq } from 'drizzle-orm';
+
 import { userFinancialInstitutions, userFinancialProducts } from '../schema';
 import type { AppDatabase } from '../types';
 
@@ -25,6 +27,31 @@ export function createTestConnection(
     })
     .run();
   return id;
+}
+
+/**
+ * Test-only, direct field overrides on a connection row (issue #10) — for feature-level tests
+ * (`src/features/sync/__tests__/*`) that need to plant a specific sync-bookkeeping state
+ * (`syncStatus`, `lastSuccessAt`, …) without going through a real sync. Lives in `src/db/testing/`
+ * — never `src/features/` — because only `src/db/` may import `drizzle-orm`
+ * (`src/db/__tests__/db-access-boundary.test.ts`).
+ */
+export function setConnectionFieldsForTest(
+  db: AppDatabase,
+  userFinancialInstitutionId: string,
+  fields: Partial<{
+    status: string;
+    syncStatus: string;
+    lastSyncAt: string | null;
+    lastSuccessAt: string | null;
+    lastErrorCode: string | null;
+    lastErrorMessage: string | null;
+  }>,
+): void {
+  db.update(userFinancialInstitutions)
+    .set(fields)
+    .where(eq(userFinancialInstitutions.id, userFinancialInstitutionId))
+    .run();
 }
 
 export function createTestProduct(

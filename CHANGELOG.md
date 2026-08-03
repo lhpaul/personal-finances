@@ -59,6 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shared `isIncluded` / `includedAmount` fragments. Adds five design-system primitives
   (`ScreenHeader`, `CategoryRow`, `LineChart`, `Legend`, `BankRow`), `formatPercentTenths`
   in `@finanzas/shared-utils`, and a `__DEV__`-only sample-data route
+- **Sync engine** (#10): a bank read is stored idempotently — products by the scraper's opaque
+  instance identity, movements by an identity that now carries direction and an occurrence index,
+  so two identical movements in one read stay two and a re-read adds none. The person's
+  category, note, review flag, exclusion and merchant are never written by a sync. Each sync is
+  one indivisible write and updates the connection's own record of its last attempt, last
+  success and last failure.
 
 ### Fixed
 

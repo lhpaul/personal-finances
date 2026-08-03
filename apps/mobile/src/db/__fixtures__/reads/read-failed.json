@@ -1,0 +1,13 @@
+{
+  "outcome": "failed",
+  "countryCode": "CL",
+  "bankId": "banco-de-chile",
+  "products": [],
+  "movements": [],
+  "readFailure": { "reasonCode": "invalid_credentials" },
+  "productFailures": [],
+  "skippedProductKinds": [],
+  "traces": [
+    { "logGroup": "login-start", "type": "error", "message": "SUS CLAVES SON INCORRECTAS - BANK-OWN-ERROR-TEXT", "timestamp": 1 }
+  ]
+}

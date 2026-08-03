@@ -69,7 +69,12 @@ and cannot be deleted.
    `effectiveAmount` / `contributedAmount` in `@finanzas/shared-domain`'s `inclusion.ts` for
    in-memory plain objects — and every aggregate reads through one of the two.
 5. **Re-syncing is idempotent.** A movement already stored must never be inserted twice —
-   identified by the bank's id, or by a content hash when the bank provides none.
+   identified by the bank's id, or by a content hash when the bank provides none. Two identity
+   guarantees hold on top of that (item #10): **direction is part of a movement's identity** — a
+   charge and its identically-described refund on the same day for the same amount are two
+   movements, never one overwriting the other — and **N indistinguishable movements reported in
+   one read stay N** after a repeat sync, independent of the order the bank lists them in (a
+   movement's position in a read's listing is never part of its cross-read identity).
 6. **Categorization is never mandatory.** Every categorization screen offers "omitir",
    "revisar más tarde" and "no estoy seguro". The app nags gently through reminders, never by
    blocking.
