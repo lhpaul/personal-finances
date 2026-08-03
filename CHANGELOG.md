@@ -41,6 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ready screens are built from the mockup, with all copy in the `es`/`en` catalogues;
   `onboarding-ready` summarises the real connection and reminder state. Completing onboarding
   writes the flag and replaces the route so the flow is never re-entered.
+- **Port the bank scraper with Banco de Chile** (#6): `@finanzas/bank-scraper` now ships the
+  headless read engine (`ScrapeSession` with `start` / `cancel`, message routing, step state
+  machine and WebView driver), the four Banco de Chile reading routines (sign in, product
+  list, account movements, credit-card details) under
+  `src/configs/cl/banco-de-chile/`, an exact bank-origin allowlist checked at three points
+  before any credential is entered, a single-owner credential holder cleared before the
+  browser session is torn down, a redacting diagnostic trail asserted by test, integer
+  minor-unit amount parsing including foreign-currency card movements, timezone-independent
+  `DD/MM/YYYY` dates, bounded retries with an overall read deadline, and
+  `complete` / `partial` / `failed` / `cancelled` read outcomes carrying an opaque per-product
+  identity. Banco Falabella and Banco Pelotillehue are not ported.
 - **Home screen** (#12): the challenge hero, financial summary, trend chart, category
   breakdown, recent movements and connected-banks card, in all four manifest states
   (`pending`, `all-clear`, `empty`, `sync-error`), reading real aggregates through the

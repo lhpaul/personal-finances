@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!--
+  Hand-authored fixture, not captured from a live session (Documented Deviation D3). See
+  fixtures/README.md for provenance. Selectors mirror
+  banco-de-chile.account-transactions.script.ts. Reproduces the live Angular Material table's
+  paired-row shape the script's own doc comment describes: each movement row is followed by a
+  differently-shaped detail/expansion row (a single spanning cell, not the five-cell movement
+  shape). Proves the structural row filter (CodeRabbit finding #9) skips the detail row instead of
+  producing a garbage movement or throwing. All amounts are synthetic
+  (fixture-sanitization.test.ts).
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Banco de Chile - Movimientos</title>
+  </head>
+  <body>
+    <fenix-movimientos-cuenta>
+      <table>
+        <tbody id="movements-body">
+          <tr>
+            <td>03/03/2026</td>
+            <td>Compra Supermercado Central</td>
+            <td></td>
+            <td><span>$10.000</span></td>
+            <td><span></span></td>
+          </tr>
+          <tr>
+            <td colspan="5">Detalle expandido de la transaccion</td>
+          </tr>
+        </tbody>
+      </table>
+    </fenix-movimientos-cuenta>
+    <div class="mat-paginator-label">1 - 1 de 1</div>
+    <button class="mat-paginator-navigation-next" disabled>Siguiente</button>
+  </body>
+</html>
