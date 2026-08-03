@@ -649,6 +649,12 @@ export const componentMetrics = {
      * so the mapping is discoverable from this file. */
   },
 
+  topBar: {
+    /** `.mu-topbar__btn` (L286-289) width/height. */
+    buttonSize: 36,
+    /** `.mu-topbar__btn` (L286-289) glyph font-size. */
+    buttonGlyphFontSize: 20,
+  },
   bankRow: {
     /** `.mu-bank__logo` (L568) width/height. */
     logoSize: 40,

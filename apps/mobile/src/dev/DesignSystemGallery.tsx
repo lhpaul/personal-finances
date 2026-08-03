@@ -31,6 +31,7 @@ import {
   TabBar,
   Text,
   TextField,
+  TopBar,
   TransactionRow,
 } from '../components/ui';
 import { screenMetrics, theme } from '../theme';
@@ -50,6 +51,10 @@ import { screenMetrics, theme } from '../theme';
 const SUGGESTED_CATEGORY_EMOJI = '📦';
 const SELECTED_CATEGORY_EMOJI = '🍔';
 const DEFAULT_CATEGORY_EMOJI = '🚗';
+
+/** `TextField`'s `icon` slot demo (implementation plan for issue #9, Decision 16) — the same
+ * "decorative glyph passed as a prop" rationale as the category-chip emoji constants above. */
+const SEARCH_ICON_GLYPH = '🔍';
 
 /** Decorative sample geometry for the `LineChart` demo — numeric, not user-facing copy, so it
  * does not belong in the i18n catalogues (same rationale as the emoji constants above). */
@@ -173,6 +178,13 @@ export function DesignSystemGallery() {
               value={t('ds.field.email_locked_value')}
               onChangeText={() => undefined}
               locked
+            />
+            <TextField
+              value={fieldValue}
+              onChangeText={setFieldValue}
+              placeholder={t('ds.field.search_placeholder')}
+              icon={<Text>{SEARCH_ICON_GLYPH}</Text>}
+              accessibilityLabel={t('ds.field.search_accessibility_label')}
             />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space['5'] }}>
               <Checkbox
@@ -410,6 +422,16 @@ export function DesignSystemGallery() {
                   accessibilityLabel: t('ds.screen_header.action_label'),
                   onPress: () => undefined,
                 }}
+              />
+            </View>
+          </Section>
+
+          <Section title={t('ds.section.top_bar')}>
+            <View style={{ marginHorizontal: -theme.space['5'] }}>
+              <TopBar
+                title={t('ds.top_bar.title')}
+                onBack={() => undefined}
+                backAccessibilityLabel={t('ds.top_bar.back_label')}
               />
             </View>
           </Section>

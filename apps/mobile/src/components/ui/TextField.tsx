@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
@@ -15,6 +16,13 @@ export type TextFieldProps = {
   /** `.mu-input.is-locked` — read-only display mode. */
   locked?: boolean;
   secureTextEntry?: boolean;
+  /** Leading slot (implementation plan for issue #9, Decision 16) — mirrors the mockup's search
+   * input's magnifier. Additive: every existing call site renders unchanged without it. */
+  icon?: ReactNode;
+  /** Overrides the accessible name React Native would otherwise derive from `placeholder` (issue
+   * #9, Decision 16) — a labelless search field would otherwise be announced as its emoji
+   * placeholder. */
+  accessibilityLabel?: string;
 };
 
 /** `.mu-field`, `.mu-label`, `.mu-input`, `--ph`, `.is-focus`, `.is-error`, `.is-locked`,
@@ -28,6 +36,8 @@ export function TextField({
   error = null,
   locked = false,
   secureTextEntry = false,
+  icon,
+  accessibilityLabel,
 }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
   const hasError = error !== null && error !== undefined;
@@ -65,6 +75,7 @@ export function TextField({
           locked && { backgroundColor: theme.colors.surface3 },
         ]}
       >
+        {icon !== undefined && icon}
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -76,9 +87,9 @@ export function TextField({
           onBlur={() => setFocused(false)}
           // `label` renders as a sibling Text, which React Native does not associate with the
           // input on its own — set an explicit accessible name (falling back to the
-          // placeholder) and surface the error/hint as the accessibility hint (found in
-          // review).
-          accessibilityLabel={label ?? placeholder}
+          // placeholder, or the caller's own override) and surface the error/hint as the
+          // accessibility hint (found in review; `accessibilityLabel` override added issue #9).
+          accessibilityLabel={accessibilityLabel ?? label ?? placeholder}
           accessibilityHint={hasError ? (error ?? undefined) : hint}
           style={{
             flex: 1,

@@ -32,6 +32,8 @@
   "ds.field.checkbox_label": "Categorizar automáticamente",
   "ds.field.radio_label": "Incluir en el análisis",
   "ds.field.switch_label": "Notificaciones activas",
+  "ds.field.search_placeholder": "Buscar…",
+  "ds.field.search_accessibility_label": "Buscar",
 
   "ds.section.transactions": "Transacciones",
   "ds.transaction.categorized_icon": "🛒",
@@ -140,6 +142,9 @@
   "ds.screen_header.subtitle": "Tu asistente financiero",
   "ds.screen_header.action_icon": "⚙️",
   "ds.screen_header.action_label": "Configuración",
+  "ds.section.top_bar": "Barra superior",
+  "ds.top_bar.title": "Selecciona tu banco",
+  "ds.top_bar.back_label": "Volver",
 
   "ds.section.category_row": "Fila de categoría",
   "ds.category_row.emoji": "📦",
