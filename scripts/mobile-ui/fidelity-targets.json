@@ -25,6 +25,9 @@
     },
     "empty-db": {
       "description": "Fresh install: migrations applied, no rows"
+    },
+    "stage-queue": {
+      "description": "apps/mobile/src/db/__fixtures__/stage-queue-v1.sql applied on top of a bootstrapped store (#13)"
     }
   },
   "coverage_sets": [
@@ -379,44 +382,65 @@
     },
     {
       "screen_id": "stage-intro",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "stage-queue",
+      "app_file": "apps/mobile/app/categorize/intro.tsx",
+      "deep_link": "finanzas:///categorize/intro?fidelity=1&fidelityScreen=stage-intro",
+      "ready_test_id": "fidelity-stage-intro"
     },
     {
       "screen_id": "categorize",
       "state_id": "expense",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "stage-queue",
+      "app_file": "apps/mobile/app/categorize/index.tsx",
+      "deep_link": "finanzas:///categorize?fidelity=1&fidelityScreen=categorize&fidelityState=expense",
+      "ready_test_id": "fidelity-categorize"
     },
     {
       "screen_id": "categorize",
       "state_id": "income",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "stage-queue",
+      "app_file": "apps/mobile/app/categorize/index.tsx",
+      "deep_link": "finanzas:///categorize?fidelity=1&fidelityScreen=categorize&fidelityState=income",
+      "ready_test_id": "fidelity-categorize"
     },
     {
       "screen_id": "categorize",
       "state_id": "not-sure",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "stage-queue",
+      "app_file": "apps/mobile/app/categorize/index.tsx",
+      "deep_link": "finanzas:///categorize?fidelity=1&fidelityScreen=categorize&fidelityState=not-sure",
+      "ready_test_id": "fidelity-categorize"
     },
     {
       "screen_id": "categorize",
       "state_id": "exclude-sheet",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "stage-queue",
+      "app_file": "apps/mobile/app/categorize/index.tsx",
+      "deep_link": "finanzas:///categorize?fidelity=1&fidelityScreen=categorize&fidelityState=exclude-sheet",
+      "ready_test_id": "fidelity-categorize"
     },
     {
       "screen_id": "categorize-complete",
       "state_id": "partial",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "stage-queue",
+      "app_file": "apps/mobile/app/categorize/complete.tsx",
+      "deep_link": "finanzas:///categorize/complete?fidelity=1&fidelityScreen=categorize-complete&fidelityState=partial",
+      "ready_test_id": "fidelity-categorize-complete"
     },
     {
       "screen_id": "categorize-complete",
       "state_id": "done",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "stage-queue",
+      "app_file": "apps/mobile/app/categorize/complete.tsx",
+      "deep_link": "finanzas:///categorize/complete?fidelity=1&fidelityScreen=categorize-complete&fidelityState=done",
+      "ready_test_id": "fidelity-categorize-complete"
     },
     {
       "screen_id": "merchant-edit",

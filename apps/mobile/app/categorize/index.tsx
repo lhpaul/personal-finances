@@ -1,11 +1,6 @@
-import { RoutePlaceholder } from '../../src/components/RoutePlaceholder';
+import { CategorizeScreen } from '../../src/features/categorization/CategorizeScreen';
+import { fidelityTestId } from '../../src/lib/fidelity-preview';
 
 export default function Categorize() {
-  return (
-    <RoutePlaceholder
-      screenId="categorize"
-      route="/categorize"
-      next={[{ href: '/categorize/merchant/any-merchant', label: 'merchant-edit' }]}
-    />
-  );
+  return <CategorizeScreen testID={fidelityTestId('categorize')} />;
 }

@@ -689,6 +689,22 @@ export const screenMetrics = {
     /** `#s-onboarding-ready` summary-row glyph font-size (L1101-1102). */
     summaryGlyphSize: 20,
   },
+  categorization: {
+    /** `#s-stage-intro` (L1122) hero glyph font-size. */
+    stageIntroHeroGlyphSize: 56,
+    /** `#s-stage-intro` (L1132-1134) three-step icon font-size. */
+    threeStepIconSize: 22,
+    /** `#s-categorize-complete` (L1377) celebration glyph font-size. */
+    completionCelebrationGlyphSize: 60,
+    /** `.mu-topbar__btn` (L286-289) width/height — also read off the inline
+     * `style="width:36px"` trailing spacer on `#s-stage-intro` (L1118), which balances the
+     * leading back button so the title stays centered. */
+    topBarButtonSize: 36,
+    /** `.mu-topbar__btn` (L288) glyph font-size (bare literal, not a `--*` token). */
+    topBarButtonGlyphSize: 20,
+    /** `.mu-item__chev` (L466) chevron glyph font-size (bare literal, not a `--*` token). */
+    disclosureChevronSize: 18,
+  },
   /** `#s-home` (implementation plan for issue #12, Layer-by-Layer — `apps/mobile/theme.ts`). */
   home: {
     /** `<svg class="mu-line" viewBox="0 0 300 120" …>` (index.html home section). Belongs here,
