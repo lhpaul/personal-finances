@@ -18,13 +18,19 @@ module.exports = {
     {
       displayName: 'app',
       preset: 'jest-expo',
-      testPathIgnorePatterns: ['/node_modules/', '/dist/', '/.expo/', '<rootDir>/src/db/'],
+      testPathIgnorePatterns: [
+        '/node_modules/',
+        '/dist/',
+        '/.expo/',
+        '<rootDir>/src/db/',
+        '\\.db\\.test\\.ts$',
+      ],
     },
     {
       displayName: 'db',
       testEnvironment: 'node',
       rootDir: __dirname,
-      testMatch: ['<rootDir>/src/db/**/*.test.ts'],
+      testMatch: ['<rootDir>/src/db/**/*.test.ts', '<rootDir>/src/features/**/*.db.test.ts'],
       transform: {
         '^.+\\.tsx?$': ['babel-jest', { presets: ['babel-preset-expo'] }],
       },
