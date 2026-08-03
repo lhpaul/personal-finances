@@ -420,6 +420,12 @@ export const componentMetrics = {
     iconFontSize: 17,
     /** `.mu-note__icon` (L559): unitless line-height 1.3 * 17 = 22.1 → 22. */
     iconLineHeight: 22,
+    /** Home-screen implementation plan (issue #12), Decision-adjacent (found in review): no
+     * `.mu-note` action equivalent is drawn in the mockup — `sync-error`'s "Reintentar" is drawn
+     * as inline text, not a separate control. Rendered here as its own sibling `Pressable`
+     * instead (accessibility, real touch target), so this spacing value is a new decision, not a
+     * measured one. */
+    actionMarginTop: 6,
   },
 
   transactionRow: {
@@ -545,6 +551,16 @@ export const componentMetrics = {
   progress: {
     /** `.mu-progress` (L517) height. */
     height: 6,
+    /** Home-screen implementation plan (issue #12) Decision 10: no `.mu-progress` equivalent in
+     * the mockup CSS (there is no indeterminate state drawn there) — this is a new decision, not
+     * a measured value, kept here for consistency with every other sizing/timing value this item
+     * added (`bankRow`, `categoryRow`, `screenHeader`, `lineChart`, `legend`) rather than as a
+     * component-local constant (found in review). Fraction of the track width the indeterminate
+     * fill occupies while sweeping — matches the mockup's first-sync block's static `width:45%`,
+     * which this animation replaces with continuous motion rather than a fixed, meaningless
+     * number. */
+    indeterminateFillFraction: 0.45,
+    indeterminateSweepMs: 1200,
   },
 
   steps: {
@@ -566,6 +582,89 @@ export const componentMetrics = {
   emptyState: {
     /** `.mu-empty__icon` (L561) font-size. */
     iconFontSize: 42,
+  },
+
+  screenHeader: {
+    /** `.mu-head__avatar` width/height. */
+    avatarSize: 46,
+    /** `.mu-head__avatar` glyph font-size. */
+    avatarGlyphSize: 22,
+    /** `.mu-head__action` width/height. */
+    actionSize: 40,
+    /** `.mu-head__action` glyph font-size. */
+    actionGlyphFontSize: 18,
+    /** `.mu-head__title`: letter-spacing -.5px; unitless line-height 1.15 over `--xl` (24px) =
+     * 27.6 -> 28. */
+    titleLetterSpacing: -0.5,
+    titleLineHeight: 28,
+    /** `.mu-head__sub` margin-top. */
+    subMarginTop: 1,
+    /** `.mu-head` (L250-253) top/bottom padding is a bare `52px … var(--sp4)` in the mockup —
+     * `52` simulates a status bar inside the mockup's own browser chrome. The app instead wraps
+     * the route in `SafeAreaView` (`edges: ['top']`, the pattern item #8 established), so
+     * `ScreenHeader` itself only needs the *bottom* half of that padding, applied on both edges
+     * once the safe area is already accounted for. */
+    paddingVertical: 16,
+    /** `.mu-head` (L250-253) has no explicit CSS height — content-driven. Conservative
+     * touch-target estimate for `TOUCH_METRICS.headerAction`, scoped to the action button only:
+     * its own `actionSize` (40) already carries the estimate. */
+  },
+
+  categoryRow: {
+    /** `.mu-cat-row__icon` (L507) font-size. */
+    iconFontSize: 18,
+    /** `.mu-cat-row__icon` (L507) width. */
+    iconWidth: 26,
+    /** `.mu-cat-row` (L505) vertical padding. */
+    paddingVertical: 12,
+    /** `.mu-cat-row__bar` (L508) height. */
+    barHeight: 6,
+    /** `.mu-cat-row__bar` (L508) margin-top. */
+    barMarginTop: 5,
+    /** `.mu-cat-row` (L505-509) has no explicit CSS height — content-driven. Conservative
+     * touch-target estimate for `TOUCH_METRICS`: 2 × `paddingVertical` (12) + the title/amount
+     * row (`--small` 12 × the inherited 1.5 line-height = 18) + `barHeight` (6) + `barMarginTop`
+     * (5) + the meta line (`--xs` 11 × the inherited 1.5 line-height = 16.5 -> 17) = 82. */
+    minTouchHeight: 82,
+  },
+
+  lineChart: {
+    /** `.mu-line` (L497) height. */
+    height: 132,
+    /** The mockup's gridlines (`index.html` home section) and current-month polyline stroke
+     * widths. */
+    gridStrokeWidth: 1,
+    seriesStrokeWidth: 2.5,
+    comparisonStrokeWidth: 2,
+    comparisonDashArray: [4, 4],
+  },
+
+  legend: {
+    /** `.mu-legend__dot` (L501) width/height. */
+    dotSize: 9,
+    /** `.mu-legend__dot` (L501) border-radius — a rounded square, not a circle, at this size. */
+    dotRadius: 3,
+    /** `.mu-legend__row` (L500) reads `gap:var(--sp2)` — consumed as `theme.space['2']` directly
+     * at the call site, per the "bare literal vs. `var(--…)`" convention above; listed here only
+     * so the mapping is discoverable from this file. */
+  },
+
+  bankRow: {
+    /** `.mu-bank__logo` (L568) width/height. */
+    logoSize: 40,
+    /** `.mu-bank__logo` (L568) monogram letter-spacing. */
+    monogramLetterSpacing: -0.3,
+    /** `.mu-bank__name` (L572) font-size (bare literal). */
+    nameFontSize: 15,
+    /** `.mu-item__sub` (L459) margin-top. */
+    subMarginTop: 1,
+    /** `.mu-item__chev` (L460) font-size. */
+    chevronFontSize: 18,
+    /** `.mu-bank` (L562-566) has no explicit CSS height — content-driven. Conservative
+     * touch-target estimate for `TOUCH_METRICS`, mirroring `transactionRow.minTouchHeight`'s
+     * derivation: 2 × vertical padding (`--sp3` = 12) + the name line (19) + `subMarginTop` (1) +
+     * the sub line (`--sm` 12 × the inherited 1.5 line-height = 18) = 62. */
+    minTouchHeight: 62,
   },
 } as const;
 
@@ -605,5 +704,17 @@ export const screenMetrics = {
     topBarButtonGlyphSize: 20,
     /** `.mu-item__chev` (L466) chevron glyph font-size (bare literal, not a `--*` token). */
     disclosureChevronSize: 18,
+  },
+  /** `#s-home` (implementation plan for issue #12, Layer-by-Layer — `apps/mobile/theme.ts`). */
+  home: {
+    /** `<svg class="mu-line" viewBox="0 0 300 120" …>` (index.html home section). Belongs here,
+     * not `componentMetrics.lineChart`, because it is the trend card's own layout choice, not a
+     * property of the `LineChart` primitive itself — a future consumer (#17) may choose a
+     * different aspect ratio for the same primitive. */
+    chartViewBoxWidth: 300,
+    chartViewBoxHeight: 120,
+    /** Three evenly-spaced horizontal gridlines (`y="30"`, `y="60"`, `y="90"` over a 120-tall
+     * viewBox — quarter divisions). */
+    chartGridLineCount: 3,
   },
 } as const;

@@ -63,7 +63,11 @@ export type TouchMetricsKey =
   | 'pill'
   | 'tabBarItem'
   | 'emptyStateAction'
-  | 'sheetDismiss';
+  | 'sheetDismiss'
+  | 'headerAction'
+  | 'categoryRow'
+  | 'bankRow'
+  | 'noteAction';
 
 /**
  * One entry per pressable primitive built in this item, keyed by primitive (plus a size/variant
@@ -110,4 +114,15 @@ export const TOUCH_METRICS = {
     width: componentMetrics.sheet.grabWidth,
     height: componentMetrics.sheet.grabHeight,
   }),
+  /** Home-screen implementation plan (issue #12), Step 5. */
+  headerAction: withMinTarget({
+    width: componentMetrics.screenHeader.actionSize,
+    height: componentMetrics.screenHeader.actionSize,
+  }),
+  categoryRow: withMinTarget({ height: componentMetrics.categoryRow.minTouchHeight }),
+  bankRow: withMinTarget({ height: componentMetrics.bankRow.minTouchHeight }),
+  /** `Note`'s optional action (e.g. `sync-error`'s "Reintentar", found in review) — content-sized
+   * like `transactionRow`/`bankRow`, using `note.lineHeight` as the visual box `withMinTarget`
+   * expands from. */
+  noteAction: withMinTarget({ height: componentMetrics.note.lineHeight }),
 } satisfies Record<TouchMetricsKey, TouchMetrics>;

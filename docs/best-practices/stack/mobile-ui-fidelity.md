@@ -105,6 +105,10 @@ and in the diff of the PR that moved it — never move it to hide unrelated drif
   Before writing a screen, check the primitive in the running app at `finanzas://gallery`
   (`/gallery`) — a `__DEV__`-only route rendering every primitive with sample data. It has no
   reachable entry point in a release build. See [`design-tokens.md`](design-tokens.md#checking-a-primitive-before-writing-a-screen).
+  **Known gap**: item #12's five new primitives (`ScreenHeader`, `CategoryRow`, `LineChart`,
+  `Legend`, `BankRow`) are showcased in the app gallery but not yet in the mockup's own
+  `#screen=ds-components` — that side is a design-asset change tracked as a follow-up, not made
+  by that implementation.
 - Tokens come from `apps/mobile/src/theme.ts`, mirroring `design/tokens.json`. No literal hex,
   spacing or radius. See [`design-tokens.md`](design-tokens.md).
 - **No user-facing literals in JSX.** Copy comes from the i18n catalogues, and the Spanish

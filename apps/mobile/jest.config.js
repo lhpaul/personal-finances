@@ -4,10 +4,14 @@
  * - `app`: the existing `jest-expo` preset, unchanged, but ignoring everything under `src/db`
  *   so React Native's module mocks and RN-flavoured test environment never load for the
  *   Node-only database tier — a native Node addon (`better-sqlite3`) and a Node-only test tier
- *   do not need them and can be destabilised by them.
- * - `db`: `testEnvironment: 'node'` with `babel-jest` + `babel-preset-expo`, matching only
- *   `*.test.ts` files under `src/db`. This is what lets the whole database test suite run
- *   against `better-sqlite3` in memory, with no simulator and no device (AC24).
+ *   do not need them and can be destabilised by them. Also ignores `*.db.test.ts` anywhere
+ *   under `src/features/` (home-screen implementation plan for issue #12, Infrastructure) —
+ *   those files run under the `db` project instead, so the same file never runs twice.
+ * - `db`: `testEnvironment: 'node'` with `babel-jest` + `babel-preset-expo`, matching
+ *   `*.test.ts` files under `src/db` **and** `*.db.test.ts` files under `src/features/` — the
+ *   latter lets a repository **composition** that lives outside `src/db/` still be tested
+ *   against real SQLite (issue #12, Scenario 25). This is what lets the whole database test
+ *   suite run against `better-sqlite3` in memory, with no simulator and no device (AC24).
  *
  * `pnpm --filter @finanzas/mobile test` runs both projects, so AC24's "runs as part of the
  * repository's existing test command" holds with no new command.

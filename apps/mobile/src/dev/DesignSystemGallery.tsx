@@ -6,18 +6,23 @@ import { useTranslation } from 'react-i18next';
 import {
   Amount,
   Badge,
+  BankRow,
   Button,
   Card,
   CategoryChip,
+  CategoryRow,
   Checkbox,
   Dots,
   EmptyState,
   Hero,
+  Legend,
+  LineChart,
   Modal,
   Note,
   Pill,
   Progress,
   Radio,
+  ScreenHeader,
   Segment,
   Sheet,
   StatTile,
@@ -28,7 +33,7 @@ import {
   TextField,
   TransactionRow,
 } from '../components/ui';
-import { theme } from '../theme';
+import { screenMetrics, theme } from '../theme';
 
 /** Decorative sample glyphs for the `CategoryChip` demo rows below: language-independent, not
  *  user-facing copy, so they do not belong in the i18n catalogues (implementation plan Decision
@@ -45,6 +50,11 @@ import { theme } from '../theme';
 const SUGGESTED_CATEGORY_EMOJI = '📦';
 const SELECTED_CATEGORY_EMOJI = '🍔';
 const DEFAULT_CATEGORY_EMOJI = '🚗';
+
+/** Decorative sample geometry for the `LineChart` demo — numeric, not user-facing copy, so it
+ * does not belong in the i18n catalogues (same rationale as the emoji constants above). */
+const SAMPLE_LINE_POINTS = '0,105 50,95 100,72 150,74 200,48 250,36 300,18';
+const SAMPLE_COMPARISON_POINTS = '0,100 50,88 100,92 150,66 200,58 250,40 300,26';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -385,6 +395,63 @@ export function DesignSystemGallery() {
               variant="outline"
               label={t('ds.modal.open_label')}
               onPress={() => setModalVisible(true)}
+            />
+          </Section>
+
+          <Section title={t('ds.section.screen_header')}>
+            <View style={{ marginHorizontal: -theme.space['5'] }}>
+              <ScreenHeader
+                avatar={t('ds.screen_header.avatar')}
+                avatarTone="brand"
+                title={t('ds.screen_header.title')}
+                subtitle={t('ds.screen_header.subtitle')}
+                action={{
+                  icon: t('ds.screen_header.action_icon'),
+                  accessibilityLabel: t('ds.screen_header.action_label'),
+                  onPress: () => undefined,
+                }}
+              />
+            </View>
+          </Section>
+
+          <Section title={t('ds.section.category_row')}>
+            <CategoryRow
+              emoji={t('ds.category_row.emoji')}
+              label={t('ds.category_row.label')}
+              amountFormatted={t('ds.category_row.amount')}
+              ratio={0.84}
+              fillColor={theme.chart.series[1]}
+              meta={t('ds.category_row.meta')}
+            />
+          </Section>
+
+          <Section title={t('ds.section.line_chart')}>
+            <LineChart
+              points={SAMPLE_LINE_POINTS}
+              comparisonPoints={SAMPLE_COMPARISON_POINTS}
+              seriesColor={theme.chart.series[1]}
+              gridLineCount={screenMetrics.home.chartGridLineCount}
+              viewBoxWidth={screenMetrics.home.chartViewBoxWidth}
+              viewBoxHeight={screenMetrics.home.chartViewBoxHeight}
+              accessibilityLabel={t('ds.line_chart.label')}
+            />
+          </Section>
+
+          <Section title={t('ds.section.legend')}>
+            <Legend
+              items={[
+                { color: theme.chart.series[1], label: t('ds.legend.item_current') },
+                { color: theme.chart.comparison, label: t('ds.legend.item_previous') },
+              ]}
+            />
+          </Section>
+
+          <Section title={t('ds.section.bank_row')}>
+            <BankRow
+              monogram={t('ds.bank_row.monogram')}
+              monogramColor={theme.colors.brandPrimary}
+              name={t('ds.bank_row.name')}
+              subLabel={t('ds.bank_row.sub_label')}
             />
           </Section>
         </View>
