@@ -65,6 +65,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   category, note, review flag, exclusion and merchant are never written by a sync. Each sync is
   one indivisible write and updates the connection's own record of its last attempt, last
   success and last failure.
+- **Transactions list** (#15): the month-grouped virtualized movement list with keyset
+  pagination, text search across the raw description, merchant, note and category, the
+  filter sheet (tipo, estado, producto, mostrar excluidas) with its header badge, the empty
+  state and manual transaction entry, in all four manifest states (`list`, `search`,
+  `filters`, `empty`). Excluded movements stay in the list, attenuated, per Business Rule 3
 
 ### Fixed
 
