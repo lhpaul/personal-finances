@@ -51,24 +51,43 @@ describe('readStageData (Decision 16)', () => {
         ])
         .run();
       setUserCategory(db, 'pending-1', 'comida', ports);
-      // A separate, already-categorized row builds the "used categories" history read below.
+      // Two separate, already-categorized rows build the "used categories" history read below —
+      // one expense, one income, so both directions get the same regression protection.
       db.insert(transactions)
-        .values({
-          id: 'history-comida',
-          userFinancialProductId: productId,
-          externalId: null,
-          dedupHash: 'dedup-history-comida',
-          amount: 3000,
-          type: 'debit',
-          occurredAt: now,
-          dateLocal: '2026-01-20',
-          rawDescription: 'History expense',
-          transactionCategoryId: 'comida',
-          categorySource: 'user',
-          isManual: 0,
-          createdAt: now,
-          updatedAt: now,
-        })
+        .values([
+          {
+            id: 'history-comida',
+            userFinancialProductId: productId,
+            externalId: null,
+            dedupHash: 'dedup-history-comida',
+            amount: 3000,
+            type: 'debit',
+            occurredAt: now,
+            dateLocal: '2026-01-20',
+            rawDescription: 'History expense',
+            transactionCategoryId: 'comida',
+            categorySource: 'user',
+            isManual: 0,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'history-sueldo',
+            userFinancialProductId: productId,
+            externalId: null,
+            dedupHash: 'dedup-history-sueldo',
+            amount: 500000,
+            type: 'credit',
+            occurredAt: now,
+            dateLocal: '2026-01-20',
+            rawDescription: 'History income',
+            transactionCategoryId: 'sueldo',
+            categorySource: 'user',
+            isManual: 0,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ])
         .run();
 
       const snapshot = readStageData(db, { locale: 'es' });
@@ -79,6 +98,7 @@ describe('readStageData (Decision 16)', () => {
       expect(snapshot.expenseCategories.some((c) => c.slug === 'comida')).toBe(true);
       expect(snapshot.incomeCategories.every((c) => c.income === true)).toBe(true);
       expect(snapshot.usedExpenseCategories.map((c) => c.slug)).toContain('comida');
+      expect(snapshot.usedIncomeCategories.map((c) => c.slug)).toContain('sueldo');
     } finally {
       sqlite.close();
     }

@@ -73,7 +73,7 @@ export function ExcludeSheet({ visible, onCancel, onConfirm }: ExcludeSheetProps
           <Pressable
             key={candidate}
             accessibilityRole="radio"
-            accessibilityState={{ selected: reason === candidate }}
+            accessibilityState={{ checked: reason === candidate }}
             onPress={() => setReason(candidate)}
             style={{
               flexDirection: 'row',

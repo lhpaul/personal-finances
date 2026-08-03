@@ -412,7 +412,7 @@ export function setUserCategory(
 export function setReviewFlag(
   db: AppDatabase,
   transactionId: string,
-  flag: 'review_later' | 'uncertain',
+  flag: NonNullable<Transaction['reviewFlag']>,
   ports: { now: () => string },
 ): void {
   db.update(transactions)
@@ -430,7 +430,7 @@ export function setReviewFlag(
 export function excludeTransaction(
   db: AppDatabase,
   transactionId: string,
-  input: { reason: 'personal_transfer' | 'shared_expense' | 'not_relevant' | 'cash_withdrawal' | 'other'; note?: string | null },
+  input: { reason: NonNullable<Transaction['exclusionReason']>; note?: string | null },
   ports: { now: () => string },
 ): void {
   const now = ports.now();

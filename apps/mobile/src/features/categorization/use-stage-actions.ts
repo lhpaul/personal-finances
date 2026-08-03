@@ -2,14 +2,11 @@ import { useEffect, useState } from 'react';
 
 import { excludeTransaction, setReviewFlag, setUserCategory } from '../../db/repositories/transactions';
 import { getAppDatabase } from '../../db/runtime';
-import type { AppDatabase } from '../../db/types';
+import type { AppDatabase, Transaction } from '../../db/types';
 
-export type StageExclusionReason =
-  | 'personal_transfer'
-  | 'shared_expense'
-  | 'not_relevant'
-  | 'cash_withdrawal'
-  | 'other';
+/** Derived from `Transaction['exclusionReason']` (`db/types.ts`) rather than redeclared, so the
+ * reason union has exactly one source of truth (CodeRabbit finding on PR #79). */
+export type StageExclusionReason = NonNullable<Transaction['exclusionReason']>;
 
 export class StageActionInFlightError extends Error {
   constructor() {
