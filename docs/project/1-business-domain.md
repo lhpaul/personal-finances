@@ -40,8 +40,13 @@ inclusion). This split is the heart of the model — see [4-database-model.md](4
 
 ### Merchant
 The counterparty behind a transaction, resolved from the raw bank description through aliases.
-One merchant folds many raw strings (`MERPAGO*MERCADOLIBRE`, `ML CHILE SPA`) and carries a
-default category applied to future movements.
+One merchant folds many raw strings (`MERCADOLIBRE COMPRA`, `MERPAGO*MERCADOLIBRE`) and carries a
+default category applied to future movements. `#screen=merchant-edit` (#14) is where a person
+acts on this: renaming the merchant, folding an on-device-detected raw string into it — a
+suggestion derived from the person's own movements, never a community source (there is no
+backend) — and setting the default category. Setting the default never rewrites a category the
+person already confirmed on a past movement; it only takes effect the next time a movement
+resolves to this merchant.
 
 ### Transaction category
 The user's spending taxonomy, split into expense and income. Seeded with a Chilean-flavored
