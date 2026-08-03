@@ -1,4 +1,21 @@
-import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { deriveDateLocal } from '@finanzas/shared-utils';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  or,
+  sql,
+  type SelectedFields,
+  type SQL,
+} from 'drizzle-orm';
+import type { SQLiteColumn, SQLiteTable } from 'drizzle-orm/sqlite-core';
 
 import { assignOccurrenceIndexes, buildDedupInput } from '../dedup';
 import { includedAmount, isIncluded, isPesoDenominated } from '../fragments';
@@ -7,13 +24,20 @@ import { mergeTransactionMetadata, parseAssets, parseCategoryLabels } from '../j
 import type { SupportedLocale } from '../labels';
 import { resolveLabel } from '../labels';
 import { assertPositiveMinorUnits, canonicalizeCurrencyCode } from '../money';
-import { merchants, transactionCategories, transactions } from '../schema';
+import { merchants, transactionCategories, transactions, userFinancialProducts } from '../schema';
 import type {
   AppDatabase,
   DirectionCategoryTotal,
   DirectionDayTotal,
+  ManualTransactionInput,
+  MonthCount,
   RecentMovement,
   Transaction,
+  TransactionListCursor,
+  TransactionListPage,
+  TransactionListQueryParams,
+  TransactionListRow,
+  TransactionPageParams,
 } from '../types';
 
 /**
@@ -549,4 +573,238 @@ export function listRecentMovements(
       row.categoryLabels === null ? undefined : resolveLabel(parseCategoryLabels(row.categoryLabels), params.locale),
     categoryEmoji: row.categoryLabels === null ? undefined : parseAssets(row.categoryAssets).emoji,
   }));
+}
+
+// -------------------------------------------------------------------------------------------
+// `transactions` screen (implementation plan for issue #15, Decisions 2, 4-6, 8, 12).
+// -------------------------------------------------------------------------------------------
+
+/** Escapes the three characters SQLite's `LIKE` treats specially, so a typed `%`/`_`/`\` matches
+ * itself literally rather than acting as a wildcard/escape (Decision 5, Scenario 6). */
+function escapeLikeTerm(term: string): string {
+  return term.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
+/**
+ * The one place this screen's filter semantics exist (Decision 2, module-private — **not
+ * exported**). {@link listTransactionsPage} and {@link countTransactionsByMonth} both call it, so
+ * a filter cannot be applied to the rows and forgotten in the counts. The "hide excluded" branch
+ * reads through the **imported** `isIncluded` fragment — the only sanctioned way to express that
+ * condition outside `src/db/fragments.ts` (Business Rule 4); this file carries no `excluded_at`
+ * literal, no `sql`-tagged template mentioning `excluded`, and no `isNull(x.excludedAt)`.
+ */
+function buildTransactionListPredicates(params: TransactionListQueryParams): SQL[] {
+  const { filters, search } = params;
+  const predicates: SQL[] = [];
+
+  if (filters.direction !== 'all') predicates.push(eq(transactions.type, filters.direction));
+  if (filters.categorization === 'uncategorized') {
+    predicates.push(isNull(transactions.transactionCategoryId));
+  }
+  if (filters.categorization === 'categorized') {
+    predicates.push(isNotNull(transactions.transactionCategoryId));
+  }
+  if (filters.productId !== null) {
+    predicates.push(eq(transactions.userFinancialProductId, filters.productId));
+  }
+  if (!filters.showExcluded) predicates.push(isIncluded);
+
+  if (search !== null) {
+    // Lower-cased and escaped once per query, not once per row.
+    const pattern = `%${escapeLikeTerm(search.term.toLowerCase())}%`;
+    const textMatches = [
+      sql`lower(${transactions.rawDescription}) like ${pattern} escape '\\'`,
+      sql`lower(${merchants.name}) like ${pattern} escape '\\'`,
+      sql`lower(${transactions.note}) like ${pattern} escape '\\'`,
+    ];
+    if (search.categoryIds.length > 0) {
+      textMatches.push(inArray(transactions.transactionCategoryId, search.categoryIds));
+    }
+    predicates.push(or(...textMatches) as SQL);
+  }
+
+  return predicates;
+}
+
+/** The columns {@link listTransactionsPage} selects — module-private; nothing outside `src/db`
+ * ever sees a column name (Layer-by-Layer, `TransactionListQueryRow` stays module-private). */
+const TRANSACTION_LIST_COLUMNS = {
+  id: transactions.id,
+  dateLocal: transactions.dateLocal,
+  amount: transactions.amount,
+  type: transactions.type,
+  rawDescription: transactions.rawDescription,
+  excludedAt: transactions.excludedAt,
+  exclusionReason: transactions.exclusionReason,
+  includedAmount: transactions.includedAmount,
+  merchantName: merchants.name,
+  merchantAssets: merchants.assets,
+  categoryLabels: transactionCategories.labels,
+  categoryAssets: transactionCategories.assets,
+};
+
+/** `substr(date_local, 1, 7)` — the month-group key (Decision 8), computed from the column
+ * `deriveDateLocal` produced at write time, never from `occurred_at`. */
+const MONTH_KEY = sql<string>`substr(${transactions.dateLocal}, 1, 7)`;
+
+interface TransactionListQueryRow {
+  id: string;
+  dateLocal: string;
+  amount: number;
+  type: string;
+  rawDescription: string;
+  excludedAt: string | null;
+  exclusionReason: string | null;
+  includedAmount: number | null;
+  merchantName: string | null;
+  merchantAssets: string | null;
+  categoryLabels: string | null;
+  categoryAssets: string | null;
+}
+
+/**
+ * The `FROM transactions` + `LEFT JOIN merchants` + `LEFT JOIN transaction_categories` +
+ * `INNER JOIN user_financial_products` shape both {@link listTransactionsPage} and
+ * {@link countTransactionsByMonth} select from (Decision 2, module-private) — so the shared
+ * predicates from {@link buildTransactionListPredicates} always resolve against the same columns.
+ * The product join is a defensive `INNER JOIN` on the `NOT NULL` FK (every transaction belongs to
+ * exactly one product); no product column is selected by either caller today.
+ *
+ * `selection`'s shape differs per caller (the row columns vs. the month-count aggregate); both
+ * cast their own `.all()` result to a named row interface immediately.
+ */
+function transactionListQuery(db: AppDatabase, selection: SelectedFields<SQLiteColumn, SQLiteTable>) {
+  return db
+    .select(selection)
+    .from(transactions)
+    .leftJoin(merchants, eq(transactions.merchantId, merchants.id))
+    .leftJoin(transactionCategories, eq(transactions.transactionCategoryId, transactionCategories.id))
+    .innerJoin(userFinancialProducts, eq(transactions.userFinancialProductId, userFinancialProducts.id));
+}
+
+function mapTransactionListRow(row: TransactionListQueryRow, locale: SupportedLocale): TransactionListRow {
+  return {
+    id: row.id,
+    dateLocal: row.dateLocal,
+    amount: row.amount,
+    type: row.type as TransactionListRow['type'],
+    rawDescription: row.rawDescription,
+    excludedAt: row.excludedAt,
+    exclusionReason: row.exclusionReason as TransactionListRow['exclusionReason'],
+    includedAmount: row.includedAmount,
+    merchantName: row.merchantName ?? undefined,
+    merchantEmoji: row.merchantName === null ? undefined : parseAssets(row.merchantAssets).emoji,
+    categoryName:
+      row.categoryLabels === null ? undefined : resolveLabel(parseCategoryLabels(row.categoryLabels), locale),
+    categoryEmoji: row.categoryLabels === null ? undefined : parseAssets(row.categoryAssets).emoji,
+  };
+}
+
+/**
+ * Spec "Give me the next page of movements matching these filters and this search term, newest
+ * first" (`transactions`, Decision 4). Ordered `date_local desc, id desc` — a total order because
+ * `id` is the primary key, so the keyset cursor can never skip or repeat a row. `LIMIT limit + 1`
+ * answers "is there a next page?" without a second count query. **No inclusion filter unless the
+ * caller asks for one** — `filters.showExcluded` (Decision 6) — so an excluded movement is
+ * returned by default, for the screen to render dimmed.
+ */
+export function listTransactionsPage(
+  db: AppDatabase,
+  params: TransactionPageParams,
+  locale: SupportedLocale,
+): TransactionListPage {
+  const { cursor, limit } = params;
+  const cursorPredicate: SQL | undefined =
+    cursor === null
+      ? undefined
+      : (or(
+          lt(transactions.dateLocal, cursor.dateLocal),
+          and(eq(transactions.dateLocal, cursor.dateLocal), lt(transactions.id, cursor.id)),
+        ) as SQL);
+
+  const rows = transactionListQuery(db, TRANSACTION_LIST_COLUMNS)
+    .where(and(...buildTransactionListPredicates(params), cursorPredicate))
+    .orderBy(desc(transactions.dateLocal), desc(transactions.id))
+    .limit(limit + 1)
+    .all() as unknown as TransactionListQueryRow[];
+
+  const page = rows.slice(0, limit);
+  const last = page[page.length - 1];
+  const nextCursor: TransactionListCursor | null =
+    rows.length > limit && last !== undefined ? { dateLocal: last.dateLocal, id: last.id } : null;
+
+  return { rows: page.map((row) => mapTransactionListRow(row, locale)), nextCursor };
+}
+
+/**
+ * Spec "How many matching movements are in each month?" (`transactions`, Decision 8) — the
+ * `(31)` in `📅 Enero de 2025 (31)`. Grouped by {@link MONTH_KEY}, over the **same** predicates
+ * {@link listTransactionsPage} uses, so a group header's count and the rows underneath it can
+ * never describe different sets (Decision 2). Sums nothing, so `isPesoDenominated` /
+ * `peso-total-scan` do not apply.
+ */
+export function countTransactionsByMonth(db: AppDatabase, params: TransactionListQueryParams): MonthCount[] {
+  const rows = transactionListQuery(db, { monthKey: MONTH_KEY, count: sql<number>`count(*)` })
+    .where(and(...buildTransactionListPredicates(params)))
+    .groupBy(MONTH_KEY)
+    .orderBy(desc(MONTH_KEY))
+    .all() as { monthKey: string; count: number }[];
+
+  return rows.map((row) => ({ monthKey: row.monthKey, count: row.count }));
+}
+
+/**
+ * Spec "Record a movement the bank never reported" (`transactions`, Decision 12). `occurred_at`
+ * and `date_local` are stamped from `ports.now()` — there is no bank instant for a manual entry,
+ * and the mockup's "Fecha" field is not editable in this item. `dedup_hash` folds in the reserved
+ * row id (`isManual: true`), which is exactly what lets two otherwise-identical manual entries
+ * both persist (Business Rule 5). Writes no person-owned column other than the ones the person
+ * just supplied — `merchant_id`, `transaction_category_id` and `category_source` are `null`, so
+ * the movement joins the categorization queue like any other (Business Rule 6).
+ */
+export async function insertManualTransaction(
+  db: AppDatabase,
+  input: ManualTransactionInput,
+  ports: DbPorts,
+): Promise<string> {
+  assertPositiveMinorUnits(input.amount, 'transactions.amount');
+
+  const id = ports.newId();
+  const now = ports.now();
+  const dateLocal = deriveDateLocal(new Date(now));
+  const dedupInput = buildDedupInput({
+    userFinancialProductId: input.userFinancialProductId,
+    dateLocal,
+    amount: input.amount,
+    direction: input.type,
+    rawDescription: input.rawDescription,
+    externalId: null,
+    occurrenceIndex: 0,
+    isManual: true,
+    id,
+  });
+  const dedupHash = await ports.digestSha256(dedupInput);
+
+  db.insert(transactions)
+    .values({
+      id,
+      userFinancialProductId: input.userFinancialProductId,
+      externalId: null,
+      dedupHash,
+      amount: input.amount,
+      type: input.type,
+      currencyCode: 'CLP',
+      occurredAt: now,
+      dateLocal,
+      rawDescription: input.rawDescription,
+      merchantId: null,
+      transactionCategoryId: null,
+      categorySource: null,
+      isManual: 1,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .run();
+
+  return id;
 }
