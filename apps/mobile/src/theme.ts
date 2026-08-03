@@ -717,4 +717,34 @@ export const screenMetrics = {
      * viewBox — quarter divisions). */
     chartGridLineCount: 3,
   },
+  /** `#s-merchant-edit` (implementation plan for issue #14, Layer-by-Layer). */
+  merchants: {
+    /** `.mu-topbar__btn` (L286-289) width/height — the same shared top-bar button geometry every
+     * other screen's own `screenMetrics.<screen>.topBarButtonSize` records (Decision 11's
+     * per-screen-local-composition precedent: `mu-topbar*` is `deferred` in `mu-class-map.ts`). */
+    topBarButtonSize: 36,
+    /** `.mu-topbar__btn` (L288) glyph font-size. */
+    topBarButtonGlyphSize: 20,
+    /** `.mu-item__chev` (L466) disclosure-row chevron glyph font-size. */
+    disclosureChevronSize: 18,
+    /** `.mu-item__icon` (L459-462) width/height. */
+    itemIconSize: 40,
+    /** `.mu-item__icon` (L461) glyph font-size. */
+    itemIconGlyphSize: 19,
+    /** `.mu-item__title` (L464) font-size (bare literal, not a `--*` token). */
+    itemTitleFontSize: 15,
+    /** `.mu-item__sub` (L465) margin-top. */
+    itemSubMarginTop: 1,
+    /** `#s-merchant-edit`'s `.mu-bars` inline `style="height:80px"` override (L1343) — not the
+     * class's own 120px default, which a different screen may use unmodified. */
+    barsHeight: 80,
+    /** `.mu-bars` / `.mu-bars__col` (L496-497) gap. */
+    barsGap: 6,
+    /** `.mu-bars__lbl` (L501) font-size. */
+    barLabelFontSize: 10,
+    /** `.mu-bars__bar` (L498) border-radius, top corners. */
+    barRadiusTop: 6,
+    /** `.mu-bars__bar` (L498) border-radius, bottom corners. */
+    barRadiusBottom: 2,
+  },
 } as const;
