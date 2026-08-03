@@ -117,6 +117,12 @@ destinations until those sections ship.
 - **Copy lives in i18n catalogues** (`src/i18n/{es,en}.json`, flat keys), never inline in JSX.
   `i18next` + `react-i18next` with `expo-localization` for detection, matching
   `zeki-platform`. Enforced by `eslint-plugin-i18next/no-literal-string`.
+- **Long, unbounded lists use `FlashList`** (`@shopify/flash-list`, item #15's `transactions`
+  screen — the only table that grows without limit) over a flat, heterogeneous entry array with
+  `getItemType`, never `.map()` into a `ScrollView`. `FlatList` + `getItemLayout` was rejected for
+  this screen because a movement row's name can wrap to a second line, so no precomputed
+  per-item height table is reliable; `FlatList` (no `getItemLayout`) is the recorded fallback if
+  `FlashList` is ever incompatible with a future SDK/New-Architecture combination.
 
 ## Backend / API Architecture
 
@@ -166,6 +172,15 @@ never a value) — the credential itself never enters this layer.
   `DbPorts` object (`digestSha256`, `newId`, `now`). The runtime supplies `expo-crypto`; the test
   tier supplies `node:crypto` and a deterministic counter, so the native module is never loaded by
   Jest and the committed store snapshot stays reproducible.
+- **Paginated reads use a keyset cursor, never `OFFSET`** (item #15, `transactions`): the cursor
+  is the last row's `(date_local desc, id desc)` pair — a total order because `id` is the primary
+  key, so a row inserted mid-scroll can never be skipped or repeated in an already-read prefix.
+  `LIMIT limit + 1` answers "is there a next page?" without a second `count(*)`.
+- **A filtered read and its own count are built from one shared predicate function**, called
+  twice with a different `SELECT`/`GROUP BY` (item #15's `buildTransactionListPredicates` +
+  `transactionListQuery`). This is the mechanism, not a convention: a header count and the rows
+  under it cannot describe different sets, because a filter added to one and forgotten in the
+  other is not expressible. Every later paginated, grouped read follows this shape.
 
 ## Security Model
 
