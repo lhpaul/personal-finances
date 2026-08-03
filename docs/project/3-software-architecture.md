@@ -10,7 +10,7 @@
 | Secrets | **`expo-secure-store`** (iOS Keychain / Android Keystore) | The one place bank credentials may exist |
 | Scraping | **`react-native-webview`** + injected scripts (`@finanzas/bank-scraper`) | Ported from `bank-scrapper-app`. Banco de Chile is already implemented |
 | State | Feature hooks (`getAppDatabase()` + repository functions) + React Context for session state | Screens are read-heavy over SQLite. **Not yet using TanStack Query** — it is not installed; the current pattern is a hook that awaits `getAppDatabase()` and calls repository functions directly (established by issue #8's onboarding screens, the app's first real screens). Adopting a query library for caching/invalidation remains a possible future direction, not a current dependency |
-| Charts | Hand-rolled **`react-native-svg`** components | The dashboard needs five chart shapes, all already drawn in the mockups. A chart library would cost more than it saves |
+| Charts | Hand-rolled **`react-native-svg`** components | Item #12's home screen trend line is the first chart built (`src/components/ui/LineChart.tsx`); the dashboard (#17) needs four more shapes, all already drawn in the mockups. A chart library would cost more than it saves |
 | i18n | **`i18next`** + `react-i18next` + `expo-localization`, enforced by `eslint-plugin-i18next` |
 | Notifications | **`expo-notifications`**, local scheduling only | Reminders are local; there is no push server |
 | Testing | **Jest** (unit) + **Maestro** (device E2E) | See [Testing Strategy](#testing-strategy) |
@@ -228,6 +228,7 @@ arithmetic). Testing weight goes there.
 | **Unit — scraper** | Jest — `node` for the engine/security/parsers, `jsdom` for the four reading routines | `packages/bank-scraper/src/**/*.test.ts` (engine, security, parsing) and `packages/bank-scraper/src/**/*.dom.test.ts` (injected script generators against fixtures) | Every reading routine against a recorded/hand-authored HTML fixture; the security perimeter (origin allowlist, credential holder, redaction) against planted violations. Ported from `bank-scrapper-app` (issue #6) |
 | **Device E2E** | Maestro | `.maestro/` | Happy paths only: onboarding, categorization, exclusion |
 | **Toolchain — layout & bundle** | `scripts/check-node-linker-layout.mjs` + `expo export:embed` | `pnpm check:layout` (postinstall + CI), CI `bundle` job | Every install and every PR. Proves the `node_modules` tree is hoisted and that Metro can actually produce an iOS bundle — CI cannot be green on a tree that cannot build the app |
+| **UI — design fidelity** | `scripts/mobile-ui/` (Playwright + pixelmatch, `node --test`) | `pnpm fidelity:contract` / `fidelity:test` in CI; `pnpm fidelity` / `fidelity:verify-gate` local-only | Every screen item: the manifest-driven contract (`fidelity-targets.json`) and its unit tests run in CI on every PR; the mockup-vs-simulator pixel diff needs a booted device and stays local (item #47) |
 
 The automated suite is the canonical record of what works.
 
@@ -237,6 +238,10 @@ The automated suite is the canonical record of what works.
 pnpm test                                   # all unit tiers
 pnpm --filter @finanzas/shared-domain test           # fastest feedback loop
 pnpm --filter @finanzas/mobile exec maestro test .maestro/   # device flows, requires a booted simulator
+pnpm fidelity:contract                      # design-fidelity contract validation — CI, no simulator
+pnpm fidelity:test                          # design-fidelity contract + comparator unit tests — CI
+pnpm fidelity --screen home --state pending # mockup vs. running-app pixel diff — local only, needs
+                                             # a booted "Finanzas Fidelity" simulator and a dev build
 ```
 
 Non-negotiable cases:

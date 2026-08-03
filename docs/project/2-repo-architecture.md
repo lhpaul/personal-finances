@@ -49,6 +49,7 @@ personal-finances/
 ├── e2e/                            # Playwright placeholder (see note below)
 ├── scripts/
 │   ├── design/                     # Mockup manifest verification (arrives with #24)
+│   ├── mobile-ui/                  # Design-fidelity gate: contract, mockup/simulator capture, diff (#47)
 │   ├── development-workflow/       # AI workflow helpers
 │   └── dev/                        # Local dev helpers (arrives with a later item)
 ├── .maestro/                       # Device E2E flows (arrives with #22)
@@ -94,6 +95,10 @@ personal-finances/
 
 There is deliberately **no web app and no backend**. The product is local-first; adding a
 server would undo the differentiator.
+
+`@finanzas/mobile` also depends on `react-native-svg` (added by item #12, the home screen's
+trend chart) — a native module, so it needs a **dev build** rebuild after install; Expo Go
+cannot run any screen that imports it.
 
 ## Shared Packages / Libraries
 

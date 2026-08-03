@@ -19,6 +19,9 @@ Capture visual evidence when a change affects:
 
 ## The check
 
+The comparison is automated (`scripts/mobile-ui/`, item #47) and enforced in CI, in addition to
+the manual eyeballing below.
+
 For each screen state in the manifest, compare the running app against the mockup at the same
 hash:
 
@@ -30,13 +33,70 @@ open 'design/mockups/mobile/index.html#screen=transactions&state=filters'
   `state_id` under its manifest entry renders. `empty`, `error` and loading are the ones that
   get skipped, and they are the ones users hit.
 - Capture at least one small-screen and one normal-screen viewport wherever text wrapping or
-  density is risky — Spanish copy is long.
+  density is risky — Spanish copy is long. The fidelity gate itself checks a single profile
+  (`iphone-393x852`); the small-screen check stays manual for now (see Known limitations below).
 - Simulator or device validation for anything native. Jest cannot prove visual parity, safe
   areas, or gesture behaviour.
 - Keep temporary screenshots under `.tmp/` unless the runbook asks for a committed artifact.
 
-> Tooling to automate this comparison (`mockups:capture`, `compare`) is tracked as a backlog
-> item. Until it lands the check is manual, and the PR must say so.
+### Commands
+
+<!-- workflow-shell-contract: bash -->
+```bash
+pnpm fidelity:contract                          # validates scripts/mobile-ui/fidelity-targets.json
+                                                 # against design/mockups/mobile/mockup-manifest.js
+pnpm fidelity:test                               # unit tests for the contract validator and comparator
+pnpm fidelity:capture-mockup --screen home --state pending   # one mockup capture, no simulator
+pnpm fidelity --screen home --state pending      # full gate: mockup + simulator + diff, exits 1 on drift
+pnpm fidelity --issue 12                         # every target owned by one issue
+pnpm fidelity --all --dry-run                    # lists every target, its profile, fixture and status
+pnpm fidelity:verify-gate                        # proves the comparator discriminates, both directions
+bash scripts/mobile-ui/verify-gate.sh            # equivalent direct invocation of fidelity:verify-gate
+```
+
+`pnpm fidelity:contract` and `pnpm fidelity:test` run in CI on every PR (no browser, no
+simulator). `pnpm fidelity` and `pnpm fidelity:verify-gate` are local-only — the device leg needs
+a booted simulator and a native dev build (CI simulator jobs are a follow-up, tracked in the
+item #47 implementation plan).
+
+### Simulator setup
+
+The gate uses a single profile, `iphone-393x852` (matching the mockup's `393×852` frame exactly,
+so no capture ever needs resampling to compare), on a dedicated simulator named
+`Finanzas Fidelity`:
+
+<!-- workflow-shell-contract: bash -->
+```bash
+xcrun simctl create "Finanzas Fidelity" "iPhone 16" "<runtime id, e.g. com.apple.CoreSimulator.SimRuntime.iOS-26-5>"
+xcrun simctl boot "Finanzas Fidelity"
+npx expo run:ios --device "Finanzas Fidelity"   # native dev build; Expo Go is not sufficient
+bash scripts/mobile-ui/capture-simulator.sh --profile iphone-393x852 --check-only   # verify resolution
+```
+
+If `iPhone 16` is not creatable on the installed runtime, retry with `iPhone 15`, then
+`iPhone 14` — `scripts/mobile-ui/capture-simulator.sh --check-only` prints the exact `simctl
+create` command (with the fallback device types) when no booted simulator matches the profile.
+
+### The `planned` → `wired` obligation
+
+Every MVP screen/state target starts `status: "planned"` in `scripts/mobile-ui/fidelity-targets.json`
+— registered against the manifest, not yet runnable. The screen item that implements a target
+flips its mapping(s) to `status: "wired"`, adding `app_file`, `deep_link` (scheme `finanzas:`,
+`fidelity=1`, `fidelityScreen`/`fidelityState` matching the target) and `ready_test_id`
+(`fidelityTestId(screenId)` from `apps/mobile/src/lib/fidelity-preview.ts`, applied as the
+screen's root `testID`). `pnpm fidelity:contract` statically verifies the file exists and the
+selector appears in it — a screen PR that ships UI without wiring its targets fails a required
+CI check.
+
+### Threshold policy
+
+`scripts/mobile-ui/fidelity-targets.json` sets `defaults.max_mismatch_pct` (currently `3.0`) and
+`defaults.pixel_threshold`. A mapping may override `max_mismatch_pct` for a screen with a known,
+accepted rendering difference (chart antialiasing, an in-flight animation) — **any value above
+the default requires a non-empty `threshold_note`** explaining why, and the contract validator
+rejects the file otherwise. This is the anti-gaming rule: the way to make a failing screen pass
+is to fix the screen. If a threshold genuinely needs to move, the reason lives in the contract
+and in the diff of the PR that moved it — never move it to hide unrelated drift.
 
 ## Implementation rules
 
@@ -45,6 +105,10 @@ open 'design/mockups/mobile/index.html#screen=transactions&state=filters'
   Before writing a screen, check the primitive in the running app at `finanzas://gallery`
   (`/gallery`) — a `__DEV__`-only route rendering every primitive with sample data. It has no
   reachable entry point in a release build. See [`design-tokens.md`](design-tokens.md#checking-a-primitive-before-writing-a-screen).
+  **Known gap**: item #12's five new primitives (`ScreenHeader`, `CategoryRow`, `LineChart`,
+  `Legend`, `BankRow`) are showcased in the app gallery but not yet in the mockup's own
+  `#screen=ds-components` — that side is a design-asset change tracked as a follow-up, not made
+  by that implementation.
 - Tokens come from `apps/mobile/src/theme.ts`, mirroring `design/tokens.json`. No literal hex,
   spacing or radius. See [`design-tokens.md`](design-tokens.md).
 - **No user-facing literals in JSX.** Copy comes from the i18n catalogues, and the Spanish
@@ -63,3 +127,24 @@ A PR for visual work states:
 - screenshot or diff artifact paths;
 - known acceptable differences, if any;
 - the commands run.
+
+For a screen item wiring one or more fidelity targets, paste the automated gate's summary table
+into the PR:
+
+| Target | Status | Mismatch | Verdict |
+| --- | --- | --- | --- |
+| `home--pending` | wired | 1.8% | PASS |
+| `home--all-clear` | wired | 2.1% | PASS |
+
+Plus `pnpm fidelity:contract`'s output line (proves the contract still matches the manifest
+after the change) and, for any raised threshold, its `threshold_note` and the reason it moved.
+
+## Known limitation — the first on-device PASS
+
+No screen exists yet as of item #47 (every route is a `RoutePlaceholder`). A true on-device
+*PASS* cannot exist until a real screen renders — item #47 proves the comparator discriminates
+with `pnpm fidelity:verify-gate` (mockup-only: a faithful pair passes, a wrong token, a wrong
+state and a wrong device size all fail) and records the device leg failing as expected against
+a placeholder. The **first screen item to reach implementation** records the first true
+faithful-build PASS. Do not raise a threshold to manufacture one early — that would void the
+gate for every screen item that follows.

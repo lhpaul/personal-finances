@@ -52,6 +52,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DD/MM/YYYY` dates, bounded retries with an overall read deadline, and
   `complete` / `partial` / `failed` / `cancelled` read outcomes carrying an opaque per-product
   identity. Banco Falabella and Banco Pelotillehue are not ported.
+- **Design-fidelity gate: port the Zeki fidelity kit wired to the mockup manifest** (#47): `scripts/mobile-ui/` compares every `mvp: true` mockup screen state against the running app on a 393×852 iOS simulator and fails when the pixel mismatch exceeds the screen's threshold. A fidelity contract registers all 64 MVP screen/state targets against `design/mockups/mobile/mockup-manifest.js` and is validated in CI, so a mockup state cannot be added — or a screen shipped — without the gate noticing. `pnpm fidelity:verify-gate` proves the comparison passes on a faithful build and fails on a wrong token, a wrong state and a wrong device size.
+- **Home screen** (#12): the challenge hero, financial summary, trend chart, category
+  breakdown, recent movements and connected-banks card, in all four manifest states
+  (`pending`, `all-clear`, `empty`, `sync-error`), reading real aggregates through the
+  shared `isIncluded` / `includedAmount` fragments. Adds five design-system primitives
+  (`ScreenHeader`, `CategoryRow`, `LineChart`, `Legend`, `BankRow`), `formatPercentTenths`
+  in `@finanzas/shared-utils`, and a `__DEV__`-only sample-data route
 - **Sync engine** (#10): a bank read is stored idempotently — products by the scraper's opaque
   instance identity, movements by an identity that now carries direction and an occurrence index,
   so two identical movements in one read stay two and a re-read adds none. The person's
