@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!--
+  Hand-authored fixture, not captured from a live session (Documented Deviation D3). See
+  fixtures/README.md for provenance. Selectors mirror
+  banco-de-chile.account-transactions.script.ts. Paginator states "1 - 2 de 4" (four total
+  movements across two pages of two); page two's rows are not present in this static markup — the
+  DOM test simulates the second page by swapping the table body when the next-page button is
+  clicked, because a static fixture has no live Angular router to page through and a <script>
+  tag assigned via innerHTML does not execute (WHATWG DOM behavior, also true in jsdom). One
+  outgoing-column row and one incoming-column row appear on each page. All amounts are synthetic
+  (fixture-sanitization.test.ts).
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Banco de Chile - Movimientos</title>
+  </head>
+  <body>
+    <fenix-movimientos-cuenta>
+      <table>
+        <tbody id="movements-body">
+          <tr>
+            <td>03/03/2026</td>
+            <td>Compra Supermercado Central</td>
+            <td></td>
+            <td><span>$10.000</span></td>
+            <td><span></span></td>
+          </tr>
+          <tr>
+            <td>02/03/2026</td>
+            <td>Transferencia Recibida</td>
+            <td></td>
+            <td><span></span></td>
+            <td><span>$50.000</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </fenix-movimientos-cuenta>
+    <div class="mat-paginator-label">1 - 2 de 4</div>
+    <button class="mat-paginator-navigation-next">Siguiente</button>
+  </body>
+</html>

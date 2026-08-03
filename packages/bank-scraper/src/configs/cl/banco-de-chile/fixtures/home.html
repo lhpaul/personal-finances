@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!--
+  Hand-authored fixture, not captured from a live session (Documented Deviation D3). See
+  fixtures/README.md for provenance. Structure mirrors banco-de-chile.home.script.ts's selectors:
+  .bch-card.card-cuentas per account, .card-products > .link-card per credit card. Two accounts
+  of the same kind (Cuenta Corriente) with different account numbers prove AC24. Línea de Crédito
+  is present and must be skipped by the normalizer (spec Decision 15), not filtered here. All
+  amounts and account numbers are synthetic (fixture-sanitization.test.ts).
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Banco de Chile - Inicio</title>
+  </head>
+  <body>
+    <a class="logo-banca" href="/index.html#/home">Banco de Chile</a>
+    <section class="accounts">
+      <div class="bch-card card-cuentas">
+        <span class="clickable">Cuenta Corriente  11111111  $1.111.000</span>
+      </div>
+      <div class="bch-card card-cuentas">
+        <span class="clickable">Cuenta Corriente  22222222  $222.000</span>
+      </div>
+      <div class="bch-card card-cuentas">
+        <span class="clickable">Cuenta Vista  33333333  $33.000</span>
+      </div>
+      <div class="bch-card card-cuentas">
+        <span class="clickable">Cuenta FAN  44444444  $0</span>
+      </div>
+      <div class="bch-card card-cuentas">
+        <span class="clickable">Línea de Crédito  55555555  $0</span>
+      </div>
+    </section>
+    <section class="card-products">
+      <div class="link-card">
+        <div><span></span><span>•••• 1111</span></div>
+        <div><span>Visa Nacional</span></div>
+      </div>
+      <div class="link-card">
+        <div><span></span><span>•••• 2222</span></div>
+        <div><span>Mastercard Internacional</span></div>
+      </div>
+    </section>
+  </body>
+</html>

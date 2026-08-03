@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!--
+  Hand-authored fixture, not captured from a live session (Documented Deviation D3). See
+  fixtures/README.md for provenance. An 8-column international table (isInternational =
+  more than 7 <th> cells) with a "Monto Moneda Origen" column and USD amounts written the
+  Chilean way (thousands dot, decimal comma) — AC10: reported in USD, unconverted. All amounts
+  and identifiers are synthetic (fixture-sanitization.test.ts).
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Banco de Chile - Tarjeta de Crédito Internacional</title>
+  </head>
+  <body>
+    <a class="logo-banca" href="/index.html#/home">Banco de Chile</a>
+    <div class="card-header">
+      <span class="label">Mastercard Internacional</span>
+      <span class="last4">•••• 2222</span>
+    </div>
+    <div class="bch-summary">
+      <div class="summary-header-title">Tarjeta Nacional</div>
+      <div class="summary-header-lead"><span class="number">$0</span></div>
+      <div class="summary-body"><span class="number">$500.000</span></div>
+    </div>
+    <div class="router-tab-link">No Facturados</div>
+    <div class="router-tab-link">Facturados</div>
+    <table class="bch-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo de Movimiento</th>
+          <th>Descripcion</th>
+          <th>Pais</th>
+          <th>Monto Moneda Origen</th>
+          <th>Cargo</th>
+          <th>Abono</th>
+          <th>Tipo de Cambio</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>06/03/2026</td>
+          <td>Internacional</td>
+          <td>Compra Streaming</td>
+          <td>Estados Unidos</td>
+          <td>US$ 1.111,00</td>
+          <td><span>US$ 1.111,00</span></td>
+          <td><span></span></td>
+          <td>900,00</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

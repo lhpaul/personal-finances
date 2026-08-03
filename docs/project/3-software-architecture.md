@@ -32,9 +32,12 @@ has anchors — see [4-database-model.md](4-database-model.md).
 
 ### 2. The scraper is a package, not a screen
 
-`@finanzas/bank-scraper` exposes a headless imperative API (`start(country, bankId, credentials)`)
-plus a hidden `<WebView>`. Bank-specific knowledge lives entirely in
-`configs/cl/<bank>/*.script.ts`.
+`@finanzas/bank-scraper` exposes a headless `ScrapeSession` (`start()` / `cancel()`, constructed
+with a `BankConfig`, a `WebViewPort` and the caller's credentials) plus a hidden `<WebView>`
+implementing that port. `startBankRead({ countryCode, bankId, credentials, port, onResult })` is
+the barrel's convenience entry point: it resolves the bank/country pair against the registry and
+refuses before opening anything for an unsupported one. Bank-specific knowledge lives entirely in
+`src/configs/cl/<bank>/*.script.ts`.
 
 **Why:** bank sites change without warning. Adding or repairing a bank must be a contained
 change: one directory, unit-tested script generators, no app code touched.
@@ -157,7 +160,7 @@ screen → feature hook (getAppDatabase() + repository functions) → src/db rep
 | Credentials in logs | The scraper's trace log redacts credential fields before any `console` call. `no-console` is enabled; traces go through a logger that strips known secret keys |
 | Database | SQLite in the app sandbox. Not encrypted at rest in the MVP — the OS sandbox plus device passcode is the boundary. **SQLCipher is a fast follow, tracked in the backlog** |
 | Auth | None. There is no account, no session and no authorization surface |
-| Network | The app makes no requests to first-party servers. The WebView is restricted to the target bank's origin |
+| Network | The app makes no requests to first-party servers. The WebView is restricted to the target bank's exact origin (`URL.origin` equality, never a suffix/substring match), checked at three independent points before any credential is entered: the navigation gate (`onShouldStartLoadWithRequest`), the injection gate (re-checked at load-end, before any script runs), and an in-page gate the login script itself evaluates as its first statement |
 | Deletion | "Eliminar cuenta" wipes the SQLite file and every `expo-secure-store` key, irreversibly and locally |
 
 Threat model note: an attacker with an unlocked device has the data. That is the same exposure
@@ -207,7 +210,7 @@ arithmetic). Testing weight goes there.
 |------|------|----------|-------------|
 | **Unit — domain** | Jest | `packages/shared-domain/**/*.test.ts` | Every rule in [1-business-domain.md](1-business-domain.md#business-rules). Mandatory |
 | **Unit — data** | Jest + in-memory SQLite | `apps/mobile/src/db/**/*.test.ts` | Repositories, migrations, dedup on re-sync. Mandatory |
-| **Unit — scraper** | Jest over jsdom | `packages/bank-scraper/**/*.test.js` | Injected script generators against captured HTML fixtures. Pattern already exists in `bank-scrapper-app` |
+| **Unit — scraper** | Jest — `node` for the engine/security/parsers, `jsdom` for the four reading routines | `packages/bank-scraper/src/**/*.test.ts` (engine, security, parsing) and `packages/bank-scraper/src/**/*.dom.test.ts` (injected script generators against fixtures) | Every reading routine against a recorded/hand-authored HTML fixture; the security perimeter (origin allowlist, credential holder, redaction) against planted violations. Ported from `bank-scrapper-app` (issue #6) |
 | **Device E2E** | Maestro | `.maestro/` | Happy paths only: onboarding, categorization, exclusion |
 | **Toolchain — layout & bundle** | `scripts/check-node-linker-layout.mjs` + `expo export:embed` | `pnpm check:layout` (postinstall + CI), CI `bundle` job | Every install and every PR. Proves the `node_modules` tree is hoisted and that Metro can actually produce an iOS bundle — CI cannot be green on a tree that cannot build the app |
 
