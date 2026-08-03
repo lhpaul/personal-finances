@@ -1,6 +1,6 @@
 import { inArray } from 'drizzle-orm';
 
-import { transactions, userFinancialInstitutions, userFinancialProducts } from './schema';
+import { transactions, userFinancialInstitutions } from './schema';
 import type { AppDatabase } from './types';
 
 /**
@@ -21,10 +21,22 @@ import type { AppDatabase } from './types';
  * Ownership (found in review): `simulateSyncError` and `clearSampleFixture` must never touch a
  * row this fixture did not create — once item #10 (sync engine) ships, a real connection or a
  * real movement could coexist with the loaded sample data, and blindly updating/deleting by
- * table would corrupt or destroy it (Non-negotiable 3 — a movement is only ever excluded, never
- * deleted). Every fixture-owned id is derived by re-parsing the same immutable `fixtureSql` each
- * call, rather than tracked as separate runtime state, because the fixture text is a static
- * asset and its ids are exactly the deterministic ids `store-v1.sql` documents.
+ * table would corrupt or destroy it. Every fixture-owned id is derived by re-parsing the same
+ * immutable `fixtureSql` each call, rather than tracked as separate runtime state, because the
+ * fixture text is a static asset and its ids are exactly the deterministic ids `store-v1.sql`
+ * documents.
+ *
+ * **`clearSampleFixture` never deletes a `transactions` row** (found in review, round 2 —
+ * Non-negotiable 3: "Bank movements are never deleted — only excluded from analysis, with a
+ * reason", which applies to every row in this table, fixture-owned or not). "Vaciar datos de
+ * ejemplo" instead marks every fixture-owned movement excluded and resets the fixture-owned
+ * connection's sync bookkeeping to "never synced", which is what actually makes
+ * `#screen=home&state=empty` reachable again (`resolveHomeState` keys off `lastSuccessAt`, not
+ * off whether any movement rows exist). `loadSampleFixture` is an `ON CONFLICT … DO UPDATE`
+ * upsert rather than an `OR IGNORE` insert specifically so that a later "Cargar datos de
+ * ejemplo" resets those same rows back to the fixture's own literal values — un-excluding the
+ * movements and restoring the connection's original sync bookkeeping — undoing whatever a prior
+ * "Simular error de sincronización" or "Vaciar datos de ejemplo" left behind.
  */
 const SAMPLE_DATA_TABLES = ['user_financial_institutions', 'user_financial_products', 'transactions'] as const;
 
@@ -32,25 +44,41 @@ const SAMPLE_DATA_TABLES = ['user_financial_institutions', 'user_financial_produ
  * scraper error code — this dev panel never runs a real sync. */
 export const SAMPLE_SYNC_ERROR_CODE = 'dev_simulated_error';
 
-/** Matches one `INSERT INTO "<table>" (...) VALUES ('<id>', ...)` fixture line, capturing the
- * table name and the `id` column's literal value — always the first column and the first
- * `VALUES` literal in `store-v1.sql` (verified against every table `loadSampleFixture` reads). */
-const INSERT_LINE_PATTERN = /^INSERT INTO "([a-z_]+)" \([^)]*\) VALUES \('([^']+)'/;
+/** The reason "Vaciar datos de ejemplo" records on every fixture movement it excludes — one of
+ * the schema's real `exclusion_reason` values (`'other'`), since this action has no more specific
+ * category of its own. */
+const CLEAR_EXCLUSION_REASON = 'other';
+const CLEAR_EXCLUSION_NOTE = 'Datos de ejemplo vaciados desde el panel de desarrollo';
 
-/** Every fixture `INSERT` line, parsed once per call into `{ table, id }` pairs. Shared by
- * {@link loadSampleFixture} (which needs the whole statement) and the ownership-scoped
- * `simulateSyncError` / `clearSampleFixture` (which only need the ids). */
-function parseFixtureRows(fixtureSql: string): { table: string; id: string; statement: string }[] {
-  const rows: { table: string; id: string; statement: string }[] = [];
+interface FixtureRow {
+  table: (typeof SAMPLE_DATA_TABLES)[number];
+  id: string;
+  columns: string[];
+  statement: string;
+}
+
+/** Matches one `INSERT INTO "<table>" (col1, col2, …) VALUES ('<id>', …)` fixture line, capturing
+ * the table name, its column list, and the `id` column's literal value — always the first column
+ * and the first `VALUES` literal in `store-v1.sql` (verified against every table this module
+ * reads). */
+const INSERT_LINE_PATTERN = /^INSERT INTO "([a-z_]+)" \(([^)]*)\) VALUES \('([^']+)'/;
+
+/** Every fixture `INSERT` line for {@link SAMPLE_DATA_TABLES}, parsed once per call. Shared by
+ * {@link loadSampleFixture} (which needs the whole statement plus the column list, to build an
+ * upsert) and the ownership-scoped `simulateSyncError` / `clearSampleFixture` (which only need
+ * the ids). */
+function parseFixtureRows(fixtureSql: string): FixtureRow[] {
+  const rows: FixtureRow[] = [];
   for (const rawLine of fixtureSql.split('\n')) {
     const line = rawLine.trim();
     if (line.length === 0) continue;
     const match = INSERT_LINE_PATTERN.exec(line);
     if (match === null) continue;
-    const [, table, id] = match;
-    if (table === undefined || id === undefined) continue;
+    const [, table, columnList, id] = match;
+    if (table === undefined || columnList === undefined || id === undefined) continue;
     if (!(SAMPLE_DATA_TABLES as readonly string[]).includes(table)) continue;
-    rows.push({ table, id, statement: line });
+    const columns = columnList.split(',').map((column) => column.trim().replace(/^"|"$/g, ''));
+    rows.push({ table: table as (typeof SAMPLE_DATA_TABLES)[number], id, columns, statement: line });
   }
   return rows;
 }
@@ -61,16 +89,27 @@ function fixtureIdsForTable(fixtureSql: string, table: (typeof SAMPLE_DATA_TABLE
     .map((row) => row.id);
 }
 
+/** Rewrites a fixture `INSERT INTO "table" (id, col2, …) VALUES (…);` line into an
+ * `INSERT INTO … VALUES (…) ON CONFLICT("id") DO UPDATE SET col2 = excluded.col2, …;` upsert —
+ * every non-`id` column resets to the fixture's own value on conflict, so a second load restores
+ * whatever a prior sync-error simulation or clear left behind. */
+function toUpsertStatement(row: FixtureRow): string {
+  const [idColumn, ...restColumns] = row.columns;
+  if (idColumn === undefined || restColumns.length === 0) return row.statement;
+  const setClause = restColumns.map((column) => `"${column}" = excluded."${column}"`).join(', ');
+  const withoutTrailingSemicolon = row.statement.replace(/;\s*$/, '');
+  return `${withoutTrailingSemicolon} ON CONFLICT("${idColumn}") DO UPDATE SET ${setClause};`;
+}
+
 /**
- * Executes only the `INSERT OR IGNORE INTO` statements for {@link SAMPLE_DATA_TABLES}, in one
- * transaction. `OR IGNORE` makes a second "Cargar datos de ejemplo" tap a safe no-op instead of a
- * primary/unique-key violation (found in review) — the fixture's ids are deterministic, so a
- * repeat load can only ever re-describe rows that already exist, never create duplicates.
+ * Upserts the {@link SAMPLE_DATA_TABLES} rows from `fixtureSql`, in one transaction. A repeat
+ * "Cargar datos de ejemplo" tap (or one following a "Simular error de sincronización" / "Vaciar
+ * datos de ejemplo") therefore always converges on the fixture's own literal values, instead of
+ * either violating a primary/unique key (a plain `INSERT`) or silently leaving stale modified
+ * state in place (`INSERT OR IGNORE`).
  */
 export function loadSampleFixture(db: AppDatabase, fixtureSql: string): void {
-  const statements = parseFixtureRows(fixtureSql).map((row) =>
-    row.statement.replace(/^INSERT INTO/, 'INSERT OR IGNORE INTO'),
-  );
+  const statements = parseFixtureRows(fixtureSql).map(toUpsertStatement);
 
   db.transaction((tx: AppDatabase) => {
     for (const statement of statements) {
@@ -94,24 +133,36 @@ export function simulateSyncError(
     .run();
 }
 
-/** Removes only the fixture-owned connection, products and movements, restoring the pre-fixture
- * (`#screen=home&state=empty`-reachable) state. Never touches the seeded starter catalogue, and —
- * per Non-negotiable 3 and item #12's Decision 11 — never touches a real connection or a real
- * movement a genuine sync (item #10) may have written alongside the sample data. */
+/**
+ * Restores the pre-fixture (`#screen=home&state=empty`-reachable) state **without deleting
+ * anything** (found in review, round 2 — Non-negotiable 3 applies to every `transactions` row,
+ * fixture-owned or not): every fixture-owned movement is marked excluded (never deleted), and the
+ * fixture-owned connection's sync bookkeeping is reset to "never synced" — which is what
+ * `resolveHomeState` actually keys off (`lastSuccessAt`), not the presence of movement rows.
+ * Never touches the seeded starter catalogue, a real connection, or a real movement a genuine
+ * sync (item #10) may have written alongside the sample data.
+ */
 export function clearSampleFixture(db: AppDatabase, fixtureSql: string): void {
   const transactionIds = fixtureIdsForTable(fixtureSql, 'transactions');
-  const productIds = fixtureIdsForTable(fixtureSql, 'user_financial_products');
   const institutionIds = fixtureIdsForTable(fixtureSql, 'user_financial_institutions');
+  const now = new Date().toISOString();
 
   db.transaction((tx: AppDatabase) => {
     if (transactionIds.length > 0) {
-      tx.delete(transactions).where(inArray(transactions.id, transactionIds)).run();
-    }
-    if (productIds.length > 0) {
-      tx.delete(userFinancialProducts).where(inArray(userFinancialProducts.id, productIds)).run();
+      tx.update(transactions)
+        .set({
+          excludedAt: now,
+          exclusionReason: CLEAR_EXCLUSION_REASON,
+          exclusionNote: CLEAR_EXCLUSION_NOTE,
+        })
+        .where(inArray(transactions.id, transactionIds))
+        .run();
     }
     if (institutionIds.length > 0) {
-      tx.delete(userFinancialInstitutions).where(inArray(userFinancialInstitutions.id, institutionIds)).run();
+      tx.update(userFinancialInstitutions)
+        .set({ syncStatus: 'idle', lastSyncAt: null, lastSuccessAt: null, lastErrorCode: null })
+        .where(inArray(userFinancialInstitutions.id, institutionIds))
+        .run();
     }
   });
 }

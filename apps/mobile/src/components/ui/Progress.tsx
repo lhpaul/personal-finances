@@ -26,12 +26,18 @@ export function Progress({ value = 0, accessibilityLabel, indeterminate = false 
         Animated.timing(sweep, {
           toValue: 1,
           duration: componentMetrics.progress.indeterminateSweepMs,
-          useNativeDriver: false,
+          // `sweep` only drives `transform: translateX` below — `width`/`height`/`backgroundColor`
+          // on the same `Animated.View` are static — so the native driver applies cleanly and
+          // moves the loop off the JS thread (found in review, round 2).
+          useNativeDriver: true,
         }),
         Animated.timing(sweep, {
           toValue: 0,
           duration: componentMetrics.progress.indeterminateSweepMs,
-          useNativeDriver: false,
+          // `sweep` only drives `transform: translateX` below — `width`/`height`/`backgroundColor`
+          // on the same `Animated.View` are static — so the native driver applies cleanly and
+          // moves the loop off the JS thread (found in review, round 2).
+          useNativeDriver: true,
         }),
       ]),
     );

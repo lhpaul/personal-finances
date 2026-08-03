@@ -134,7 +134,11 @@ export default function Home() {
                   onRetry={() => goToBank(erroredConnection.id)}
                 />
               )}
-              <View style={{ marginTop: theme.space['4'] }}>
+              <View
+                style={{ marginTop: theme.space['4'] }}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
                 <Dots total={HERO_DOTS_TOTAL} current={HERO_DOTS_ACTIVE} />
               </View>
             </View>

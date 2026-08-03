@@ -26,7 +26,8 @@ const REAL_PRODUCT_ID = 'real-product-not-a-fixture-id';
  * sequence the committed fixture uses, so a real row created through the usual
  * `createTestConnection`/`ports.newId()` helper would land on the *same* id as a fixture row and
  * silently collide — a test-fixture artifact this suite must avoid, not a bug in
- * `dev-fixture.ts`.
+ * `dev-fixture.ts`. Given an already-synced `syncStatus: 'ok'`, so tests can assert
+ * `clearSampleFixture`/`simulateSyncError` leave it exactly as given.
  */
 function insertRealConnectionAndProduct(db: AppDatabase, now: string): void {
   db.insert(userFinancialInstitutions)
@@ -35,7 +36,9 @@ function insertRealConnectionAndProduct(db: AppDatabase, now: string): void {
       financialInstitutionId: 'santander',
       status: 'active',
       credentialsKey: `secure-store-key-${REAL_CONNECTION_ID}`,
-      syncStatus: 'idle',
+      syncStatus: 'ok',
+      lastSyncAt: now,
+      lastSuccessAt: now,
       createdAt: now,
     })
     .run();
@@ -88,6 +91,43 @@ describe('dev-fixture', () => {
     }
   });
 
+  it('loading the fixture again restores the canonical example state after a "Simular error" + "Vaciar" cycle (found in review, round 2 — upsert, not OR IGNORE)', async () => {
+    const { sqlite, db } = await openBootstrappedMemoryDb();
+    try {
+      loadSampleFixture(db, fixtureSql);
+      simulateSyncError(db, fixtureSql);
+      clearSampleFixture(db, fixtureSql);
+
+      // Sanity: the cycle actually changed state before the second load.
+      const clearedConnection = db.select().from(userFinancialInstitutions).get();
+      expect(clearedConnection?.lastSuccessAt).toBeNull();
+      const clearedTransactions = db.select().from(transactions).all();
+      expect(clearedTransactions.every((row) => row.excludedAt !== null)).toBe(true);
+
+      loadSampleFixture(db, fixtureSql);
+
+      const restoredConnection = db.select().from(userFinancialInstitutions).get();
+      expect(restoredConnection?.syncStatus).toBe('ok');
+      expect(restoredConnection?.lastSuccessAt).not.toBeNull();
+      expect(restoredConnection?.lastErrorCode).toBeNull();
+
+      // The fixture's own design excludes five of its thirteen movements on purpose (ids
+      // prefixed `seed-movement-excluded-`, covering every exclusion reason) — the upsert must
+      // restore *that* state exactly, not blanket-null every row's `excludedAt`.
+      const restoredTransactions = db.select().from(transactions).all();
+      expect(restoredTransactions).toHaveLength(13);
+      for (const row of restoredTransactions) {
+        if (row.id.startsWith('seed-movement-excluded-')) {
+          expect(row.excludedAt).not.toBeNull();
+        } else {
+          expect(row.excludedAt).toBeNull();
+        }
+      }
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it('simulateSyncError marks only the fixture-owned connection as failed, never a real one (found in review)', async () => {
     const { sqlite, db, ports } = await openBootstrappedMemoryDb();
     try {
@@ -109,28 +149,40 @@ describe('dev-fixture', () => {
         .from(userFinancialInstitutions)
         .where(eq(userFinancialInstitutions.id, REAL_CONNECTION_ID))
         .get();
-      expect(realConnection?.syncStatus).toBe('idle'); // untouched
+      expect(realConnection?.syncStatus).toBe('ok'); // untouched
       expect(realConnection?.lastErrorCode).toBeNull();
     } finally {
       sqlite.close();
     }
   });
 
-  it('clearSampleFixture removes only the fixture-owned connection, product and movements, restoring the empty-reachable state', async () => {
+  it('clearSampleFixture never deletes a transactions row — it excludes the fixture-owned movements and resets the connection to "never synced" (found in review, round 2 — Non-negotiable 3)', async () => {
     const { sqlite, db } = await openBootstrappedMemoryDb();
     try {
       loadSampleFixture(db, fixtureSql);
+      const rowCountBefore = db.select().from(transactions).all().length;
+
       clearSampleFixture(db, fixtureSql);
 
-      expect(db.select().from(userFinancialInstitutions).all()).toHaveLength(0);
-      expect(db.select().from(userFinancialProducts).all()).toHaveLength(0);
-      expect(db.select().from(transactions).all()).toHaveLength(0);
+      const rowsAfter = db.select().from(transactions).all();
+      expect(rowsAfter).toHaveLength(rowCountBefore); // no row deleted
+      expect(rowsAfter.every((row) => row.excludedAt !== null)).toBe(true);
+      expect(rowsAfter.every((row) => row.exclusionReason === 'other')).toBe(true);
+
+      // The connection and its products are not deleted either — only the connection's sync
+      // bookkeeping is reset, which is what actually makes `empty` reachable again.
+      expect(db.select().from(userFinancialInstitutions).all()).toHaveLength(1);
+      expect(db.select().from(userFinancialProducts).all()).toHaveLength(2);
+      const connection = db.select().from(userFinancialInstitutions).get();
+      expect(connection?.lastSuccessAt).toBeNull();
+      expect(connection?.lastSyncAt).toBeNull();
+      expect(connection?.syncStatus).toBe('idle');
     } finally {
       sqlite.close();
     }
   });
 
-  it('clearSampleFixture retains a real connection, product and movement alongside the loaded sample data (found in review, Non-negotiable 3)', async () => {
+  it('clearSampleFixture leaves a real connection, product and movement completely untouched (found in review, Non-negotiable 3)', async () => {
     const { sqlite, db, ports } = await openBootstrappedMemoryDb();
     try {
       const now = ports.now();
@@ -155,13 +207,21 @@ describe('dev-fixture', () => {
       loadSampleFixture(db, fixtureSql);
       clearSampleFixture(db, fixtureSql);
 
-      expect(
-        db.select().from(userFinancialInstitutions).where(eq(userFinancialInstitutions.id, REAL_CONNECTION_ID)).get(),
-      ).toBeDefined();
+      const realConnection = db
+        .select()
+        .from(userFinancialInstitutions)
+        .where(eq(userFinancialInstitutions.id, REAL_CONNECTION_ID))
+        .get();
+      expect(realConnection?.syncStatus).toBe('ok');
+      expect(realConnection?.lastSuccessAt).toBe(now);
+
       expect(
         db.select().from(userFinancialProducts).where(eq(userFinancialProducts.id, REAL_PRODUCT_ID)).get(),
       ).toBeDefined();
-      expect(db.select().from(transactions).where(eq(transactions.id, 'real-movement')).get()).toBeDefined();
+
+      const realMovement = db.select().from(transactions).where(eq(transactions.id, 'real-movement')).get();
+      expect(realMovement).toBeDefined();
+      expect(realMovement?.excludedAt).toBeNull(); // never touched, let alone deleted
     } finally {
       sqlite.close();
     }

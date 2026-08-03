@@ -49,7 +49,13 @@ export function FinancialSummaryCard({ summary, monthLabel }: FinancialSummaryCa
       headerRight={
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space['2'] }}>
           <Badge tone="warn" label={monthLabel} />
-          <Text variant="xs">{MONTH_NAV_GLYPH}</Text>
+          <Text
+            variant="xs"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {MONTH_NAV_GLYPH}
+          </Text>
         </View>
       }
     >
