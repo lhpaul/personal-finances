@@ -1,11 +1,6 @@
-import { RoutePlaceholder } from '../../src/components/RoutePlaceholder';
+import { CategorizeCompleteScreen } from '../../src/features/categorization/CategorizeCompleteScreen';
+import { fidelityTestId } from '../../src/lib/fidelity-preview';
 
 export default function CategorizeComplete() {
-  return (
-    <RoutePlaceholder
-      screenId="categorize-complete"
-      route="/categorize/complete"
-      next={[{ href: '/(tabs)/home', label: 'home' }]}
-    />
-  );
+  return <CategorizeCompleteScreen testID={fidelityTestId('categorize-complete')} />;
 }

@@ -1,11 +1,6 @@
-import { RoutePlaceholder } from '../../src/components/RoutePlaceholder';
+import { StageIntroScreen } from '../../src/features/categorization/StageIntroScreen';
+import { fidelityTestId } from '../../src/lib/fidelity-preview';
 
 export default function StageIntro() {
-  return (
-    <RoutePlaceholder
-      screenId="stage-intro"
-      route="/categorize/intro"
-      next={[{ href: '/categorize', label: 'categorize' }]}
-    />
-  );
+  return <StageIntroScreen testID={fidelityTestId('stage-intro')} />;
 }
