@@ -23,6 +23,7 @@ describe('domain-surface — exported-surface guard', () => {
     expect(domainIndex).toHaveProperty('summarizePeriod');
     expect(domainIndex).toHaveProperty('apportionTenths');
     expect(domainIndex).toHaveProperty('resolveMerchant');
+    expect(domainIndex).toHaveProperty('suggestAliasCandidates');
     expect(domainIndex).toHaveProperty('suggestCategory');
     expect(domainIndex).toHaveProperty('PACKAGE_NAME');
   });
