@@ -125,6 +125,35 @@ export interface BankConnection {
   lastErrorCode: string | null;
 }
 
+/**
+ * `bank-picker`'s row shape (implementation plan for issue #9, Layer-by-Layer). Unlike
+ * {@link ConnectableInstitution} — which filters to `scraperStatus === 'available'` for a caller
+ * that only cares which banks can actually be connected — this carries **every** catalogue row,
+ * because the picker also draws the coming-soon banks (spec Decision 1).
+ */
+export interface PickerInstitution {
+  id: string;
+  name: string;
+  scraperStatus: 'available' | 'coming_soon';
+  shortName: string | undefined;
+  brandColor: string | undefined;
+}
+
+/**
+ * `bank-connected`'s row shape (implementation plan for issue #9, Layer-by-Layer, Decision 9).
+ * Returned only for a connection that has **completed** a sync — `status === 'active'` and
+ * `last_success_at` is set (spec Business Rule 23) — unlike {@link BankConnection}, which returns
+ * every connection regardless of status for the home screen's own card.
+ */
+export interface ConnectedBankSummary {
+  id: string;
+  institutionName: string;
+  institutionShortName: string | undefined;
+  institutionBrandColor: string | undefined;
+  productCount: number;
+  movementCount: number;
+}
+
 export interface Transaction {
   id: string;
   userFinancialProductId: string;
