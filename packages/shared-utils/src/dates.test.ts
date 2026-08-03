@@ -6,6 +6,7 @@ import {
   differenceInDays,
   formatLongDate,
   formatMonthAbbreviation,
+  formatMonthHeading,
   formatMonthYear,
   formatShortDate,
   formatTimeOfDay,
@@ -429,6 +430,34 @@ describe('dates', () => {
       it('formatMonthAbbreviation honours en', () => {
         expect(formatMonthAbbreviation('2025-01-24', 'en')).toBe('Jan');
       });
+    });
+  });
+
+  // Scenario 23 of issue #15's implementation plan (Decision 8, Assumption A7): the
+  // `transactions` month-group heading, exact against the mockup's `📅 Enero de 2025 (31)`.
+  describe('Group I — formatMonthHeading (issue #15 Decision 8)', () => {
+    it.each([
+      ['2025-01-24', 'Enero de 2025'],
+      ['2024-12-01', 'Diciembre de 2024'],
+      ['2025-09-15', 'Septiembre de 2025'],
+    ])('formatMonthHeading(%p, "es") -> %p', (dateLocal, expected) => {
+      expect(formatMonthHeading(dateLocal, 'es')).toBe(expected);
+    });
+
+    it('honours en', () => {
+      expect(formatMonthHeading('2025-01-24', 'en')).toBe('January 2025');
+    });
+
+    it('is stable across a month boundary (last day of December vs. first day of January)', () => {
+      expect(formatMonthHeading('2024-12-31', 'es')).toBe('Diciembre de 2024');
+      expect(formatMonthHeading('2025-01-01', 'es')).toBe('Enero de 2025');
+    });
+
+    it('is idempotent under re-capitalization: re-applying the same capitalization rule to its own output is a no-op', () => {
+      const label = formatMonthHeading('2025-01-24', 'es');
+      const [first, ...rest] = [...label];
+      const reapplied = (first as string).toLocaleUpperCase('es') + rest.join('');
+      expect(reapplied).toBe(label);
     });
   });
 
