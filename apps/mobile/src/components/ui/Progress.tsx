@@ -14,12 +14,6 @@ export type ProgressProps = {
   indeterminate?: boolean;
 };
 
-/** Fraction of the track width the indeterminate fill occupies while sweeping — matches the
- * mockup's `.mu-progress` first-sync block, whose static `width:45%` this animation replaces
- * with continuous motion (Decision 10) rather than a fixed, meaningless number. */
-const INDETERMINATE_FILL_FRACTION = 0.45;
-const INDETERMINATE_SWEEP_MS = 1200;
-
 /** `.mu-progress`, `__fill`. */
 export function Progress({ value = 0, accessibilityLabel, indeterminate = false }: ProgressProps) {
   const clamped = Math.min(1, Math.max(0, value));
@@ -31,12 +25,12 @@ export function Progress({ value = 0, accessibilityLabel, indeterminate = false 
       Animated.sequence([
         Animated.timing(sweep, {
           toValue: 1,
-          duration: INDETERMINATE_SWEEP_MS,
+          duration: componentMetrics.progress.indeterminateSweepMs,
           useNativeDriver: false,
         }),
         Animated.timing(sweep, {
           toValue: 0,
-          duration: INDETERMINATE_SWEEP_MS,
+          duration: componentMetrics.progress.indeterminateSweepMs,
           useNativeDriver: false,
         }),
       ]),
@@ -63,7 +57,7 @@ export function Progress({ value = 0, accessibilityLabel, indeterminate = false 
         <Animated.View
           style={{
             height: '100%',
-            width: `${INDETERMINATE_FILL_FRACTION * 100}%`,
+            width: `${componentMetrics.progress.indeterminateFillFraction * 100}%`,
             borderRadius: theme.radius.pill,
             backgroundColor: theme.colors.brandPrimary,
             transform: [

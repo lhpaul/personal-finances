@@ -20,10 +20,10 @@ export async function loadSampleData(): Promise<void> {
 
 export async function simulateSampleSyncError(): Promise<void> {
   const db = await getAppDatabase();
-  simulateSyncError(db);
+  simulateSyncError(db, fixtureSql);
 }
 
 export async function clearSampleData(): Promise<void> {
   const db = await getAppDatabase();
-  clearSampleFixture(db);
+  clearSampleFixture(db, fixtureSql);
 }

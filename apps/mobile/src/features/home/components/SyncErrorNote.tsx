@@ -40,6 +40,10 @@ function lastSuccessLabel(t: TFunction, descriptor: SyncTimeDescriptor, locale: 
  * Step 5 — bank name and timestamp are real connection values, not the mockup's literals).
  * "Reintentar" navigates to the failed bank's review route rather than triggering a sync — home
  * owns no sync trigger.
+ *
+ * "Reintentar" renders through `Note`'s `action` prop — a separate sibling `Pressable`, not text
+ * nested inside the note body's single `Text` element (found in review): a nested pressable
+ * `Text` is not reliably focusable by assistive technology and has no minimum touch target.
  */
 export function SyncErrorNote({
   bankName,
@@ -50,7 +54,11 @@ export function SyncErrorNote({
   const { t } = useTranslation();
 
   return (
-    <Note tone="danger" icon={WARNING_ICON}>
+    <Note
+      tone="danger"
+      icon={WARNING_ICON}
+      action={{ label: t('home.sync_error_retry'), onPress: onRetry }}
+    >
       <Text
         variant="small"
         tone="primary"
@@ -66,16 +74,6 @@ export function SyncErrorNote({
           </Text>
         </>
       )}
-      {' '}
-      <Text
-        variant="small"
-        tone="brand"
-        accessibilityRole="button"
-        onPress={onRetry}
-        style={{ fontWeight: fontWeight(theme.typography.weight.bold) }}
-      >
-        {t('home.sync_error_retry')}
-      </Text>
     </Note>
   );
 }

@@ -44,6 +44,8 @@ function LineChartComponent({
       height={componentMetrics.lineChart.height}
       viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
       preserveAspectRatio="none"
+      accessible
+      accessibilityRole="image"
       accessibilityLabel={accessibilityLabel}
     >
       {gridLines.map((y) => (

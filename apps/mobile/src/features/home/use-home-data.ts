@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 
 import { getAppDatabase } from '../../db/runtime';
@@ -52,8 +52,21 @@ export async function loadHomeData({
 export function useHomeData({ period, previousPeriod, locale }: HomeDataParams): HomeDataState {
   const [state, setState] = useState<HomeDataState>({ status: 'pending' });
   const [reloadToken, setReloadToken] = useState(0);
+  const hasFocusedOnce = useRef(false);
 
-  useFocusEffect(useCallback(() => setReloadToken((token) => token + 1), []));
+  useFocusEffect(
+    useCallback(() => {
+      // The mount effect below already performs the first read; without this guard, the first
+      // focus event (which also fires on mount) would bump reloadToken immediately after and
+      // force a second, redundant read on every mount (found in review). Only a later re-focus
+      // should trigger a re-read.
+      if (!hasFocusedOnce.current) {
+        hasFocusedOnce.current = true;
+        return;
+      }
+      setReloadToken((token) => token + 1);
+    }, []),
+  );
 
   useEffect(() => {
     let cancelled = false;

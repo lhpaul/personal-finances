@@ -420,6 +420,12 @@ export const componentMetrics = {
     iconFontSize: 17,
     /** `.mu-note__icon` (L559): unitless line-height 1.3 * 17 = 22.1 → 22. */
     iconLineHeight: 22,
+    /** Home-screen implementation plan (issue #12), Decision-adjacent (found in review): no
+     * `.mu-note` action equivalent is drawn in the mockup — `sync-error`'s "Reintentar" is drawn
+     * as inline text, not a separate control. Rendered here as its own sibling `Pressable`
+     * instead (accessibility, real touch target), so this spacing value is a new decision, not a
+     * measured one. */
+    actionMarginTop: 6,
   },
 
   transactionRow: {
@@ -545,6 +551,16 @@ export const componentMetrics = {
   progress: {
     /** `.mu-progress` (L517) height. */
     height: 6,
+    /** Home-screen implementation plan (issue #12) Decision 10: no `.mu-progress` equivalent in
+     * the mockup CSS (there is no indeterminate state drawn there) — this is a new decision, not
+     * a measured value, kept here for consistency with every other sizing/timing value this item
+     * added (`bankRow`, `categoryRow`, `screenHeader`, `lineChart`, `legend`) rather than as a
+     * component-local constant (found in review). Fraction of the track width the indeterminate
+     * fill occupies while sweeping — matches the mockup's first-sync block's static `width:45%`,
+     * which this animation replaces with continuous motion rather than a fixed, meaningless
+     * number. */
+    indeterminateFillFraction: 0.45,
+    indeterminateSweepMs: 1200,
   },
 
   steps: {

@@ -263,6 +263,7 @@
   "home.banks_badge_ok": "Up to date",
   "home.banks_badge_error": "Error",
   "home.banks_sub_error": "Sync error",
+  "home.banks_sub_pending_first_sync": "Sync pending",
   "home.bank_sync_minutes": "Synced {{minutes}} min ago",
   "home.bank_sync_hours": "Synced {{hours}} h ago",
   "home.bank_sync_yesterday": "Synced yesterday {{time}}",

@@ -90,4 +90,19 @@ describe('buildCategoryBreakdown', () => {
   it('returns an empty array for no expense rows', () => {
     expect(buildCategoryBreakdown([])).toEqual([]);
   });
+
+  it('keeps percentages and ratios at zero when every expense bucket totals zero (found in review)', () => {
+    const totals: DirectionCategoryTotal[] = [
+      { type: 'debit', transactionCategoryId: 'comida', total: 0, movementCount: 0 },
+      { type: 'debit', transactionCategoryId: null, total: 0, movementCount: 0 },
+    ];
+
+    const buckets = buildCategoryBreakdown(totals);
+
+    expect(buckets).toHaveLength(2);
+    for (const bucket of buckets) {
+      expect(bucket.percentTenths).toBe(0);
+      expect(bucket.ratio).toBe(0);
+    }
+  });
 });

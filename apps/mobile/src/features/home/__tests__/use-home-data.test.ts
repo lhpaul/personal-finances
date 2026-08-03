@@ -1,15 +1,17 @@
 import type { AppDatabase } from '../../../db/types';
 import type { HomeDataParams } from '../read-home-data';
+import { loadHomeData } from '../use-home-data';
 
-// `loadHomeData` calls `readHomeData(db, params)` synchronously once the handle resolves; this
-// suite is exercising the cancellation race, not the six-repository-call composition (that is
-// Scenario 25, against a real store), so `readHomeData` is stubbed rather than given a fake
-// `AppDatabase` it would otherwise throw against.
+// `jest.mock` calls are hoisted above every import by `babel-plugin-jest-hoist`, so the mock
+// below applies to `loadHomeData`'s import above regardless of source order (found in review —
+// keeping the import with its siblings clears the `import/first` lint warning). `loadHomeData`
+// calls `readHomeData(db, params)` synchronously once the handle resolves; this suite is
+// exercising the cancellation race, not the six-repository-call composition (that is Scenario
+// 25, against a real store), so `readHomeData` is stubbed rather than given a fake `AppDatabase`
+// it would otherwise throw against.
 jest.mock('../read-home-data', () => ({
   readHomeData: jest.fn(() => ({ stubbed: true })),
 }));
-
-import { loadHomeData } from '../use-home-data';
 
 /**
  * Scenario 26 of the home-screen implementation plan's Testing Strategy (concurrency addendum).

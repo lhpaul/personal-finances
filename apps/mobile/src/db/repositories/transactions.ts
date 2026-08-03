@@ -391,7 +391,11 @@ export function listRecentMovements(
     .from(transactions)
     .leftJoin(merchants, eq(transactions.merchantId, merchants.id))
     .leftJoin(transactionCategories, eq(transactions.transactionCategoryId, transactionCategories.id))
-    .orderBy(desc(transactions.dateLocal))
+    // `date_local` has day granularity; `occurredAt` then `id` break ties deterministically among
+    // same-day movements, so both the surviving `limit`-bounded set and the within-day display
+    // order are stable across re-syncs (found in review). `date_local desc` stays the leading key
+    // so `transactions_date_local_idx` still applies.
+    .orderBy(desc(transactions.dateLocal), desc(transactions.occurredAt), desc(transactions.id))
     .limit(params.limit)
     .all() as RecentMovementRow[];
 

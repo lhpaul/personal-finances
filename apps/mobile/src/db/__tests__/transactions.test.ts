@@ -488,6 +488,34 @@ describe('transactions repository', () => {
               updatedAt: now,
             },
             {
+              id: 'p12-day-start',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 'p12-day-start',
+              amount: 4000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-02-01', // exactly period.start, inclusive
+              rawDescription: 'On start boundary',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 'p12-day-end',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 'p12-day-end',
+              amount: 5000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-02-28', // exactly period.end, inclusive
+              rawDescription: 'On end boundary',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
               id: 'p12-day-after',
               userFinancialProductId: productId,
               externalId: null,
@@ -509,7 +537,11 @@ describe('transactions repository', () => {
           endDateLocal: '2026-02-28',
         });
 
-        expect(rows).toEqual([{ dateLocal: '2026-02-05', type: 'debit', total: 2000 }]);
+        expect(rows).toEqual([
+          { dateLocal: '2026-02-01', type: 'debit', total: 4000 },
+          { dateLocal: '2026-02-05', type: 'debit', total: 2000 },
+          { dateLocal: '2026-02-28', type: 'debit', total: 5000 },
+        ]);
       } finally {
         sqlite.close();
       }

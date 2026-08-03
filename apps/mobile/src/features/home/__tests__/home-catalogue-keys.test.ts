@@ -30,6 +30,12 @@ function scanAll(): { keys: string[]; dynamic: { file: string; line: number; col
   const dynamic: { file: string; line: number; column: number }[] = [];
 
   for (const file of SCANNED_FILES) {
+    // `scanAll()` runs during Jest's collection phase, before any `it` runs — a missing file
+    // would otherwise throw from `readFileSync` and fail the whole suite silently, hiding the
+    // dedicated "every scanned file exists" assertion's diagnostic (found in review).
+    if (!fs.existsSync(file)) {
+      throw new Error(`Scanned home file is missing: ${file}. Update SCANNED_FILES.`);
+    }
     const source = fs.readFileSync(file, 'utf8');
     const result = findTranslationKeys(source);
     keys.push(...result.keys);

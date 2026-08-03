@@ -62,9 +62,13 @@ export function ConnectedBanksCard({ connections, now, locale, onPressBank }: Co
       <View style={{ gap: theme.space['2'] }}>
         {connections.map((connection) => {
           const isError = connection.syncStatus === 'error';
-          const subLabel =
-            isError || connection.lastSyncAt === null
-              ? t('home.banks_sub_error')
+          // `syncStatus: 'idle'` with `lastSyncAt: null` is a valid, non-error first-sync-pending
+          // state (found in review) — reserve the danger tone and error copy for a genuine
+          // `syncStatus === 'error'`, not for "hasn't synced yet".
+          const subLabel = isError
+            ? t('home.banks_sub_error')
+            : connection.lastSyncAt === null
+              ? t('home.banks_sub_pending_first_sync')
               : bankSyncLabel(t, connection.lastSyncAt, now, locale);
 
           return (

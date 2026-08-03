@@ -1,7 +1,7 @@
 import { deriveDateLocal, formatMonthYear, getMonthPeriod, shiftMonthPeriod } from '@finanzas/shared-utils';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,24 +33,60 @@ const HERO_DOTS_ACTIVE = 1;
 
 /**
  * `#screen=home` (implementation plan for issue #12). Composition-only: derives `now` -> the
- * current and previous month periods once (Decision 8 — `getMonthPeriod(deriveDateLocal(now))`,
- * never UTC), calls `useHomeData`, resolves the manifest state (Decision 4), and composes the
- * four-state layout. No SQL, no business logic, no literal copy.
+ * current and previous month periods, calls `useHomeData`, resolves the manifest state
+ * (Decision 4), and composes the four-state layout. No SQL, no business logic, no literal copy.
+ *
+ * Every `useMemo`/`useCallback` call runs unconditionally, before the `status !== 'ready'` early
+ * return (Rules of Hooks) — `financialSummary`/`categoryBuckets` compute defensively to
+ * `undefined` until then (found in review: `now` recomputes on focus instead of freezing at
+ * mount, and the derived data plus the shared `/dashboard` handler are memoized so `TrendCard`'s
+ * and `CategoryBreakdownCard`'s `React.memo` boundaries actually hold).
  */
 export default function Home() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const locale = toSupportedLocale(i18n.language);
 
-  const now = useMemo(() => new Date(), []);
-  const period = useMemo(() => getMonthPeriod(deriveDateLocal(now)), [now]);
+  // Decision 8: the clock enters the feature as `new Date()`, re-read on every focus rather than
+  // frozen at mount — `home` is a tab route that stays mounted for the whole session, so a
+  // mount-only `now` would go stale across a month boundary and let relative sync labels
+  // (`describeSyncTime`) drift further from the truth the longer the session lasts.
+  const [now, setNow] = useState(() => new Date());
+  useFocusEffect(useCallback(() => setNow(new Date()), []));
+
+  const dateLocal = deriveDateLocal(now);
+  // `period` stays referentially stable while the local day is unchanged, so useHomeData does
+  // not re-read on every focus — only a real day change (or the focus-driven reload token) does.
+  const period = useMemo(() => getMonthPeriod(dateLocal), [dateLocal]);
   const previousPeriod = useMemo(() => shiftMonthPeriod(period, -1), [period]);
 
   const state = useHomeData({ period, previousPeriod, locale });
 
+  const financialSummary = useMemo(
+    () => (state.status === 'ready' ? buildFinancialSummary(state.data.categoryTotals) : undefined),
+    [state],
+  );
+  const categoryBuckets = useMemo(
+    () => (state.status === 'ready' ? buildCategoryBreakdown(state.data.categoryTotals) : undefined),
+    [state],
+  );
+  const goToDashboard = useCallback(() => router.push('/dashboard'), [router]);
+  const goToSettings = useCallback(() => router.push('/settings'), [router]);
+  const goToTransactions = useCallback(() => router.push('/(tabs)/transactions'), [router]);
+  const goToMovement = useCallback(
+    (transactionId: string) => router.push(`/transactions/${transactionId}`),
+    [router],
+  );
+  const goToBank = useCallback(
+    (connectionId: string) => router.push(`/settings/banks/${connectionId}`),
+    [router],
+  );
+
   // Assumption A15: while the database is bootstrapping, home renders nothing; a bootstrap
   // failure is re-thrown during render by useHomeData, reaching the route's ErrorBoundary.
-  if (state.status !== 'ready') return null;
+  if (state.status !== 'ready' || financialSummary === undefined || categoryBuckets === undefined) {
+    return null;
+  }
 
   const { data } = state;
   const homeState = resolveHomeState({
@@ -60,8 +96,6 @@ export default function Home() {
 
   const monthLabel = formatMonthYear(period.start, locale);
   const previousMonthLabel = formatMonthYear(previousPeriod.start, locale);
-  const financialSummary = buildFinancialSummary(data.categoryTotals);
-  const categoryBuckets = buildCategoryBreakdown(data.categoryTotals);
   const erroredConnection = data.connections.find((connection) => connection.syncStatus === 'error');
 
   return (
@@ -74,7 +108,7 @@ export default function Home() {
         action={{
           icon: HEADER_SETTINGS_GLYPH,
           accessibilityLabel: t('home.header_settings_action'),
-          onPress: () => router.push('/settings'),
+          onPress: goToSettings,
         }}
       />
       <ScrollView
@@ -97,7 +131,7 @@ export default function Home() {
                       : describeSyncTime(now, erroredConnection.lastSuccessAt)
                   }
                   locale={locale}
-                  onRetry={() => router.push(`/settings/banks/${erroredConnection.id}`)}
+                  onRetry={() => goToBank(erroredConnection.id)}
                 />
               )}
               <View style={{ marginTop: theme.space['4'] }}>
@@ -114,28 +148,28 @@ export default function Home() {
               previousPeriod={previousPeriod}
               monthLabel={monthLabel}
               previousMonthLabel={previousMonthLabel}
-              onPressViewFull={() => router.push('/dashboard')}
+              onPressViewFull={goToDashboard}
             />
 
             <CategoryBreakdownCard
               buckets={categoryBuckets}
               categories={data.categories}
               monthLabel={monthLabel}
-              onPressViewFull={() => router.push('/dashboard')}
+              onPressViewFull={goToDashboard}
             />
 
             <RecentMovementsSection
               movements={data.recentMovements}
               locale={locale}
-              onPressViewAll={() => router.push('/(tabs)/transactions')}
-              onPressMovement={(transactionId) => router.push(`/transactions/${transactionId}`)}
+              onPressViewAll={goToTransactions}
+              onPressMovement={goToMovement}
             />
 
             <ConnectedBanksCard
               connections={data.connections}
               now={now}
               locale={locale}
-              onPressBank={(connectionId) => router.push(`/settings/banks/${connectionId}`)}
+              onPressBank={goToBank}
             />
           </>
         )}

@@ -50,6 +50,15 @@ describe('resolveHomeState', () => {
     ).toBe('sync-error');
   });
 
+  it('returns "empty" when a connection errored before its first success — empty outranks sync-error (A2, found in review)', () => {
+    expect(
+      resolveHomeState({
+        connections: [connection({ syncStatus: 'error', lastSuccessAt: null })],
+        uncategorizedCount: 3,
+      }),
+    ).toBe('empty');
+  });
+
   it('returns "pending" when uncategorizedCount is positive and no connection has errored', () => {
     expect(
       resolveHomeState({ connections: [connection()], uncategorizedCount: 4 }),
