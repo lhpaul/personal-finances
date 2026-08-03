@@ -21,12 +21,14 @@ interface UserFinancialInstitutionRow {
   lastErrorCode: string | null;
   lastErrorMessage: string | null;
   createdAt: string;
+  countryCode: string;
 }
 
 function mapSyncConnection(row: UserFinancialInstitutionRow): SyncConnection {
   return {
     id: row.id,
     financialInstitutionId: row.financialInstitutionId,
+    countryCode: row.countryCode,
     status: row.status as SyncConnection['status'],
     credentialsKey: row.credentialsKey,
     syncStatus: row.syncStatus as SyncConnection['syncStatus'],
@@ -37,11 +39,35 @@ function mapSyncConnection(row: UserFinancialInstitutionRow): SyncConnection {
   };
 }
 
+/** `bankId` for a `ScraperRunner` call is `financialInstitutionId` itself — the same slug the
+ * scraper's `BANK_CONFIGS` registry is keyed by (`docs/project/4-database-model.md`). `countryCode`
+ * is not stored on `user_financial_institutions`, so every read here joins `financial_institutions`
+ * for it. */
+function connectionSelection(db: AppDatabase) {
+  return db
+    .select({
+      id: userFinancialInstitutions.id,
+      financialInstitutionId: userFinancialInstitutions.financialInstitutionId,
+      status: userFinancialInstitutions.status,
+      credentialsKey: userFinancialInstitutions.credentialsKey,
+      syncStatus: userFinancialInstitutions.syncStatus,
+      lastSyncAt: userFinancialInstitutions.lastSyncAt,
+      lastSuccessAt: userFinancialInstitutions.lastSuccessAt,
+      lastErrorCode: userFinancialInstitutions.lastErrorCode,
+      lastErrorMessage: userFinancialInstitutions.lastErrorMessage,
+      createdAt: userFinancialInstitutions.createdAt,
+      countryCode: financialInstitutions.countryCode,
+    })
+    .from(userFinancialInstitutions)
+    .innerJoin(
+      financialInstitutions,
+      eq(userFinancialInstitutions.financialInstitutionId, financialInstitutions.id),
+    );
+}
+
 /** One connection, in sync-engine shape, or `undefined` when the id does not exist. */
 export function getConnection(db: AppDatabase, userFinancialInstitutionId: string): SyncConnection | undefined {
-  const row = db
-    .select()
-    .from(userFinancialInstitutions)
+  const row = connectionSelection(db)
     .where(eq(userFinancialInstitutions.id, userFinancialInstitutionId))
     .get() as UserFinancialInstitutionRow | undefined;
   return row ? mapSyncConnection(row) : undefined;
@@ -54,7 +80,7 @@ export function getConnection(db: AppDatabase, userFinancialInstitutionId: strin
  * is a table-driven unit test over a pure function rather than a SQL predicate.
  */
 export function listSyncableConnections(db: AppDatabase): SyncConnection[] {
-  const rows = db.select().from(userFinancialInstitutions).all() as UserFinancialInstitutionRow[];
+  const rows = connectionSelection(db).all() as UserFinancialInstitutionRow[];
   return rows.map(mapSyncConnection);
 }
 

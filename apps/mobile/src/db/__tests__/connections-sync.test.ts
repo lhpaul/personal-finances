@@ -18,6 +18,18 @@ import { openBootstrappedMemoryDb } from '../testing/memory-db';
  */
 
 describe('connection sync bookkeeping (Decision 8, AC10-AC13)', () => {
+  it('getConnection joins the institution\'s country code, so a ScraperRunner call needs no second lookup', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const connection = getConnection(db, connectionId);
+      expect(connection?.financialInstitutionId).toBe('banco-de-chile');
+      expect(connection?.countryCode).toBe('CL');
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it('markConnectionSyncing writes only sync_status — last_sync_at is untouched (Decision 8)', async () => {
     const { sqlite, db, ports } = await openBootstrappedMemoryDb();
     try {

@@ -72,6 +72,9 @@ export interface ReminderSettings {
 export interface SyncConnection {
   id: string;
   financialInstitutionId: string;
+  /** Not stored on `user_financial_institutions`; joined from `financial_institutions.country_code`
+   * so a `ScraperRunner` call has everything it needs without a second lookup. */
+  countryCode: string;
   status: 'active' | 'inactive' | 'disconnected';
   credentialsKey: string;
   syncStatus: 'idle' | 'syncing' | 'ok' | 'error';
