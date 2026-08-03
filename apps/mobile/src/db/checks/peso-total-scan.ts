@@ -204,7 +204,13 @@ function scanTemplateBody(
 
     if (ch === '$' && source[i + 1] === '{') {
       const expr = scanExpression(source, i + 2, results);
-      body += expr.text;
+      // Pad for the two-character `${` skipped above and the one-character `}` consumed inside
+      // `scanExpression` (its own return omits it) — `expr.text` alone is three characters
+      // shorter than the source span it came from. Without this padding, `body`'s length drifts
+      // from the matching span of `source` after every interpolation, so a later `lineAt` lookup
+      // (`bodyStart + match.index`) under-reports the true source offset — right for a
+      // single-line template, wrong for a multi-line one whose match follows an interpolation.
+      body += `  ${expr.text} `;
       i = expr.endIndex;
       continue;
     }

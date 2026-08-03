@@ -95,4 +95,20 @@ describe('findUnguardedPesoTotals — parser-risk edge cases', () => {
     const unterminated = `export const q = sql${BACKTICK}select sum(\${includedAmount}) from transactions`;
     expect(() => findUnguardedPesoTotals(unterminated, 'src/db/repositories/example.ts')).not.toThrow();
   });
+
+  it('12. a multi-line template whose sum( follows an earlier interpolation reports the correct line (line-number drift fix)', () => {
+    // Without padding for the two characters `scanTemplateBody` skips (`${`) and the one
+    // character `scanExpression` consumes (`}`), `body` drifts three characters short of its
+    // matching `stripped` span per interpolation — enough, here, to land the line lookup on the
+    // newline *before* line 3 and misattribute the finding to line 2.
+    const source = [
+      `export const q = sql${BACKTICK}`,
+      `  select \${otherThing}`,
+      `  sum(\${includedAmount})`,
+      `${BACKTICK};`,
+    ].join('\n');
+    const findings = findUnguardedPesoTotals(source, 'src/db/repositories/example.ts');
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.line).toBe(3);
+  });
 });

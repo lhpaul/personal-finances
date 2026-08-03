@@ -85,10 +85,10 @@ export function listSyncableConnections(db: AppDatabase): SyncConnection[] {
 }
 
 /**
- * `beginSync` (Decision 8): writes exactly one column. Does **not** write `last_sync_at` — every
- * *exit* from `syncing` writes the attempt time (`recordSyncOutcomeInTx` / `recordSyncOutcome`),
- * from the same `now` the write phase uses, which is what makes AC12's "last-success time equals
- * last-attempt time" exactly true.
+ * `markConnectionSyncing` (Decision 8): writes exactly one column. Does **not** write
+ * `last_sync_at` — every *exit* from `syncing` writes the attempt time
+ * (`recordSyncOutcomeInTx` / `recordSyncOutcome`), from the same `now` the write phase uses,
+ * which is what makes AC12's "last-success time equals last-attempt time" exactly true.
  */
 export function markConnectionSyncing(db: AppDatabase, userFinancialInstitutionId: string): void {
   db.update(userFinancialInstitutions)
@@ -105,8 +105,8 @@ export function markConnectionSyncing(db: AppDatabase, userFinancialInstitutionI
  */
 export type ConnectionSyncRecord =
   | { outcome: 'complete' }
-  | { outcome: 'failed'; errorCode: string; errorMessage: string }
-  | { outcome: 'partial'; errorCode: string; errorMessage: string }
+  | { outcome: 'failed'; errorCode: NonNullable<SyncConnection['lastErrorCode']>; errorMessage: string }
+  | { outcome: 'partial'; errorCode: NonNullable<SyncConnection['lastErrorCode']>; errorMessage: string }
   | { outcome: 'cancelled' };
 
 /**
@@ -124,7 +124,7 @@ export function recordSyncOutcomeInTx(
   record: ConnectionSyncRecord,
   now: string,
 ): void {
-  const patch: Record<string, unknown> = { lastSyncAt: now };
+  const patch: Partial<typeof userFinancialInstitutions.$inferInsert> = { lastSyncAt: now };
 
   switch (record.outcome) {
     case 'complete':

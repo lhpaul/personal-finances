@@ -15,11 +15,14 @@ import type { SyncDeps, SyncRunResult } from './types';
 export async function runAppOpenSync(deps: SyncDeps): Promise<SyncRunResult[]> {
   await deps.ready;
 
+  // One snapshot of the current time for the whole sweep — reused for both "clear stuck" and
+  // "select due", so the two steps can never disagree about what "now" means, even under a test
+  // clock that advances per call.
   const now = deps.ports.now();
   clearStuckSyncingConnections(deps.db, now);
 
   const connections = listSyncableConnections(deps.db);
-  const due = selectConnectionsDueForAutomaticSync(connections, deps.ports.now());
+  const due = selectConnectionsDueForAutomaticSync(connections, now);
 
   const results: SyncRunResult[] = [];
   for (const connection of due) {

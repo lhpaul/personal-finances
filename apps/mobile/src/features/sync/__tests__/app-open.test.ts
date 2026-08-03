@@ -167,11 +167,17 @@ describe('runAppOpenSync (Decisions 11-12, AC24, AC26, AC27)', () => {
       const anchor = ports.now();
       const first = createTestConnection(db, ports, 'banco-de-chile');
       setConnectionFieldsForTest(db, first, { lastSuccessAt: hoursBefore(anchor, 30), lastSyncAt: hoursBefore(anchor, 30) });
+      // A second, different institution — `user_financial_institutions_institution_unique` allows
+      // only one connection per bank, so this cannot reuse 'banco-de-chile'.
+      const second = createTestConnection(db, ports, 'bci');
+      setConnectionFieldsForTest(db, second, { lastSuccessAt: hoursBefore(anchor, 30), lastSyncAt: hoursBefore(anchor, 30) });
 
       const results = await runAppOpenSync(deps);
 
       expect(results.every((r) => r.status === 'completed')).toBe(true);
-      expect(runner.syncedConnectionIds).toEqual([first]);
+      // Both eligible connections are synced, in a defined (sequential) order — a regression
+      // that processed them out of order or concurrently would fail this exact-order assertion.
+      expect(runner.syncedConnectionIds).toEqual([first, second]);
     } finally {
       sqlite.close();
     }

@@ -25,6 +25,30 @@ const EMPTY_SUMMARY: SyncSummary = {
   failedProductInstanceIds: [],
 };
 
+/**
+ * The shared shape of both "the write never happened at all" failure branches (Decisions 6, 16):
+ * get `now`, write the standalone connection-record failure, re-fetch the connection, and return
+ * the same `completed` result shape with an empty summary. Only `errorCode` differs between the
+ * runner-rejection branch (`'network'`) and the `MovementValidationError` branch
+ * (`'parse_failed'`) — extracted so the two failure paths cannot drift from each other.
+ */
+async function recordFailureOutcome(
+  deps: SyncDeps,
+  connectionId: string,
+  errorCode: 'network' | 'parse_failed',
+): Promise<SyncRunResult> {
+  const now = deps.ports.now();
+  recordSyncOutcome(
+    deps.db,
+    connectionId,
+    { outcome: 'failed', errorCode, errorMessage: composeFailureMessageKey(errorCode) },
+    now,
+  );
+  const connectionState = getConnection(deps.db, connectionId);
+  if (!connectionState) throw new Error(`runSync: connection "${connectionId}" vanished mid-sync`);
+  return { status: 'completed', summary: EMPTY_SUMMARY, connectionState };
+}
+
 export async function runSync(deps: SyncDeps, request: SyncRequest): Promise<SyncRunResult> {
   await deps.ready;
 
@@ -55,16 +79,7 @@ export async function runSync(deps: SyncDeps, request: SyncRequest): Promise<Syn
       // The runner rejected: it has not produced a ScrapeResult, so there is nothing to store and
       // no open transaction to write a failure record inside (Decision 16). The caught error's
       // own message is never stored — only the code-derived key is (Decision 9).
-      const now = deps.ports.now();
-      recordSyncOutcome(
-        deps.db,
-        request.connectionId,
-        { outcome: 'failed', errorCode: 'network', errorMessage: composeFailureMessageKey('network') },
-        now,
-      );
-      const connectionState = getConnection(deps.db, request.connectionId);
-      if (!connectionState) throw new Error(`runSync: connection "${request.connectionId}" vanished mid-sync`);
-      return { status: 'completed', summary: EMPTY_SUMMARY, connectionState };
+      return recordFailureOutcome(deps, request.connectionId, 'network');
     }
 
     const writeInput = mapScrapeResultToSyncWriteInput(request.connectionId, scrapeResult);
@@ -78,16 +93,7 @@ export async function runSync(deps: SyncDeps, request: SyncRequest): Promise<Syn
       // A structural defect (Business Rule 12, Decision 6): the whole write never happened —
       // there is no open transaction left to record the failure inside, so this is a standalone
       // write of only the connection's own columns.
-      const now = deps.ports.now();
-      recordSyncOutcome(
-        deps.db,
-        request.connectionId,
-        { outcome: 'failed', errorCode: 'parse_failed', errorMessage: composeFailureMessageKey('parse_failed') },
-        now,
-      );
-      const connectionState = getConnection(deps.db, request.connectionId);
-      if (!connectionState) throw new Error(`runSync: connection "${request.connectionId}" vanished mid-sync`);
-      return { status: 'completed', summary: EMPTY_SUMMARY, connectionState };
+      return recordFailureOutcome(deps, request.connectionId, 'parse_failed');
     }
 
     const summary: SyncSummary = {
