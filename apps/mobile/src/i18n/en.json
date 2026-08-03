@@ -172,6 +172,8 @@
   "dev.sample_data.simulate_error_success": "Sync error simulated.",
   "dev.sample_data.clear_action": "Clear sample data",
   "dev.sample_data.clear_success": "Sample data cleared.",
+  "dev.sample_data.generate_demo_action": "Generate demo movements",
+  "dev.sample_data.generate_demo_success": "Demo movements generated.",
   "dev.sample_data.error": "Error: {{message}}",
 
   "onboarding_intro.title": "Welcome to Finanzas",
@@ -267,5 +269,64 @@
   "home.bank_sync_minutes": "Synced {{minutes}} min ago",
   "home.bank_sync_hours": "Synced {{hours}} h ago",
   "home.bank_sync_yesterday": "Synced yesterday {{time}}",
-  "home.bank_sync_date": "Synced on {{date}}"
+  "home.bank_sync_date": "Synced on {{date}}",
+
+  "transactions.header_title": "Transactions",
+  "transactions.header_subtitle": "Full movement history",
+  "transactions.header_filters_action": "Open filters",
+
+  "transactions.search_placeholder": "Search by merchant, category, note…",
+
+  "transactions.month_header_count": "{{month}} ({{count}})",
+
+  "transactions.search_summary_single": "{{count}} result for “{{term}}”",
+  "transactions.search_summary_plural": "{{count}} results for “{{term}}”",
+
+  "transactions.empty_title": "No results",
+  "transactions.empty_description": "We couldn't find any movements matching that term. Try another merchant or adjust the filters.",
+
+  "transactions.row_meta_pending": "⚠️ Needs categorization",
+  "transactions.row_meta_category_only": "{{date}} · {{category}}",
+  "transactions.row_meta_note_only": "{{date}} · {{note}}",
+  "transactions.row_meta_category_note": "{{date}} · {{category}} · {{note}}",
+  "transactions.row_meta_excluded": "{{date}} · Excluded: {{reason}}",
+
+  "transactions.exclusion_reason_personal_transfer": "Transfer between my own accounts",
+  "transactions.exclusion_reason_shared_expense": "Expense shared with other people",
+  "transactions.exclusion_reason_not_relevant": "Not relevant to my finances",
+  "transactions.exclusion_reason_cash_withdrawal": "Cash withdrawal",
+  "transactions.exclusion_reason_other": "Other reason",
+
+  "transactions.filters_title": "Filters",
+  "transactions.filters_close_action": "Close filters",
+  "transactions.filter_type_label": "Type",
+  "transactions.filter_type_all": "All",
+  "transactions.filter_type_expense": "Expenses",
+  "transactions.filter_type_income": "Income",
+  "transactions.filter_status_label": "Status",
+  "transactions.filter_status_all": "All",
+  "transactions.filter_status_uncategorized": "Uncategorized",
+  "transactions.filter_status_categorized": "Categorized",
+  "transactions.filter_product_label": "Product",
+  "transactions.filter_product_all": "All",
+  "transactions.filter_show_excluded_title": "Show excluded",
+  "transactions.filter_show_excluded_sub": "Movements outside the analysis",
+  "transactions.filter_clear": "Clear",
+  "transactions.filter_apply": "Apply",
+
+  "transactions.manual_entry_button": "+ Add manual transaction",
+  "transactions.manual.title": "New manual transaction",
+  "transactions.manual.close_action": "Close",
+  "transactions.manual.amount_label": "Amount",
+  "transactions.manual.amount_placeholder": "0",
+  "transactions.manual.description_label": "Description",
+  "transactions.manual.description_placeholder": "What did you spend on, or where did it come from?",
+  "transactions.manual.type_label": "Type",
+  "transactions.manual.type_expense": "Expense",
+  "transactions.manual.type_income": "Income",
+  "transactions.manual.product_label": "Product",
+  "transactions.manual.save_action": "Save",
+  "transactions.manual.error_description": "Enter a description",
+  "transactions.manual.error_amount": "Enter a valid amount",
+  "transactions.manual.error_product": "Select a product"
 }
