@@ -213,6 +213,7 @@ arithmetic). Testing weight goes there.
 | **Unit — scraper** | Jest — `node` for the engine/security/parsers, `jsdom` for the four reading routines | `packages/bank-scraper/src/**/*.test.ts` (engine, security, parsing) and `packages/bank-scraper/src/**/*.dom.test.ts` (injected script generators against fixtures) | Every reading routine against a recorded/hand-authored HTML fixture; the security perimeter (origin allowlist, credential holder, redaction) against planted violations. Ported from `bank-scrapper-app` (issue #6) |
 | **Device E2E** | Maestro | `.maestro/` | Happy paths only: onboarding, categorization, exclusion |
 | **Toolchain — layout & bundle** | `scripts/check-node-linker-layout.mjs` + `expo export:embed` | `pnpm check:layout` (postinstall + CI), CI `bundle` job | Every install and every PR. Proves the `node_modules` tree is hoisted and that Metro can actually produce an iOS bundle — CI cannot be green on a tree that cannot build the app |
+| **UI — design fidelity** | `scripts/mobile-ui/` (Playwright + pixelmatch, `node --test`) | `pnpm fidelity:contract` / `fidelity:test` in CI; `pnpm fidelity` / `fidelity:verify-gate` local-only | Every screen item: the manifest-driven contract (`fidelity-targets.json`) and its unit tests run in CI on every PR; the mockup-vs-simulator pixel diff needs a booted device and stays local (item #47) |
 
 The automated suite is the canonical record of what works.
 
@@ -222,6 +223,10 @@ The automated suite is the canonical record of what works.
 pnpm test                                   # all unit tiers
 pnpm --filter @finanzas/shared-domain test           # fastest feedback loop
 pnpm --filter @finanzas/mobile exec maestro test .maestro/   # device flows, requires a booted simulator
+pnpm fidelity:contract                      # design-fidelity contract validation — CI, no simulator
+pnpm fidelity:test                          # design-fidelity contract + comparator unit tests — CI
+pnpm fidelity --screen home --state pending # mockup vs. running-app pixel diff — local only, needs
+                                             # a booted "Finanzas Fidelity" simulator and a dev build
 ```
 
 Non-negotiable cases:

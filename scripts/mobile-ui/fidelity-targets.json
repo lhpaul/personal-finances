@@ -1,0 +1,625 @@
+{
+  "schema_version": 1,
+  "default_profile": "iphone-393x852",
+  "defaults": {
+    "max_mismatch_pct": 3.0,
+    "pixel_threshold": 0.1,
+    "settle_ms": 2500
+  },
+  "profiles": {
+    "iphone-393x852": {
+      "width": 393,
+      "height": 852,
+      "simulator_name": "Finanzas Fidelity",
+      "device_types": [
+        "iPhone 16",
+        "iPhone 15",
+        "iPhone 14"
+      ],
+      "requires_native_dev_client": true
+    }
+  },
+  "fixtures": {
+    "seed-default": {
+      "description": "The bundled deterministic seed fixture (pnpm --filter @finanzas/mobile db:seed)"
+    },
+    "empty-db": {
+      "description": "Fresh install: migrations applied, no rows"
+    }
+  },
+  "coverage_sets": [
+    {
+      "issue": 8,
+      "targets": [
+        {
+          "screen_id": "onboarding-intro",
+          "states": "all"
+        },
+        {
+          "screen_id": "onboarding-value",
+          "states": "all"
+        },
+        {
+          "screen_id": "onboarding-ready",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 9,
+      "targets": [
+        {
+          "screen_id": "connect-bank-intro",
+          "states": "all"
+        },
+        {
+          "screen_id": "bank-picker",
+          "states": "all"
+        },
+        {
+          "screen_id": "bank-credentials",
+          "states": "all"
+        },
+        {
+          "screen_id": "bank-connected",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 11,
+      "targets": [
+        {
+          "screen_id": "bank-syncing",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 12,
+      "targets": [
+        {
+          "screen_id": "home",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 13,
+      "targets": [
+        {
+          "screen_id": "stage-intro",
+          "states": "all"
+        },
+        {
+          "screen_id": "categorize",
+          "states": "all"
+        },
+        {
+          "screen_id": "categorize-complete",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 14,
+      "targets": [
+        {
+          "screen_id": "merchant-edit",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 15,
+      "targets": [
+        {
+          "screen_id": "transactions",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 16,
+      "targets": [
+        {
+          "screen_id": "transaction-detail",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 17,
+      "targets": [
+        {
+          "screen_id": "dashboard",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 18,
+      "targets": [
+        {
+          "screen_id": "notifications-intro",
+          "states": "all"
+        },
+        {
+          "screen_id": "notifications-schedule",
+          "states": "all"
+        },
+        {
+          "screen_id": "settings-notifications",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 19,
+      "targets": [
+        {
+          "screen_id": "settings",
+          "states": "all"
+        },
+        {
+          "screen_id": "settings-account",
+          "states": "all"
+        },
+        {
+          "screen_id": "settings-about",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 20,
+      "targets": [
+        {
+          "screen_id": "settings-banks",
+          "states": "all"
+        },
+        {
+          "screen_id": "bank-review",
+          "states": "all"
+        }
+      ]
+    },
+    {
+      "issue": 21,
+      "targets": [
+        {
+          "screen_id": "settings-categories",
+          "states": "all"
+        }
+      ]
+    }
+  ],
+  "exclusions": [
+    {
+      "screen_id": "ds-colors",
+      "states": null,
+      "reason": "Design-system reference page; the app surface is the single __DEV__ gallery route /(dev)/gallery (#2), not a product screen"
+    },
+    {
+      "screen_id": "ds-typography",
+      "states": null,
+      "reason": "Design-system reference page; the app surface is the single __DEV__ gallery route /(dev)/gallery (#2), not a product screen"
+    },
+    {
+      "screen_id": "ds-components",
+      "states": null,
+      "reason": "Design-system reference page; the app surface is the single __DEV__ gallery route /(dev)/gallery (#2), not a product screen"
+    },
+    {
+      "screen_id": "categorize",
+      "states": [
+        "advanced"
+      ],
+      "reason": "Manifest marks this state mvp: false \u2014 partial-inclusion UI is drawn but not built in the MVP"
+    }
+  ],
+  "mappings": [
+    {
+      "screen_id": "onboarding-intro",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "onboarding-value",
+      "state_id": "step-1",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "onboarding-value",
+      "state_id": "step-2",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "onboarding-value",
+      "state_id": "step-3",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "onboarding-ready",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "connect-bank-intro",
+      "state_id": "default",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "connect-bank-intro",
+      "state_id": "how-it-works",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-picker",
+      "state_id": "list",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-picker",
+      "state_id": "search",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-picker",
+      "state_id": "no-results",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-credentials",
+      "state_id": "empty",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-credentials",
+      "state_id": "filled",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-credentials",
+      "state_id": "error",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-credentials",
+      "state_id": "rut-locked",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-connected",
+      "state_id": "single",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-connected",
+      "state_id": "multiple",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-syncing",
+      "state_id": "login",
+      "status": "planned",
+      "fixture": "seed-default",
+      "max_mismatch_pct": 6.0,
+      "threshold_note": "Progress animation is captured mid-flight; the frame is not deterministic"
+    },
+    {
+      "screen_id": "bank-syncing",
+      "state_id": "products",
+      "status": "planned",
+      "fixture": "seed-default",
+      "max_mismatch_pct": 6.0,
+      "threshold_note": "Progress animation is captured mid-flight; the frame is not deterministic"
+    },
+    {
+      "screen_id": "bank-syncing",
+      "state_id": "transactions",
+      "status": "planned",
+      "fixture": "seed-default",
+      "max_mismatch_pct": 6.0,
+      "threshold_note": "Progress animation is captured mid-flight; the frame is not deterministic"
+    },
+    {
+      "screen_id": "bank-syncing",
+      "state_id": "error",
+      "status": "planned",
+      "fixture": "seed-default",
+      "max_mismatch_pct": 6.0,
+      "threshold_note": "Progress animation is captured mid-flight; the frame is not deterministic"
+    },
+    {
+      "screen_id": "home",
+      "state_id": "pending",
+      "status": "planned",
+      "fixture": "seed-default",
+      "max_mismatch_pct": 5.0,
+      "threshold_note": "Donut chart antialiasing and the sparkline differ between SVG-in-Chromium and React Native rendering"
+    },
+    {
+      "screen_id": "home",
+      "state_id": "all-clear",
+      "status": "planned",
+      "fixture": "seed-default",
+      "max_mismatch_pct": 5.0,
+      "threshold_note": "Donut chart antialiasing and the sparkline differ between SVG-in-Chromium and React Native rendering"
+    },
+    {
+      "screen_id": "home",
+      "state_id": "empty",
+      "status": "planned",
+      "fixture": "seed-default",
+      "max_mismatch_pct": 5.0,
+      "threshold_note": "Donut chart antialiasing and the sparkline differ between SVG-in-Chromium and React Native rendering"
+    },
+    {
+      "screen_id": "home",
+      "state_id": "sync-error",
+      "status": "planned",
+      "fixture": "seed-default",
+      "max_mismatch_pct": 5.0,
+      "threshold_note": "Donut chart antialiasing and the sparkline differ between SVG-in-Chromium and React Native rendering"
+    },
+    {
+      "screen_id": "stage-intro",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "categorize",
+      "state_id": "expense",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "categorize",
+      "state_id": "income",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "categorize",
+      "state_id": "not-sure",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "categorize",
+      "state_id": "exclude-sheet",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "categorize-complete",
+      "state_id": "partial",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "categorize-complete",
+      "state_id": "done",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "merchant-edit",
+      "state_id": "default",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "merchant-edit",
+      "state_id": "suggestions",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "merchant-edit",
+      "state_id": "category-picker",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "transactions",
+      "state_id": "list",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "transactions",
+      "state_id": "search",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "transactions",
+      "state_id": "filters",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "transactions",
+      "state_id": "empty",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "transaction-detail",
+      "state_id": "categorized",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "transaction-detail",
+      "state_id": "uncategorized",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "transaction-detail",
+      "state_id": "excluded",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "transaction-detail",
+      "state_id": "exclude-sheet",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "dashboard",
+      "state_id": "month",
+      "status": "planned",
+      "fixture": "seed-default",
+      "max_mismatch_pct": 5.0,
+      "threshold_note": "Same charts as home, plus the month/week bar series"
+    },
+    {
+      "screen_id": "dashboard",
+      "state_id": "week",
+      "status": "planned",
+      "fixture": "seed-default",
+      "max_mismatch_pct": 5.0,
+      "threshold_note": "Same charts as home, plus the month/week bar series"
+    },
+    {
+      "screen_id": "notifications-intro",
+      "state_id": "default",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "notifications-intro",
+      "state_id": "denied",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "notifications-schedule",
+      "state_id": "time",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "notifications-schedule",
+      "state_id": "custom-time",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "notifications-schedule",
+      "state_id": "days",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-notifications",
+      "state_id": "enabled",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-notifications",
+      "state_id": "disabled",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings",
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/index.tsx",
+      "deep_link": "finanzas:///settings?fidelity=1&fidelityScreen=settings",
+      "ready_test_id": "fidelity-settings"
+    },
+    {
+      "screen_id": "settings-account",
+      "state_id": "default",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-account",
+      "state_id": "delete-confirm",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-about",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-banks",
+      "state_id": "list",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-banks",
+      "state_id": "empty",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-banks",
+      "state_id": "disconnect-confirm",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-review",
+      "state_id": "ok",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "bank-review",
+      "state_id": "error",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-categories",
+      "state_id": "expense",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-categories",
+      "state_id": "income",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-categories",
+      "state_id": "edit",
+      "status": "planned",
+      "fixture": "seed-default"
+    },
+    {
+      "screen_id": "settings-categories",
+      "state_id": "delete-confirm",
+      "status": "planned",
+      "fixture": "seed-default"
+    }
+  ]
+}

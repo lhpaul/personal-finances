@@ -86,6 +86,12 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Design-fidelity contract
+        run: pnpm fidelity:contract
+
+      - name: Design-fidelity unit tests
+        run: pnpm fidelity:test
+
   db-check:
     name: DB check
     runs-on: ubuntu-latest

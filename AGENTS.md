@@ -35,7 +35,10 @@ only Inicio and Transacciones.
 5. Migrations are additive. A bad migration is unrecoverable on a user's device.
 6. `design/mockups/mobile/` is the UI contract. Every UI item names the `#screen=…&state=…`
    it implements, and implements **every** state that screen declares — for screens that are
-   in the MVP. Screens flagged `mvp: false` are not built.
+   in the MVP. Screens flagged `mvp: false` are not built. A UI item also registers its targets
+   in `scripts/mobile-ui/fidelity-targets.json`, flips them from `planned` to `wired`, and
+   attaches the fidelity summary table to its PR — see
+   [`docs/best-practices/stack/mobile-ui-fidelity.md`](docs/best-practices/stack/mobile-ui-fidelity.md).
 7. No account, no session, no auth secret. The app opens straight into onboarding.
 8. **No user-facing literal strings in JSX.** Copy lives in `apps/mobile/src/i18n/` catalogues
    (`es` primary, `en` fallback); the Spanish string comes from the mockup.
@@ -71,6 +74,7 @@ packages/
   bank-scraper/             # On-device WebView scraping + per-bank script configs
 design/                     # Tokens + HTML mockups (the UI contract)
 docs/                       # Specs, best practices, AI workflow protocols
+scripts/mobile-ui/          # Design-fidelity gate: manifest-driven mockup vs. app pixel diff
 .maestro/                   # Device E2E flows
 ```
 
@@ -211,6 +215,13 @@ pnpm --filter @finanzas/mobile db:generate     # generate a Drizzle migration
 pnpm --filter @finanzas/mobile db:check        # apply migrations to a fixture DB, in four modes
 pnpm --filter @finanzas/mobile db:seed         # regenerate the bundled seed fixture, deterministically
 
+# Design fidelity (scripts/mobile-ui/ — mockup vs. running-app pixel diff, item #47)
+pnpm fidelity:contract                          # validates fidelity-targets.json against the manifest
+pnpm fidelity:test                               # unit tests for the contract validator and comparator
+pnpm fidelity --screen home --state pending      # full gate: mockup + simulator + diff, exits 1 on drift
+pnpm fidelity --all --dry-run                    # lists every target, its profile, fixture and status
+pnpm fidelity:verify-gate                        # proves the comparator discriminates, both directions
+
 # Lint / Format
 pnpm lint
 pnpm format
@@ -301,3 +312,4 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 | Native module missing at runtime | Needs a dev build, not Expo Go |
 | App crashes on launch after an update | A migration threw. This is unrecoverable in the field — that is why `db:check` is a required check |
 | `Unable to resolve "@expo/metro-runtime"` from `expo-router/entry-classic.js` | The installed `node_modules` tree is isolated, not hoisted (pnpm 11 does not read `node-linker` from `.npmrc`; it reads `nodeLinker` from `pnpm-workspace.yaml`) | Run `pnpm check:layout` to confirm, then `pnpm install` (plain, no `--node-linker` flag) |
+| `pnpm fidelity` captures the wrong device, or fails with "no booted simulator matches profile" | The booted simulator is not named `Finanzas Fidelity` | `xcrun simctl list devices booted`; boot or create `Finanzas Fidelity` per `docs/best-practices/stack/mobile-ui-fidelity.md` — `scripts/mobile-ui/capture-simulator.sh --check-only` prints the exact `simctl create` command |

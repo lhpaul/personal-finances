@@ -23,7 +23,12 @@
     "format:code": "prettier --write \"{apps,packages}/**/*.{ts,tsx,js,jsx,json}\"",
     "mockups:mobile": "open design/mockups/mobile/index.html",
     "mobile:build:dev-store": "pnpm --dir apps/mobile dlx eas-cli build --profile development",
-    "mobile:build:production-store": "pnpm --dir apps/mobile dlx eas-cli build --profile production"
+    "mobile:build:production-store": "pnpm --dir apps/mobile dlx eas-cli build --profile production",
+    "fidelity": "node scripts/mobile-ui/run-fidelity.mjs",
+    "fidelity:contract": "node scripts/mobile-ui/fidelity-contract.mjs",
+    "fidelity:test": "node --test scripts/mobile-ui/*.test.mjs",
+    "fidelity:capture-mockup": "node scripts/mobile-ui/capture-mockup.mjs",
+    "fidelity:verify-gate": "bash scripts/mobile-ui/verify-gate.sh"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
@@ -31,6 +36,9 @@
     "globals": "^17.8.0",
     "markdownlint-cli2": "0.22.0",
     "markdownlint-rule-relative-links": "5.1.0",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.60.0",
+    "pngjs": "^7.0.0",
     "prettier": "3.8.3",
     "turbo": "^2.10.8",
     "typescript": "~5.9.2",

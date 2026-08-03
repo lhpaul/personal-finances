@@ -126,11 +126,19 @@ required:
 | Case | Inputs | Required outcome |
 | --- | --- | --- |
 | V1 faithful build | `home--pending` captured twice, in two separate browser launches | `PASS`, comparator exit 0, mismatch near 0 % |
-| V2 wrong design token | clean `home--pending` vs the same capture with `--brand` / `--tab-active` / `--t-brand` forced to `#ef4444` | `FAIL`, comparator exit 1, mismatch above the target threshold |
+| V2 wrong design token | clean `home--pending` vs the same capture with `--brand` / `--tab-active` / `--t-brand` / `--grad-challenge` forced to `#ef4444` | `FAIL`, comparator exit 1, mismatch above the target threshold |
 | V3 wrong / missing state | `home--pending` vs `home--all-clear` | `FAIL`, comparator exit 1, mismatch above the target threshold |
 | V4 wrong device size | `home--pending` at 393×852 vs the same screen rendered at 375×667 | `FAIL`, comparator exit 1, report states the aspect ratio disagreed |
 
 Record all four mismatch percentages and exit codes verbatim in the report and in the PR.
+
+> **Implementation note**: the plan's illustrative V2 override (`--brand` / `--tab-active` /
+> `--t-brand` only) measured 0.08% on the real `home--pending` mockup — under the 5% `home`
+> threshold, because the screen's dominant purple banner reads a separate custom property,
+> `--grad-challenge`, not `--brand` directly. `--grad-challenge` was added to the override so V2
+> actually discriminates (9.23% measured). This is a test-input fix, not a threshold change.
+
+
 
 > If V1 is not near 0 %, the capture is non-deterministic. Fix the capture. **Do not raise a
 > threshold to make V1 pass** — that would void the gate for all 13 screen items.
