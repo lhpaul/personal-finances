@@ -49,14 +49,21 @@ function findForbiddenImports(source: string): boolean {
   return pattern.test(source);
 }
 
-/** This file's own edge-case fixtures (S1-S8, below) are import-shaped strings by design — they
- * would otherwise trip the very scan this suite runs over every other file. */
-const SELF_PATH = path.resolve(__dirname, 'secure-store-boundary.test.ts');
+/** Files whose own planted-violation fixtures are import-shaped strings by design — they would
+ * otherwise trip the very scan this suite runs over every other file. `secure-store-boundary.
+ * test.ts` is this file's own S1-S8 edge cases below; `no-secure-store.test.ts` is item #10's
+ * independent, `src/features/sync/`-scoped boundary scanner (merged after this item's
+ * implementation started), whose own planted-violation proof contains the same kind of literal
+ * test-data string. */
+const SELF_EXCLUDED_PATHS = [
+  path.resolve(__dirname, 'secure-store-boundary.test.ts'),
+  path.resolve(__dirname, '..', 'features', 'sync', '__tests__', 'no-secure-store.test.ts'),
+];
 
 describe('no file outside src/lib/secure-store/ imports expo-secure-store (non-negotiable 1)', () => {
   const files = ROOTS.flatMap((root) => (fs.existsSync(root) ? listSourceFiles(root) : []))
     .filter((file) => !isUnderSecureStoreDir(file))
-    .filter((file) => file !== SELF_PATH);
+    .filter((file) => !SELF_EXCLUDED_PATHS.includes(file));
 
   it('found at least one file to scan (a broken file walk must not make this vacuously pass)', () => {
     expect(files.length).toBeGreaterThan(0);
