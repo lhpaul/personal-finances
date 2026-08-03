@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, ne, sql } from 'drizzle-orm';
 
 import type { Assets, CategoryLabels } from '../json';
 import { parseAssets, parseCategoryLabels } from '../json';
@@ -53,6 +53,48 @@ export function listCategories(
     .from(transactionCategories)
     .where(eq(transactionCategories.income, params.income))
     .orderBy(asc(transactionCategories.sortOrder))
+    .all() as TransactionCategoryRow[];
+  return rows.map((row) => mapCategoryRow(row, params.locale));
+}
+
+/**
+ * The categorization flow's chip-ordering data source (#13 implementation plan Decision 6, spec
+ * A7, AC8). Orders by how often the person has actually used each category of the given
+ * direction — every movement carrying it, excluded ones included (Assumption P3) — ties broken
+ * by `sortOrder`. `excludeCategoryId` lets a caller drop a category (typically the one already
+ * shown as the suggestion) from the result; `readStageData` does not pass it, because the
+ * suggestion differs per movement in the batch and the exclusion is applied once, per movement,
+ * by the pure `buildCategoryChoices` instead.
+ */
+export function listMostUsedCategories(
+  db: AppDatabase,
+  params: {
+    income: 0 | 1;
+    excludeCategoryId?: string | null;
+    limit: number;
+    locale: SupportedLocale;
+  },
+): Category[] {
+  const rows = db
+    .select({
+      id: transactionCategories.id,
+      slug: transactionCategories.slug,
+      income: transactionCategories.income,
+      labels: transactionCategories.labels,
+      assets: transactionCategories.assets,
+      sortOrder: transactionCategories.sortOrder,
+    })
+    .from(transactions)
+    .innerJoin(transactionCategories, eq(transactions.transactionCategoryId, transactionCategories.id))
+    .where(
+      and(
+        eq(transactionCategories.income, params.income),
+        params.excludeCategoryId != null ? ne(transactionCategories.id, params.excludeCategoryId) : undefined,
+      ),
+    )
+    .groupBy(transactionCategories.id)
+    .orderBy(desc(sql`count(${transactions.id})`), asc(transactionCategories.sortOrder))
+    .limit(params.limit)
     .all() as TransactionCategoryRow[];
   return rows.map((row) => mapCategoryRow(row, params.locale));
 }

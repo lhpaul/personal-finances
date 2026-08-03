@@ -64,6 +64,34 @@ export interface ReminderSettings {
   days: number[] | undefined;
 }
 
+/**
+ * A resolved merchant, in the shape `@finanzas/shared-domain`'s `suggestCategory` accepts
+ * (implementation plan Decision 5, categorization flow #13). `isUserDefined` is derived from
+ * `merchants.user_id !== null` (Null = seeded; set = created by the person).
+ */
+export interface StageMerchant {
+  id: string;
+  name: string;
+  transactionCategoryId: string | null;
+  isUserDefined: boolean;
+}
+
+/**
+ * A pending movement, joined with its resolved merchant (categorization flow #13, Layer-by-Layer
+ * "Database / Data Layer"). Only the fields the categorization screens and `suggestCategory`
+ * actually read — never the raw Drizzle row.
+ */
+export interface StageMovement {
+  id: string;
+  amount: number;
+  type: 'debit' | 'credit';
+  dateLocal: string;
+  occurredAt: string;
+  rawDescription: string;
+  categorySource: 'auto' | 'user' | 'rule' | null;
+  merchant: StageMerchant | null;
+}
+
 export interface Transaction {
   id: string;
   userFinancialProductId: string;
