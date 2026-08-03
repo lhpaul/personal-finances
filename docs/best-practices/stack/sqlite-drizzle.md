@@ -113,6 +113,20 @@ appear in the update statement's `set` object under any circumstance. The bank o
 `(user_financial_product_id, external_id)` and `(dedup_hash)` are the store-level backstop: a raw
 insert that bypasses the repository is rejected too, not only a call through it.
 
+**`dedup_hash`'s input (item #10 — `v2`)** is
+`` 'v2' ␟ userFinancialProductId ␟ dateLocal ␟ amount ␟ direction ␟ rawDescription ␟ externalId ?? '' ␟ occurrenceIndex ␟ isManual ? id : '' ``.
+`direction` and `occurrenceIndex` were added on top of item #3's original formula so a charge and
+its identically-described refund never collide, and so N indistinguishable movements reported in
+one read stay N on a repeat — `occurrenceIndex` is derived from a stable identity tuple
+(`dateLocal`, `amount`, `direction`, `rawDescription`, `externalId`), **never** from a read's
+listing position (`positionInReadSnapshot` is a same-read tie-breaker only).
+
+**Enrichment runs on the insert branch only.** `merchant_id`, `transaction_category_id` and
+`category_source` are computed once, when a movement is first stored, and appear **only** in the
+`insert` values object — never in the `update` `set` object, the same structural guarantee as the
+nine person-owned columns above. A movement that already exists is never re-examined for a
+merchant or a category, even one that still has neither.
+
 ## Queries
 
 - Aggregate in SQL, not in JS. `home` and `dashboard` must not `SELECT *` and reduce in

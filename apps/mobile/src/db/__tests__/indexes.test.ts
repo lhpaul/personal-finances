@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 
-import { includedAmount, isIncluded } from '../fragments';
+import { includedAmount, isIncluded, isPesoDenominated } from '../fragments';
 import { financialInstitutions, transactionCategories, transactions } from '../schema';
 import { openMigratedMemoryDb } from '../testing/memory-db';
 
@@ -64,6 +64,12 @@ describe('index-backed questions (AC23)', () => {
   it('"What is the total for this category over this period?" uses transactions_category_id_idx (dashboard)', () => {
     const { sqlite, db } = openMigratedMemoryDb();
     try {
+      // Mirrors totalForCategoryInPeriod's WHERE exactly, including the issue #10 currency guard
+      // (Decision 15) — this test reconstructs the query by hand for EXPLAIN QUERY PLAN, so it
+      // must be kept in sync with the repository function or it would silently plan a different
+      // query than production runs. src/db/checks/peso-total-scan.ts's own guard catches a drift
+      // here (an unguarded sum(includedAmount) in this file) — see the PR description's
+      // planted-defect proof.
       const query = db
         .select({ total: sql<number>`coalesce(sum(${includedAmount}), 0)` })
         .from(transactions)
@@ -71,6 +77,7 @@ describe('index-backed questions (AC23)', () => {
           and(
             eq(transactions.transactionCategoryId, 'comida'),
             isIncluded,
+            isPesoDenominated,
             gte(transactions.dateLocal, '2026-02-01'),
             lte(transactions.dateLocal, '2026-02-28'),
           ),

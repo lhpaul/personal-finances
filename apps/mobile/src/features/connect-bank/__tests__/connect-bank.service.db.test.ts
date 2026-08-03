@@ -128,7 +128,11 @@ describe('connectBank (issue #9)', () => {
     }
   });
 
-  it('the connection genuinely passes idle -> syncing, and marks last_sync_at (Business Rule 17)', async () => {
+  it('the connection genuinely passes idle -> syncing (Business Rule 17)', async () => {
+    // item #10's canonical markConnectionSyncing (merged after this item's implementation
+    // started) writes only sync_status — last_sync_at is written once by whichever exit
+    // function (recordSyncOutcomeInTx / recordSyncOutcome) eventually resolves this attempt,
+    // never at connect time. AC22's "two separate facts" still holds: neither is set yet.
     const { sqlite, db, ports } = await openBootstrappedMemoryDb();
     const port = createFakePort();
     try {
@@ -139,7 +143,7 @@ describe('connectBank (issue #9)', () => {
       const rows = db.select().from(userFinancialInstitutions).all() as ConnectionRow[];
       const row = rows.find((candidate) => candidate.id === result.userFinancialInstitutionId);
       expect(row?.syncStatus).toBe('syncing');
-      expect(row?.lastSyncAt).not.toBeNull();
+      expect(row?.lastSyncAt).toBeNull();
       expect(row?.lastSuccessAt).toBeNull();
     } finally {
       sqlite.close();

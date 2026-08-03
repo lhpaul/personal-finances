@@ -75,8 +75,10 @@ The rules most likely to be violated in this codebase. Detail lives in the `stac
   There is no way to fix a bad migration on a user's phone.
 
 - **Re-syncing must be idempotent.** Every write path from the scraper goes through the
-  repository's upsert keyed on `(user_financial_product_id, external_id)` / `dedup_hash`. Adding a direct
-  `insert` from sync code reintroduces the duplicate-movements bug.
+  repository's upsert keyed on `(user_financial_product_id, external_id)` / `dedup_hash` — the
+  latter's input carries direction and an occurrence-index-within-identity-group on top of the
+  product/day/amount/description tuple (item #10), never a read's listing position. Adding a
+  direct `insert` from sync code reintroduces the duplicate-movements bug.
 
 - **Bank scripts are isolated and fixture-tested.** Bank-specific selectors live only under
   `packages/bank-scraper/configs/<country>/<bank>/`. Every script generator gets a jsdom test

@@ -1,0 +1,64 @@
+{
+  "outcome": "complete",
+  "countryCode": "CL",
+  "bankId": "banco-de-chile",
+  "products": [
+    {
+      "instanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "kind": "checking",
+      "displayName": "Cuenta Corriente",
+      "currencyCode": "CLP",
+      "maskedIdentifier": "•••1111"
+    }
+  ],
+  "movements": [
+    {
+      "productInstanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "dateLocal": "2026-03-05",
+      "amountMinorUnits": 2500,
+      "direction": "debit",
+      "currencyCode": "CLP",
+      "rawDescription": "CAFE CENTRO",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 0,
+      "extras": {}
+    },
+    {
+      "productInstanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "dateLocal": "2026-03-05",
+      "amountMinorUnits": 2500,
+      "direction": "debit",
+      "currencyCode": "CLP",
+      "rawDescription": "CAFE CENTRO",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 1,
+      "extras": {}
+    },
+    {
+      "productInstanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "dateLocal": "2026-03-06",
+      "amountMinorUnits": 9900,
+      "direction": "debit",
+      "currencyCode": "CLP",
+      "rawDescription": "TIENDA ROPA",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 2,
+      "extras": {}
+    },
+    {
+      "productInstanceId": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "dateLocal": "2026-03-06",
+      "amountMinorUnits": 9900,
+      "direction": "credit",
+      "currencyCode": "CLP",
+      "rawDescription": "TIENDA ROPA",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 3,
+      "extras": {}
+    }
+  ],
+  "readFailure": null,
+  "productFailures": [],
+  "skippedProductKinds": [],
+  "traces": []
+}

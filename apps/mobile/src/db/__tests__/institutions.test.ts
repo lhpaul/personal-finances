@@ -276,7 +276,10 @@ describe('institutions repository — connect-a-bank writes (issue #9)', () => {
     }
   });
 
-  it('markConnectionSyncing sets sync_status syncing and last_sync_at, without touching last_success_at (AC22)', async () => {
+  it('markConnectionSyncing (item #10\'s canonical shape, merged after this item\'s implementation started) sets only sync_status, touching neither last_sync_at nor last_success_at (AC22)', async () => {
+    // Full behavioral coverage of this function belongs to item #10's own
+    // connections-sync.test.ts; this is only the cross-check that connect-bank.service.ts
+    // (issue #9) calls the real, 2-argument signature and not a stale 3-argument one.
     const { sqlite, db, ports } = await openBootstrappedMemoryDb();
     try {
       const connectionId = createTestConnection(db, ports, 'banco-de-chile');
@@ -285,7 +288,7 @@ describe('institutions repository — connect-a-bank writes (issue #9)', () => {
         .where(eq(userFinancialInstitutions.id, connectionId))
         .run();
 
-      markConnectionSyncing(db, connectionId, '2026-02-05T00:00:00.000Z');
+      markConnectionSyncing(db, connectionId);
 
       const row = db
         .select()
@@ -294,7 +297,7 @@ describe('institutions repository — connect-a-bank writes (issue #9)', () => {
         .get();
       expect(row).toMatchObject({
         syncStatus: 'syncing',
-        lastSyncAt: '2026-02-05T00:00:00.000Z',
+        lastSyncAt: null, // untouched — item #10's exit functions write this, not this call
         lastSuccessAt: '2026-02-01T00:00:00.000Z', // untouched
       });
     } finally {

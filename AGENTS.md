@@ -66,6 +66,8 @@ apps/mobile/                # @finanzas/mobile — the only shippable artifact
     db/                     # Drizzle schema, migrations, seeds, repositories — the only SQL
     dev/                    # __DEV__-only surfaces (design-system gallery) — never ships
     features/               # One folder per domain area
+      sync/                 # Headless idempotent-persistence engine (no UI) — reads a scraper
+                             #   result, writes products/movements/connection state; #10
     lib/ · hooks/ · i18n/ · types/ · test-utils/
     theme.ts                # Mirror of design/tokens.json
 packages/
@@ -205,7 +207,7 @@ pnpm build
 # Test
 pnpm test
 pnpm --filter @finanzas/shared-domain test          # domain rules, fastest loop
-pnpm --filter @finanzas/mobile test            # repositories, migrations, dedup — two Jest projects: app (jest-expo), db (Node)
+pnpm --filter @finanzas/mobile test            # repositories, migrations, dedup, sync engine — three Jest projects: app (jest-expo), db (Node), sync (Node)
 pnpm --filter @finanzas/bank-scraper test  # injected scripts vs HTML fixtures
 
 # Type check
@@ -309,8 +311,9 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 | Symptom | Likely cause |
 |---------|--------------|
 | Scraper hangs on `LOGIN_START` | The bank changed a selector. Run `pnpm --filter @finanzas/bank-scraper test` — the fixture tests fail before the app does. Re-capture and scrub a fixture, then fix the script |
-| Duplicate movements after a sync | A write bypassed the repository upsert. All sync writes go through `(user_financial_product_id, external_id)` / `dedup_hash` |
+| Duplicate movements after a sync | A write bypassed the repository upsert. All sync writes go through `(user_financial_product_id, external_id)` / `dedup_hash` — the latter's input now also carries direction and an occurrence-index-within-identity-group (never a read's listing position), so a charge and its refund, or two indistinguishable movements in one read, each get their own hash instead of colliding |
 | `home` and `dashboard` totals disagree | Someone hand-wrote an exclusion filter. A SQL query must use the shared `isIncluded` / `includedAmount` fragments from `apps/mobile/src/db`; in-memory code that already has a `Movement` object must use `isIncludedInAnalysis` / `effectiveAmount` / `contributedAmount` from `@finanzas/shared-domain`. These are the only two sanctioned statements of the rule — a third one anywhere is a review blocker |
+| A foreign-currency movement shows up in a peso total | A SQL aggregate summed `includedAmount` without also naming `isPesoDenominated` (`apps/mobile/src/db/fragments.ts`) — `apps/mobile/src/db/checks/peso-total-scan.ts` catches this mechanically over the real tree (`peso-total-guard.test.ts`); a movement itself is stored unconverted, in whatever currency the bank stated, and is never dropped |
 | Amounts off by a factor of 100, or with decimals | Something treated CLP as having cents. Minor unit is the peso; amounts are `INTEGER`. `@finanzas/shared-utils`'s `formatClp` throws a `TypeError` on a non-integer input by design — that throw means a float already entered the money pipeline upstream, not a formatter bug |
 | A transaction shows up in the wrong month | The local day was derived from the UTC timestamp instead of `@finanzas/shared-utils`'s `deriveDateLocal` |
 | Native module missing at runtime | Needs a dev build, not Expo Go. `expo-sqlite`, `expo-crypto`, `react-native-svg` (item #12's trend chart) and (item #9) `expo-secure-store` all need a native rebuild after install — a stale dev client fails to resolve the newest one, with `Cannot find native module 'ExpoSecureStore'` for the last one |

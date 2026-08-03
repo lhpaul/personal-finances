@@ -88,7 +88,11 @@ export async function connectBank(
         now: deps.now,
       });
       connectionId = upserted.id;
-      markConnectionSyncing(tx, upserted.id, deps.now());
+      // Item #10's canonical markConnectionSyncing (merged after this item's implementation
+      // started) writes only sync_status — last_sync_at is written once by whichever exit
+      // function (recordSyncOutcomeInTx / recordSyncOutcome / clearStuckSyncingConnections)
+      // eventually resolves this attempt, from one shared `now` (Resolution R5 update).
+      markConnectionSyncing(tx, upserted.id);
     });
   } catch {
     if (!existedBefore) {
