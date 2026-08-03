@@ -1,0 +1,23 @@
+{
+  "outcome": "complete",
+  "countryCode": "CL",
+  "bankId": "banco-de-chile",
+  "products": [],
+  "movements": [
+    {
+      "productInstanceId": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+      "dateLocal": "2026-03-12",
+      "amountMinorUnits": 1000,
+      "direction": "debit",
+      "currencyCode": "CLP",
+      "rawDescription": "PRODUCTO DESCONOCIDO",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 0,
+      "extras": {}
+    }
+  ],
+  "readFailure": null,
+  "productFailures": [],
+  "skippedProductKinds": [],
+  "traces": []
+}

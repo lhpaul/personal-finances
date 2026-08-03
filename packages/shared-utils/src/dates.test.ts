@@ -1,5 +1,6 @@
 import {
   addDays,
+  canonicalInstantForDateLocal,
   deriveDateLocal,
   deriveZonedParts,
   differenceInDays,
@@ -610,6 +611,44 @@ describe('dates', () => {
       expect(() => formatWallClockLabel('24:00')).toThrow(RangeError);
       expect(() => formatWallClockLabel('09:60')).toThrow(RangeError);
       expect(() => formatWallClockLabel('')).toThrow(RangeError);
+    });
+  });
+
+  /**
+   * Issue #10's implementation plan, Decision 14. `canonicalInstantForDateLocal` is the one write
+   * path the sync engine uses to turn a bank-stated `dateLocal` into `transactions.occurred_at`;
+   * the round-trip property below is what actually matters for AC23, not a spot check — the
+   * property must hold for every day, not merely a hand-picked one.
+   */
+  describe('canonicalInstantForDateLocal (issue #10 addition)', () => {
+    it('returns midday UTC for the given calendar day', () => {
+      expect(canonicalInstantForDateLocal('2026-02-01')).toBe('2026-02-01T12:00:00.000Z');
+    });
+
+    it('round-trips through deriveDateLocal (Santiago) for every day of a full year, both sides of both 2025 DST transitions', () => {
+      let dateLocal = '2025-01-01';
+      let iterations = 0;
+      while (dateLocal <= '2025-12-31') {
+        const instant = canonicalInstantForDateLocal(dateLocal);
+        expect(deriveDateLocal(new Date(instant))).toBe(dateLocal);
+        dateLocal = addDays(dateLocal, 1);
+        iterations += 1;
+      }
+      expect(iterations).toBe(365);
+    });
+
+    it('round-trips across a leap-year February', () => {
+      const dateLocal = '2024-02-29';
+      expect(deriveDateLocal(new Date(canonicalInstantForDateLocal(dateLocal)))).toBe(dateLocal);
+    });
+
+    it('throws RangeError on a value isValidDateLocal rejects — proof the guard actually runs', () => {
+      expect(() => canonicalInstantForDateLocal('2026-13-01')).toThrow(RangeError);
+      expect(() => canonicalInstantForDateLocal('not-a-date')).toThrow(RangeError);
+    });
+
+    it('does not throw on the one boundary value the guard must accept — proof it is not vacuously strict', () => {
+      expect(() => canonicalInstantForDateLocal('2026-02-01')).not.toThrow();
     });
   });
 });

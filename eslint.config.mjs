@@ -13,7 +13,16 @@ import tseslint from 'typescript-eslint';
  */
 const sharedConfig = tseslint.config(
   {
-    ignores: ['**/dist/**', '**/.turbo/**', '**/.expo/**', '**/node_modules/**'],
+    ignores: [
+      '**/dist/**',
+      '**/.turbo/**',
+      '**/.expo/**',
+      '**/node_modules/**',
+      // Parallel-lane git worktrees live under .claude/worktrees/; a root-invoked lint must
+      // never descend into them — CI clones never contain them, so linting them locally only
+      // produces phantom errors from sibling lanes' in-flight trees.
+      '**/.claude/worktrees/**',
+    ],
   },
   js.configs.recommended,
   {

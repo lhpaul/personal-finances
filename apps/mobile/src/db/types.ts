@@ -65,6 +65,26 @@ export interface ReminderSettings {
 }
 
 /**
+ * `user_financial_institutions`, in sync-engine shape (implementation plan Decision 8, issue
+ * #10). `credentialsKey` is the secure-store *key name*, never a credential value (Business Rule
+ * 2) — the sync engine reads it only to hand it, unread, to the injected `ScraperRunner`.
+ */
+export interface SyncConnection {
+  id: string;
+  financialInstitutionId: string;
+  /** Not stored on `user_financial_institutions`; joined from `financial_institutions.country_code`
+   * so a `ScraperRunner` call has everything it needs without a second lookup. */
+  countryCode: string;
+  status: 'active' | 'inactive' | 'disconnected';
+  credentialsKey: string;
+  syncStatus: 'idle' | 'syncing' | 'ok' | 'error';
+  lastSyncAt: string | null;
+  lastSuccessAt: string | null;
+  lastErrorCode: 'invalid_credentials' | 'session_closed' | 'network' | 'parse_failed' | null;
+  lastErrorMessage: string | null;
+}
+
+/**
  * `home`'s (and #17 dashboard's) per-category money buckets (implementation plan for issue #12,
  * Decision 1). `transactionCategoryId: null` is the *Sin categorizar* bucket, returned like any
  * other — categorization is never mandatory, so an uncategorized movement must never be silently

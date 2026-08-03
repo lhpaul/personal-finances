@@ -1,0 +1,37 @@
+{
+  "outcome": "complete",
+  "countryCode": "CL",
+  "bankId": "banco-de-chile",
+  "products": [
+    {
+      "instanceId": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+      "kind": "credit_card",
+      "displayName": "Tarjeta de Crédito",
+      "currencyCode": "CLP",
+      "maskedIdentifier": "•••3333",
+      "balanceMinorUnits": -50000,
+      "creditLimitMinorUnits": 500000,
+      "availableCreditMinorUnits": 450000,
+      "cardBrand": "Visa",
+      "cardCategory": "classic",
+      "cardLast4": "3333"
+    }
+  ],
+  "movements": [
+    {
+      "productInstanceId": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+      "dateLocal": "2026-03-10",
+      "amountMinorUnits": 5000,
+      "direction": "debit",
+      "currencyCode": "USD",
+      "rawDescription": "INTERNATIONAL CHARGE",
+      "bankSuppliedId": null,
+      "positionInReadSnapshot": 0,
+      "extras": {}
+    }
+  ],
+  "readFailure": null,
+  "productFailures": [],
+  "skippedProductKinds": [],
+  "traces": []
+}
