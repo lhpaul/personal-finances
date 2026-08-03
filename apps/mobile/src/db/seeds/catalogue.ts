@@ -235,6 +235,13 @@ const MERCHANTS: readonly {
     defaultCategorySlug: 'entretenimiento',
     aliases: ['NETFLIX.COM'],
   },
+  {
+    slug: 'mercadolibre',
+    name: 'MercadoLibre Chile',
+    countryCode: null,
+    defaultCategorySlug: 'compras',
+    aliases: ['MERCADOLIBRE COMPRA'],
+  },
 ];
 
 export function buildMerchantSeeds(): MerchantSeed[] {
