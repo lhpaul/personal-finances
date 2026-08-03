@@ -15,6 +15,10 @@ export type TextFieldProps = {
   /** `.mu-input.is-locked` — read-only display mode. */
   locked?: boolean;
   secureTextEntry?: boolean;
+  /** `'numeric'` requests the platform's numeric keypad (implementation plan for issue #15,
+   * Decision 12 — the manual-entry amount field). Defaults to `'default'`; this is a validation
+   * hint for the keyboard only, never a substitute for parsing/rejecting the typed value. */
+  keyboardType?: 'default' | 'numeric';
 };
 
 /** `.mu-field`, `.mu-label`, `.mu-input`, `--ph`, `.is-focus`, `.is-error`, `.is-locked`,
@@ -28,6 +32,7 @@ export function TextField({
   error = null,
   locked = false,
   secureTextEntry = false,
+  keyboardType = 'default',
 }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
   const hasError = error !== null && error !== undefined;
@@ -72,6 +77,7 @@ export function TextField({
           placeholderTextColor={theme.colors.textTertiary}
           editable={!locked}
           secureTextEntry={secureTextEntry}
+          keyboardType={keyboardType}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           // `label` renders as a sibling Text, which React Native does not associate with the
