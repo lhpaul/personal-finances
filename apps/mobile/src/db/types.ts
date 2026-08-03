@@ -64,6 +64,67 @@ export interface ReminderSettings {
   days: number[] | undefined;
 }
 
+/**
+ * `home`'s (and #17 dashboard's) per-category money buckets (implementation plan for issue #12,
+ * Decision 1). `transactionCategoryId: null` is the *Sin categorizar* bucket, returned like any
+ * other — categorization is never mandatory, so an uncategorized movement must never be silently
+ * dropped from a total (item #5's Decision 10).
+ */
+export interface DirectionCategoryTotal {
+  type: 'debit' | 'credit';
+  transactionCategoryId: string | null;
+  total: number;
+  movementCount: number;
+}
+
+/** `home`'s trend chart's source series, one row per `(dateLocal, type)` pair present in the
+ * period (implementation plan for issue #12, Decision 1). A day with no included movement of a
+ * given direction has no row — callers that need a dense per-day series build it themselves
+ * (`src/features/home/trend-series.ts`). */
+export interface DirectionDayTotal {
+  dateLocal: string;
+  type: 'debit' | 'credit';
+  total: number;
+}
+
+/**
+ * `home`'s "Transacciones recientes" row shape (implementation plan for issue #12, Decision 2).
+ * `merchantName`/`merchantEmoji` and `categoryName`/`categoryEmoji` are `undefined` when the
+ * movement has no merchant or no category, respectively — a screen falls back through them
+ * (Assumption A9), never crashes on a missing join.
+ */
+export interface RecentMovement {
+  id: string;
+  amount: number;
+  type: 'debit' | 'credit';
+  dateLocal: string;
+  rawDescription: string;
+  excluded: boolean;
+  merchantName: string | undefined;
+  merchantEmoji: string | undefined;
+  categoryName: string | undefined;
+  categoryEmoji: string | undefined;
+}
+
+/**
+ * `home`'s "Bancos conectados" row shape (implementation plan for issue #12, Decision 4 inputs).
+ * Returned for **every** connection regardless of `status` — unlike #8's
+ * `getConnectedBanksSummary`, which only counts `'active'` ones (a different question, for
+ * `onboarding-ready`).
+ */
+export interface BankConnection {
+  id: string;
+  institutionName: string;
+  institutionLogoUrl: string | undefined;
+  institutionShortName: string | undefined;
+  institutionBrandColor: string | undefined;
+  status: string;
+  syncStatus: string;
+  lastSyncAt: string | null;
+  lastSuccessAt: string | null;
+  lastErrorCode: string | null;
+}
+
 export interface Transaction {
   id: string;
   userFinancialProductId: string;

@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 
+import { listBankConnections } from '../repositories/connections';
 import { disconnectInstitution, listConnectableInstitutions } from '../repositories/institutions';
 import { transactions, userFinancialInstitutions, userFinancialProducts } from '../schema';
 import { createTestConnection, createTestProduct } from '../testing/product-fixture';
@@ -79,6 +80,71 @@ describe('institutions repository', () => {
         db.select().from(userFinancialProducts).where(eq(userFinancialProducts.id, productId)).get(),
       ).toBeUndefined();
       expect(db.select().from(transactions).where(eq(transactions.id, 'txn-cascade')).get()).toBeUndefined();
+    } finally {
+      sqlite.close();
+    }
+  });
+});
+
+/** Home-screen implementation plan (issue #12) Scenario 7: `listBankConnections` returns every
+ * connection regardless of status, with its full sync bookkeeping. */
+describe('connections repository — listBankConnections (issue #12)', () => {
+  it('returns an empty array for an empty store', async () => {
+    const { sqlite, db } = await openBootstrappedMemoryDb();
+    try {
+      expect(listBankConnections(db)).toEqual([]);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('returns the institution name, logo and every sync bookkeeping column, including a disconnected connection (Decision 4 inputs)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const activeId = createTestConnection(db, ports, 'banco-de-chile');
+      db.update(userFinancialInstitutions)
+        .set({
+          syncStatus: 'ok',
+          lastSyncAt: '2026-02-27T21:14:00.000Z',
+          lastSuccessAt: '2026-02-27T21:14:00.000Z',
+        })
+        .where(eq(userFinancialInstitutions.id, activeId))
+        .run();
+
+      const erroredId = createTestConnection(db, ports, 'santander');
+      db.update(userFinancialInstitutions)
+        .set({
+          syncStatus: 'error',
+          lastErrorCode: 'invalid_credentials',
+          lastSuccessAt: '2026-02-26T10:00:00.000Z',
+        })
+        .where(eq(userFinancialInstitutions.id, erroredId))
+        .run();
+      disconnectInstitution(db, erroredId);
+
+      const rows = listBankConnections(db).sort((a, b) => a.institutionName.localeCompare(b.institutionName));
+      expect(rows).toHaveLength(2); // every connection, not only 'active' ones (unlike getConnectedBanksSummary)
+
+      const active = rows.find((row) => row.id === activeId);
+      expect(active).toMatchObject({
+        institutionName: 'Banco de Chile',
+        institutionShortName: 'BCH',
+        status: 'active',
+        syncStatus: 'ok',
+        lastSyncAt: '2026-02-27T21:14:00.000Z',
+        lastSuccessAt: '2026-02-27T21:14:00.000Z',
+        lastErrorCode: null,
+      });
+      expect(typeof active?.institutionLogoUrl).toBe('string');
+
+      const errored = rows.find((row) => row.id === erroredId);
+      expect(errored).toMatchObject({
+        institutionName: 'Banco Santander',
+        status: 'disconnected', // disconnectInstitution only touches status; listBankConnections still reports it
+        syncStatus: 'error',
+        lastErrorCode: 'invalid_credentials',
+        lastSuccessAt: '2026-02-26T10:00:00.000Z',
+      });
     } finally {
       sqlite.close();
     }

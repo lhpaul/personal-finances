@@ -96,6 +96,10 @@ personal-finances/
 There is deliberately **no web app and no backend**. The product is local-first; adding a
 server would undo the differentiator.
 
+`@finanzas/mobile` also depends on `react-native-svg` (added by item #12, the home screen's
+trend chart) — a native module, so it needs a **dev build** rebuild after install; Expo Go
+cannot run any screen that imports it.
+
 ## Shared Packages / Libraries
 
 | Package | Purpose | Consumed by |
