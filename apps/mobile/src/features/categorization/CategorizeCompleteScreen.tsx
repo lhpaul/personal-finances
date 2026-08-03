@@ -81,8 +81,33 @@ export function CategorizeCompleteScreen({ testID }: CategorizeCompleteScreenPro
   const data = useCompletionData();
   const preview = useFidelityPreview();
 
-  if (data.status !== 'ready') {
+  if (data.status === 'pending') {
+    // spec UX Rules → Loading: never a half-populated card.
     return <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.surface0 }} />;
+  }
+
+  if (data.status === 'error') {
+    // A rejected getAppDatabase() must not leave the person on a permanently blank screen with
+    // no way out (CodeRabbit finding on PR #79) — offer the same "go home" action the `done`
+    // outcome uses.
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: theme.colors.surface0 }}
+        edges={['top', 'bottom']}
+        testID={testID}
+      >
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: theme.space['5'],
+          }}
+        >
+          <Button label={t('categorize_complete.go_home')} onPress={() => router.replace('/(tabs)/home')} />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   const resolved = parseCount(params.resolved);

@@ -140,16 +140,16 @@ export interface StageMerchant {
 /**
  * A pending movement, joined with its resolved merchant (categorization flow #13, Layer-by-Layer
  * "Database / Data Layer"). Only the fields the categorization screens and `suggestCategory`
- * actually read — never the raw Drizzle row.
+ * actually read — never the raw Drizzle row. The shared fields are derived from `Transaction`
+ * (below) rather than redeclared, so this type cannot drift if a column's type changes later —
+ * the same fix already applied to `setReviewFlag`'s `flag`, `excludeTransaction`'s `reason`, and
+ * `StageExclusionReason` (CodeRabbit finding on PR #79).
  */
-export interface StageMovement {
-  id: string;
-  amount: number;
-  type: 'debit' | 'credit';
-  dateLocal: string;
-  occurredAt: string;
-  rawDescription: string;
-  categorySource: 'auto' | 'user' | 'rule' | null;
+export interface StageMovement
+  extends Pick<
+    Transaction,
+    'id' | 'amount' | 'type' | 'dateLocal' | 'occurredAt' | 'rawDescription' | 'categorySource'
+  > {
   merchant: StageMerchant | null;
 }
 

@@ -306,7 +306,6 @@
   "categorize.back_a11y": "Back",
   "categorize.close_a11y": "Close",
   "categorize.progress": "Transaction {{current}} of {{total}}",
-  "categorize.progress_a11y": "Stage progress",
   "categorize.icon_expense": "💳",
   "categorize.icon_income": "📥",
   "categorize.badge_expense": "Expense",

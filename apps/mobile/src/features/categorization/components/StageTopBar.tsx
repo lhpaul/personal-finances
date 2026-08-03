@@ -23,6 +23,18 @@ export interface StageTopBarProps {
  */
 export function StageTopBar({ title, backA11yLabel, onBack, closeA11yLabel, onClose }: StageTopBarProps) {
   const buttonSize = screenMetrics.categorization.topBarButtonSize;
+  // The visible button stays at the mockup's 36×36 size (enlarging it would break fidelity
+  // parity), but `hitSlop` extends the touch-registration area to `theme.touchTarget.min` on
+  // every side without changing what is drawn — the same `withMinTarget` calculation
+  // `components/ui/_internal/touch-metrics.ts` uses, inlined here because this is a screen-local
+  // composition, not a `components/ui/` primitive (CodeRabbit finding on PR #79).
+  const buttonHitSlopSize = Math.max(0, Math.ceil((theme.touchTarget.min - buttonSize) / 2));
+  const buttonHitSlop = {
+    top: buttonHitSlopSize,
+    bottom: buttonHitSlopSize,
+    left: buttonHitSlopSize,
+    right: buttonHitSlopSize,
+  };
 
   return (
     <View
@@ -43,6 +55,7 @@ export function StageTopBar({ title, backA11yLabel, onBack, closeA11yLabel, onCl
           accessibilityRole="button"
           accessibilityLabel={backA11yLabel}
           onPress={onBack}
+          hitSlop={buttonHitSlop}
           style={{ width: buttonSize, height: buttonSize, alignItems: 'center', justifyContent: 'center' }}
         >
           <Text style={{ fontSize: screenMetrics.categorization.topBarButtonGlyphSize }}>{BACK_GLYPH}</Text>
@@ -58,6 +71,7 @@ export function StageTopBar({ title, backA11yLabel, onBack, closeA11yLabel, onCl
           accessibilityRole="button"
           accessibilityLabel={closeA11yLabel}
           onPress={onClose}
+          hitSlop={buttonHitSlop}
           style={{ width: buttonSize, height: buttonSize, alignItems: 'center', justifyContent: 'center' }}
         >
           <Text style={{ fontSize: screenMetrics.categorization.topBarButtonGlyphSize }}>{CLOSE_GLYPH}</Text>

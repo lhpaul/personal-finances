@@ -746,13 +746,27 @@ describe('categorization repository functions (#13)', () => {
     }
   });
 
-  it('setUserCategory writes the category and category_source = user, clears review_flag, and leaves the exclusion timestamp and the partial-inclusion amount unset (AC10, AC22, AC24)', async () => {
+  it('setUserCategory writes the category and category_source = user, clears review_flag, and never touches a pre-existing exclusion timestamp or partial-inclusion amount (AC10, AC22, AC24)', async () => {
     const { sqlite, db, ports } = await openBootstrappedMemoryDb();
     try {
       const connectionId = createTestConnection(db, ports);
       const productId = createTestProduct(db, ports, connectionId);
       const now = ports.now();
-      insertTransaction(db, productId, { id: 'to-categorize', reviewFlag: 'review_later' }, now);
+      // Seed opposing field states — a row that is *already* excluded and partially included —
+      // so the assertions below prove `setUserCategory`'s `set` object omits these columns
+      // entirely, rather than merely observing their default-null starting value.
+      insertTransaction(
+        db,
+        productId,
+        {
+          id: 'to-categorize',
+          reviewFlag: 'review_later',
+          excludedAt: '2026-01-01T00:00:00.000Z',
+          exclusionReason: 'other',
+          includedAmount: 500,
+        },
+        now,
+      );
 
       setUserCategory(db, 'to-categorize', 'comida', ports);
 
@@ -760,8 +774,9 @@ describe('categorization repository functions (#13)', () => {
       expect(row?.transactionCategoryId).toBe('comida');
       expect(row?.categorySource).toBe('user');
       expect(row?.reviewFlag).toBeNull();
-      expect(row?.excludedAt).toBeNull();
-      expect(row?.includedAmount).toBeNull();
+      expect(row?.excludedAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(row?.exclusionReason).toBe('other');
+      expect(row?.includedAmount).toBe(500);
     } finally {
       sqlite.close();
     }
@@ -807,13 +822,21 @@ describe('categorization repository functions (#13)', () => {
     }
   });
 
-  it('excludeTransaction writes the exclusion timestamp, the reason and the note; a blank note is stored as null; the row still exists and is still selectable (AC19, AC21)', async () => {
+  it('excludeTransaction writes the exclusion timestamp, the reason and the note; a blank note is stored as null; the row still exists, is still selectable, and its category is never touched (AC19, AC21)', async () => {
     const { sqlite, db, ports } = await openBootstrappedMemoryDb();
     try {
       const connectionId = createTestConnection(db, ports);
       const productId = createTestProduct(db, ports, connectionId);
       const now = ports.now();
-      insertTransaction(db, productId, { id: 'to-exclude' }, now);
+      // Seed an already-categorized-by-hand row — the opposing field state — so the assertions
+      // below prove `excludeTransaction`'s `set` object omits `transactionCategoryId` and
+      // `categorySource` entirely, rather than merely observing their default-null value.
+      insertTransaction(
+        db,
+        productId,
+        { id: 'to-exclude', transactionCategoryId: 'comida', categorySource: 'user' },
+        now,
+      );
       insertTransaction(db, productId, { id: 'to-exclude-blank-note' }, now);
 
       excludeTransaction(db, 'to-exclude', { reason: 'shared_expense', note: '  Compartido  ' }, ports);
@@ -821,6 +844,8 @@ describe('categorization repository functions (#13)', () => {
       expect(row?.excludedAt).not.toBeNull();
       expect(row?.exclusionReason).toBe('shared_expense');
       expect(row?.exclusionNote).toBe('Compartido');
+      expect(row?.transactionCategoryId).toBe('comida');
+      expect(row?.categorySource).toBe('user');
 
       excludeTransaction(db, 'to-exclude-blank-note', { reason: 'other', note: '   ' }, ports);
       const blankRow = db

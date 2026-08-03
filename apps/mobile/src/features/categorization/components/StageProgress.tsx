@@ -18,15 +18,19 @@ export interface StageProgressProps {
 export function StageProgress({ current, total }: StageProgressProps) {
   const { t } = useTranslation();
 
+  // `accessible` collapses this View into a single accessibility element on both iOS and
+  // Android, so its `accessibilityLabel` replaces — not supplements — the `Steps` accessibility
+  // value and the visible "Transacción X de N" text underneath (React Native 0.81 accessibility
+  // model). The label must therefore carry the interpolated progress itself
+  // (`categorize.progress`), not the static `categorize.progress_a11y` string, or a screen
+  // reader announces a group with no progress information at all (CodeRabbit finding on PR #79).
+  const progressLabel = t('categorize.progress', { current, total });
+
   return (
-    <View
-      style={{ marginTop: theme.space['4'] }}
-      accessible
-      accessibilityLabel={t('categorize.progress_a11y')}
-    >
+    <View style={{ marginTop: theme.space['4'] }} accessible accessibilityLabel={progressLabel}>
       <Steps total={total} current={current} />
       <Text variant="small" center style={{ marginTop: theme.space['3'] }}>
-        {t('categorize.progress', { current, total })}
+        {progressLabel}
       </Text>
     </View>
   );

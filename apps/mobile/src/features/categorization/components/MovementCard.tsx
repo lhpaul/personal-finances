@@ -69,6 +69,7 @@ export function MovementCard({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={merchantName}
+              accessibilityHint={t('categorize.merchant_edit_hint')}
               onPress={onMerchantPress}
               style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space['2'], marginTop: theme.space['3'] }}
             >

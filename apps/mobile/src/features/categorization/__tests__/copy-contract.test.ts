@@ -73,7 +73,6 @@ const EXPECTED_SPANISH: Record<string, string> = {
   'categorize.back_a11y': 'Volver',
   'categorize.close_a11y': 'Cerrar',
   'categorize.progress': 'Transacción {{current}} de {{total}}',
-  'categorize.progress_a11y': 'Progreso de la etapa',
   'categorize.icon_expense': '💳',
   'categorize.icon_income': '📥',
   'categorize.badge_expense': 'Gasto',
