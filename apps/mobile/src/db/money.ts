@@ -34,3 +34,17 @@ export function assertPositiveMinorUnits(value: number, field: string): number {
   }
   return value;
 }
+
+/**
+ * Canonicalizes a currency code to its trimmed, upper-case form (issue #10) — `' clp '` becomes
+ * `'CLP'` — defaulting to `'CLP'` when absent or empty after trimming. `isPesoDenominated`
+ * (`fragments.ts`) and `countForeignCurrencyMovements` (`src/features/sync/map-read-result.ts`)
+ * both compare a stored/reported currency code against the exact literal `'CLP'`; a read that
+ * reported a differently-cased or padded value must never silently bypass either check by
+ * comparing unequal to a value that is, in fact, pesos. Both call sites canonicalize through this
+ * one function so a write and a summary count can never disagree about what "peso" means.
+ */
+export function canonicalizeCurrencyCode(code: string | null | undefined): string {
+  const trimmed = (code ?? '').trim().toUpperCase();
+  return trimmed.length > 0 ? trimmed : 'CLP';
+}

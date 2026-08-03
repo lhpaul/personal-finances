@@ -2,7 +2,8 @@ import { findUnguardedPesoTotals } from '../peso-total-scan';
 
 /**
  * Implementation plan Testing Strategy, "Parser-risk addendum" (issue #10, Decision 15): the
- * eleven enumerated edge cases for `peso-total-scan.ts`.
+ * eleven enumerated edge cases for `peso-total-scan.ts`, plus case 12 (the line-number drift fix)
+ * and case 13 (the nested-generic `sql<Array<number>>` fix).
  *
  * Every fixture below builds its sample "source" text by interpolating a `BACKTICK` variable
  * rather than writing a literal `` sql`...` `` sequence directly in this file's own source. This
@@ -110,5 +111,11 @@ describe('findUnguardedPesoTotals — parser-risk edge cases', () => {
     const findings = findUnguardedPesoTotals(source, 'src/db/repositories/example.ts');
     expect(findings).toHaveLength(1);
     expect(findings[0]?.line).toBe(3);
+  });
+
+  it('13. a nested-generic sql tag (sql<Array<number>>) is still recognised as a tag body (nested-generic fix)', () => {
+    const source = `export const total = sql<Array<number>>${BACKTICK}select sum(\${includedAmount}) from transactions${BACKTICK};`;
+    const findings = findUnguardedPesoTotals(source, 'src/db/repositories/example.ts');
+    expect(findings).toHaveLength(1);
   });
 });

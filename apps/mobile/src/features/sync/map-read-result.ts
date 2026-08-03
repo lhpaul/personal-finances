@@ -1,6 +1,7 @@
 import type { FailureReasonCode, ScrapedMovement, ScrapedProduct, ScrapeResult } from '@finanzas/bank-scraper';
 import { canonicalInstantForDateLocal } from '@finanzas/shared-utils';
 
+import { canonicalizeCurrencyCode } from '../../db/money';
 import type { ConnectionSyncRecord } from '../../db/repositories/institutions';
 import type { BankProductInput } from '../../db/repositories/products';
 import type { SyncMovementInput, SyncWriteInput } from '../../db/repositories/sync';
@@ -86,7 +87,7 @@ function mapMovement(movement: ScrapedMovement): SyncMovementInput {
     externalId: movement.bankSuppliedId,
     amount: movement.amountMinorUnits,
     type: movement.direction,
-    currencyCode: movement.currencyCode,
+    currencyCode: canonicalizeCurrencyCode(movement.currencyCode),
     occurredAt: canonicalInstantForDateLocal(movement.dateLocal),
     dateLocal: movement.dateLocal,
     rawDescription: movement.rawDescription,
@@ -114,11 +115,16 @@ export function buildConnectionSyncRecord(result: ScrapeResult): ConnectionSyncR
   };
 }
 
-/** Every movement in the read whose currency is not the peso — a plain count, independent of
+/**
+ * Every movement in the read whose currency is not the peso — a plain count, independent of
  * storage (Decision 15, Deferral Note 3). Lets a caller tell a non-peso movement arrived without
- * consulting the store. */
+ * consulting the store. Compares through {@link canonicalizeCurrencyCode}, the same
+ * canonicalization `writeBankTransactionsInTx` applies before storing — a differently-cased or
+ * padded `'CLP'` (e.g. `' clp '`) must count as peso here exactly as it will once stored, never
+ * as foreign.
+ */
 export function countForeignCurrencyMovements(result: Pick<ScrapeResult, 'movements'>): number {
-  return result.movements.filter((movement) => movement.currencyCode !== 'CLP').length;
+  return result.movements.filter((movement) => canonicalizeCurrencyCode(movement.currencyCode) !== 'CLP').length;
 }
 
 /** The whole pure mapping this feature needs before calling `applySyncWrite`. */

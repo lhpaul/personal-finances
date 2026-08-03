@@ -4,7 +4,7 @@ import { assignOccurrenceIndexes, buildDedupInput } from '../dedup';
 import { includedAmount, isIncluded, isPesoDenominated } from '../fragments';
 import type { DbPorts } from '../ids';
 import { mergeTransactionMetadata } from '../json';
-import { assertPositiveMinorUnits } from '../money';
+import { assertPositiveMinorUnits, canonicalizeCurrencyCode } from '../money';
 import { transactions } from '../schema';
 import type { AppDatabase, Transaction } from '../types';
 
@@ -260,7 +260,7 @@ export function writeBankTransactionsInTx(
         .set({
           amount: row.amount,
           type: row.type,
-          currencyCode: row.currencyCode ?? 'CLP',
+          currencyCode: canonicalizeCurrencyCode(row.currencyCode),
           occurredAt: row.occurredAt,
           dateLocal: row.dateLocal,
           rawDescription: row.rawDescription,
@@ -281,7 +281,7 @@ export function writeBankTransactionsInTx(
           dedupHash,
           amount: row.amount,
           type: row.type,
-          currencyCode: row.currencyCode ?? 'CLP',
+          currencyCode: canonicalizeCurrencyCode(row.currencyCode),
           occurredAt: row.occurredAt,
           dateLocal: row.dateLocal,
           rawDescription: row.rawDescription,

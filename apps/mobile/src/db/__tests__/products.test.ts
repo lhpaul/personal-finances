@@ -9,7 +9,7 @@ import { openBootstrappedMemoryDb } from '../testing/memory-db';
 /** Implementation plan Decision 4 (issue #10): products.test.ts, covering AC7 and AC8. */
 
 function reserveIds(
-  db: ReturnType<typeof openBootstrappedMemoryDb> extends Promise<infer T> ? T : never,
+  db: Awaited<ReturnType<typeof openBootstrappedMemoryDb>>,
   connectionId: string,
   products: BankProductInput[],
 ): Map<string, string> {

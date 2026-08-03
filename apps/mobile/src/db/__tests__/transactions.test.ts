@@ -591,7 +591,59 @@ describe('transactions repository', () => {
           .set({ transactionCategoryId: null })
           .where(eq(transactions.id, 'usd-movement'))
           .run();
-        expect(countUncategorized(db)).toBeGreaterThanOrEqual(1);
+        // Exactly the USD row: the CLP row keeps its category, so any other value means the
+        // currency guard leaked into countUncategorized.
+        expect(countUncategorized(db)).toBe(1);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('a differently-cased or padded currency code is canonicalized before storage, on both insert and update (CodeRabbit finding on PR #78)', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+
+        await upsertBankTransactions(
+          db,
+          productId,
+          [
+            {
+              externalId: 'ext-casing',
+              amount: 3000,
+              type: 'debit',
+              currencyCode: ' clp ',
+              occurredAt: '2026-04-11T12:00:00.000Z',
+              dateLocal: '2026-04-11',
+              rawDescription: 'PADDED CURRENCY INSERT',
+            },
+          ],
+          ports,
+        );
+
+        const afterInsert = db.select().from(transactions).where(eq(transactions.externalId, 'ext-casing')).get();
+        expect(afterInsert?.currencyCode).toBe('CLP');
+
+        await upsertBankTransactions(
+          db,
+          productId,
+          [
+            {
+              externalId: 'ext-casing',
+              amount: 3000,
+              type: 'debit',
+              currencyCode: 'usd',
+              occurredAt: '2026-04-11T12:00:00.000Z',
+              dateLocal: '2026-04-11',
+              rawDescription: 'PADDED CURRENCY UPDATE',
+            },
+          ],
+          ports,
+        );
+
+        const afterUpdate = db.select().from(transactions).where(eq(transactions.externalId, 'ext-casing')).get();
+        expect(afterUpdate?.currencyCode).toBe('USD');
       } finally {
         sqlite.close();
       }

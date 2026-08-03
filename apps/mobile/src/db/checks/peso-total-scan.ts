@@ -147,8 +147,11 @@ interface SqlTagBody {
 // `sql` is frequently called with an explicit result-type argument in this codebase —
 // `sql<number>\`coalesce(sum(${includedAmount}), 0)\`` is exactly the shape a real
 // `totalForCategoryInPeriod`-style aggregate uses — so the tag-start pattern must recognise an
-// optional simple (non-nested-`<>`) generic between `sql` and the opening backtick.
-const SQL_TAG_START = /\bsql\s*(?:<[^`<>]*>)?\s*`/;
+// optional generic between `sql` and the opening backtick, including one level of nesting inside
+// it (e.g. `sql<Array<number>>`, `sql<Map<string, Array<number>>>`). A plain `[^`<>]*` body
+// (no nested `<>` allowed) would silently skip a nested-generic tag's body entirely — the exact
+// gap that let an unguarded `sum(${includedAmount})` inside one go undetected.
+const SQL_TAG_START = /\bsql\s*(?:<(?:[^`<>]|<[^`<>]*>)*>)?\s*`/;
 
 function findNextSqlTagBodyStart(source: string, from: number): number {
   const re = new RegExp(SQL_TAG_START, 'g');
