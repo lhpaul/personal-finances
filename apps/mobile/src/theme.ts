@@ -593,6 +593,11 @@ export const componentMetrics = {
     actionSize: 40,
     /** `.mu-head__action` glyph font-size. */
     actionGlyphFontSize: 18,
+    /** `.mu-head__action--dot::after` (implementation plan for issue #15, Decision 11)
+     * width/height. */
+    actionDotSize: 8,
+    /** `.mu-head__action--dot::after` top/right offset. */
+    actionDotOffset: 2,
     /** `.mu-head__title`: letter-spacing -.5px; unitless line-height 1.15 over `--xl` (24px) =
      * 27.6 -> 28. */
     titleLetterSpacing: -0.5,
