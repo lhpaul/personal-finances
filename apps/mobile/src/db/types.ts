@@ -64,6 +64,23 @@ export interface ReminderSettings {
   days: number[] | undefined;
 }
 
+/**
+ * `user_financial_institutions`, in sync-engine shape (implementation plan Decision 8, issue
+ * #10). `credentialsKey` is the secure-store *key name*, never a credential value (Business Rule
+ * 2) — the sync engine reads it only to hand it, unread, to the injected `ScraperRunner`.
+ */
+export interface SyncConnection {
+  id: string;
+  financialInstitutionId: string;
+  status: 'active' | 'inactive' | 'disconnected';
+  credentialsKey: string;
+  syncStatus: 'idle' | 'syncing' | 'ok' | 'error';
+  lastSyncAt: string | null;
+  lastSuccessAt: string | null;
+  lastErrorCode: 'invalid_credentials' | 'session_closed' | 'network' | 'parse_failed' | null;
+  lastErrorMessage: string | null;
+}
+
 export interface Transaction {
   id: string;
   userFinancialProductId: string;
