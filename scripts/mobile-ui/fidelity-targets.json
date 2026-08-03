@@ -250,68 +250,101 @@
     {
       "screen_id": "connect-bank-intro",
       "state_id": "default",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/connect-bank.tsx",
+      "deep_link": "finanzas:///connect-bank?fidelity=1&fidelityScreen=connect-bank-intro&fidelityState=default",
+      "ready_test_id": "fidelity-connect-bank-intro"
     },
     {
       "screen_id": "connect-bank-intro",
       "state_id": "how-it-works",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/connect-bank.tsx",
+      "deep_link": "finanzas:///connect-bank?fidelity=1&fidelityScreen=connect-bank-intro&fidelityState=how-it-works",
+      "ready_test_id": "fidelity-connect-bank-intro"
     },
     {
       "screen_id": "bank-picker",
       "state_id": "list",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/bank-picker.tsx",
+      "deep_link": "finanzas:///bank-picker?fidelity=1&fidelityScreen=bank-picker&fidelityState=list",
+      "ready_test_id": "fidelity-bank-picker"
     },
     {
       "screen_id": "bank-picker",
       "state_id": "search",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/bank-picker.tsx",
+      "deep_link": "finanzas:///bank-picker?fidelity=1&fidelityScreen=bank-picker&fidelityState=search",
+      "ready_test_id": "fidelity-bank-picker"
     },
     {
       "screen_id": "bank-picker",
       "state_id": "no-results",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/bank-picker.tsx",
+      "deep_link": "finanzas:///bank-picker?fidelity=1&fidelityScreen=bank-picker&fidelityState=no-results",
+      "ready_test_id": "fidelity-bank-picker"
     },
     {
       "screen_id": "bank-credentials",
       "state_id": "empty",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/bank-credentials.tsx",
+      "deep_link": "finanzas:///bank-credentials?fidelity=1&fidelityScreen=bank-credentials&fidelityState=empty",
+      "ready_test_id": "fidelity-bank-credentials"
     },
     {
       "screen_id": "bank-credentials",
       "state_id": "filled",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/bank-credentials.tsx",
+      "deep_link": "finanzas:///bank-credentials?fidelity=1&fidelityScreen=bank-credentials&fidelityState=filled",
+      "ready_test_id": "fidelity-bank-credentials"
     },
     {
       "screen_id": "bank-credentials",
       "state_id": "error",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/bank-credentials.tsx",
+      "deep_link": "finanzas:///bank-credentials?fidelity=1&fidelityScreen=bank-credentials&fidelityState=error",
+      "ready_test_id": "fidelity-bank-credentials"
     },
     {
       "screen_id": "bank-credentials",
       "state_id": "rut-locked",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/bank-credentials.tsx",
+      "deep_link": "finanzas:///bank-credentials?fidelity=1&fidelityScreen=bank-credentials&fidelityState=rut-locked",
+      "ready_test_id": "fidelity-bank-credentials"
     },
     {
       "screen_id": "bank-connected",
       "state_id": "single",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/bank-connected.tsx",
+      "deep_link": "finanzas:///bank-connected?fidelity=1&fidelityScreen=bank-connected&fidelityState=single",
+      "ready_test_id": "fidelity-bank-connected"
     },
     {
       "screen_id": "bank-connected",
       "state_id": "multiple",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/bank-connected.tsx",
+      "deep_link": "finanzas:///bank-connected?fidelity=1&fidelityScreen=bank-connected&fidelityState=multiple",
+      "ready_test_id": "fidelity-bank-connected"
     },
     {
       "screen_id": "bank-syncing",
