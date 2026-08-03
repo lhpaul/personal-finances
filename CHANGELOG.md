@@ -52,7 +52,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DD/MM/YYYY` dates, bounded retries with an overall read deadline, and
   `complete` / `partial` / `failed` / `cancelled` read outcomes carrying an opaque per-product
   identity. Banco Falabella and Banco Pelotillehue are not ported.
->>>>>>> e7d4a9f56631bceaecf3c91915340f411dcfc1b6
 
 ### Fixed
 
