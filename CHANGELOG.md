@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one indivisible write and updates the connection's own record of its last attempt, last
   success and last failure.
 - **Categorization flow** (#13): the stage intro, the categorization screen with its expense, income, not-sure and exclude-sheet states, and the partial/done completion screen — reading the pending queue and writing categories, deferral marks and exclusions through the shipped repositories.
+- **Merchant editor and alias grouping** (#14): `#screen=merchant-edit` ships all three of its MVP states. A person can rename a merchant, fold several raw bank descriptions into it, and set a default category that applies to future movements only — a category the person already confirmed is never overwritten. Grouping an alias re-points or creates one `merchant_aliases` row, re-links unattributed movements that match it, and recomputes every alias's `match_count` from the movements table in one transaction. Alias suggestions are derived on device from the person's own movements; there is no backend and no community source. The screen also shows the merchant's spending over the current month and the two before it.
 
 ### Fixed
 
