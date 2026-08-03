@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   category, note, review flag, exclusion and merchant are never written by a sync. Each sync is
   one indivisible write and updates the connection's own record of its last attempt, last
   success and last failure.
+- **Categorization flow** (#13): the stage intro, the categorization screen with its expense, income, not-sure and exclude-sheet states, and the partial/done completion screen — reading the pending queue and writing categories, deferral marks and exclusions through the shipped repositories.
 - **Transactions list** (#15): the month-grouped virtualized movement list with keyset
   pagination, text search across the raw description, merchant, note and category, the
   filter sheet (tipo, estado, producto, mostrar excluidas) with its header badge, the empty

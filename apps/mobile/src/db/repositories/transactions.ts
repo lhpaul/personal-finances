@@ -32,6 +32,7 @@ import type {
   ManualTransactionInput,
   MonthCount,
   RecentMovement,
+  StageMovement,
   Transaction,
   TransactionListCursor,
   TransactionListPage,
@@ -430,6 +431,179 @@ export function listByMerchant(db: AppDatabase, merchantId: string): Transaction
     .orderBy(desc(transactions.dateLocal))
     .all() as TransactionRow[];
   return rows.map(mapTransactionRow);
+}
+
+// -------------------------------------------------------------------------------------------
+// Categorization flow (#13, implementation plan Decision 4, Decision 5). The write functions
+// below never name `included_amount` in their `set` object (spec AC22, AC24) and never delete a
+// row (spec Business Rule 4, AC21) — consistent with the file-level guarantee above.
+// -------------------------------------------------------------------------------------------
+
+interface StageMovementRow {
+  id: string;
+  amount: number;
+  type: string;
+  dateLocal: string;
+  occurredAt: string;
+  rawDescription: string;
+  categorySource: string | null;
+  merchantId: string | null;
+  merchantName: string | null;
+  merchantCategoryId: string | null;
+  merchantUserId: string | null;
+}
+
+function mapStageMovementRow(row: StageMovementRow): StageMovement {
+  return {
+    id: row.id,
+    amount: row.amount,
+    type: row.type as StageMovement['type'],
+    dateLocal: row.dateLocal,
+    occurredAt: row.occurredAt,
+    rawDescription: row.rawDescription,
+    categorySource: row.categorySource as StageMovement['categorySource'],
+    merchant:
+      row.merchantId !== null && row.merchantName !== null
+        ? {
+            id: row.merchantId,
+            name: row.merchantName,
+            transactionCategoryId: row.merchantCategoryId,
+            isUserDefined: row.merchantUserId !== null,
+          }
+        : null,
+  };
+}
+
+/**
+ * The categorization queue (implementation plan Decision 4; spec A3, Business Rule 11, AC1,
+ * AC2, AC4): pending movements — no category, not excluded — newest first, tie-broken by the
+ * bank's own instant, then by id so two devices holding the same rows see the same order. The
+ * `WHERE` clause matches `countUncategorized`'s predicate exactly, so the intro's count and the
+ * batch this reads can never disagree.
+ */
+export function listPendingBatch(db: AppDatabase, params: { limit: number }): StageMovement[] {
+  const rows = db
+    .select({
+      id: transactions.id,
+      amount: transactions.amount,
+      type: transactions.type,
+      dateLocal: transactions.dateLocal,
+      occurredAt: transactions.occurredAt,
+      rawDescription: transactions.rawDescription,
+      categorySource: transactions.categorySource,
+      merchantId: merchants.id,
+      merchantName: merchants.name,
+      merchantCategoryId: merchants.transactionCategoryId,
+      merchantUserId: merchants.userId,
+    })
+    .from(transactions)
+    .leftJoin(merchants, eq(transactions.merchantId, merchants.id))
+    .where(and(sql`${transactions.transactionCategoryId} is null`, isIncluded))
+    .orderBy(desc(transactions.dateLocal), desc(transactions.occurredAt), asc(transactions.id))
+    .limit(params.limit)
+    .all() as StageMovementRow[];
+  return rows.map(mapStageMovementRow);
+}
+
+/**
+ * The `done` completion state's total (spec A6, Assumption P4): every movement that carries a
+ * category, whether or not it is later excluded — a categorized-then-excluded movement is still
+ * categorized.
+ */
+export function countCategorized(db: AppDatabase): number {
+  const row = db
+    .select({ count: sql<number>`count(*)` })
+    .from(transactions)
+    .where(sql`${transactions.transactionCategoryId} is not null`)
+    .get() as { count: number } | undefined;
+  return row?.count ?? 0;
+}
+
+/**
+ * Both completion tiles (spec Business Rule 6, AC31, Decision 11): the sum of included expense
+ * amounts in a period, read through the two shared inclusion-rule fragments — the one place that
+ * condition is allowed to exist.
+ */
+export function sumIncludedExpensesInPeriod(
+  db: AppDatabase,
+  period: { startDateLocal: string; endDateLocal: string },
+): number {
+  const row = db
+    .select({ total: sql<number>`coalesce(sum(${includedAmount}), 0)` })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.type, 'debit'),
+        isIncluded,
+        gte(transactions.dateLocal, period.startDateLocal),
+        lte(transactions.dateLocal, period.endDateLocal),
+      ),
+    )
+    .get() as { total: number } | undefined;
+  return row?.total ?? 0;
+}
+
+/**
+ * Records the person's own category choice (spec Use Case 2/3, Business Rule 3, AC10). Writes
+ * `category_source = 'user'` — the only value this flow ever writes — and clears any deferral
+ * mark, since the movement now has a category. `included_amount` is deliberately absent from the
+ * `set` object (AC22, AC24).
+ */
+export function setUserCategory(
+  db: AppDatabase,
+  transactionId: string,
+  categoryId: string,
+  ports: { now: () => string },
+): void {
+  db.update(transactions)
+    .set({
+      transactionCategoryId: categoryId,
+      categorySource: 'user',
+      reviewFlag: null,
+      updatedAt: ports.now(),
+    })
+    .where(eq(transactions.id, transactionId))
+    .run();
+}
+
+/**
+ * "Revisar más tarde" / "No recuerdo" (spec Use Case 4, AC14, AC15): writes the deferral mark
+ * only — no category, no exclusion. The movement stays pending.
+ */
+export function setReviewFlag(
+  db: AppDatabase,
+  transactionId: string,
+  flag: NonNullable<Transaction['reviewFlag']>,
+  ports: { now: () => string },
+): void {
+  db.update(transactions)
+    .set({ reviewFlag: flag, updatedAt: ports.now() })
+    .where(eq(transactions.id, transactionId))
+    .run();
+}
+
+/**
+ * Excludes a movement from analysis (spec Use Case 5, Business Rules 3-5, AC19, AC21, AC22,
+ * AC24). An `UPDATE`, never a `DELETE` — the row and everything the bank said survive
+ * unconditionally. `included_amount` is deliberately absent from the `set` object, as it is from
+ * every write in this file.
+ */
+export function excludeTransaction(
+  db: AppDatabase,
+  transactionId: string,
+  input: { reason: NonNullable<Transaction['exclusionReason']>; note?: string | null },
+  ports: { now: () => string },
+): void {
+  const now = ports.now();
+  db.update(transactions)
+    .set({
+      excludedAt: now,
+      exclusionReason: input.reason,
+      exclusionNote: input.note?.trim() ? input.note.trim() : null,
+      updatedAt: now,
+    })
+    .where(eq(transactions.id, transactionId))
+    .run();
 }
 
 /** A `home`/`dashboard` period boundary, expressed in `date_local` terms (implementation plan
