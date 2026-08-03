@@ -385,3 +385,23 @@ export function formatMonthAbbreviation(dateLocal: DateLocal, locale: SupportedL
   const instant = civilDateAsUtcMidnightInstant(dateLocal);
   return getLabelFormatter(locale, { month: 'short' }).format(instant);
 }
+
+/**
+ * The canonical instant this codebase stores for a bank-stated calendar day (issue #10's
+ * implementation plan, Decision 14). Returns `` `${dateLocal}T12:00:00.000Z` `` — midday UTC —
+ * after validating the input through {@link isValidDateLocal}. Santiago is `UTC-3`/`UTC-4`
+ * year-round, so `deriveDateLocal(new Date(canonicalInstantForDateLocal(d)))` equals `d` for
+ * every valid `d`, on both sides of both DST transitions: this function does not itself touch
+ * `Intl` or the host clock (it is pure UTC civil-date arithmetic, Decision 3), but its choice of
+ * midday UTC is what keeps the *day* stable once something later reads it back through the
+ * Santiago-zoned seam. Throws `RangeError` (via `isValidDateLocal`'s underlying pattern) when
+ * `dateLocal` is not a valid `DateLocal` string.
+ */
+export function canonicalInstantForDateLocal(dateLocal: DateLocal): string {
+  if (!isValidDateLocal(dateLocal)) {
+    throw new RangeError(
+      `canonicalInstantForDateLocal: expected a DateLocal string in "YYYY-MM-DD" format, got "${dateLocal}"`,
+    );
+  }
+  return `${dateLocal}T12:00:00.000Z`;
+}
