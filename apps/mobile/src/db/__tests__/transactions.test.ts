@@ -4,17 +4,21 @@ import fixtureWithIds from '../__fixtures__/bank-response-with-ids.json';
 import fixtureWithoutIds from '../__fixtures__/bank-response-without-ids.json';
 import type { BankTransactionInput } from '../repositories/transactions';
 import {
+  countTransactionsByMonth,
   countUncategorized,
+  insertManualTransaction,
   listRecentMovements,
+  listTransactionsPage,
   MovementValidationError,
   sumIncludedByDirectionAndCategory,
   sumIncludedByDirectionAndDay,
   totalForCategoryInPeriod,
   upsertBankTransactions,
 } from '../repositories/transactions';
-import { transactions } from '../schema';
+import { transactionCategories, transactions } from '../schema';
 import { createTestConnection, createTestProduct } from '../testing/product-fixture';
 import { openBootstrappedMemoryDb } from '../testing/memory-db';
+import type { TransactionListFilters, TransactionListQueryParams } from '../types';
 
 /**
  * Scenarios 4 (negative-amount rejection), 6, 7 and 20 (result-level `totalForCategoryInPeriod` /
@@ -959,6 +963,707 @@ describe('transactions repository', () => {
       } finally {
         sqlite.close();
       }
+    });
+  });
+
+  /**
+   * Issue #15 (`transactions` screen) implementation plan Scenarios 1-11.
+   */
+  describe('transactions-list repository (issue #15)', () => {
+    const DEFAULT_FILTERS: TransactionListFilters = {
+      direction: 'all',
+      categorization: 'all',
+      productId: null,
+      showExcluded: true,
+    };
+
+    function params(
+      overrides?: Partial<TransactionListFilters>,
+      search: TransactionListQueryParams['search'] = null,
+    ): TransactionListQueryParams {
+      return { filters: { ...DEFAULT_FILTERS, ...overrides }, search };
+    }
+
+    /** Inserts `count` plain debit movements, one per day starting at `startDateLocal`, each
+     * `idPrefix-<n>`, so paging tests have an unambiguous, strictly-decreasing `date_local` order
+     * to page through. */
+    function insertSequentialMovements(
+      db: Awaited<ReturnType<typeof openBootstrappedMemoryDb>>['db'],
+      ports: Awaited<ReturnType<typeof openBootstrappedMemoryDb>>['ports'],
+      productId: string,
+      count: number,
+      idPrefix: string,
+      startDateLocal = '2026-01-01',
+    ): void {
+      const now = ports.now();
+      const [year, month, day] = startDateLocal.split('-').map(Number) as [number, number, number];
+      const rows = Array.from({ length: count }, (_unused, index) => {
+        const d = new Date(Date.UTC(year as number, (month as number) - 1, (day as number) + index));
+        const dateLocal = d.toISOString().slice(0, 10);
+        return {
+          id: `${idPrefix}-${index}`,
+          userFinancialProductId: productId,
+          externalId: null,
+          dedupHash: `${idPrefix}-dedup-${index}`,
+          amount: 1000 + index,
+          type: 'debit' as const,
+          occurredAt: now,
+          dateLocal,
+          rawDescription: `Sequential ${index}`,
+          isManual: 0,
+          createdAt: now,
+          updatedAt: now,
+        };
+      });
+      db.insert(transactions).values(rows).run();
+    }
+
+    it('Scenario 1: returns `limit` rows and a cursor when more exist, and a null cursor on the last page', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        insertSequentialMovements(db, ports, productId, 5, 'seq1');
+
+        const firstPage = listTransactionsPage(db, { ...params(), cursor: null, limit: 3 }, 'es');
+        expect(firstPage.rows).toHaveLength(3);
+        expect(firstPage.nextCursor).not.toBeNull();
+
+        const secondPage = listTransactionsPage(
+          db,
+          { ...params(), cursor: firstPage.nextCursor, limit: 3 },
+          'es',
+        );
+        expect(secondPage.rows).toHaveLength(2);
+        expect(secondPage.nextCursor).toBeNull();
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('Scenario 2: paging the whole table with the cursor visits every row exactly once, including several sharing one date_local', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        const now = ports.now();
+        // Four movements sharing one date_local, so the id tiebreaker is exercised.
+        db.insert(transactions)
+          .values(
+            ['a', 'b', 'c', 'd'].map((suffix, index) => ({
+              id: `same-day-${suffix}`,
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: `same-day-dedup-${suffix}`,
+              amount: 1000 + index,
+              type: 'debit' as const,
+              occurredAt: now,
+              dateLocal: '2026-03-15',
+              rawDescription: `Same day ${suffix}`,
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            })),
+          )
+          .run();
+        insertSequentialMovements(db, ports, productId, 6, 'seq2', '2026-03-01');
+
+        const seenIds: string[] = [];
+        let cursor: Parameters<typeof listTransactionsPage>[1]['cursor'] = null;
+        let guard = 0;
+        while (guard < 20) {
+          guard += 1;
+          const page = listTransactionsPage(db, { ...params(), cursor, limit: 4 }, 'es');
+          seenIds.push(...page.rows.map((row) => row.id));
+          if (page.nextCursor === null) break;
+          cursor = page.nextCursor;
+        }
+
+        expect(seenIds).toHaveLength(10); // 6 sequential + 4 same-day
+        expect(new Set(seenIds).size).toBe(10); // no duplicate
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('Scenario 3: a row inserted between two page reads cannot skip or duplicate the already-read prefix', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        insertSequentialMovements(db, ports, productId, 4, 'seq3', '2026-05-01');
+
+        const firstPage = listTransactionsPage(db, { ...params(), cursor: null, limit: 2 }, 'es');
+        expect(firstPage.rows).toHaveLength(2);
+
+        // A sync lands mid-scroll, inserting a brand-new, newest-dated row.
+        const now = ports.now();
+        db.insert(transactions)
+          .values({
+            id: 'seq3-inserted-later',
+            userFinancialProductId: productId,
+            externalId: null,
+            dedupHash: 'seq3-inserted-later-dedup',
+            amount: 9999,
+            type: 'debit',
+            occurredAt: now,
+            dateLocal: '2026-06-01', // newer than every row already read
+            rawDescription: 'Inserted mid-scroll',
+            isManual: 0,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+
+        const secondPage = listTransactionsPage(
+          db,
+          { ...params(), cursor: firstPage.nextCursor, limit: 2 },
+          'es',
+        );
+        const firstPageIds = new Set(firstPage.rows.map((row) => row.id));
+        for (const row of secondPage.rows) {
+          expect(firstPageIds.has(row.id)).toBe(false); // no duplicate
+        }
+        expect(secondPage.rows.map((row) => row.id)).not.toContain('seq3-inserted-later'); // no skip either: the new row sorts before the cursor and is simply not part of this walk
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('Scenario 4: showExcluded true (default) returns excluded movements; false omits exactly them', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        const now = ports.now();
+        db.insert(transactions)
+          .values([
+            {
+              id: 's15-excluded',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-excluded-dedup',
+              amount: 1000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-10',
+              rawDescription: 'Excluded movement',
+              excludedAt: now,
+              exclusionReason: 'not_relevant',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-included',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-included-dedup',
+              amount: 2000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-11',
+              rawDescription: 'Included movement',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ])
+          .run();
+
+        const withExcluded = listTransactionsPage(db, { ...params(), cursor: null, limit: 10 }, 'es');
+        expect(withExcluded.rows.map((row) => row.id).sort()).toEqual(['s15-excluded', 's15-included']);
+
+        const withoutExcluded = listTransactionsPage(
+          db,
+          { ...params({ showExcluded: false }), cursor: null, limit: 10 },
+          'es',
+        );
+        expect(withoutExcluded.rows.map((row) => row.id)).toEqual(['s15-included']);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('Scenario 5: search matches on raw_description, merchants.name, note, and category name, plus a negative case', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        const now = ports.now();
+        db.insert(transactions)
+          .values([
+            {
+              id: 's15-raw',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-raw-dedup',
+              amount: 1000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-01',
+              rawDescription: 'GIRO CAJERO AUTOMATICO',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-merchant',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-merchant-dedup',
+              amount: 2000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-02',
+              rawDescription: 'LIDER SUPERMERCADO',
+              merchantId: 'lider',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-note',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-note-dedup',
+              amount: 3000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-03',
+              rawDescription: 'RETIRO SEMANAL',
+              note: 'Compras semanales',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-category',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-category-dedup',
+              amount: 4000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-04',
+              rawDescription: 'UNRELATED DESCRIPTION',
+              transactionCategoryId: 'comida',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-nomatch',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-nomatch-dedup',
+              amount: 5000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-05',
+              rawDescription: 'SOMETHING ELSE ENTIRELY',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ])
+          .run();
+
+        const byRaw = listTransactionsPage(db, { ...params(undefined, { term: 'giro', categoryIds: [] }), cursor: null, limit: 10 }, 'es');
+        expect(byRaw.rows.map((row) => row.id)).toEqual(['s15-raw']);
+
+        const byMerchant = listTransactionsPage(db, { ...params(undefined, { term: 'lider', categoryIds: [] }), cursor: null, limit: 10 }, 'es');
+        expect(byMerchant.rows.map((row) => row.id)).toEqual(['s15-merchant']);
+
+        const byNote = listTransactionsPage(db, { ...params(undefined, { term: 'semanales', categoryIds: [] }), cursor: null, limit: 10 }, 'es');
+        expect(byNote.rows.map((row) => row.id)).toEqual(['s15-note']);
+
+        const byCategory = listTransactionsPage(
+          db,
+          { ...params(undefined, { term: 'zzz-no-text-match', categoryIds: ['comida'] }), cursor: null, limit: 10 },
+          'es',
+        );
+        expect(byCategory.rows.map((row) => row.id)).toEqual(['s15-category']);
+
+        const noMatch = listTransactionsPage(db, { ...params(undefined, { term: 'no-such-term-anywhere', categoryIds: [] }), cursor: null, limit: 10 }, 'es');
+        expect(noMatch.rows).toEqual([]);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('Scenario 6: a search term containing %, _ or \\ is escaped and matches literally, not as a wildcard', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        const now = ports.now();
+        db.insert(transactions)
+          .values([
+            {
+              id: 's15-literal-percent',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-literal-percent-dedup',
+              amount: 1000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-06',
+              rawDescription: 'DESCUENTO 10%OFF',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-decoy',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-decoy-dedup',
+              amount: 2000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-07',
+              rawDescription: 'DESCUENTO 10XOFF', // would match a literal `%` treated as a wildcard
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ])
+          .run();
+
+        const result = listTransactionsPage(
+          db,
+          { ...params(undefined, { term: '10%off', categoryIds: [] }), cursor: null, limit: 10 },
+          'es',
+        );
+        expect(result.rows.map((row) => row.id)).toEqual(['s15-literal-percent']);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('Scenario 7: search is ASCII-case-insensitive, and category search is diacritic-insensitive', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        const now = ports.now();
+
+        db.insert(transactionCategories)
+          .values({
+            id: 's15-nunoa',
+            slug: 's15-nunoa',
+            income: 0,
+            labels: JSON.stringify({ es: 'Ñuñoa', en: 'Ñuñoa' }),
+            sortOrder: 999,
+            createdAt: now,
+          })
+          .run();
+
+        db.insert(transactions)
+          .values([
+            {
+              id: 's15-uber',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-uber-dedup',
+              amount: 1000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-08',
+              rawDescription: 'UBER BV',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-nunoa-tx',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-nunoa-tx-dedup',
+              amount: 2000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-09',
+              rawDescription: 'PARKING NUNOA',
+              transactionCategoryId: 's15-nunoa',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ])
+          .run();
+
+        // ASCII case-insensitivity on the text columns.
+        const upper = listTransactionsPage(db, { ...params(undefined, { term: 'UBER', categoryIds: [] }), cursor: null, limit: 10 }, 'es');
+        expect(upper.rows.map((row) => row.id)).toEqual(['s15-uber']);
+
+        // Category search is diacritic-insensitive by construction (the feature layer resolves
+        // category ids through normalizeDescription before this repository ever runs); the
+        // repository side of that contract is exercised here by passing the resolved id directly.
+        const byCategoryId = listTransactionsPage(
+          db,
+          { ...params(undefined, { term: 'zzz-no-text-match', categoryIds: ['s15-nunoa'] }), cursor: null, limit: 10 },
+          'es',
+        );
+        expect(byCategoryId.rows.map((row) => row.id)).toEqual(['s15-nunoa-tx']);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('Scenario 8: every filter combination narrows correctly, including two filters at once and a filter plus a search term', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productA = createTestProduct(db, ports, connectionId, { externalId: 'prod-a' });
+        const productB = createTestProduct(db, ports, connectionId, { externalId: 'prod-b' });
+        const now = ports.now();
+
+        db.insert(transactions)
+          .values([
+            {
+              id: 's15-combo-debit-uncat-a',
+              userFinancialProductId: productA,
+              externalId: null,
+              dedupHash: 's15-combo-1',
+              amount: 1000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-12',
+              rawDescription: 'Debit uncategorized on A',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-combo-credit-cat-a',
+              userFinancialProductId: productA,
+              externalId: null,
+              dedupHash: 's15-combo-2',
+              amount: 2000,
+              type: 'credit',
+              occurredAt: now,
+              dateLocal: '2026-05-13',
+              rawDescription: 'Credit categorized on A',
+              transactionCategoryId: 'sueldo',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-combo-debit-uncat-b',
+              userFinancialProductId: productB,
+              externalId: null,
+              dedupHash: 's15-combo-3',
+              amount: 3000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-14',
+              rawDescription: 'Debit uncategorized on B, matches search',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ])
+          .run();
+
+        // Tipo alone.
+        expect(
+          listTransactionsPage(db, { ...params({ direction: 'credit' }), cursor: null, limit: 10 }, 'es').rows.map(
+            (row) => row.id,
+          ),
+        ).toEqual(['s15-combo-credit-cat-a']);
+
+        // Estado alone.
+        expect(
+          listTransactionsPage(
+            db,
+            { ...params({ categorization: 'categorized' }), cursor: null, limit: 10 },
+            'es',
+          ).rows.map((row) => row.id),
+        ).toEqual(['s15-combo-credit-cat-a']);
+
+        // Producto alone.
+        expect(
+          listTransactionsPage(db, { ...params({ productId: productB }), cursor: null, limit: 10 }, 'es').rows.map(
+            (row) => row.id,
+          ),
+        ).toEqual(['s15-combo-debit-uncat-b']);
+
+        // Tipo + Estado together.
+        expect(
+          listTransactionsPage(
+            db,
+            { ...params({ direction: 'debit', categorization: 'uncategorized' }), cursor: null, limit: 10 },
+            'es',
+          ).rows.map((row) => row.id).sort(),
+        ).toEqual(['s15-combo-debit-uncat-a', 's15-combo-debit-uncat-b']);
+
+        // Producto + a search term.
+        expect(
+          listTransactionsPage(
+            db,
+            {
+              ...params({ productId: productB }, { term: 'matches search', categoryIds: [] }),
+              cursor: null,
+              limit: 10,
+            },
+            'es',
+          ).rows.map((row) => row.id),
+        ).toEqual(['s15-combo-debit-uncat-b']);
+
+        // Producto + a search term that does not match anything on that product.
+        expect(
+          listTransactionsPage(
+            db,
+            {
+              ...params({ productId: productA }, { term: 'matches search', categoryIds: [] }),
+              cursor: null,
+              limit: 10,
+            },
+            'es',
+          ).rows,
+        ).toEqual([]);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('Scenario 9: countTransactionsByMonth returns one entry per month present, descending, matching listTransactionsPage paged to exhaustion', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        const now = ports.now();
+        db.insert(transactions)
+          .values([
+            { dateLocal: '2025-12-01', id: 's15-month-dec-1' },
+            { dateLocal: '2025-12-15', id: 's15-month-dec-2' },
+            { dateLocal: '2026-01-05', id: 's15-month-jan-1' },
+            { dateLocal: '2026-01-20', id: 's15-month-jan-2' },
+            { dateLocal: '2026-01-25', id: 's15-month-jan-3' },
+          ].map((row) => ({
+            ...row,
+            userFinancialProductId: productId,
+            externalId: null,
+            dedupHash: `${row.id}-dedup`,
+            amount: 1000,
+            type: 'debit' as const,
+            occurredAt: now,
+            rawDescription: row.id,
+            isManual: 0,
+            createdAt: now,
+            updatedAt: now,
+          })))
+          .run();
+
+        const monthCounts = countTransactionsByMonth(db, params());
+        expect(monthCounts).toEqual([
+          { monthKey: '2026-01', count: 3 },
+          { monthKey: '2025-12', count: 2 },
+        ]);
+
+        // Page to exhaustion and confirm the per-month tally agrees exactly with the header count.
+        const seen: string[] = [];
+        let cursor: Parameters<typeof listTransactionsPage>[1]['cursor'] = null;
+        for (let guard = 0; guard < 10; guard += 1) {
+          const page = listTransactionsPage(db, { ...params(), cursor, limit: 2 }, 'es');
+          seen.push(...page.rows.map((row) => row.dateLocal.slice(0, 7)));
+          if (page.nextCursor === null) break;
+          cursor = page.nextCursor;
+        }
+        const tally = new Map<string, number>();
+        for (const monthKey of seen) tally.set(monthKey, (tally.get(monthKey) ?? 0) + 1);
+        for (const monthCount of monthCounts) {
+          expect(tally.get(monthCount.monthKey)).toBe(monthCount.count);
+        }
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    it('Scenario 10: the month key is derived from date_local, not from occurred_at', async () => {
+      const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+      try {
+        const connectionId = createTestConnection(db, ports);
+        const productId = createTestProduct(db, ports, connectionId);
+        db.insert(transactions)
+          .values({
+            id: 's15-boundary',
+            userFinancialProductId: productId,
+            externalId: null,
+            dedupHash: 's15-boundary-dedup',
+            amount: 1000,
+            type: 'debit',
+            // occurred_at falls in February UTC, but date_local (the Santiago-zoned civil day) is
+            // still January — the group must key off date_local.
+            occurredAt: '2026-02-01T02:30:00.000Z',
+            dateLocal: '2026-01-31',
+            rawDescription: 'Late-night movement',
+            isManual: 0,
+            createdAt: '2026-01-31T00:00:00.000Z',
+            updatedAt: '2026-01-31T00:00:00.000Z',
+          })
+          .run();
+
+        const monthCounts = countTransactionsByMonth(db, params());
+        expect(monthCounts).toEqual([{ monthKey: '2026-01', count: 1 }]);
+      } finally {
+        sqlite.close();
+      }
+    });
+
+    describe('insertManualTransaction (Decision 12, Business Rules 5, 8)', () => {
+      it('Scenario 11: writes is_manual = 1, a dedup hash that folds in the row id, and two identical manual entries both persist', async () => {
+        const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+        try {
+          const connectionId = createTestConnection(db, ports);
+          const productId = createTestProduct(db, ports, connectionId);
+
+          const input = { userFinancialProductId: productId, type: 'debit' as const, amount: 5000, rawDescription: 'Efectivo prestado' };
+          const firstId = await insertManualTransaction(db, input, ports);
+          const secondId = await insertManualTransaction(db, input, ports);
+
+          expect(firstId).not.toBe(secondId);
+          const rows = db
+            .select()
+            .from(transactions)
+            .where(eq(transactions.rawDescription, 'Efectivo prestado'))
+            .all();
+          expect(rows).toHaveLength(2); // never deduplicated away (Business Rule 5)
+          for (const row of rows) {
+            expect(row.isManual).toBe(1);
+            expect(row.transactionCategoryId).toBeNull(); // joins the categorization queue (Business Rule 6)
+            expect(row.merchantId).toBeNull();
+          }
+          expect(new Set(rows.map((row) => row.dedupHash)).size).toBe(2); // the id fold keeps them distinct
+        } finally {
+          sqlite.close();
+        }
+      });
+
+      it('Scenario 11: rejects a non-positive or non-integer amount, before any row is written', async () => {
+        const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+        try {
+          const connectionId = createTestConnection(db, ports);
+          const productId = createTestProduct(db, ports, connectionId);
+          const before = db.select().from(transactions).all().length;
+
+          for (const amount of [0, -1000, 1500.5]) {
+            await expect(
+              insertManualTransaction(
+                db,
+                { userFinancialProductId: productId, type: 'debit', amount, rawDescription: 'Bad amount' },
+                ports,
+              ),
+            ).rejects.toThrow();
+          }
+          expect(db.select().from(transactions).all()).toHaveLength(before);
+        } finally {
+          sqlite.close();
+        }
+      });
     });
   });
 });

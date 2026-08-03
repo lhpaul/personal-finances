@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm';
 
 import type { BankProductInput } from '../repositories/products';
-import { listProductIdsByExternalId, upsertBankProductsInTx } from '../repositories/products';
+import { listProductIdsByExternalId, listUserProducts, upsertBankProductsInTx } from '../repositories/products';
 import { userFinancialProducts } from '../schema';
-import { createTestConnection } from '../testing/product-fixture';
+import { createTestConnection, createTestProduct } from '../testing/product-fixture';
 import { openBootstrappedMemoryDb } from '../testing/memory-db';
 
 /** Implementation plan Decision 4 (issue #10): products.test.ts, covering AC7 and AC8. */
@@ -204,6 +204,36 @@ describe('products repository (Decision 4, AC7, AC8)', () => {
       expect(rows[0]?.name).toBe('Tarjeta de Crédito Gold');
       expect(rows[0]?.metadata).toContain('"balance":-80000');
       expect(rows[0]?.metadata).toContain('"available_credit":420000');
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  /** Issue #15 implementation plan Scenario 12 (Assumption A6) — drives the transactions
+   * screen's **Producto** filter pills. */
+  it('listUserProducts returns every product of every connection, with its name and type', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionA = createTestConnection(db, ports, 'banco-de-chile');
+      const productA = createTestProduct(db, ports, connectionA, {
+        externalId: 'p15-a',
+        type: 'checking',
+        name: 'Cuenta Corriente',
+      });
+      const productB = createTestProduct(db, ports, connectionA, {
+        externalId: 'p15-b',
+        type: 'credit_card',
+        name: 'Tarjeta de Crédito',
+      });
+
+      const products = listUserProducts(db);
+
+      expect(products).toHaveLength(2);
+      // Ordered by name — "Cuenta Corriente" sorts before "Tarjeta de Crédito".
+      expect(products).toEqual([
+        { id: productA, name: 'Cuenta Corriente', type: 'checking' },
+        { id: productB, name: 'Tarjeta de Crédito', type: 'credit_card' },
+      ]);
     } finally {
       sqlite.close();
     }
