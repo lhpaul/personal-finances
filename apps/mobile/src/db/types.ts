@@ -1,5 +1,7 @@
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
+import type { AliasCandidate, PeriodDelta } from '@finanzas/shared-domain';
+
 /**
  * The shared database-handle type every repository function accepts (implementation plan
  * Decision 1). Both concrete drivers — `ExpoSQLiteDatabase` (`src/db/client.ts`) and
@@ -195,4 +197,62 @@ export interface Transaction {
   isManual: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * `#screen=merchant-edit` (implementation plan for issue #14, Decision 13). `merchants` row, in
+ * domain shape. `isUserDefined` is `merchants.user_id !== null` — the schema's own "Null =
+ * seeded; set = created by the user" distinction (Decision 6).
+ */
+export interface MerchantProfile {
+  id: string;
+  name: string;
+  transactionCategoryId: string | null;
+  isUserDefined: boolean;
+}
+
+/** One `merchant_aliases` row, in domain shape — a "Actual" row on `#screen=merchant-edit&state=suggestions`.
+ * `matchCount` is always freshly recomputed (Decision 7), never a stale stored value. */
+export interface MerchantAliasView {
+  id: string;
+  rawPattern: string;
+  matchType: 'prefix' | 'contains' | 'exact';
+  matchCount: number;
+}
+
+/** One bar of the merchant's spending-statistics chart (Decision 12). */
+export interface MerchantMonthTotal {
+  /** Three-letter Spanish month abbreviation via `formatMonthAbbreviation` — e.g. `'nov'`. */
+  monthLabel: string;
+  /** Integer minor units — the sum of this merchant's included, peso-denominated expense
+   * movements (`type = 'debit'`) in that month. */
+  total: number;
+}
+
+/** `#screen=merchant-edit`'s "Estadísticas de gasto" card data (Decision 12). */
+export interface MerchantSpendingStats {
+  /** Exactly three entries, oldest to newest, left to right — the current month and the two
+   * before it, anchored to the caller's `today`. */
+  months: MerchantMonthTotal[];
+  /** `Math.round(sum(months.map((m) => m.total)) / 3)` — integer minor units. */
+  monthlyAverage: number;
+  /** Current month vs. the one immediately before it. */
+  delta: PeriodDelta;
+}
+
+/**
+ * The one consistent read `readMerchantEditor` returns (Decision 13) — every state of
+ * `#screen=merchant-edit` renders from this single snapshot, so the disclosure count can never
+ * disagree with the "Actual" / "Agrupar" rows, and the suggestions card's counts can never
+ * disagree with the stats card's totals.
+ */
+export interface MerchantEditorSnapshot {
+  merchant: MerchantProfile;
+  /** The "Actual" rows. */
+  aliases: MerchantAliasView[];
+  /** The "Agrupar" rows, from `suggestAliasCandidates` (`@finanzas/shared-domain`). */
+  candidates: AliasCandidate[];
+  /** The category-picker grid, for the merchant's observed direction (Assumption A5). */
+  categories: Category[];
+  stats: MerchantSpendingStats;
 }
