@@ -212,7 +212,7 @@ export function CategorizeScreen({ testID }: CategorizeScreenProps) {
         />
 
         <CategoryGrid
-          questionKey={isExpense ? 'categorize.question_expense' : 'categorize.question_income'}
+          question={isExpense ? 'expense' : 'income'}
           choices={choices}
           selectedCategoryId={selectedCategoryId}
           onSelect={setSelectedCategoryId}

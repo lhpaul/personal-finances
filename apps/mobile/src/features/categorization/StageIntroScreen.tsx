@@ -60,7 +60,11 @@ export function StageIntroScreen({ testID }: StageIntroScreenProps) {
       edges={['top', 'bottom']}
       testID={testID}
     >
-      <StageTopBar title={t('stage_intro.topbar_title')} />
+      <StageTopBar
+        title={t('stage_intro.topbar_title')}
+        backA11yLabel={t('stage_intro.back_a11y')}
+        onBack={() => router.back()}
+      />
       <View style={{ flex: 1, paddingHorizontal: theme.space['5'] }}>
         <View style={{ alignItems: 'center', marginTop: theme.space['5'] }}>
           <Text style={{ fontSize: screenMetrics.categorization.stageIntroHeroGlyphSize }}>

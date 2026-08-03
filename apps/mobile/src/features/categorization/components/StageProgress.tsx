@@ -19,7 +19,11 @@ export function StageProgress({ current, total }: StageProgressProps) {
   const { t } = useTranslation();
 
   return (
-    <View style={{ marginTop: theme.space['4'] }}>
+    <View
+      style={{ marginTop: theme.space['4'] }}
+      accessible
+      accessibilityLabel={t('categorize.progress_a11y')}
+    >
       <Steps total={total} current={current} />
       <Text variant="small" center style={{ marginTop: theme.space['3'] }}>
         {t('categorize.progress', { current, total })}

@@ -15,10 +15,10 @@ const REASONS: StageExclusionReason[] = [
 ];
 
 /**
- * Every branch calls `t(...)` with a literal key (never a variable key), per this codebase's
- * established pattern (`ready.tsx`'s `translateReminderDayKey`) — this is what lets the static
- * catalogue-key scan (`copy-contract.test.ts`) verify every key against the catalogue, and what
- * `i18next.d.ts`'s compile-time key union requires.
+ * Every branch calls the translation function with a literal key argument, never a variable key
+ * — the pattern `ready.tsx`'s `translateReminderDayKey` already established in this codebase.
+ * This is what lets the static catalogue-key scan (`copy-contract.test.ts`) verify every key
+ * against the catalogue, and what `i18next.d.ts`'s compile-time key union requires.
  */
 function reasonLabel(t: ReturnType<typeof useTranslation>['t'], reason: StageExclusionReason): string {
   switch (reason) {

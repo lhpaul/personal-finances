@@ -6,17 +6,16 @@ import { Card, Progress, StatTile, Text } from '../../../components/ui';
 import { screenMetrics, theme } from '../../../theme';
 import type { MonthOverMonthDirection, StageOutcome } from '../completion';
 
-const CELEBRATION_GLYPH = '🎉';
 /** Decorative placeholder for the rare "no previous month to compare against" branch
  * (Assumption P2's "no-previous-month branch") — a numeric-display glyph, not prose, so it is
  * not a catalogue entry (the same treatment `Amount`/`StatTile` give numeric values). */
 const NO_PREVIOUS_MONTH_GLYPH = '—';
 
 /**
- * Every branch calls `t(...)` with a literal key, per this codebase's established pattern
- * (`ready.tsx`'s `translateReminderDayKey`) — required by `i18next.d.ts`'s compile-time key
- * union. `'unknown'` (no previous-month data, Assumption P2) reuses the "same as last month"
- * copy rather than inventing a fourth tile variant the mockup does not draw.
+ * Every branch calls the translation function with a literal key argument, per this codebase's
+ * established pattern (`ready.tsx`'s `translateReminderDayKey`) — required by `i18next.d.ts`'s
+ * compile-time key union. `'unknown'` (no previous-month data, Assumption P2) reuses the "same
+ * as last month" copy rather than inventing a fourth tile variant the mockup does not draw.
  */
 function changeSubLabel(t: ReturnType<typeof useTranslation>['t'], direction: MonthOverMonthDirection): string {
   switch (direction) {
@@ -62,7 +61,7 @@ export function CompletionSummary({
     <View>
       <View style={{ alignItems: 'center' }}>
         <Text style={{ fontSize: screenMetrics.categorization.completionCelebrationGlyphSize }}>
-          {CELEBRATION_GLYPH}
+          {t('categorize_complete.celebration_icon')}
         </Text>
         <Text variant="h1" center style={{ marginTop: theme.space['4'] }}>
           {isDone ? t('categorize_complete.heading_done') : t('categorize_complete.heading_partial')}

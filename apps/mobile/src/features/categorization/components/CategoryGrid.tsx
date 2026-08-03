@@ -7,8 +7,10 @@ import type { CategoryChoice } from '../category-choices';
 
 const GRID_COLUMN_WIDTH = '48%';
 
+export type CategoryGridQuestion = 'expense' | 'income';
+
 export interface CategoryGridProps {
-  questionKey: 'categorize.question_expense' | 'categorize.question_income';
+  question: CategoryGridQuestion;
   choices: CategoryChoice[];
   selectedCategoryId: string | null;
   onSelect: (categoryId: string) => void;
@@ -18,13 +20,25 @@ export interface CategoryGridProps {
   onChooseOther?: () => void;
 }
 
+/** Calls the translation function with a literal key argument in every branch — the pattern
+ * `ready.tsx`'s `translateReminderDayKey` already established — required by the static
+ * catalogue-key scan (`copy-contract.test.ts`) and `i18next.d.ts`'s compile-time key union. */
+function questionLabel(t: ReturnType<typeof useTranslation>['t'], question: CategoryGridQuestion): string {
+  switch (question) {
+    case 'expense':
+      return t('categorize.question_expense');
+    case 'income':
+      return t('categorize.question_income');
+  }
+}
+
 /**
  * The two-column category chip grid (spec UX Rules → Categorization, "Category grid"; AC7, AC8,
  * AC9). Purely presentational — `CategorizeScreen` decides whether `choices` is the curated
  * seven-chip list (Decision 6) or the full taxonomy for "Elegir otra".
  */
 export function CategoryGrid({
-  questionKey,
+  question,
   choices,
   selectedCategoryId,
   onSelect,
@@ -36,7 +50,7 @@ export function CategoryGrid({
   return (
     <View>
       <Text variant="h3" style={{ marginTop: theme.space['5'] }}>
-        {t(questionKey)}
+        {questionLabel(t, question)}
       </Text>
       <View
         style={{
