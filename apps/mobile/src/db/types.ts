@@ -201,6 +201,7 @@ export interface TransactionListRow {
   amount: number;
   type: 'debit' | 'credit';
   rawDescription: string;
+  note: string | null;
   excludedAt: string | null;
   exclusionReason: Transaction['exclusionReason'];
   includedAmount: number | null;

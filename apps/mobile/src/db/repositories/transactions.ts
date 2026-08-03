@@ -634,6 +634,7 @@ const TRANSACTION_LIST_COLUMNS = {
   amount: transactions.amount,
   type: transactions.type,
   rawDescription: transactions.rawDescription,
+  note: transactions.note,
   excludedAt: transactions.excludedAt,
   exclusionReason: transactions.exclusionReason,
   includedAmount: transactions.includedAmount,
@@ -653,6 +654,7 @@ interface TransactionListQueryRow {
   amount: number;
   type: string;
   rawDescription: string;
+  note: string | null;
   excludedAt: string | null;
   exclusionReason: string | null;
   includedAmount: number | null;
@@ -689,6 +691,7 @@ function mapTransactionListRow(row: TransactionListQueryRow, locale: SupportedLo
     amount: row.amount,
     type: row.type as TransactionListRow['type'],
     rawDescription: row.rawDescription,
+    note: row.note,
     excludedAt: row.excludedAt,
     exclusionReason: row.exclusionReason as TransactionListRow['exclusionReason'],
     includedAmount: row.includedAmount,
