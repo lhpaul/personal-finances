@@ -7,7 +7,7 @@ import { formatMonthAbbreviation, getMonthPeriod, shiftMonthPeriod, type DateLoc
 import { includedAmount, isIncluded, isPesoDenominated } from '../fragments';
 import type { NewId, Now } from '../ids';
 import type { SupportedLocale } from '../labels';
-import { merchantAliases, merchants, transactions } from '../schema';
+import { merchantAliases, merchants, transactions, users } from '../schema';
 import type { AppDatabase, Category, MerchantEditorSnapshot, MerchantMonthTotal, MerchantSpendingStats } from '../types';
 import { listCategories } from './categories';
 import type { MovementEnricher, MovementEnrichment } from './transactions';
@@ -252,9 +252,11 @@ export function groupAliasIntoMerchant(
  * brief AC2). Touches only the `merchants` row — no `transactions` row is ever written here, which
  * is what makes AC2 ("setting a default category does not overwrite categories the user already
  * confirmed") true by construction rather than by a filter that could be got wrong. When the
- * merchant is still seed-owned (`user_id is null`), this configuring act marks it person-owned in
- * the same statement (`coalesce` keeps an already-set `user_id` unchanged) — future
- * auto-categorization from it then reads as `'rule'`, never `'auto'` (Decision 6).
+ * merchant is still seed-owned (`user_id is null`), this configuring act marks it person-owned by
+ * reading the single local `users` row's id and writing it in the same statement — an
+ * already-set `user_id` is left exactly as it was (Decision 6). The caller (the feature hook)
+ * therefore never needs to know the local user's id — that stays an `src/db`-internal concern,
+ * consistent with the app tier never touching a table directly.
  */
 export function saveMerchantProfile(
   db: AppDatabase,
@@ -262,15 +264,24 @@ export function saveMerchantProfile(
     merchantId: string;
     name: string;
     transactionCategoryId: string | null;
-    /** The single local `users` row's id (Decision 6). */
-    userId: string;
   },
 ): void {
+  const merchantRow = db
+    .select({ userId: merchants.userId })
+    .from(merchants)
+    .where(eq(merchants.id, params.merchantId))
+    .get() as { userId: string | null } | undefined;
+
+  const localUser = merchantRow?.userId
+    ? undefined
+    : (db.select({ id: users.id }).from(users).get() as { id: string } | undefined);
+  const nextUserId = merchantRow?.userId ?? localUser?.id ?? null;
+
   db.update(merchants)
     .set({
       name: params.name,
       transactionCategoryId: params.transactionCategoryId,
-      userId: sql`coalesce(${merchants.userId}, ${params.userId})`,
+      userId: nextUserId,
     })
     .where(eq(merchants.id, params.merchantId))
     .run();

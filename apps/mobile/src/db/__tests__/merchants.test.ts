@@ -291,7 +291,6 @@ describe('saveMerchantProfile (AC2)', () => {
         merchantId: 'acme',
         name: 'ACME Renamed',
         transactionCategoryId: 'supermercado',
-        userId: localUser.id,
       });
 
       const transactionsAfter = db.select().from(transactions).all();
@@ -315,13 +314,13 @@ describe('saveMerchantProfile (AC2)', () => {
     }
   });
 
-  it('never overwrites an already-set user_id with a different value (Decision 6, coalesce)', async () => {
+  it('never overwrites an already-set user_id with a different value (Decision 6)', async () => {
     const { sqlite, db, ports } = await openBootstrappedMemoryDb();
     try {
       const localUser = db.select().from(users).get() as { id: string };
       insertTestMerchant(db, ports.now(), { id: 'acme', userId: localUser.id });
 
-      saveMerchantProfile(db, { merchantId: 'acme', name: 'ACME', transactionCategoryId: null, userId: 'someone-else' });
+      saveMerchantProfile(db, { merchantId: 'acme', name: 'ACME', transactionCategoryId: null });
 
       const acme = db.select().from(merchants).where(eq(merchants.id, 'acme')).get();
       expect(acme?.userId).toBe(localUser.id); // unchanged — never replaced
