@@ -148,6 +148,7 @@ describe('resolveConnectionListItem (Decision 3, Decision 4, Assumption A7/A8)',
     const item = resolveConnectionListItem(baseConnection(), NOW, 'es');
     expect(item.badgeTone).toBe('ok');
     expect(item.badgeLabelKey).toBe('settings_banks.badge_ok');
+    expect(item.accessibilityStatusKey).toBe('settings_banks.status_ok');
     expect(item.subLabelTone).toBe('default');
     expect(item.subLabel.kind).toBe('composed');
     if (item.subLabel.kind === 'composed') {
@@ -162,6 +163,7 @@ describe('resolveConnectionListItem (Decision 3, Decision 4, Assumption A7/A8)',
     const item = resolveConnectionListItem(baseConnection({ syncStatus: 'error' }), NOW, 'es');
     expect(item.badgeTone).toBe('danger');
     expect(item.badgeLabelKey).toBe('settings_banks.badge_error');
+    expect(item.accessibilityStatusKey).toBe('settings_banks.status_error');
     expect(item.subLabelTone).toBe('danger');
     expect(item.subLabel).toEqual({
       kind: 'override',

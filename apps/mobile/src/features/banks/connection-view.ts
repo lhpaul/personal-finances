@@ -141,6 +141,7 @@ export function resolveConnectionListItem(
     return {
       badgeTone: 'danger',
       badgeLabelKey: 'settings_banks.badge_error',
+      accessibilityStatusKey: 'settings_banks.status_error',
       subLabelTone: 'danger',
       subLabel: { kind: 'override', fragment: { key: 'settings_banks.sync_error', values: {} } },
     };
@@ -149,6 +150,7 @@ export function resolveConnectionListItem(
   return {
     badgeTone: 'ok',
     badgeLabelKey: 'settings_banks.badge_ok',
+    accessibilityStatusKey: 'settings_banks.status_ok',
     subLabelTone: 'default',
     subLabel: {
       kind: 'composed',

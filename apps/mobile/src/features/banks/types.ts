@@ -16,6 +16,10 @@ export interface CopyFragment {
 export interface BankConnectionListItem {
   badgeTone: 'ok' | 'danger';
   badgeLabelKey: 'settings_banks.badge_ok' | 'settings_banks.badge_error';
+  /** Decision 4: the row's accessible name is composed as bank name + this status word
+   * (`"Al día"` / `"Error"`), not the visible relative-time `subLabel` — see `BankRow`'s
+   * `accessibilityLabel` override. */
+  accessibilityStatusKey: 'settings_banks.status_ok' | 'settings_banks.status_error';
   subLabelTone: 'default' | 'danger';
   subLabel:
     | { kind: 'composed'; syncFragment: CopyFragment; productCountFragment: CopyFragment }

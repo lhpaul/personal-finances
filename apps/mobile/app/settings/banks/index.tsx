@@ -51,6 +51,14 @@ export default function SettingsBanks() {
     router.setParams({ disconnect: undefined });
   }
 
+  // Cancelling (or a stale param clearing itself) also drops a lingering 'failed' status —
+  // otherwise reopening the modal later, for the same or a different connection, would show a
+  // stale failure Note for an attempt that never happened this time.
+  function cancelDisconnect(): void {
+    disconnectHook.reset();
+    clearDisconnectParam();
+  }
+
   // The confirmation target: the connection named by the `disconnect` param, if it still exists
   // in the current list — a stale value (a connection that already disconnected, or was never
   // real) never reopens a modal (Decision 7).
@@ -146,7 +154,8 @@ export default function SettingsBanks() {
         visible={modalOpen}
         bankName={modalConnection?.name ?? ''}
         disabled={disconnectHook.status === 'running'}
-        onCancel={clearDisconnectParam}
+        failed={disconnectHook.status === 'failed'}
+        onCancel={cancelDisconnect}
         onConfirm={() => void confirmDisconnect()}
       />
     </SafeAreaView>
