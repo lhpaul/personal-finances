@@ -7,6 +7,7 @@
  */
 
 export { Amount, type AmountProps, type AmountSize, type AmountTone } from './Amount';
+export { BarChart, type BarChartColumn, type BarChartProps } from './BarChart';
 export { Badge, type BadgeProps, type BadgeTone } from './Badge';
 export { BankRow, type BankRowProps, type BankRowSubLabelTone } from './BankRow';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
@@ -19,10 +20,11 @@ export {
 export { CategoryRow, type CategoryRowProps } from './CategoryRow';
 export { Checkbox, type CheckboxProps } from './Checkbox';
 export { Dots, type DotsProps } from './Dots';
+export { DonutChart, type DonutChartProps, type DonutChartSegment } from './DonutChart';
 export { EmptyState, type EmptyStateAction, type EmptyStateProps } from './EmptyState';
 export { Hero, type HeroGradient, type HeroProps } from './Hero';
 export { Legend, type LegendItem, type LegendProps } from './Legend';
-export { LineChart, type LineChartProps } from './LineChart';
+export { LineChart, type LineChartProps, type LineChartSeries } from './LineChart';
 export { Modal, type ModalProps } from './Modal';
 export { Note, type NoteProps, type NoteTone } from './Note';
 export { Pill, type PillProps } from './Pill';
@@ -49,4 +51,4 @@ export {
   type TransactionRowProps,
   type TransactionRowState,
 } from './TransactionRow';
-export { TopBar, type TopBarProps, type TopBarTitleAlign } from './TopBar';
+export { TopBar, type TopBarAction, type TopBarProps, type TopBarTitleAlign } from './TopBar';

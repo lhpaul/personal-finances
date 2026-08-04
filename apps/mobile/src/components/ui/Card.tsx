@@ -4,7 +4,13 @@ import { View } from 'react-native';
 import { componentMetrics, theme } from '../../theme';
 import { Text } from './Text';
 
-export type CardVariant = 'default' | 'tight' | 'flat';
+/**
+ * `'flat-tight'` (dashboard implementation plan for issue #17, Decision 8) is `--flat` and
+ * `--tight` composed together — the mockup's two mini stat tiles
+ * (`.mu-card.mu-card--flat.mu-card--tight`) are the first call site to need both at once.
+ * Additive: every existing call site passes one of the other three values and is unaffected.
+ */
+export type CardVariant = 'default' | 'tight' | 'flat' | 'flat-tight';
 
 export type CardProps = {
   variant?: CardVariant;
@@ -14,9 +20,13 @@ export type CardProps = {
   children?: ReactNode;
 };
 
+const TIGHT_VARIANTS = new Set<CardVariant>(['tight', 'flat-tight']);
+const FLAT_VARIANTS = new Set<CardVariant>(['flat', 'flat-tight']);
+
 /** `.mu-card` + `--tight` `--flat`, `__title`, `__sub`, `__head`. */
 export function Card({ variant = 'default', title, subtitle, headerRight, children }: CardProps) {
   const hasHeader = title !== undefined || subtitle !== undefined || headerRight !== undefined;
+  const isFlat = FLAT_VARIANTS.has(variant);
 
   return (
     <View
@@ -24,11 +34,11 @@ export function Card({ variant = 'default', title, subtitle, headerRight, childr
         {
           backgroundColor: theme.colors.surface1,
           borderRadius: theme.radius.card,
-          padding: variant === 'tight' ? theme.space['4'] : theme.space['5'],
+          padding: TIGHT_VARIANTS.has(variant) ? theme.space['4'] : theme.space['5'],
           borderWidth: componentMetrics.borderWidth.hairline,
           borderColor: theme.colors.border,
         },
-        variant === 'flat'
+        isFlat
           ? { backgroundColor: theme.colors.surface2 }
           : {
               shadowColor: theme.colors.textPrimary,

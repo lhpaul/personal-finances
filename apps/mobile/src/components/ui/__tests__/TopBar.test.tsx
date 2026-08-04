@@ -54,3 +54,35 @@ describe('TopBar — left-aligned title', () => {
     expect(spacers).toHaveLength(0);
   });
 });
+
+/**
+ * `trailingAction` (dashboard implementation plan for issue #17, Decision 9) — additive: the
+ * three describe blocks above pass no `trailingAction` and must keep asserting exactly what they
+ * asserted before this prop existed (verified above, unchanged).
+ */
+describe('TopBar — centered title with a trailing action (issue #17)', () => {
+  it('renders the back button and the trailing action button, and no spacer', () => {
+    const tree = TopBar({
+      title: 'Dashboard',
+      onBack: jest.fn(),
+      titleAlign: 'center',
+      trailingAction: { glyph: '⚙️', onPress: jest.fn(), accessibilityLabel: 'Configuración' },
+    });
+    expect(pressables(tree)).toHaveLength(2);
+
+    const spacers = collectElements(
+      tree,
+      (el) => elementTypeName(el) === 'View' && el.props.style?.width !== undefined,
+    );
+    expect(spacers).toHaveLength(0);
+  });
+
+  it('renders only the trailing action button when there is no onBack', () => {
+    const tree = TopBar({
+      title: 'Dashboard',
+      titleAlign: 'center',
+      trailingAction: { glyph: '⚙️', onPress: jest.fn(), accessibilityLabel: 'Configuración' },
+    });
+    expect(pressables(tree)).toHaveLength(1);
+  });
+});
