@@ -613,6 +613,77 @@ describe('transactions repository', () => {
       }
     });
 
+    it(
+      'a USD movement is excluded from sumIncludedExpensesInPeriod (categorization completion tiles), but stays visible via a list read (issue #86, Business Rule 17)',
+      async () => {
+        const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+        try {
+          const connectionId = createTestConnection(db, ports);
+          const productId = createTestProduct(db, ports, connectionId);
+          const now = ports.now();
+
+          db.insert(transactions)
+            .values([
+              {
+                id: 'p86-stage-usd',
+                userFinancialProductId: productId,
+                externalId: null,
+                dedupHash: 'p86-stage-usd-dedup',
+                amount: 8000,
+                type: 'debit',
+                currencyCode: 'USD',
+                occurredAt: now,
+                dateLocal: '2026-04-15',
+                rawDescription: 'INTERNATIONAL CHARGE',
+                transactionCategoryId: 'entretenimiento',
+                isManual: 0,
+                createdAt: now,
+                updatedAt: now,
+              },
+              {
+                id: 'p86-stage-clp',
+                userFinancialProductId: productId,
+                externalId: null,
+                dedupHash: 'p86-stage-clp-dedup',
+                amount: 5000,
+                type: 'debit',
+                currencyCode: 'CLP',
+                occurredAt: now,
+                dateLocal: '2026-04-16',
+                rawDescription: 'LOCAL CHARGE',
+                transactionCategoryId: 'entretenimiento',
+                isManual: 0,
+                createdAt: now,
+                updatedAt: now,
+              },
+            ])
+            .run();
+
+          const period = { startDateLocal: '2026-04-01', endDateLocal: '2026-04-30' };
+
+          // Only the CLP row contributes: proof the guard is load-bearing for this aggregate too,
+          // not merely present in the same file as totalForCategoryInPeriod's guard.
+          expect(sumIncludedExpensesInPeriod(db, period)).toBe(5000);
+
+          // The USD movement is never dropped (Business Rule 17) — it still shows up in a list
+          // read, only excluded from the peso total above.
+          const page = listTransactionsPage(
+            db,
+            {
+              filters: { direction: 'all', categorization: 'all', productId: null, showExcluded: true },
+              search: null,
+              cursor: null,
+              limit: 10,
+            },
+            'es',
+          );
+          expect(page.rows.map((row) => row.id)).toContain('p86-stage-usd');
+        } finally {
+          sqlite.close();
+        }
+      },
+    );
+
     it('a differently-cased or padded currency code is canonicalized before storage, on both insert and update (CodeRabbit finding on PR #78)', async () => {
       const { sqlite, db, ports } = await openBootstrappedMemoryDb();
       try {
@@ -869,6 +940,91 @@ describe('transactions repository', () => {
         sqlite.close();
       }
     });
+
+    it(
+      'a USD movement is excluded from sumIncludedByDirectionAndCategory and sumIncludedByDirectionAndDay, but stays visible via a list read — home never leaks a foreign-currency movement into a peso total (issue #86, Business Rule 17)',
+      async () => {
+        const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+        try {
+          const connectionId = createTestConnection(db, ports);
+          const productId = createTestProduct(db, ports, connectionId);
+          const now = ports.now();
+
+          db.insert(transactions)
+            .values([
+              {
+                id: 'p86-usd',
+                userFinancialProductId: productId,
+                externalId: null,
+                dedupHash: 'p86-usd-dedup',
+                amount: 9000,
+                type: 'debit',
+                currencyCode: 'USD',
+                occurredAt: now,
+                dateLocal: '2026-02-12',
+                rawDescription: 'INTERNATIONAL CHARGE',
+                transactionCategoryId: 'entretenimiento',
+                isManual: 0,
+                createdAt: now,
+                updatedAt: now,
+              },
+              {
+                id: 'p86-clp',
+                userFinancialProductId: productId,
+                externalId: null,
+                dedupHash: 'p86-clp-dedup',
+                amount: 6000,
+                type: 'debit',
+                currencyCode: 'CLP',
+                occurredAt: now,
+                dateLocal: '2026-02-12',
+                rawDescription: 'LOCAL CHARGE',
+                transactionCategoryId: 'entretenimiento',
+                isManual: 0,
+                createdAt: now,
+                updatedAt: now,
+              },
+            ])
+            .run();
+
+          const period = { startDateLocal: '2026-02-01', endDateLocal: '2026-02-28' };
+
+          // Only the CLP row contributes to the category total: proof the guard is load-bearing
+          // for this aggregate, not merely present in the same file as a guarded one.
+          const categoryTotals = sumIncludedByDirectionAndCategory(db, period);
+          const entretenimiento = categoryTotals.find(
+            (row) => row.transactionCategoryId === 'entretenimiento',
+          );
+          expect(entretenimiento).toEqual({
+            type: 'debit',
+            transactionCategoryId: 'entretenimiento',
+            total: 6000,
+            movementCount: 1,
+          });
+
+          // Same proof for the trend chart's daily series.
+          const dayTotals = sumIncludedByDirectionAndDay(db, period);
+          const day = dayTotals.find((row) => row.dateLocal === '2026-02-12');
+          expect(day).toEqual({ dateLocal: '2026-02-12', type: 'debit', total: 6000 });
+
+          // The USD movement is never dropped (Business Rule 17) — it still shows up in a list
+          // read, only excluded from the peso totals above.
+          const page = listTransactionsPage(
+            db,
+            {
+              filters: { direction: 'all', categorization: 'all', productId: null, showExcluded: true },
+              search: null,
+              cursor: null,
+              limit: 10,
+            },
+            'es',
+          );
+          expect(page.rows.map((row) => row.id)).toContain('p86-usd');
+        } finally {
+          sqlite.close();
+        }
+      },
+    );
 
     it('listRecentMovements respects limit, orders by date_local descending, resolves labels, and includes an excluded movement (Scenario 6, Assumption A8)', async () => {
       const { sqlite, db, ports } = await openBootstrappedMemoryDb();
