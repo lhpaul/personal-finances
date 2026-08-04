@@ -107,6 +107,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the about screen, plus the product's only destructive operation — a full local wipe of
   the SQLite store and every `expo-secure-store` credential key, behind an explicit
   confirmation, returning the app to onboarding.
+- **Settings: categories management** (#21): the categories screen — expense and income tabs,
+  create, rename and re-icon, drag to reorder with persisted `sort_order`, and delete with
+  re-parenting to ✨ Otros through the existing transactional cascade. The two ✨ Otros
+  categories offer no edit, delete or reorder affordance.
 
 ### Fixed
 
