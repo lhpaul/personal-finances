@@ -40,7 +40,10 @@ export interface ConnectedBanksCardProps {
   connections: BankConnection[];
   now: Date;
   locale: SupportedLocale;
-  onPressBank: (connectionId: string) => void;
+  /** Called with the connection's `institutionId` (issue #20, Decision 13) — `/settings/banks/
+   * [bankId]` resolves `bankId` as `financial_institutions.id`, not this connection's own row
+   * id. */
+  onPressBank: (institutionId: string) => void;
 }
 
 /** "Bancos conectados" (implementation plan Decision 4 inputs, Assumption A11, A13). */
@@ -79,7 +82,7 @@ export function ConnectedBanksCard({ connections, now, locale, onPressBank }: Co
               name={connection.institutionName}
               subLabel={subLabel}
               subLabelTone={isError ? 'danger' : 'default'}
-              onPress={() => onPressBank(connection.id)}
+              onPress={() => onPressBank(connection.institutionId)}
             />
           );
         })}

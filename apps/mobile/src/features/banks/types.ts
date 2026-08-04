@@ -15,7 +15,7 @@ export interface CopyFragment {
  * the component. */
 export interface BankConnectionListItem {
   badgeTone: 'ok' | 'danger';
-  badgeLabelKey: string;
+  badgeLabelKey: 'settings_banks.badge_ok' | 'settings_banks.badge_error';
   subLabelTone: 'default' | 'danger';
   subLabel:
     | { kind: 'composed'; syncFragment: CopyFragment; productCountFragment: CopyFragment }

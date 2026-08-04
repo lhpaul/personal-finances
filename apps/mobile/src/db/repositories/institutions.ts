@@ -292,10 +292,11 @@ interface ConnectionRow {
   lastErrorCode: string | null;
 }
 
-function mapConnectionRow(row: ConnectionRow): BankConnection {
+function mapConnectionRow(row: ConnectionRow, institutionId: string): BankConnection {
   const metadata = parseInstitutionMetadata(row.institutionMetadata);
   return {
     id: row.id,
+    institutionId,
     institutionName: row.institutionName,
     institutionLogoUrl: parseAssets(row.institutionAssets).logo,
     institutionShortName: metadata.short_name,
@@ -336,7 +337,7 @@ export function getConnectionByInstitution(
     .where(eq(userFinancialInstitutions.financialInstitutionId, institutionId))
     .get() as ConnectionRow | undefined;
 
-  return row === undefined ? undefined : mapConnectionRow(row);
+  return row === undefined ? undefined : mapConnectionRow(row, institutionId);
 }
 
 /**
@@ -507,12 +508,14 @@ export function listConnectedBankSummaries(db: AppDatabase): ConnectedBankSummar
 
 // -------------------------------------------------------------------------------------------
 // settings-banks / bank-review (issue #20). Two reads share one row shape (`BankConnectionSummary`,
-// Resolution R6): `listBankConnections` (filtered to `'active' | 'inactive'`) for the list, and
-// `getBankConnectionSummary` (unfiltered) for the detail screen's redirect-when-disconnected
-// guard (Decision 13). Neither reuses `getConnectionByInstitution` (issue #9): that function's
-// `BankConnection` shape carries no `lastErrorMessage`, which `resolveSyncErrorKey` (Decision 10)
-// needs on its input for shape parity with the stored column, so this item reads its own shape
-// instead of extending a merged sibling item's return type.
+// Resolution R6): `listSettingsBankConnections` (filtered to `'active' | 'inactive'`) for the
+// list, and `getBankConnectionSummary` (unfiltered) for the detail screen's
+// redirect-when-disconnected guard (Decision 13). Named apart from `connections.ts`'s own
+// `listBankConnections` (issue #12, unfiltered, for `home`) so the two never read as each other.
+// Neither reuses `getConnectionByInstitution` (issue #9): that function's `BankConnection` shape
+// carries no `lastErrorMessage`, which `resolveSyncErrorKey` (Decision 10) needs on its input for
+// shape parity with the stored column, so this item reads its own shape instead of extending a
+// merged sibling item's return type.
 // -------------------------------------------------------------------------------------------
 
 interface BankConnectionSummaryRow {
@@ -595,7 +598,7 @@ function countProductsByConnection(db: AppDatabase, connectionIds: string[]): Ma
  * never listed (Decision 1's "excluded from the list" consequence). Ordered by `created_at` so
  * the list is stable across reads.
  */
-export function listBankConnections(db: AppDatabase): BankConnectionSummary[] {
+export function listSettingsBankConnections(db: AppDatabase): BankConnectionSummary[] {
   const rows = bankConnectionSummarySelection(db)
     .where(inArray(userFinancialInstitutions.status, ['active', 'inactive']))
     .orderBy(asc(userFinancialInstitutions.createdAt))
@@ -610,7 +613,7 @@ export function listBankConnections(db: AppDatabase): BankConnectionSummary[] {
 
 /**
  * `bank-review`'s single-connection read (implementation plan for issue #20, Decision 13):
- * unlike {@link listBankConnections}, this is **not** filtered by `status` — the caller
+ * unlike {@link listSettingsBankConnections}, this is **not** filtered by `status` — the caller
  * distinguishes "no connection at all" (`undefined`) from "a connection that exists but is
  * disconnected" (`status: 'disconnected'`) and redirects to `/settings/banks` on either.
  */

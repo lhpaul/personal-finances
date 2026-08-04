@@ -1,4 +1,4 @@
-import { getBankConnectionSummary, listBankConnections } from '../../../db/repositories/institutions';
+import { getBankConnectionSummary, listSettingsBankConnections } from '../../../db/repositories/institutions';
 import { listProductsForConnection } from '../../../db/repositories/products';
 import { openBootstrappedMemoryDb } from '../../../db/testing/memory-db';
 import { createTestConnection, createTestProduct, setConnectionFieldsForTest } from '../../../db/testing/product-fixture';
@@ -7,7 +7,7 @@ import { createTestConnection, createTestProduct, setConnectionFieldsForTest } f
  * Implementation plan (issue #20) Testing Strategy, Scenarios 1 and 13. Routed to the `db` Jest
  * project by its `.db.test.ts` suffix (Resolution R5).
  */
-describe('listBankConnections / getBankConnectionSummary (issue #20, Scenario 1)', () => {
+describe('listSettingsBankConnections / getBankConnectionSummary (issue #20, Scenario 1)', () => {
   it('lists an active connection with its product count, and hides a disconnected one', async () => {
     const { db, ports } = await openBootstrappedMemoryDb();
 
@@ -18,7 +18,7 @@ describe('listBankConnections / getBankConnectionSummary (issue #20, Scenario 1)
     const disconnectedId = createTestConnection(db, ports, 'banco-estado');
     setConnectionFieldsForTest(db, disconnectedId, { status: 'disconnected' });
 
-    const rows = listBankConnections(db);
+    const rows = listSettingsBankConnections(db);
 
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
@@ -34,7 +34,7 @@ describe('listBankConnections / getBankConnectionSummary (issue #20, Scenario 1)
     const inactiveId = createTestConnection(db, ports, 'banco-de-chile');
     setConnectionFieldsForTest(db, inactiveId, { status: 'inactive' });
 
-    const rows = listBankConnections(db);
+    const rows = listSettingsBankConnections(db);
 
     expect(rows.map((row) => row.id)).toEqual([inactiveId]);
   });

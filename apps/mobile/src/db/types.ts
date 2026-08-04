@@ -136,6 +136,10 @@ export interface RecentMovement {
  */
 export interface BankConnection {
   id: string;
+  /** `financial_institutions.id` (implementation plan for issue #20, Decision 13) — the identity
+   * `home`'s own bank row navigates on, since `[bankId]` (`/settings/banks/[bankId]`) is the
+   * institution id, not this connection's own `id`. */
+  institutionId: string;
   institutionName: string;
   institutionLogoUrl: string | undefined;
   institutionShortName: string | undefined;
@@ -152,7 +156,7 @@ export interface BankConnection {
  * (implementation plan for issue #20, Layer-by-Layer, Resolution R6). Unlike {@link BankConnection}
  * (issue #12, unfiltered) and {@link ConnectedBankSummary} (issue #9, `status === 'active' &&
  * last_success_at is not null` only), this item's own two repository reads —
- * `listBankConnections` (filtered to `'active' | 'inactive'`, Assumption A7) and
+ * `listSettingsBankConnections` (filtered to `'active' | 'inactive'`, Assumption A7) and
  * `getBankConnectionSummary` (unfiltered, so a caller can tell "no connection" apart from "a
  * disconnected one") — both return this shape. Converging the four is item #9's already-recorded
  * follow-up F2/F3; this item adds the fourth shape rather than resolving that debt mid-campaign.

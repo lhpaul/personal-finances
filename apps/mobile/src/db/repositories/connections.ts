@@ -49,6 +49,7 @@ export function getConnectedBanksSummary(db: AppDatabase): ConnectedBanksSummary
 
 interface BankConnectionRow {
   id: string;
+  financialInstitutionId: string;
   institutionName: string;
   institutionAssets: string | null;
   institutionMetadata: string | null;
@@ -70,6 +71,7 @@ export function listBankConnections(db: AppDatabase): BankConnection[] {
   const rows = db
     .select({
       id: userFinancialInstitutions.id,
+      financialInstitutionId: userFinancialInstitutions.financialInstitutionId,
       institutionName: financialInstitutions.name,
       institutionAssets: financialInstitutions.assets,
       institutionMetadata: financialInstitutions.metadata,
@@ -90,6 +92,7 @@ export function listBankConnections(db: AppDatabase): BankConnection[] {
     const metadata = parseInstitutionMetadata(row.institutionMetadata);
     return {
       id: row.id,
+      institutionId: row.financialInstitutionId,
       institutionName: row.institutionName,
       institutionLogoUrl: parseAssets(row.institutionAssets).logo,
       institutionShortName: metadata.short_name,
