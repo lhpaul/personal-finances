@@ -32,7 +32,11 @@
     "fidelity:contract": "node scripts/mobile-ui/fidelity-contract.mjs",
     "fidelity:test": "node --test scripts/mobile-ui/*.test.mjs",
     "fidelity:capture-mockup": "node scripts/mobile-ui/capture-mockup.mjs",
-    "fidelity:verify-gate": "bash scripts/mobile-ui/verify-gate.sh"
+    "fidelity:verify-gate": "bash scripts/mobile-ui/verify-gate.sh",
+    "e2e": "bash scripts/e2e/run-e2e.sh",
+    "e2e:contract": "node scripts/e2e/flow-contract.mjs",
+    "e2e:lint": "node scripts/e2e/flow-lint.mjs",
+    "e2e:test": "node --test scripts/e2e/*.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
