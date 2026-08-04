@@ -58,10 +58,20 @@ function exportMainToDouble(sqlite: Database.Database, alias: string): void {
   }
 
   const tables = objects.filter((object) => object.type === 'table');
-  for (const table of tables) {
-    sqlite.exec(
-      `INSERT INTO ${alias}.${quoteIdentifier(table.name)} SELECT * FROM main.${quoteIdentifier(table.name)};`,
-    );
+  // Foreign-key enforcement is ON on every connection this app opens (`client.ts`'s Decision 5) —
+  // but `sqlite_schema`'s row order is schema-declaration order, not dependency order, and the
+  // real `sqlcipher_export` copies pages directly, bypassing constraint checking entirely.
+  // Toggling this off for exactly the copy loop below mirrors that bypass without needing to
+  // duplicate `scripts/db/dump.ts`'s `DUMP_TABLE_ORDER` dependency ordering in this double too.
+  sqlite.pragma('foreign_keys = OFF');
+  try {
+    for (const table of tables) {
+      sqlite.exec(
+        `INSERT INTO ${alias}.${quoteIdentifier(table.name)} SELECT * FROM main.${quoteIdentifier(table.name)};`,
+      );
+    }
+  } finally {
+    sqlite.pragma('foreign_keys = ON');
   }
 
   const sequenceCount = sqlite
