@@ -8,7 +8,7 @@ import { ProfileFactRow } from '../../src/features/settings/components/ProfileFa
 import { useLocalProfile } from '../../src/features/settings/use-local-profile';
 import { useWipeLocalData } from '../../src/features/settings/use-wipe-local-data';
 import { toSupportedLocale } from '../../src/i18n/locale';
-import { fidelityTestId } from '../../src/lib/fidelity-preview';
+import { fidelityTestId, useFidelityPreview } from '../../src/lib/fidelity-preview';
 import { screenMetrics, theme } from '../../src/theme';
 
 /**
@@ -19,7 +19,10 @@ import { screenMetrics, theme } from '../../src/theme';
  * The modal stays visible through both `'confirming'` and `'wiping'` so the confirm/cancel
  * buttons' disabled state (driven by `phase`) is actually observable while the wipe runs; the
  * mockup itself draws no in-flight state for this modal (Assumption A2 — the success path shows
- * no confirmation toast, it simply arrives at `onboarding-intro`).
+ * no confirmation toast, it simply arrives at `onboarding-intro`). The design-fidelity capture's
+ * `delete-confirm` target forces the modal open independently of `phase` (`useFidelityPreview`),
+ * the same way `CategorizeScreen`/`StageIntroScreen` force their own sheet states for capture —
+ * a `?fidelityState=delete-confirm` deep link opens the overlay without a real tap sequence.
  */
 export default function SettingsAccount() {
   const { t, i18n } = useTranslation();
@@ -27,9 +30,11 @@ export default function SettingsAccount() {
   const locale = toSupportedLocale(i18n.language);
   const profileState = useLocalProfile(locale);
   const { phase, requestDelete, cancelDelete, confirmDelete } = useWipeLocalData();
+  const preview = useFidelityPreview();
 
   const profile = profileState.status === 'ready' ? profileState.profile : undefined;
   const isWiping = phase === 'wiping';
+  const forceConfirmForPreview = preview.active && preview.state === 'delete-confirm';
 
   return (
     <SafeAreaView
@@ -122,7 +127,7 @@ export default function SettingsAccount() {
       </ScrollView>
 
       <Modal
-        visible={phase === 'confirming' || phase === 'wiping'}
+        visible={phase === 'confirming' || phase === 'wiping' || forceConfirmForPreview}
         onRequestClose={cancelDelete}
         icon={t('settings.account.delete_modal_icon')}
         title={t('settings.account.delete_modal_title')}
