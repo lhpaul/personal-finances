@@ -129,14 +129,26 @@ function lineForOffset(lineOffsets, offset) {
   return lo + 1;
 }
 
-/** Ordered `<section class="app-screen" id="…">` boundaries, derived from start offsets only, so
- * a nested plain `<section>` element never splits a screen. */
+/** Ordered `<section …>` boundaries for sections whose class list contains `app-screen`,
+ * derived from start offsets only, so a nested plain `<section>` element never splits a screen.
+ * Tolerant of attribute order and additional classes (e.g. `<section id="…" class="app-screen">`
+ * or `<section class="mu-card app-screen" id="…">`) — only the class *list membership* and the
+ * presence of an `id` attribute matter, not their order or exclusivity. */
 function findSections(markup) {
-  const re = /<section\s+class="app-screen"\s+id="([^"]+)"/g;
+  const tagRe = /<section\b[^>]*>/g;
   const starts = [];
   let match;
-  while ((match = re.exec(markup))) {
-    starts.push({ id: match[1], start: match.index });
+  while ((match = tagRe.exec(markup))) {
+    const tag = match[0];
+    const classMatch = tag.match(/\sclass="([^"]*)"/);
+    if (!classMatch || !classMatch[1].split(/\s+/).includes('app-screen')) {
+      continue;
+    }
+    const idMatch = tag.match(/\sid="([^"]+)"/);
+    if (!idMatch) {
+      continue;
+    }
+    starts.push({ id: idMatch[1], start: match.index });
   }
   return starts.map((entry, index) => ({
     id: entry.id,
@@ -202,6 +214,34 @@ function literalOf(raw) {
 
 // M001 is handled inline in verifyMockup — it is a precondition, not a standalone check
 // function, because every later check needs the manifest it produces.
+
+/**
+ * Removes non-object entries from every screen's `states` array in place, reporting each as an
+ * `M004` violation ("every state declares a non-empty state_id" — a hole or `null` entry
+ * declares none). Keeps `verifyMockup` pure: a malformed state entry becomes a finding instead
+ * of a thrown `TypeError` the first time a downstream check reads `state.state_id`.
+ */
+function sanitizeStateEntries(screens) {
+  const violations = [];
+  for (const screen of screens) {
+    if (!Array.isArray(screen.states)) {
+      continue;
+    }
+    const sanitized = [];
+    screen.states.forEach((state, index) => {
+      if (state == null || typeof state !== 'object') {
+        violations.push({
+          code: 'M004',
+          message: `screen "${screen.screen_id}" has a malformed state entry at index ${index} (not an object)`,
+        });
+      } else {
+        sanitized.push(state);
+      }
+    });
+    screen.states = sanitized;
+  }
+  return violations;
+}
 
 function checkNavTargets(manifest, screenIds) {
   const violations = [];
@@ -425,16 +465,22 @@ function collectColorLeaves(node, prefix) {
 
 function checkTokensMirrored(html, tokens) {
   const violations = [];
-  const rootMatch = html.match(/:root\s*\{([\s\S]*?)\}/);
-  if (!rootMatch) {
+  // Every :root block in the file is scanned and unioned, not just the first — a mockup may
+  // declare a second :root nested inside a media query (e.g. `@media (prefers-color-scheme:
+  // dark) { :root { --brand: …; } }`), and a token mirrored there is still mirrored.
+  const rootBlocks = [...html.matchAll(/:root\s*\{([\s\S]*?)\}/g)];
+  if (rootBlocks.length === 0) {
     violations.push({ code: 'M010', message: 'no :root block found in index.html' });
     return violations;
   }
   const rootValues = new Set();
   const varRe = /--[a-zA-Z0-9-]+\s*:\s*([^;]+);/g;
-  let varMatch;
-  while ((varMatch = varRe.exec(rootMatch[1]))) {
-    rootValues.add(normalizeCssValue(varMatch[1]));
+  for (const block of rootBlocks) {
+    varRe.lastIndex = 0;
+    let varMatch;
+    while ((varMatch = varRe.exec(block[1]))) {
+      rootValues.add(normalizeCssValue(varMatch[1]));
+    }
   }
 
   const colorLeaves = collectColorLeaves(tokens.colors, 'colors');
@@ -475,16 +521,53 @@ export function verifyMockup({ mockupDir, tokensPath }) {
   }
 
   const screens = manifest.screens;
+  const malformedScreenCount = screens.filter(
+    (screen) => screen == null || typeof screen !== 'object',
+  ).length;
+  if (malformedScreenCount > 0) {
+    return {
+      violations: [
+        {
+          code: 'M001',
+          message: `manifest "screens" contains ${malformedScreenCount} entr${malformedScreenCount === 1 ? 'y' : 'ies'} that ${malformedScreenCount === 1 ? 'is' : 'are'} not an object`,
+        },
+      ],
+      stats: { screens: 0, states: 0, checks: TOTAL_CHECKS },
+    };
+  }
+
+  const violations = sanitizeStateEntries(screens);
   const screenIds = new Set(screens.map((screen) => screen.screen_id).filter(Boolean));
-  const violations = [
+  violations.push(
     ...checkNavTargets(manifest, screenIds),
     ...checkScreenIdsUnique(screens),
     ...checkStateIdsUnique(screens),
     ...checkSingleInitial(screens),
     ...checkStateHasNoScreenFields(screens),
-  ];
+  );
 
-  const html = fs.readFileSync(htmlPath, 'utf8');
+  const totalStates = screens.reduce(
+    (count, screen) => count + (Array.isArray(screen.states) ? screen.states.length : 0),
+    0,
+  );
+  const stats = { screens: screens.length, states: totalStates, checks: TOTAL_CHECKS };
+
+  // From here on, every read is of a file that is not the manifest itself. `verifyMockup` is
+  // documented as pure ("reads files, returns findings, never calls process.exit") — a missing
+  // or unreadable index.html / tokens.json becomes a finding under the check that needed it,
+  // carrying the manifest-derived findings already collected above, rather than an uncaught
+  // exception.
+  let html;
+  try {
+    html = fs.readFileSync(htmlPath, 'utf8');
+  } catch (error) {
+    violations.push({
+      code: 'M007',
+      message: `failed to read markup at "${htmlPath}": ${error.message}`,
+    });
+    return { violations, stats };
+  }
+
   const markup = stripNonMarkup(html);
   const sections = findSections(markup);
   const lineOffsets = buildLineIndex(html);
@@ -501,17 +584,19 @@ export function verifyMockup({ mockupDir, tokensPath }) {
     }
   }
 
-  const tokens = JSON.parse(fs.readFileSync(tokensPath, 'utf8'));
+  let tokens;
+  try {
+    tokens = JSON.parse(fs.readFileSync(tokensPath, 'utf8'));
+  } catch (error) {
+    violations.push({
+      code: 'M010',
+      message: `failed to load tokens at "${tokensPath}": ${error.message}`,
+    });
+    return { violations, stats };
+  }
   violations.push(...checkTokensMirrored(html, tokens));
 
-  const totalStates = screens.reduce(
-    (count, screen) => count + (Array.isArray(screen.states) ? screen.states.length : 0),
-    0,
-  );
-  return {
-    violations,
-    stats: { screens: screens.length, states: totalStates, checks: TOTAL_CHECKS },
-  };
+  return { violations, stats };
 }
 
 function parseCliArgs(argv) {

@@ -346,18 +346,31 @@ test('M010 fires when a semantic colour value changes without touching :root', (
 test('must-not-fire: <script>-block decoy is not read by M008/M009', () => {
   // The good fixture's <script> block contains data-states="a b" and go(screenId, stateId)
   // in a comment; if stripNonMarkup were missing, both would misfire.
+  assert.match(
+    GOOD_HTML,
+    /<script>[\s\S]*data-states="a b"[\s\S]*go\(screenId, stateId\)[\s\S]*<\/script>/,
+    'fixture no longer contains the <script>-block decoy',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(violations, []);
 });
 
 test('must-not-fire: HTML-comment decoy is not read by M008', () => {
   // The good fixture contains <!-- <div data-states="nope"> --> ahead of the first section.
+  assert.ok(
+    GOOD_HTML.includes('<!-- <div data-states="nope"></div> -->'),
+    'fixture no longer contains the HTML-comment decoy',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(violations, []);
 });
 
 test('must-not-fire: a computed go() second argument is not validated as a state', () => {
   // The good fixture's home section contains go('home', flag ? 'filled' : 'empty').
+  assert.ok(
+    GOOD_HTML.includes(`go('home', flag ? 'filled' : 'empty')`),
+    'fixture no longer contains the computed go() state decoy',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(
     violations.filter((v) => v.code === 'M009'),
@@ -367,6 +380,10 @@ test('must-not-fire: a computed go() second argument is not validated as a state
 
 test('must-not-fire: colors.palette.* is excluded from M010', () => {
   // The good fixture's tokens.json has colors.palette.blue.500, absent from :root.
+  assert.ok(
+    GOOD_TOKENS_JSON.includes('"500": "#3b82f6"') && !GOOD_HTML.includes('#3b82f6'),
+    'fixture no longer has an unmirrored colors.palette.* leaf',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(
     violations.filter((v) => v.code === 'M010'),
@@ -376,6 +393,18 @@ test('must-not-fire: colors.palette.* is excluded from M010', () => {
 
 test('must-not-fire: a stateless screen does not require an initial state', () => {
   // The good fixture's "about" screen has no `states` key and no data-states in its section.
+  assert.ok(
+    GOOD_MANIFEST_JS.includes("      screen_id: 'about',\n      route: '/about',\n      kind: 'html',\n    },"),
+    'fixture "about" screen no longer matches the expected stateless shape',
+  );
+  const aboutSectionOnly = GOOD_HTML.slice(
+    GOOD_HTML.indexOf('id="s-about"'),
+    GOOD_HTML.indexOf('id="custom-profile-node"'),
+  );
+  assert.ok(
+    !aboutSectionOnly.includes('data-states'),
+    'fixture "about" section unexpectedly gained a data-states attribute',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(
     violations.filter((v) => v.code === 'M005'),
@@ -391,6 +420,10 @@ test('must-not-fire: a stateless screen does not require an initial state', () =
 
 test('data-states whitespace splitting: multiple spaces, empty tokens dropped', () => {
   // The good fixture's home section has data-states="filled   empty".
+  assert.ok(
+    GOOD_HTML.includes('data-states="filled   empty"'),
+    'fixture no longer contains the multi-space data-states decoy',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(
     violations.filter((v) => v.code === 'M008'),
@@ -400,6 +433,10 @@ test('data-states whitespace splitting: multiple spaces, empty tokens dropped', 
 
 test('two data-states on one line are both scanned', () => {
   // The good fixture's home section has two adjacent <div data-states="…"> on one line.
+  assert.ok(
+    GOOD_HTML.includes('<div data-states="filled"></div><div data-states="empty"></div>'),
+    'fixture no longer contains the two-data-states-on-one-line decoy',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(
     violations.filter((v) => v.code === 'M008'),
@@ -409,6 +446,10 @@ test('two data-states on one line are both scanned', () => {
 
 test('two go() calls on one line are both scanned', () => {
   // The good fixture's home section has go('about') and go('profile') in one line.
+  assert.ok(
+    GOOD_HTML.includes(`onclick="go('about')">About</button><button onclick="go('profile')">`),
+    'fixture no longer contains the two-go()-calls-on-one-line decoy',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(
     violations.filter((v) => v.code === 'M009'),
@@ -418,12 +459,20 @@ test('two go() calls on one line are both scanned', () => {
 
 test('negative lookalikes are not matched: data-statesX and cargo(...)', () => {
   // The good fixture's home section has data-statesX="ignored" and onclick="cargo('nonexistent')".
+  assert.ok(
+    GOOD_HTML.includes('data-statesX="ignored"') && GOOD_HTML.includes(`cargo('nonexistent')`),
+    'fixture no longer contains the negative-lookalike decoys',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(violations, []);
 });
 
 test('rgba leading-zero normalisation treats .45 and 0.45 as equal', () => {
   // The good fixture's :root uses "rgba(15, 23, 42, .45)"; tokens.json uses "0.45".
+  assert.ok(
+    GOOD_HTML.includes('rgba(15, 23, 42, .45)') && GOOD_TOKENS_JSON.includes('rgba(15, 23, 42, 0.45)'),
+    'fixture no longer exercises rgba leading-zero normalisation',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(
     violations.filter((v) => v.code === 'M010'),
@@ -433,6 +482,10 @@ test('rgba leading-zero normalisation treats .45 and 0.45 as equal', () => {
 
 test('hex case normalisation treats #ABCDEF and #abcdef as equal', () => {
   // The good fixture's :root uses "#ABCDEF"; tokens.json uses "#abcdef".
+  assert.ok(
+    GOOD_HTML.includes('#ABCDEF') && GOOD_TOKENS_JSON.includes('#abcdef'),
+    'fixture no longer exercises hex-case normalisation',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(
     violations.filter((v) => v.code === 'M010'),
@@ -440,7 +493,9 @@ test('hex case normalisation treats #ABCDEF and #abcdef as equal', () => {
   );
 });
 
-test(':root extraction stops at its own closing brace, not a nested block', () => {
+test('multiple :root blocks are scanned: a value present in neither still reports M010', () => {
+  // A dark-mode media query nesting a second, valid :root selector — not a bare declaration
+  // directly inside @media, which is invalid CSS and would never be parsed as a :root block.
   const html = mustReplace(
     GOOD_HTML,
     `:root {
@@ -456,16 +511,46 @@ test(':root extraction stops at its own closing brace, not a nested block', () =
   --brand: #111111;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: #222222;
+  }
+}`,
+  );
+  const tokensJson = JSON.stringify({ colors: { brandPrimary: '#333333' } });
+  const { violations } = verifyMockup(writeFixture({ html, tokensJson }));
+  // Neither the outer (#111111) nor the nested dark-mode (#222222) block has #333333.
+  assert.deepEqual(codesOf(violations), ['M010']);
+  assert.match(violations[0].message, /colors\.brandPrimary/);
+});
+
+test('multiple :root blocks are scanned: a value present only in a nested dark-mode block is mirrored', () => {
+  const html = mustReplace(
+    GOOD_HTML,
+    `:root {
+  --brand: #6366f1;
+  --overlay-scrim: rgba(15, 23, 42, .45);
+  --accent: #ABCDEF;
+}
+
 @media (max-width: 600px) {
-  --brand: #222222;
+  .nested { color: red; }
+}`,
+    `:root {
+  --brand: #111111;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: #222222;
+  }
 }`,
   );
   const tokensJson = JSON.stringify({ colors: { brandPrimary: '#222222' } });
   const { violations } = verifyMockup(writeFixture({ html, tokensJson }));
-  // If :root extraction over-reached into the @media block, the decoy --brand: #222222 there
-  // would wrongly satisfy the token and mask this violation.
-  assert.deepEqual(codesOf(violations), ['M010']);
-  assert.match(violations[0].message, /colors\.brandPrimary/);
+  // #222222 only appears in the nested, dark-mode :root block — a scan of the first :root
+  // block alone would wrongly report this as unmirrored.
+  assert.deepEqual(violations, []);
 });
 
 test('nested section element does not split a screen', () => {
@@ -497,6 +582,11 @@ test('nested section element does not split a screen', () => {
 test('explicit dom_id is honoured', () => {
   // The good fixture's "profile" screen declares dom_id: 'custom-profile-node', not
   // the default s-profile — if dom_id were ignored, M007 would report "no DOM node".
+  assert.ok(
+    GOOD_MANIFEST_JS.includes("dom_id: 'custom-profile-node'") &&
+      GOOD_HTML.includes('id="custom-profile-node"'),
+    'fixture no longer declares an explicit dom_id for "profile"',
+  );
   const { violations } = verifyMockup(writeFixture());
   assert.deepEqual(
     violations.filter((v) => v.code === 'M007'),
@@ -526,4 +616,60 @@ test('an empty states array is not an M005 violation, but a data-states there is
   assert.deepEqual(codesOf(violations), ['M008']);
   assert.match(violations[0].message, /"empty-states-screen"/);
   assert.match(violations[0].message, /"ghost"/);
+});
+
+// ---------------------------------------------------------------------------
+// CodeRabbit findings on PR #90 — section-tag tolerance, multi-:root scanning (above),
+// pure-function error handling, and decoy-presence guards (above).
+// ---------------------------------------------------------------------------
+
+test('findSections tolerates reversed attribute order and an additional class', () => {
+  const html = mustReplace(
+    GOOD_HTML,
+    '<section class="app-screen" id="s-about">',
+    '<section id="s-about" class="mu-card app-screen">',
+  );
+  const { violations } = verifyMockup(writeFixture({ html }));
+  assert.deepEqual(violations, []);
+});
+
+test('a missing index.html is reported as an M007 finding, not a thrown error', () => {
+  const { mockupDir, tokensPath } = writeFixture();
+  fs.rmSync(path.join(mockupDir, 'index.html'));
+  const { violations, stats } = verifyMockup({ mockupDir, tokensPath });
+  assert.deepEqual(codesOf(violations), ['M007']);
+  assert.match(violations[0].message, /failed to read markup/);
+  // Manifest-derived stats are still populated — only the markup-dependent checks are skipped.
+  assert.equal(stats.screens, 3);
+});
+
+test('a malformed tokens.json is reported as an M010 finding, not a thrown error', () => {
+  const { mockupDir, tokensPath } = writeFixture();
+  fs.writeFileSync(tokensPath, '{ not valid json');
+  const { violations } = verifyMockup({ mockupDir, tokensPath });
+  assert.deepEqual(codesOf(violations), ['M010']);
+  assert.match(violations[0].message, /failed to load tokens/);
+});
+
+test('a null entry in manifest "screens" is reported as an M001 finding, not a thrown error', () => {
+  const manifestJs = mustReplace(
+    GOOD_MANIFEST_JS,
+    'screens: [\n',
+    'screens: [\n    null,\n',
+  );
+  const { violations } = verifyMockup(writeFixture({ manifestJs }));
+  assert.deepEqual(codesOf(violations), ['M001']);
+  assert.match(violations[0].message, /screens.*1 entry.*not an object/);
+});
+
+test('a null entry in a screen\'s "states" is reported as an M004 finding, not a thrown error', () => {
+  const manifestJs = mustReplace(
+    GOOD_MANIFEST_JS,
+    "      states: [\n        { state_id: 'filled', label: 'Filled', initial: true },",
+    "      states: [\n        null,\n        { state_id: 'filled', label: 'Filled', initial: true },",
+  );
+  const { violations } = verifyMockup(writeFixture({ manifestJs }));
+  assert.deepEqual(codesOf(violations), ['M004']);
+  assert.match(violations[0].message, /"home"/);
+  assert.match(violations[0].message, /malformed state entry at index 0/);
 });
