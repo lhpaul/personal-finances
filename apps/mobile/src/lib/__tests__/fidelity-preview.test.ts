@@ -18,6 +18,14 @@ describe('fidelityTestId', () => {
     expect(fidelityTestId('settings')).toBe('fidelity-settings');
     expect(fidelityTestId('home')).toBe('fidelity-home');
   });
+
+  // Implementation plan for issue #20, Decision 13, Testing Strategy Scenario 21: pins the two
+  // literals `scripts/mobile-ui/fidelity-targets.json`'s `ready_test_id` entries depend on, so a
+  // change to this helper's convention cannot silently break the fidelity contract's validator.
+  it('pins the settings-banks and bank-review ready_test_id literals (issue #20)', () => {
+    expect(fidelityTestId('settings-banks')).toBe('fidelity-settings-banks');
+    expect(fidelityTestId('bank-review')).toBe('fidelity-bank-review');
+  });
 });
 
 describe('useFidelityPreview (Decision 9 — release-build inertness)', () => {
