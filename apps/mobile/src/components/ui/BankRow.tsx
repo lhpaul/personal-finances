@@ -38,6 +38,18 @@ export type BankRowProps = {
    * home screen's `ConnectedBanksCard`) omits this prop and keeps its current chevron.
    */
   trailingAccessory?: ReactNode;
+  /**
+   * Additive extension (issue #20, Decision 4): overrides the pressable row's computed
+   * accessibility name (`"<name>, <subLabel>"`) when provided. `settings-banks` needs its row's
+   * accessible name to carry the status word (`"Al día"` / `"Error"`) rather than the visible
+   * relative-time `subLabel` a screen reader would otherwise read verbatim — the visible glyph
+   * badge (`trailingAccessory`) is not independently announced when it sits inside a `Pressable`
+   * with an explicit `accessibilityLabel`, so the status has to reach the accessible name this
+   * way instead. Ignored when `unavailableLabel` produces the non-pressable/unavailable
+   * rendering. Every existing call site (the home screen's `ConnectedBanksCard`, the connect-a-
+   * bank picker) omits this prop and keeps the default `"<name>, <subLabel>"` computation.
+   */
+  accessibilityLabel?: string;
 };
 
 /** `.mu-bank`, `__logo`, `__name` plus the shared `.mu-item__txt`, `__sub`, `__chev` (home-screen
@@ -53,6 +65,7 @@ export function BankRow({
   onPress,
   unavailableLabel,
   trailingAccessory,
+  accessibilityLabel,
 }: BankRowProps) {
   const touchMetrics = TOUCH_METRICS.bankRow;
   const isUnavailable = onPress === undefined && unavailableLabel !== undefined;
@@ -139,7 +152,7 @@ export function BankRow({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${name}, ${subLabel}`}
+      accessibilityLabel={accessibilityLabel ?? `${name}, ${subLabel}`}
       onPress={onPress}
       hitSlop={touchMetrics.hitSlop}
       style={rowStyle}

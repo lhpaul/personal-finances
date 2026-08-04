@@ -136,6 +136,10 @@ export interface RecentMovement {
  */
 export interface BankConnection {
   id: string;
+  /** `financial_institutions.id` (implementation plan for issue #20, Decision 13) — the identity
+   * `home`'s own bank row navigates on, since `[bankId]` (`/settings/banks/[bankId]`) is the
+   * institution id, not this connection's own `id`. */
+  institutionId: string;
   institutionName: string;
   institutionLogoUrl: string | undefined;
   institutionShortName: string | undefined;
@@ -145,6 +149,56 @@ export interface BankConnection {
   lastSyncAt: string | null;
   lastSuccessAt: string | null;
   lastErrorCode: string | null;
+}
+
+/**
+ * `settings-banks` (list) and `bank-review` (detail)'s shared connection row shape
+ * (implementation plan for issue #20, Layer-by-Layer, Resolution R6). Unlike {@link BankConnection}
+ * (issue #12, unfiltered) and {@link ConnectedBankSummary} (issue #9, `status === 'active' &&
+ * last_success_at is not null` only), this item's own two repository reads —
+ * `listSettingsBankConnections` (filtered to `'active' | 'inactive'`, Assumption A7) and
+ * `getBankConnectionSummary` (unfiltered, so a caller can tell "no connection" apart from "a
+ * disconnected one") — both return this shape. Converging the four is item #9's already-recorded
+ * follow-up F2/F3; this item adds the fourth shape rather than resolving that debt mid-campaign.
+ */
+export interface BankConnectionSummary {
+  id: string;
+  /** `financial_institutions.id` — also the scraper's own `bankId` and the `[bankId]` route
+   * param (Decision 13, Assumption A11). */
+  institutionId: string;
+  name: string;
+  shortName: string | undefined;
+  brandColor: string | undefined;
+  logoUrl: string | undefined;
+  status: 'active' | 'inactive' | 'disconnected';
+  syncStatus: 'idle' | 'syncing' | 'ok' | 'error';
+  lastSyncAt: string | null;
+  lastSuccessAt: string | null;
+  lastErrorCode: 'invalid_credentials' | 'session_closed' | 'network' | 'parse_failed' | null;
+  /** Already the literal catalogue key `sync.errors.<code>` written by issue #10's
+   * `composeFailureMessageKey` — never bank-supplied free text. Carried through for shape parity
+   * with the column; `resolveSyncErrorKey` (Decision 10) computes its return value from
+   * `lastErrorCode` alone and never renders this field's content. */
+  lastErrorMessage: string | null;
+  productCount: number;
+}
+
+/**
+ * `bank-review`'s "Productos" row shape (implementation plan for issue #20, Decision 5). Money
+ * fields are already-parsed integer minor units (through `parseProductMetadata`'s
+ * `assertMinorUnits` guard) or `undefined` when the stored metadata carries none — never `0` as
+ * a stand-in for "absent" (Decision 5's table: "absent → no amount is rendered").
+ */
+export interface BankProductSummary {
+  id: string;
+  externalId: string;
+  type: string;
+  name: string;
+  currencyCode: string;
+  mask: string | undefined;
+  balanceMinorUnits: number | undefined;
+  creditLimitMinorUnits: number | undefined;
+  availableCreditMinorUnits: number | undefined;
 }
 
 /**

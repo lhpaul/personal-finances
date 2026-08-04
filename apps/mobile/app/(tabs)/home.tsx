@@ -77,8 +77,10 @@ export default function Home() {
     (transactionId: string) => router.push(`/transactions/${transactionId}`),
     [router],
   );
+  // `institutionId`, not the connection's own row id — `/settings/banks/[bankId]` resolves
+  // `bankId` as `financial_institutions.id` (issue #20, Decision 13).
   const goToBank = useCallback(
-    (connectionId: string) => router.push(`/settings/banks/${connectionId}`),
+    (institutionId: string) => router.push(`/settings/banks/${institutionId}`),
     [router],
   );
 
