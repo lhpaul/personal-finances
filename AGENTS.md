@@ -230,6 +230,12 @@ pnpm fidelity --screen home --state pending      # full gate: mockup + simulator
 pnpm fidelity --all --dry-run                    # lists every target, its profile, fixture and status
 pnpm fidelity:verify-gate                        # proves the comparator discriminates, both directions
 
+# EAS build / submit (see docs/project/5-release-and-signing-runbook.md — item #23)
+pnpm mobile:build:dev-store         # eas build --profile development (dev client)
+pnpm mobile:build:preview           # eas build --profile preview (internal distribution)
+pnpm mobile:build:production-store  # eas build --profile production (store)
+pnpm mobile:submit:ios              # eas submit --platform ios --profile production
+
 # Lint / Format
 pnpm lint
 pnpm format
@@ -291,6 +297,10 @@ automation; keep operational labels such as `ready-for-human-review`,
 - **Feature and fix PRs** merged into `develop` add entries under `[Unreleased]` in `CHANGELOG.md`; do not convert to a version number on merge. Spec-only and plan-only PRs are exempt. Fixes or changes to unreleased work should update the existing entry rather than adding a new one. In parallel batches, each PR adds its own CHANGELOG entry as normal; merge conflicts are resolved by the batch-merge auto-resolution (protocol 94 Step 4.3).
 - **Hotfix PRs** (`hotfix/*`) are the exception: they write a **new versioned section** (e.g., `[1.0.1] - YYYY-MM-DD`) directly below `[Unreleased]` (above all prior versioned sections), not an `[Unreleased]` entry. A hotfix patches released code on `main` and is released immediately on merge — `auto-tag-release.yml` creates the corresponding tag automatically. The backport PR carries the versioned entry to `develop`.
 - **A new version is created when releasing or hotfixing**: for normal releases, run the Prepare Release workflow (`/prepare-release` or `docs/workflow/development-workflow/protocols/05-prepare-release-protocol.md`) — that creates a `release/v[X.Y.Z]` branch, renames `[Unreleased]` to `[X.Y.Z]` in the CHANGELOG, opens PRs to `main` and backport to `develop`, then skips release-branch reviewer loops while driving regression + CI readiness on the **main** release PR before merge. For hotfixes, the developer writes the versioned section directly in Step 6 of Path 4 (`03-implement-development-protocol.md`) — no release branch is created.
+- **Which manifests protocol 05 Step 4 bumps**: exactly `package.json` (root) and
+  `apps/mobile/package.json` — see
+  [`docs/project/5-release-and-signing-runbook.md`](docs/project/5-release-and-signing-runbook.md#prepare-release-integration)
+  for the reconciled list and how the release build fits around the merge to `main`.
 
 ### Agent commit hooks (optional — Haystack)
 
@@ -325,3 +335,5 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 | The RUT field on `bank-credentials` is locked and you want it editable | A credential entry already exists in the secure store for some bank | Clear the app's data, or use `finanzas://connect-fixtures` → "Limpiar fixtures plantados" |
 | `Unable to resolve "@expo/metro-runtime"` from `expo-router/entry-classic.js` | The installed `node_modules` tree is isolated, not hoisted (pnpm 11 does not read `node-linker` from `.npmrc`; it reads `nodeLinker` from `pnpm-workspace.yaml`) | Run `pnpm check:layout` to confirm, then `pnpm install` (plain, no `--node-linker` flag) |
 | `pnpm fidelity` captures the wrong device, or fails with "no booted simulator matches profile" | The booted simulator is not named `Finanzas Fidelity` | `xcrun simctl list devices booted`; boot or create `Finanzas Fidelity` per `docs/best-practices/stack/mobile-ui-fidelity.md` — `scripts/mobile-ui/capture-simulator.sh --check-only` prints the exact `simctl create` command |
+| The app on the Simulator is labelled `Finanzas`, not `Finanzas [DEV]` | A build installed before #23 landed, carrying the old shared `cl.finanzas.mobile` identifier. Delete it from the Simulator, then rebuild: `expo prebuild --clean` then `expo run:ios` |
+| An `EAS build` workflow run never enqueues a build after a merge to `develop`/`main` | Either `EXPO_TOKEN` is absent (expected before `docs/project/5-release-and-signing-runbook.md`'s H3) — check the `preflight` job's `::notice::` — or the push touched no path under the workflow's filter (`apps/**`, `packages/**`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`) |
