@@ -680,9 +680,10 @@ describe('dates', () => {
       expect(timeOfDayFromParts(parts)).toBe(timeOfDay);
     });
 
-    it('wallClockParts throws RangeError on a malformed input', () => {
+    it('wallClockParts throws RangeError on a malformed input, including empty and whitespace-only', () => {
       expect(() => wallClockParts('9am')).toThrow(RangeError);
       expect(() => wallClockParts('')).toThrow(RangeError);
+      expect(() => wallClockParts('   ')).toThrow(RangeError);
     });
 
     it('timeOfDayFromParts clamps hour12 to 1-12 and minute to 0-59 (Decision 10)', () => {
