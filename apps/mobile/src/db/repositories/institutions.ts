@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import type { Now, NewId } from '../ids';
 import { parseAssets, parseInstitutionMetadata } from '../json';
@@ -11,6 +11,7 @@ import {
 import type {
   AppDatabase,
   BankConnection,
+  BankConnectionSummary,
   ConnectableInstitution,
   ConnectedBankSummary,
   PickerInstitution,
@@ -502,4 +503,126 @@ export function listConnectedBankSummaries(db: AppDatabase): ConnectedBankSummar
       movementCount: movementCountById.get(row.id) ?? 0,
     };
   });
+}
+
+// -------------------------------------------------------------------------------------------
+// settings-banks / bank-review (issue #20). Two reads share one row shape (`BankConnectionSummary`,
+// Resolution R6): `listBankConnections` (filtered to `'active' | 'inactive'`) for the list, and
+// `getBankConnectionSummary` (unfiltered) for the detail screen's redirect-when-disconnected
+// guard (Decision 13). Neither reuses `getConnectionByInstitution` (issue #9): that function's
+// `BankConnection` shape carries no `lastErrorMessage`, which `resolveSyncErrorKey` (Decision 10)
+// needs on its input for shape parity with the stored column, so this item reads its own shape
+// instead of extending a merged sibling item's return type.
+// -------------------------------------------------------------------------------------------
+
+interface BankConnectionSummaryRow {
+  id: string;
+  financialInstitutionId: string;
+  institutionName: string;
+  institutionMetadata: string | null;
+  institutionAssets: string | null;
+  status: string;
+  syncStatus: string;
+  lastSyncAt: string | null;
+  lastSuccessAt: string | null;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
+  createdAt: string;
+}
+
+function bankConnectionSummarySelection(db: AppDatabase) {
+  return db
+    .select({
+      id: userFinancialInstitutions.id,
+      financialInstitutionId: userFinancialInstitutions.financialInstitutionId,
+      institutionName: financialInstitutions.name,
+      institutionMetadata: financialInstitutions.metadata,
+      institutionAssets: financialInstitutions.assets,
+      status: userFinancialInstitutions.status,
+      syncStatus: userFinancialInstitutions.syncStatus,
+      lastSyncAt: userFinancialInstitutions.lastSyncAt,
+      lastSuccessAt: userFinancialInstitutions.lastSuccessAt,
+      lastErrorCode: userFinancialInstitutions.lastErrorCode,
+      lastErrorMessage: userFinancialInstitutions.lastErrorMessage,
+      createdAt: userFinancialInstitutions.createdAt,
+    })
+    .from(userFinancialInstitutions)
+    .innerJoin(
+      financialInstitutions,
+      eq(userFinancialInstitutions.financialInstitutionId, financialInstitutions.id),
+    );
+}
+
+function mapBankConnectionSummary(
+  row: BankConnectionSummaryRow,
+  productCount: number,
+): BankConnectionSummary {
+  const metadata = parseInstitutionMetadata(row.institutionMetadata);
+  return {
+    id: row.id,
+    institutionId: row.financialInstitutionId,
+    name: row.institutionName,
+    shortName: metadata.short_name,
+    brandColor: metadata.brand_color,
+    logoUrl: parseAssets(row.institutionAssets).logo,
+    status: row.status as BankConnectionSummary['status'],
+    syncStatus: row.syncStatus as BankConnectionSummary['syncStatus'],
+    lastSyncAt: row.lastSyncAt,
+    lastSuccessAt: row.lastSuccessAt,
+    lastErrorCode: row.lastErrorCode as BankConnectionSummary['lastErrorCode'],
+    lastErrorMessage: row.lastErrorMessage,
+    productCount,
+  };
+}
+
+function countProductsByConnection(db: AppDatabase, connectionIds: string[]): Map<string, number> {
+  if (connectionIds.length === 0) return new Map();
+  const rows = db
+    .select({
+      connectionId: userFinancialProducts.userFinancialInstitutionId,
+      count: sql<number>`count(*)`,
+    })
+    .from(userFinancialProducts)
+    .where(inArray(userFinancialProducts.userFinancialInstitutionId, connectionIds))
+    .groupBy(userFinancialProducts.userFinancialInstitutionId)
+    .all() as { connectionId: string; count: number }[];
+  return new Map(rows.map((row) => [row.connectionId, row.count]));
+}
+
+/**
+ * `settings-banks`'s list (implementation plan for issue #20, Assumption A7): one row per
+ * connection whose `status` is `'active'` or `'inactive'` — a `'disconnected'` connection is
+ * never listed (Decision 1's "excluded from the list" consequence). Ordered by `created_at` so
+ * the list is stable across reads.
+ */
+export function listBankConnections(db: AppDatabase): BankConnectionSummary[] {
+  const rows = bankConnectionSummarySelection(db)
+    .where(inArray(userFinancialInstitutions.status, ['active', 'inactive']))
+    .orderBy(asc(userFinancialInstitutions.createdAt))
+    .all() as BankConnectionSummaryRow[];
+
+  const countById = countProductsByConnection(
+    db,
+    rows.map((row) => row.id),
+  );
+  return rows.map((row) => mapBankConnectionSummary(row, countById.get(row.id) ?? 0));
+}
+
+/**
+ * `bank-review`'s single-connection read (implementation plan for issue #20, Decision 13):
+ * unlike {@link listBankConnections}, this is **not** filtered by `status` — the caller
+ * distinguishes "no connection at all" (`undefined`) from "a connection that exists but is
+ * disconnected" (`status: 'disconnected'`) and redirects to `/settings/banks` on either.
+ */
+export function getBankConnectionSummary(
+  db: AppDatabase,
+  institutionId: string,
+): BankConnectionSummary | undefined {
+  const row = bankConnectionSummarySelection(db)
+    .where(eq(userFinancialInstitutions.financialInstitutionId, institutionId))
+    .get() as BankConnectionSummaryRow | undefined;
+  if (row === undefined) return undefined;
+
+  const countById = countProductsByConnection(db, [row.id]);
+  return mapBankConnectionSummary(row, countById.get(row.id) ?? 0);
 }
