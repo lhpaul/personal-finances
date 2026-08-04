@@ -23,8 +23,9 @@ import { theme } from '../../src/theme';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
-/** Every branch calls `t(...)` with a literal key (never a variable key), mirroring the
- * discipline `settings/index.tsx`'s `resolveSubtitle` established for a closed union. */
+/** Every branch below calls the translate function with its own literal key (never a variable
+ * key), mirroring the discipline `settings/index.tsx`'s `resolveSubtitle` established for a
+ * closed union. */
 function errorCopy(t: Translate, error: CategoriesSettingsErrorKey): string {
   switch (error) {
     case 'reorder':
