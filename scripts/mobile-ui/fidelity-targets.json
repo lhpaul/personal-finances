@@ -709,56 +709,83 @@
     {
       "screen_id": "settings-banks",
       "state_id": "list",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/banks/index.tsx",
+      "deep_link": "finanzas:///settings/banks?fidelity=1&fidelityScreen=settings-banks&fidelityState=list",
+      "ready_test_id": "fidelity-settings-banks"
     },
     {
       "screen_id": "settings-banks",
       "state_id": "empty",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/banks/index.tsx",
+      "deep_link": "finanzas:///settings/banks?fidelity=1&fidelityScreen=settings-banks&fidelityState=empty",
+      "ready_test_id": "fidelity-settings-banks"
     },
     {
       "screen_id": "settings-banks",
       "state_id": "disconnect-confirm",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/banks/index.tsx",
+      "deep_link": "finanzas:///settings/banks?fidelity=1&fidelityScreen=settings-banks&fidelityState=disconnect-confirm",
+      "ready_test_id": "fidelity-settings-banks"
     },
     {
       "screen_id": "bank-review",
       "state_id": "ok",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/banks/[bankId].tsx",
+      "deep_link": "finanzas:///settings/banks/banco-de-chile?fidelity=1&fidelityScreen=bank-review&fidelityState=ok",
+      "ready_test_id": "fidelity-bank-review"
     },
     {
       "screen_id": "bank-review",
       "state_id": "error",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/banks/[bankId].tsx",
+      "deep_link": "finanzas:///settings/banks/banco-de-chile?fidelity=1&fidelityScreen=bank-review&fidelityState=error",
+      "ready_test_id": "fidelity-bank-review"
     },
     {
       "screen_id": "settings-categories",
       "state_id": "expense",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/categories.tsx",
+      "deep_link": "finanzas:///settings/categories?fidelity=1&fidelityScreen=settings-categories&fidelityState=expense",
+      "ready_test_id": "fidelity-settings-categories"
     },
     {
       "screen_id": "settings-categories",
       "state_id": "income",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/categories.tsx",
+      "deep_link": "finanzas:///settings/categories?fidelity=1&fidelityScreen=settings-categories&fidelityState=income",
+      "ready_test_id": "fidelity-settings-categories"
     },
     {
       "screen_id": "settings-categories",
       "state_id": "edit",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/categories.tsx",
+      "deep_link": "finanzas:///settings/categories?fidelity=1&fidelityScreen=settings-categories&fidelityState=edit",
+      "ready_test_id": "fidelity-settings-categories"
     },
     {
       "screen_id": "settings-categories",
       "state_id": "delete-confirm",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/categories.tsx",
+      "deep_link": "finanzas:///settings/categories?fidelity=1&fidelityScreen=settings-categories&fidelityState=delete-confirm",
+      "ready_test_id": "fidelity-settings-categories"
     }
   ]
 }

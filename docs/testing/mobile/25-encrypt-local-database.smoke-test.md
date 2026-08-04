@@ -222,8 +222,9 @@ Any open that succeeds without the correct key is a **blocking defect** — it m
 not actually encrypted, regardless of what `cipher_version` reported.
 
 **Optional supplementary check (no app change required)**: pull the app container off the device
-(Xcode → Devices → Download Container on iOS; `adb exec-out run-as cl.finanzas.mobile cat …` on
-Android) and inspect the first 16 bytes of `finanzas.enc.db`:
+(Xcode → Devices → Download Container on iOS; `adb exec-out run-as cl.finanzas.mobile.dev cat …`
+on Android — `cl.finanzas.mobile.dev` is the development-variant package id since #23) and
+inspect the first 16 bytes of `finanzas.enc.db`:
 
 ```bash
 xxd -l 16 finanzas.enc.db

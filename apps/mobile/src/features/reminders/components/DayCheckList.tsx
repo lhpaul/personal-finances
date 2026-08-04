@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 import { Checkbox, Text } from '../../../components/ui';
 import { componentMetrics, theme } from '../../../theme';
@@ -8,8 +9,13 @@ import type { IsoWeekday } from '../../../lib/notifications';
 /** Every branch calls the translation function with a literal key (never a variable key),
  * mirroring `app/(onboarding)/ready.tsx`'s discipline (implementation plan for issue #18,
  * Decision 8's catalogue-key-scan implication) — this is what lets
- * `reminders-catalogue-keys.test.ts` verify every key against the catalogue. */
-function dayLabel(t: ReturnType<typeof useTranslation>['t'], isoWeekday: IsoWeekday): string {
+ * `reminders-catalogue-keys.test.ts` verify every key against the catalogue.
+ *
+ * `t: TFunction` (not `ReturnType<typeof useTranslation>['t']`) — item #21 found that the
+ * standalone-parameter-type form blows up TypeScript's generic resolution
+ * (`TS2589: Type instantiation is excessively deep and possibly infinite`) once the flat
+ * catalogue passes ~740 keys (AGENTS.md Troubleshooting). */
+function dayLabel(t: TFunction, isoWeekday: IsoWeekday): string {
   switch (isoWeekday) {
     case 1:
       return t('reminders.day_1');

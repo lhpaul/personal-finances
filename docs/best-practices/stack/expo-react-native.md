@@ -71,6 +71,23 @@ implemented in the description.
 - The scraper's WebView stays hidden and mounted only during a sync. Unmount it when the run
   ends.
 
+## Build variants
+
+`APP_VARIANT` (`development` / `preview` / `production`) is the **only** supported build-time
+switch, and `apps/mobile/app.config.js` is the **only** place it is read — every `eas.json`
+build profile sets it, it defaults to `development` for local `expo run:ios` and the CI `bundle`
+job, and an unrecognised value throws rather than falling back silently. It selects the app name
+and the iOS/Android bundle identifier only (`Finanzas [DEV]` / `[BETA]` / plain `Finanzas`,
+`cl.finanzas.mobile[.dev|.preview]` / `cl.finanzas.mobile`) — nothing else.
+
+**No feature code may read `process.env.APP_VARIANT` or branch on it.** There is no
+environment-dependent behaviour inside the app: no first-party server call differs by
+environment (there is no backend), and no feature flag is implemented this way. If a screen ever
+needs to know something at runtime, that is a product decision requiring its own design, not a
+reuse of the build variant. See
+[`docs/project/5-release-and-signing-runbook.md`](../../project/5-release-and-signing-runbook.md)
+for the full build/release pipeline.
+
 ## Native modules and permissions
 
 - Notifications: `expo-notifications`, **local scheduling only** — no push token, no server
@@ -102,6 +119,29 @@ implemented in the description.
   feature hook must never hold its own copy of the `sqlite`/`db` handle across a reset — always
   call `getAppDatabase()` again after any reset completes.
 - Anything requiring a native module needs a dev build, not Expo Go. Say so in the PR.
+
+## Drag-to-reorder gestures
+
+Neither `react-native-gesture-handler` nor `react-native-reanimated` is installed, and that is
+deliberate (item #8's plan). `#screen=settings-categories`'s drag-to-reorder (issue #21) is the
+sanctioned pattern for the next surface that needs one:
+
+- The gesture shell (`PanResponder` + `Animated`) lives in exactly one presentational component —
+  `apps/mobile/src/features/categories/components/CategoryReorderList.tsx` — and nowhere else.
+- Every decision the drag makes (which index a drop resolves to, how the list re-orders) is a
+  **pure, React-free function** in a sibling module (`reorder.ts`: `moveItem`, `resolveDropIndex`),
+  unit-tested directly. The gesture shell only wires `PanResponder` callbacks to those functions
+  and to `View.onLayout` measurements — so only the shell can be wrong, and the shell itself is
+  thin enough to review by inspection.
+- `PanResponder` instances are created once per draggable row id and cached (a `Map` in a
+  `useRef`), not recreated every render; the callbacks read every value that can change across
+  renders (the current order, the latest `onReorder`) through refs, never through a closed-over
+  render-time variable — the same staleness class `useWipeLocalData`'s `phaseRef` solves for a
+  state machine.
+- Before adding `react-native-gesture-handler` or `react-native-reanimated` for a *different*
+  screen's gesture, re-read this decision and its rationale (implementation plan for issue #21,
+  Decision 10) — a native gesture library is a dependency decision for the parent orchestrator,
+  not a per-screen choice.
 
 ## Copy and formatting
 

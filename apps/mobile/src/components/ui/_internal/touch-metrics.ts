@@ -69,7 +69,8 @@ export type TouchMetricsKey =
   | 'bankRow'
   | 'noteAction'
   | 'topBarBtn'
-  | 'listRow';
+  | 'listRow'
+  | 'categoryReorderHandle';
 
 /**
  * One entry per pressable primitive built in this item, keyed by primitive (plus a size/variant
@@ -134,4 +135,9 @@ export const TOUCH_METRICS = {
   }),
   /** `ListRow` (implementation plan for issue #19, Decision 12). */
   listRow: withMinTarget({ height: componentMetrics.listRow.minTouchHeight }),
+  /** `CategoryReorderList`'s `☰` drag handle (implementation plan for issue #21, Decision 10). */
+  categoryReorderHandle: withMinTarget({
+    width: componentMetrics.categoryReorderRow.handleSize,
+    height: componentMetrics.categoryReorderRow.handleSize,
+  }),
 } satisfies Record<TouchMetricsKey, TouchMetrics>;

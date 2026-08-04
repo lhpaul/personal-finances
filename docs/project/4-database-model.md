@@ -158,13 +158,19 @@ The user's link to one institution on this device. **Holds no secrets** — only
 
 Unique: `(financial_institution_id)` — one connection per bank.
 
-**Item #9 is the only writer of `status`, `credentials_key` and the `idle → syncing` transition.**
-Connecting a bank creates the row (`status: 'active'`, `sync_status: 'idle'`) or, if one already
-exists for that institution, updates only `status` — `credentials_key`, `last_sync_at`,
-`last_success_at` and the error columns survive a reconnect untouched. `credentials_key` is
-deterministic (`bank_creds:<financial_institution_id>`), which is what lets a reconnect resolve
-to the same secure-store entry instead of creating a second one. Item #10 owns every
-`ok` / `error` transition and the last-attempt/last-success bookkeeping that follows a real sync.
+**Item #9 is the only writer of `status: 'active'`, `credentials_key` and the `idle → syncing`
+transition.** Connecting a bank creates the row (`status: 'active'`, `sync_status: 'idle'`) or, if
+one already exists for that institution, updates only `status` — `credentials_key`,
+`last_sync_at`, `last_success_at` and the error columns survive a reconnect untouched.
+`credentials_key` is deterministic (`bank_creds:<financial_institution_id>`), which is what lets a
+reconnect resolve to the same secure-store entry instead of creating a second one. Item #10 owns
+every `ok` / `error` transition and the last-attempt/last-success bookkeeping that follows a real
+sync. **Item #20's settings disconnect action is the only writer of `status: 'disconnected'`** —
+an `UPDATE` of that one column, never a `DELETE`: `user_financial_products` cascades from this
+table (`ON DELETE cascade`) and `transactions` cascades from `user_financial_products`, so
+deleting this row would silently destroy every movement and product the person has. `credentials_key`
+is left byte-identical on disconnect, so a later reconnect reuses the same deterministic secure-store
+key rather than creating a second entry.
 
 **The full local wipe (item #19, "Borrar todos mis datos") derives the credential key space from
 this table.** A keychain has no "list every key" API, so `collectCredentialKeys`
@@ -254,6 +260,32 @@ transaction that, in one commit: re-parents its movements to the ✨ Otros of th
 categories cannot be deleted at all: the app-level guard checks the slug, and a first-migration
 `BEFORE DELETE` trigger raises `ABORT` for the same two slugs, so a raw `DELETE` that bypasses the
 app is rejected by the store itself, not only by the caller that is expected to check first.
+
+**`#screen=settings-categories` (issue #21) — the repository functions the screen owns**, all in
+`apps/mobile/src/db/repositories/categories.ts` beside `deleteCategory` above (unmodified by this
+item):
+
+- `listCategoriesWithUsage(db, { income, locale, startDateLocal, endDateLocal })` — one grouped
+  query returning every category of a direction with a `monthCount` (movements in the given
+  window) and a `totalCount` (all time). Both counts include excluded movements — an excluded
+  movement is still stored and still belongs to the category.
+- `createUserCategory(db, { income, name, emoji }, ports)` — derives a unique `slug` from `name`
+  (`slug.ts`'s `slugifyCategoryName` + `nextAvailableSlug`, checked against every existing slug
+  table-wide, not just the same direction) and inserts at ✨ Otros' current `sort_order`, pushing
+  ✨ Otros one position down. A category's `slug` is derived once, at creation, and never
+  re-derived by a later rename.
+- `renameCategory(db, id, { name, emoji })` — rewrites both locale labels and the emoji, passing
+  the existing `slug` and `sort_order` straight back through `updateCategory`. Refuses either ✨
+  Otros by slug (`isOtrosSlug`) — there is **no** store-level `BEFORE UPDATE` trigger backstopping
+  a rename the way `BEFORE DELETE` backstops a delete (a rename is recoverable by renaming back; a
+  deletion moves other rows irreversibly).
+- `reorderCategories(db, { income, orderedIds })` — the **only other** function, besides
+  `createUserCategory`, allowed to write `sort_order`. Validates `orderedIds` is exactly the set
+  of non-fallback ids of that direction, each once, then assigns `1…n` in the given order and pins
+  ✨ Otros at `n + 1`. An invalid list throws before any `UPDATE` runs.
+
+`isOtrosSlug(slug)` is the one exported predicate every guard (delete, rename, reorder) and the
+screen's own row rendering read, instead of re-spelling `'otros-gasto'` / `'otros-ingreso'`.
 
 ### `merchants`
 

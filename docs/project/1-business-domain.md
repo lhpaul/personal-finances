@@ -26,7 +26,10 @@ framed as small challenges with immediate positive feedback rather than a daily 
 ### Bank connection
 A link between the user and one financial institution on this device. Owns the sync lifecycle
 (`idle → syncing → ok | error`) and points to the keychain entry holding the credentials. It
-never stores the credentials themselves.
+never stores the credentials themselves. Disconnecting (settings, item #20) removes the keychain
+entry and marks the connection `disconnected`; it is a status transition, never a row deletion —
+the products and movements it owns are retained, coherent with BR3 (see the data model's
+`user_financial_institutions` section for why deleting the row is not an option).
 
 ### Account
 A financial product discovered by the scraper inside a connection: cuenta corriente, cuenta
@@ -51,7 +54,8 @@ resolves to this merchant.
 ### Transaction category
 The user's spending taxonomy, split into expense and income. Seeded with a Chilean-flavored
 default set; fully editable. One system category per direction (✨ Otros) acts as the fallback
-and cannot be deleted.
+and cannot be deleted, and cannot be renamed; it is identified by its stable slug, never by its
+displayed name.
 
 ## Business Rules
 

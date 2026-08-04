@@ -29,7 +29,7 @@
 | Item | Value |
 | --- | --- |
 | Actor | The person, on their own device. There is no account and no test user (`BR0`) |
-| Bundle identifier | `cl.finanzas.mobile` |
+| Bundle identifier (dev build, since #23) | `cl.finanzas.mobile.dev` |
 | Valid RUT for the happy path | `12.345.678-5` (check digit 5 is the arithmetically correct one) |
 | Invalid RUT for the inert-button check | `12.345.678-9` — the mockup's placeholder; its check digit is wrong, so it must never enable *Conectar* |
 | Dotless RUT for the formatting check | `123456785` |
@@ -219,7 +219,9 @@ Neither shows balances, amounts or anything about categorization.
 1. Locate the on-device store:
 
    ```bash
-   xcrun simctl get_app_container booted cl.finanzas.mobile data
+   # cl.finanzas.mobile.dev is the development-variant bundle identifier since #23
+   # (apps/mobile/app.config.js -> expo.ios.bundleIdentifier).
+   xcrun simctl get_app_container booted cl.finanzas.mobile.dev data
    ```
 
 2. The database is at `Documents/SQLite/finanzas.db` under that path. Copy it somewhere writable
@@ -387,5 +389,6 @@ presence or absence of every control. This is a lightweight visual comparison, n
 - Entering the flow from the connected-banks list uses the fixtures surface, because the button
   that does it in production belongs to item #20.
 - The `xcrun` commands are macOS/iOS only. On Android, use
-  `adb exec-out run-as cl.finanzas.mobile cat databases/finanzas.db` and `adb logcat` for the
+  `adb exec-out run-as cl.finanzas.mobile.dev cat databases/finanzas.db` (dev-build package id,
+  since #23) and `adb logcat` for the
   equivalent checks in steps 12 and 13.

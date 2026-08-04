@@ -1,6 +1,7 @@
 import { ScrollView, View } from 'react-native';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,7 +11,11 @@ import { ABOUT_LINK_ROWS, resolveAppVersion, type AboutLinkRowDescriptor } from 
 import { fidelityTestId } from '../../src/lib/fidelity-preview';
 import { screenMetrics, theme } from '../../src/theme';
 
-type Translate = ReturnType<typeof useTranslation>['t'];
+// `TFunction` (i18next's own exported type), not `ReturnType<typeof useTranslation>['t']` (found
+// in review: with ~740+ flat catalogue keys, extracting the type this way triggers
+// `TS2589: Type instantiation is excessively deep and possibly infinite` at every call site that
+// reuses it as a parameter type — see AGENTS.md's troubleshooting entry).
+type Translate = TFunction;
 
 /** `ABOUT_LINK_ROWS`' `iconKey`/`titleKey` are catalogue-key *values* (self-documentation and
  * `about.test.ts`'s ordering assertion) — the route resolves each row's copy through this literal

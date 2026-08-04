@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatWallClockLabel } from '@finanzas/shared-utils';
@@ -43,8 +44,13 @@ const DISABLED_REMINDERS: ReminderSettings = { enabled: false, timeOfDay: undefi
  * exactly one place (found in review: an earlier revision reimplemented the day-sort and the
  * weekdays/everyday/custom classification here too, unreachable by `ready-summary.ts`'s own
  * tests and able to silently drift from them).
+ *
+ * Takes `t: TFunction` (i18next's own exported type), not `ReturnType<typeof useTranslation>['t']`
+ * (found in review, item #21: with ~740+ flat catalogue keys, extracting the type this way
+ * triggers `TS2589: Type instantiation is excessively deep and possibly infinite` at every call
+ * site that reuses it as a parameter type — see AGENTS.md's troubleshooting entry).
  */
-function translateReminderDayKey(t: ReturnType<typeof useTranslation>['t'], key: string): string {
+function translateReminderDayKey(t: TFunction, key: string): string {
   switch (key) {
     case 'reminders.day_1':
       return t('reminders.day_1');
@@ -65,7 +71,7 @@ function translateReminderDayKey(t: ReturnType<typeof useTranslation>['t'], key:
   }
 }
 
-function reminderDaysLabel(t: ReturnType<typeof useTranslation>['t'], days: number[]): string {
+function reminderDaysLabel(t: TFunction, days: number[]): string {
   const summary = summarizeReminderDays(days);
   const key = reminderDaysKey(summary);
   if (key === 'reminders.days_weekdays') return t('reminders.days_weekdays');

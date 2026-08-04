@@ -244,23 +244,39 @@ as the user's own banking app, and is the accepted trade for never centralizing 
 
 There are no server environments. "Environment" means **build profile**, via EAS.
 
-| Environment | Purpose | Endpoint |
-|-------------|---------|----------|
-| `dev` | Local development, app name `Finanzas [DEV]` | Simulator / device via Expo dev server |
-| `preview` | Internal builds for real-device testing | TestFlight / internal APK |
-| `production` | Store builds | App Store / Play Store |
+| Environment | Purpose | App name / bundle id | Endpoint |
+|-------------|---------|-----------------------|----------|
+| `development` | Local development and CI's `bundle` job | `Finanzas [DEV]` · `cl.finanzas.mobile.dev` | Simulator / device via Expo dev server |
+| `preview` | Internal builds for real-device testing | `Finanzas [BETA]` · `cl.finanzas.mobile.preview` | TestFlight internal / internal APK |
+| `production` | Store builds | `Finanzas` · `cl.finanzas.mobile` | App Store / Play Store |
 
 ### Deployment Mapping
 
-| Branch | Target | Deployment workflow | Approval / protections |
-|--------|--------|---------------------|------------------------|
-| `develop` | `preview` (EAS internal) | `.github/workflows/deploy.yml` | required checks only |
-| `main` | `production` (EAS store submit) | `.github/workflows/deploy.yml` | required reviewers + environment protection |
+| Branch | Target | Deployment workflow | Path filter | Approval / protections |
+|--------|--------|---------------------|-------------|------------------------|
+| `develop` | `preview` (EAS internal) | `.github/workflows/eas-build.yml` | `apps/**`, `packages/**`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the workflow file | `develop` environment, no required reviewer |
+| `main` | `production` (EAS store submit) | `.github/workflows/eas-build.yml` | same as above | `production` environment — required reviewer + `EXPO_TOKEN`/`EAS_AUTO_SUBMIT` gates |
 
-Environment-specific secrets, **names only**: `EXPO_TOKEN`, `EAS_PROJECT_ID`, `APPLE_TEAM_ID`.
+Every build job gates on a `preflight` job that checks `EXPO_TOKEN`: absent, the workflow stays
+green and the build job skips (see
+[`5-release-and-signing-runbook.md`](5-release-and-signing-runbook.md)).
+`.github/workflows/deploy.yml` remains the framework's unused placeholder — it is not the
+delivery workflow and carries no build logic.
+
+Credential model (details in
+[`5-release-and-signing-runbook.md`](5-release-and-signing-runbook.md)): the only **repository
+secret** is `EXPO_TOKEN` (an Expo personal access token). The EAS project id
+(`extra.eas.projectId`) and the bundle identifiers are **non-secret, committed** identifiers, not
+credentials. Apple signing material (distribution certificate, provisioning profile, App Store
+Connect API key) lives entirely in EAS-managed credentials and never touches GitHub or this
+repository.
 
 There is no auth secret, because there is no auth. No bank-related secret exists at build time
 either — credentials only ever come from the user, at runtime, on the device.
+
+No EAS Update / OTA channel is used: a JavaScript change never reaches a device without going
+through the store or an internal build the owner explicitly installs, keeping "the app makes no
+requests to first-party servers" intact.
 
 ## External Integrations
 

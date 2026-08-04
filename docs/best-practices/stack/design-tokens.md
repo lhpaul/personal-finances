@@ -58,7 +58,12 @@ than being duplicated per primitive).
   `.mu-item__title`; the shared `.mu-item__chev`/`__sub`/`__txt` stay under `componentMetrics.
   bankRow`, jointly owned with `BankRow`/`CategoryRow`) and `screenMetrics.settings` (the
   local-profile device avatar and the about screen's brand-block icon — both bare inline styles
-  in the mockup, not `mu-*` classes).
+  in the mockup, not `mu-*` classes). Item #21 added `componentMetrics.categoryReorderRow`
+  (the `☰` drag handle's square touch box and the dragged row's elevation) — drag-to-reorder is
+  undrawn in the mockup, so these are conservative values rather than measured CSS, recorded with
+  that caveat in the group's own doc comment. The icon-picker grid's gap reuses
+  `theme.space['2']` directly rather than duplicating it under a new field — the same "consumed
+  directly" convention `Legend`'s `.mu-legend__row` gap already established.
 
 Both `theme` and `componentMetrics` live in `theme.ts`, so "no hardcoded literal" holds
 literally: `no-style-literals.test.ts` scans every `.ts`/`.tsx` file under `apps/mobile/app/`
@@ -96,7 +101,7 @@ Building a screen means composing these, not restyling from scratch:
 | Mockup class(es) | Component |
 |--------------|-----------|
 | `.mu-h1`…`.mu-xs`, `.mu-eyebrow`, `.mu-label`, `.mu-hint`, `.mu-mono`, `.mu-center` | `<Text variant="h1\|h2\|h3\|body\|bodyLead\|small\|xs\|eyebrow\|label\|hint\|mono" center>` |
-| `.mu-btn` + modifiers | `<Button variant="primary\|muted\|outline\|ghost\|danger\|dangerSoft" size="md\|sm">` |
+| `.mu-btn` + modifiers | `<Button variant="primary\|muted\|outline\|ghost\|danger\|dangerSoft\|ghostDanger" size="md\|sm">` |
 | `.mu-card` + modifiers | `<Card variant="default\|tight\|flat">` |
 | `.mu-hero` | `<Hero gradient="challenge\|income\|expense\|celebration\|brand">` |
 | `.mu-badge` | `<Badge tone="neutral\|ok\|warn\|danger\|info\|celebration">` |

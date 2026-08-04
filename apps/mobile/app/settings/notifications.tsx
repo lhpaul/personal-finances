@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { formatWallClockLabel } from '@finanzas/shared-utils';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,8 +26,13 @@ const ERROR_GLYPH = '⚠️';
 /** Every branch calls the translation function with a literal key (never a variable/template
  * key), mirroring `app/(onboarding)/ready.tsx`'s discipline — this is what lets
  * `reminders-catalogue-keys.test.ts` verify every key against the catalogue and assert no dynamic
- * key is used. */
-function presetLabel(t: ReturnType<typeof useTranslation>['t'], presetId: string): string {
+ * key is used.
+ *
+ * `t: TFunction` (not `ReturnType<typeof useTranslation>['t']`) — item #21 found that the
+ * standalone-parameter-type form blows up TypeScript's generic resolution
+ * (`TS2589: Type instantiation is excessively deep and possibly infinite`) once the flat
+ * catalogue passes ~740 keys (AGENTS.md Troubleshooting). */
+function presetLabel(t: TFunction, presetId: string): string {
   switch (presetId) {
     case 'morning':
       return t('settings_notifications.preset_morning');

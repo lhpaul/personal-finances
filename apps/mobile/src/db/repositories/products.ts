@@ -1,8 +1,8 @@
 import { and, asc, eq } from 'drizzle-orm';
 
-import { mergeProductMetadata, type ProductMetadata } from '../json';
+import { mergeProductMetadata, parseProductMetadata, type ProductMetadata } from '../json';
 import { userFinancialProducts } from '../schema';
-import type { AppDatabase, UserProduct } from '../types';
+import type { AppDatabase, BankProductSummary, UserProduct } from '../types';
 
 /**
  * `user_financial_products` repository (implementation plan Decision 4, Layer-by-Layer; spec
@@ -163,4 +163,52 @@ export function listUserProducts(db: AppDatabase): UserProduct[] {
     .orderBy(asc(userFinancialProducts.name))
     .all() as UserProduct[];
   return rows;
+}
+
+/**
+ * `bank-review`'s "Productos" list (implementation plan for issue #20, Decision 5). Ordered by
+ * `name` here — a stable SQL-level baseline — because the type-aware ordering ("checking, sight,
+ * savings, credit_card, credit_line, then by name") is a domain decision, not a database concern,
+ * and belongs to the pure `sortProductsForDisplay` in `src/features/banks/product-view.ts`
+ * (Decision 3: "the two screens read, they do not compute" — this repository stays a dumb read).
+ */
+export function listProductsForConnection(
+  db: AppDatabase,
+  userFinancialInstitutionId: string,
+): BankProductSummary[] {
+  const rows = db
+    .select({
+      id: userFinancialProducts.id,
+      externalId: userFinancialProducts.externalId,
+      type: userFinancialProducts.type,
+      name: userFinancialProducts.name,
+      currencyCode: userFinancialProducts.currencyCode,
+      metadata: userFinancialProducts.metadata,
+    })
+    .from(userFinancialProducts)
+    .where(eq(userFinancialProducts.userFinancialInstitutionId, userFinancialInstitutionId))
+    .orderBy(asc(userFinancialProducts.name))
+    .all() as {
+    id: string;
+    externalId: string;
+    type: string;
+    name: string;
+    currencyCode: string;
+    metadata: string | null;
+  }[];
+
+  return rows.map((row) => {
+    const metadata = parseProductMetadata(row.metadata);
+    return {
+      id: row.id,
+      externalId: row.externalId,
+      type: row.type,
+      name: row.name,
+      currencyCode: row.currencyCode,
+      mask: metadata.mask,
+      balanceMinorUnits: metadata.balance,
+      creditLimitMinorUnits: metadata.credit_limit,
+      availableCreditMinorUnits: metadata.available_credit,
+    };
+  });
 }

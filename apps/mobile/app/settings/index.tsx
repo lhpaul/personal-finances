@@ -1,6 +1,7 @@
 import { ScrollView } from 'react-native';
 import { formatWallClockLabel } from '@finanzas/shared-utils';
 import { useRouter } from 'expo-router';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,7 +26,11 @@ import { useSettingsHub } from '../../src/features/settings/use-settings-hub';
 import { fidelityTestId } from '../../src/lib/fidelity-preview';
 import { theme } from '../../src/theme';
 
-type Translate = ReturnType<typeof useTranslation>['t'];
+// `TFunction` (i18next's own exported type), not `ReturnType<typeof useTranslation>['t']` (found
+// in review: with ~740+ flat catalogue keys, extracting the type this way triggers
+// `TS2589: Type instantiation is excessively deep and possibly infinite` at every call site that
+// reuses it as a parameter type — see AGENTS.md's troubleshooting entry).
+type Translate = TFunction;
 
 /**
  * Translates a day key exactly the way `app/(onboarding)/ready.tsx` does — a literal `t(...)`

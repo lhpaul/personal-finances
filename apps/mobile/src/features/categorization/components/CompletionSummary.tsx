@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { formatClp } from '@finanzas/shared-utils';
 
@@ -16,8 +17,11 @@ const NO_PREVIOUS_MONTH_GLYPH = '—';
  * established pattern (`ready.tsx`'s `translateReminderDayKey`) — required by `i18next.d.ts`'s
  * compile-time key union. `'unknown'` (no previous-month data, Assumption P2) reuses the "same
  * as last month" copy rather than inventing a fourth tile variant the mockup does not draw.
+ *
+ * Takes `t: TFunction`, not `ReturnType<typeof useTranslation>['t']` (found in review, item #21 —
+ * see AGENTS.md's troubleshooting entry for the `TS2589` this avoids).
  */
-function changeSubLabel(t: ReturnType<typeof useTranslation>['t'], direction: MonthOverMonthDirection): string {
+function changeSubLabel(t: TFunction, direction: MonthOverMonthDirection): string {
   switch (direction) {
     case 'less':
       return t('categorize_complete.tile_change_sub_less');

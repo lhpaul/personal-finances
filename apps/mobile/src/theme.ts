@@ -721,6 +721,18 @@ export const componentMetrics = {
      * size (40, which dominates the title+sub text stack) = 72. */
     minTouchHeight: 72,
   },
+  /** `CategoryReorderList`'s `☰` drag handle (implementation plan for issue #21, Decision 10) —
+   * drag-to-reorder is undrawn in the mockup, so these are conservative values rather than a
+   * measured CSS rule. The icon grid's gap reuses `theme.space['2']` directly (the mockup's
+   * `.mu-grid-3 { gap: var(--sp2) }`, L339) — the same "consumed directly, not duplicated here"
+   * convention `Legend`'s `.mu-legend__row` gap already established above. */
+  categoryReorderRow: {
+    /** The handle's square touch box, sized like `TopBar`'s back button
+     * (`componentMetrics.topBar.buttonSize`) so `withMinTarget` gives it the same treatment. */
+    handleSize: 36,
+    /** Elevation applied to the row being dragged, so it visually lifts above its siblings. */
+    dragElevation: 6,
+  },
 } as const;
 
 /**
