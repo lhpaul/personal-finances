@@ -1,0 +1,40 @@
+appId: cl.finanzas.mobile
+name: 03 a categorization session
+tags:
+  - core
+---
+# STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.stage_queue_action / stage_queue_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar cola de categorización'
+      SUCCESS_LABEL: 'Cola de categorización cargada.'
+- openLink: 'finanzas:///categorize/intro'
+
+# stage-intro.
+- assertVisible: 'Tu primera etapa'
+- tapOn: '🚀 ¡Empezar mi primera etapa!'
+
+# categorize: 4 pending movements (stage-queue-v1.sql), newest first — income, expense,
+# no-merchant, plain.
+- assertVisible: 'Categorizar'
+
+# Movement 1 (stage-tx-income, merchant "Consultoría Digital SpA"): open merchant-edit via the
+# merchant-name tap, confirm the screen, return, then confirm the suggested category and advance.
+- tapOn: 'Consultoría Digital SpA' # data_selectors: stage-queue-v1.sql merchant name
+- assertVisible: 'Configurar comercio'
+- tapOn: 'Volver'
+- assertVisible: 'Categorizar'
+- tapOn: 'Freelance' # data_selectors: seeded category label (income), suggested for this merchant
+- tapOn: 'Siguiente →'
+
+# Movements 2-4: skip (Omitir) — a mix of confirm and skip within one batch (brief scope: "a
+# categorization session").
+- tapOn: 'Omitir'
+- tapOn: 'Omitir'
+- tapOn: 'Omitir'
+
+# categorize-complete: 1 resolved of 4 pending at start -> partial outcome.
+- assertVisible: '¡Buen trabajo!'
+- tapOn: 'Continuar a inicio'
+- assertVisible: 'Finanzas'

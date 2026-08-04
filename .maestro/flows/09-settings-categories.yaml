@@ -1,0 +1,21 @@
+appId: cl.finanzas.mobile
+name: 09 settings categories
+tags:
+  - core
+---
+# Promoted from planned (implementation plan Implementation Order step 12): #21 is merged on
+# develop. STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.synced_home_action / synced_home_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar inicio sincronizado'
+      SUCCESS_LABEL: 'Inicio sincronizado cargado.'
+- openLink: 'finanzas:///settings/categories'
+
+# #screen=settings-categories: expense tab (initial), then income.
+- assertVisible: 'Categorías'
+- assertVisible: '+ Nueva categoría de gasto'
+- tapOn: 'Ingresos'
+- assertVisible: '+ Nueva categoría de ingreso'
+- tapOn: 'Gastos'
+- assertVisible: '+ Nueva categoría de gasto'

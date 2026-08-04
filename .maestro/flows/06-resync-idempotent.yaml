@@ -1,0 +1,37 @@
+appId: cl.finanzas.mobile
+name: 06 re-sync is idempotent
+tags:
+  - core
+---
+# STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.scripted_read_action / scripted_read_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Instalar lectura guionada'
+      SUCCESS_LABEL: 'Lectura guionada instalada.'
+- openLink: 'finanzas:///bank-syncing'
+
+# The syncing screen auto-starts on mount (a pending ConnectHandoff is already armed) and
+# redirects to bank-connected on success — the redirect itself is the sync-completed signal.
+- assertVisible: '¡Banco conectado!'
+
+- openLink: 'finanzas:///transactions'
+- assertVisible: 'Transacciones'
+# Records the current month's header count ("<mes> (<n>)") before the second sync.
+- copyTextFrom:
+    text: '.*\(\d+\)'
+    id: firstSyncMonthHeader
+
+# Re-apply the same scripted read (D6: state application is idempotent) and sync again.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Instalar lectura guionada'
+      SUCCESS_LABEL: 'Lectura guionada instalada.'
+- openLink: 'finanzas:///bank-syncing'
+- assertVisible: '¡Banco conectado!'
+
+- openLink: 'finanzas:///transactions'
+- assertVisible: 'Transacciones'
+# Same read, re-synced: the dedup upsert must leave the count unchanged (non-negotiable 4).
+- assertVisible: '${firstSyncMonthHeader}'

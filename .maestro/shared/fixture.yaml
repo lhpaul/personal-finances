@@ -1,0 +1,15 @@
+appId: cl.finanzas.mobile
+---
+# The one parameterised subflow every state application in every flow goes through
+# (implementation plan for issue #22, D5, D6). Opens the fixture panel, taps the state whose
+# action copy is passed as STATE_LABEL, and asserts the panel's own per-state success line
+# (SUCCESS_LABEL) before returning — the ordering barrier that stops a later deep link from
+# landing before the write completes (concurrent-event-source addendum).
+#
+# Two params, not one (adapted from the plan's illustrative single-STATE_LABEL sample): every
+# `dev.e2e_fixtures.*` state has its own distinct success line
+# (`apps/mobile/src/i18n/es.json`), not a shared generic one — matching this codebase's existing
+# `SampleDataPanel`/`SyncFixtures` panels, which do the same.
+- openLink: 'finanzas:///e2e-fixtures'
+- tapOn: '${STATE_LABEL}'
+- assertVisible: '${SUCCESS_LABEL}'

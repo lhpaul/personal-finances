@@ -1,0 +1,23 @@
+appId: cl.finanzas.mobile
+name: 08 settings banks
+tags:
+  - core
+---
+# Promoted from planned (implementation plan Implementation Order step 12): #20 is merged on
+# develop. STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.synced_home_action / synced_home_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar inicio sincronizado'
+      SUCCESS_LABEL: 'Inicio sincronizado cargado.'
+- openLink: 'finanzas:///settings/banks'
+
+# #screen=settings-banks: the fixture connection's own row.
+- assertVisible: 'Bancos conectados'
+- tapOn: 'Banco de Chile' # data_selectors: seeded institution catalogue name
+
+# #screen=bank-review.
+- assertVisible: 'Productos'
+- tapOn: 'Volver'
+
+- assertVisible: 'Bancos conectados'

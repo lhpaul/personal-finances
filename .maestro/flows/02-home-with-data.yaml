@@ -1,0 +1,21 @@
+appId: cl.finanzas.mobile
+name: 02 home with data
+tags:
+  - core
+---
+# STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.synced_home_action / synced_home_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar inicio sincronizado'
+      SUCCESS_LABEL: 'Inicio sincronizado cargado.'
+- openLink: 'finanzas:///'
+
+# #screen=home: hero, financial summary, trend card, category breakdown, recent movements,
+# connected banks (brief scope: "home with data").
+- assertVisible: 'Finanzas'
+- assertVisible: 'Resumen financiero'
+- assertVisible: 'Análisis de tendencias'
+- assertVisible: 'Análisis por categorías'
+- assertVisible: 'Transacciones recientes'
+- assertVisible: 'Bancos conectados'

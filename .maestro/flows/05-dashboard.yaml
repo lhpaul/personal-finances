@@ -1,0 +1,24 @@
+appId: cl.finanzas.mobile
+name: 05 dashboard
+tags:
+  - core
+---
+# STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.synced_home_action / synced_home_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar inicio sincronizado'
+      SUCCESS_LABEL: 'Inicio sincronizado cargado.'
+- openLink: 'finanzas:///dashboard'
+
+# #screen=dashboard: month segment (initial), trend, spending overview, category report.
+- assertVisible: 'Dashboard'
+- assertVisible: 'Mes'
+- assertVisible: 'Tendencia'
+- assertVisible: 'Resumen de gastos'
+- assertVisible: 'Reporte por categorías'
+
+# Switch to the week segment and confirm the sections re-render under it.
+- tapOn: 'Semana'
+- assertVisible: 'Tendencia'
+- assertVisible: 'Reporte por categorías'

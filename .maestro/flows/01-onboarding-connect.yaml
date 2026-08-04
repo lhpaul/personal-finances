@@ -1,0 +1,60 @@
+appId: cl.finanzas.mobile
+name: 01 first launch, onboarding and bank connection
+tags:
+  - core
+---
+# reset.yaml: launchApp(clearState) -> apply `reset` -> openLink finanzas:///
+- runFlow: ../shared/reset.yaml
+
+# Install the stubbed read while the onboarding flag is still false (D6): the scripted path is
+# checked before readCredentials, so no keychain value is ever used (D8). STATE_LABEL /
+# SUCCESS_LABEL are the es.json values of dev.e2e_fixtures.scripted_read_action /
+# dev.e2e_fixtures.scripted_read_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Instalar lectura guionada'
+      SUCCESS_LABEL: 'Lectura guionada instalada.'
+- openLink: 'finanzas:///'
+
+# Onboarding. `Comenzar` is also onboarding-ready's CTA (D10 hazard), so anchor first.
+- assertVisible: 'Bienvenido a Finanzas'
+- tapOn: 'Comenzar'
+# The third `Continuar` navigates to /(onboarding)/connect-bank (value.tsx has 3 steps).
+- repeat:
+    times: 3
+    commands:
+      - tapOn: 'Continuar'
+
+- tapOn: 'Conectar con mi banco'
+- assertVisible: 'Selecciona tu banco'
+- tapOn: 'Banco de Chile' # data_selectors: seeded institution catalogue name, not an i18n key
+- assertVisible: 'RUT'
+- tapOn:
+    below: 'RUT'
+- inputText: '12.345.678-5' # fixture RUT — flow-contract.json credential_fixtures.rut
+- tapOn:
+    below: 'Clave de internet'
+- inputText: 'ZZE2EPASSZZ' # fixture password — credential_fixtures.password.
+                            # canConnect() requires both fields; omitting either
+                            # leaves `Conectar` disabled.
+- tapOn: 'Conectar'
+
+# bank-syncing: complete_with_data emits the same progress sequence as play_full, then settles
+# with the deterministic non-empty read (D8) — no hidden WebView mounts, no real bank contacted.
+- assertVisible: '¡Banco conectado!'
+- tapOn: 'Estoy listo'
+
+# notifications-intro: skip via "Tal vez después" — deterministic, and avoids the OS permission
+# dialog entirely (flow 10 exercises the schedule screen by deep link instead).
+- assertVisible: 'Activar notificaciones'
+- tapOn: 'Tal vez después'
+
+# onboarding-ready.
+- assertVisible: '¡Todo listo!'
+- tapOn: 'Comenzar'
+
+# The real sync just wrote 6 uncategorized movements, so `Comenzar` routes to /categorize/intro
+# rather than home (useCompleteOnboarding: countUncategorized(db) > 0) — landing on stage-intro
+# is itself evidence the real write path ran, not a staged double of it.
+- assertVisible: 'Tu primera etapa'

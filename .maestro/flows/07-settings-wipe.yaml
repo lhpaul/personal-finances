@@ -1,0 +1,35 @@
+appId: cl.finanzas.mobile
+name: 07 settings wipe (destructive — runs last)
+tags:
+  - core
+  - destructive
+---
+# Promoted from planned (implementation plan Implementation Order step 12): #19 is merged on
+# develop. Runs LAST in .maestro/config.yaml — it wipes the local store, so no other flow may run
+# after it. STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.synced_home_action / synced_home_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar inicio sincronizado'
+      SUCCESS_LABEL: 'Inicio sincronizado cargado.'
+- openLink: 'finanzas:///settings'
+
+# #screen=settings.
+- assertVisible: 'Configuración'
+- tapOn: 'Acerca de'
+
+# #screen=settings-about.
+- assertVisible: 'Privacidad por diseño.'
+- tapOn: 'Volver'
+- assertVisible: 'Configuración'
+- tapOn: 'Perfil local'
+
+# #screen=settings-account (`default` -> `delete-confirm`).
+- assertVisible: 'Perfil local'
+- tapOn: 'Borrar todos mis datos'
+- assertVisible: 'Esta acción es permanente y no se puede deshacer'
+- tapOn: 'Borrar todo'
+
+# `resetAppDatabase()` and the local profile are gone — the app re-enters at onboarding
+# (AGENTS.md: "there is no sign-in — the profile is the device").
+- assertVisible: 'Bienvenido a Finanzas'

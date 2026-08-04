@@ -1,0 +1,29 @@
+appId: cl.finanzas.mobile
+name: 04 transaction detail and exclusion
+tags:
+  - core
+---
+# STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.transaction_detail_action / transaction_detail_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar detalle de transacción'
+      SUCCESS_LABEL: 'Detalle de transacción cargado.'
+- openLink: 'finanzas:///transactions'
+
+# transactions: transaction-detail-v1.sql's three fixture movements share the exact same date,
+# amount and merchant by design (their own header comment) — genuinely ambiguous to a list tap.
+# Deep-linking to the concrete id is the deterministic, honest way to reach a *specific* movement
+# (D5's own philosophy — deterministic state by deep link, not by guessing a list position).
+- assertVisible: 'Transacciones'
+- openLink: 'finanzas:///transactions/detail-tx-categorized'
+
+# transaction-detail (categorized): exclude it.
+- assertVisible: 'Detalle de transacción'
+- tapOn: 'Excluir del análisis'
+- assertVisible: '¿Por qué quieres excluir esta transacción?'
+- tapOn: 'Involucra a más personas'
+- tapOn: 'Confirmar'
+
+# The movement is now excluded — never deleted, and still present in the list (non-negotiable 3).
+- assertVisible: 'Excluida del análisis'

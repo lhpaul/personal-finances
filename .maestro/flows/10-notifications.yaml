@@ -1,0 +1,35 @@
+appId: cl.finanzas.mobile
+name: 10 notifications
+tags:
+  - core
+---
+# Promoted from planned (implementation plan Implementation Order step 12): #18 is merged on
+# develop. STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.synced_home_action / synced_home_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar inicio sincronizado'
+      SUCCESS_LABEL: 'Inicio sincronizado cargado.'
+
+# #screen=notifications-schedule, reached directly by deep link rather than through
+# notifications-intro's "Habilitar notificaciones" — that path requires a real OS permission
+# dialog, which this suite deliberately never depends on (D3's Debug-build posture is about the
+# app, not the OS chrome around it). The custom-time chip and "Solo días laborales" are both
+# es.json literals, so no data-derived time-format selector is needed here.
+- openLink: 'finanzas:///notifications/schedule'
+- assertVisible: '¿Cuándo te funciona mejor?'
+- tapOn: 'Personalizada'
+- assertVisible: 'Hora personalizada'
+- tapOn: 'Continuar'
+- assertVisible: '¿Qué días?'
+- tapOn: 'Solo días laborales'
+- tapOn: 'Continuar'
+
+# Saved and routed onward (onboarding's own post-schedule destination).
+- assertVisible: '¡Todo listo!'
+
+# #screen=settings-notifications: confirms the schedule just written renders back correctly.
+- openLink: 'finanzas:///settings/notifications'
+- assertVisible: 'Recordatorios activados'
+- assertVisible: 'Hora del desafío'
+- assertVisible: 'Días'
