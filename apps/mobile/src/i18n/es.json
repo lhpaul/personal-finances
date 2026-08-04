@@ -329,6 +329,7 @@
   "transactions.manual.error_description": "Ingresa una descripción",
   "transactions.manual.error_amount": "Ingresa un monto válido",
   "transactions.manual.error_product": "Selecciona un producto",
+  "transactions.manual.error_submit": "No pudimos guardar el movimiento. Inténtalo de nuevo.",
 
   "stage_intro.topbar_title": "Etapa 1",
   "stage_intro.back_a11y": "Volver",

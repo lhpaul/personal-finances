@@ -62,6 +62,31 @@ export function appendPage(rows: TransactionListRow[], page: TransactionListPage
   return { rows: [...rows, ...page.rows], nextCursor: page.nextCursor };
 }
 
+/**
+ * Decides whether a just-completed read must be retried once more (found in review on PR #82):
+ * if a nonblank search term was committed before `getAppDatabase()`'s first resolution, the
+ * category catalogue was still empty when {@link resolveSearch} ran, so a category-name match
+ * could be silently under-resolved (`categoryIds: []`) even though the person's category
+ * genuinely exists. Once a read reports a nonempty catalogue for the first time, retry the same
+ * committed term exactly once against it — `alreadyRetried` makes the retry one-shot, so this can
+ * never loop.
+ *
+ * A blank search term never needs this: `resolveSearch('', …)` returns `null` regardless of the
+ * catalogue.
+ */
+export function shouldRetryForCategoryBootstrap(args: {
+  categoriesBeforeRequest: Category[];
+  committedSearchTerm: string;
+  categoriesAfterRequest: Category[];
+  alreadyRetried: boolean;
+}): boolean {
+  const { categoriesBeforeRequest, committedSearchTerm, categoriesAfterRequest, alreadyRetried } = args;
+  if (alreadyRetried) return false;
+  if (committedSearchTerm === '') return false;
+  if (categoriesBeforeRequest.length > 0) return false;
+  return categoriesAfterRequest.length > 0;
+}
+
 export type TransactionsListState =
   | { status: 'pending' }
   | {
@@ -107,6 +132,10 @@ export function useTransactionsList({ locale }: UseTransactionsListParams): UseT
 
   const requestTokenRef = useRef(0);
   const hasFocusedOnce = useRef(false);
+  // One-shot latch for the category-catalogue bootstrap retry (Concurrency addendum, found in
+  // review on PR #82) — set once the catalogue is known to be nonempty, or once a retry has
+  // already been issued, whichever comes first.
+  const categoryBootstrapSettledRef = useRef(false);
   // Held so `loadNextPage` and `submitManualEntry` can read the latest snapshot without becoming
   // an effect dependency themselves.
   const latestRef = useRef({ filters, committedSearchTerm, state, locale });
@@ -137,8 +166,8 @@ export function useTransactionsList({ locale }: UseTransactionsListParams): UseT
     requestTokenRef.current = myToken;
     setIsAppending(false);
 
-    const categories = state.status === 'ready' ? state.categories : [];
-    const search = resolveSearch(committedSearchTerm, categories);
+    const categoriesBeforeRequest = state.status === 'ready' ? state.categories : [];
+    const search = resolveSearch(committedSearchTerm, categoriesBeforeRequest);
 
     loadTransactionsPage({
       getAppDatabase,
@@ -164,6 +193,20 @@ export function useTransactionsList({ locale }: UseTransactionsListParams): UseT
         categories: result.data.categories,
         products: result.data.products,
       });
+
+      if (
+        shouldRetryForCategoryBootstrap({
+          categoriesBeforeRequest,
+          committedSearchTerm,
+          categoriesAfterRequest: result.data.categories,
+          alreadyRetried: categoryBootstrapSettledRef.current,
+        })
+      ) {
+        categoryBootstrapSettledRef.current = true;
+        setReloadToken((token) => token + 1);
+      } else if (result.data.categories.length > 0) {
+        categoryBootstrapSettledRef.current = true;
+      }
     });
     // `state.categories` is deliberately not a dependency: it is read once per run through
     // `latestRef`-free direct closure over `state` at effect-definition time, which already
@@ -194,8 +237,11 @@ export function useTransactionsList({ locale }: UseTransactionsListParams): UseT
       locale: current.locale,
       isCancelled: () => requestTokenRef.current !== myToken,
     }).then((result) => {
-      setIsAppending(false);
+      // Found in review on PR #82: check the token *before* clearing the indicator — otherwise
+      // a stale, superseded response could clear `isAppending` while a newer append (from a
+      // second overlapping `onEndReached`) is still genuinely in flight.
       if (result === undefined || requestTokenRef.current !== myToken) return;
+      setIsAppending(false);
       if (result.status === 'error') {
         setState({ status: 'error', error: result.error });
         return;

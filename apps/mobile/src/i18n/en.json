@@ -329,6 +329,7 @@
   "transactions.manual.error_description": "Enter a description",
   "transactions.manual.error_amount": "Enter a valid amount",
   "transactions.manual.error_product": "Select a product",
+  "transactions.manual.error_submit": "We couldn't save that movement. Try again.",
 
   "stage_intro.topbar_title": "Stage 1",
   "stage_intro.back_a11y": "Back",

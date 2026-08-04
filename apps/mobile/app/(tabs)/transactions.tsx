@@ -118,7 +118,21 @@ export default function Transactions() {
       </View>
 
       {screenState === 'empty' ? (
-        <TransactionsEmptyState />
+        <View style={{ flex: 1 }}>
+          <TransactionsEmptyState />
+          {/* Found in review on PR #82: with no manual-entry control here, a person with zero
+              movements ever synced (empty state with no search term active) would have no way
+              to reach ManualTransactionSheet at all — the mockup does not draw this control in
+              its `empty` state either, but Decision 12's manual-entry surface is already this
+              screen's one deliberate, documented step beyond the drawn contract. */}
+          <View style={{ paddingHorizontal: theme.space['5'], paddingBottom: theme.space['8'] }}>
+            <Button
+              variant="outline"
+              label={t('transactions.manual_entry_button')}
+              onPress={() => setManualEntryOpen(true)}
+            />
+          </View>
+        </View>
       ) : (
         <FlashList
           data={entries}

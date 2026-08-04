@@ -1,5 +1,5 @@
-import type { AppDatabase, TransactionListPage, TransactionListRow, TransactionPageParams } from '../../../db/types';
-import { appendPage, loadTransactionsPage } from '../use-transactions-list';
+import type { AppDatabase, Category, TransactionListPage, TransactionListRow, TransactionPageParams } from '../../../db/types';
+import { appendPage, loadTransactionsPage, shouldRetryForCategoryBootstrap } from '../use-transactions-list';
 
 // `jest.mock` calls are hoisted above every import by `babel-plugin-jest-hoist` — mirrors item
 // #12's `use-home-data.test.ts` precedent. `readTransactionsPage` is stubbed rather than given a
@@ -137,5 +137,69 @@ describe('appendPage', () => {
   it('adopts a null nextCursor when the appended page was the last one', () => {
     const merged = appendPage([row('a', '2026-01-03')], { rows: [row('b', '2026-01-02')], nextCursor: null });
     expect(merged.nextCursor).toBeNull();
+  });
+});
+
+const CATEGORY: Category = { id: 'comida', slug: 'comida', income: false, name: 'Comida', emoji: undefined, sortOrder: 0 };
+
+/**
+ * Found in review on PR #82 (Concurrency addendum): a committed search resolved while the
+ * category catalogue was still empty (database bootstrap) must be retried exactly once, once the
+ * catalogue becomes available — never for a blank term, never more than once.
+ */
+describe('shouldRetryForCategoryBootstrap', () => {
+  it('retries once when a nonblank term was committed before the catalogue was available', () => {
+    expect(
+      shouldRetryForCategoryBootstrap({
+        categoriesBeforeRequest: [],
+        committedSearchTerm: 'comida',
+        categoriesAfterRequest: [CATEGORY],
+        alreadyRetried: false,
+      }),
+    ).toBe(true);
+  });
+
+  it('never retries for a blank search term, regardless of catalogue state', () => {
+    expect(
+      shouldRetryForCategoryBootstrap({
+        categoriesBeforeRequest: [],
+        committedSearchTerm: '',
+        categoriesAfterRequest: [CATEGORY],
+        alreadyRetried: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('does not retry once the catalogue was already known to be nonempty before this request', () => {
+    expect(
+      shouldRetryForCategoryBootstrap({
+        categoriesBeforeRequest: [CATEGORY],
+        committedSearchTerm: 'comida',
+        categoriesAfterRequest: [CATEGORY],
+        alreadyRetried: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('does not retry when the catalogue is still empty after this request (a genuinely empty store)', () => {
+    expect(
+      shouldRetryForCategoryBootstrap({
+        categoriesBeforeRequest: [],
+        committedSearchTerm: 'comida',
+        categoriesAfterRequest: [],
+        alreadyRetried: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('never retries a second time once alreadyRetried is true (one-shot latch)', () => {
+    expect(
+      shouldRetryForCategoryBootstrap({
+        categoriesBeforeRequest: [],
+        committedSearchTerm: 'comida',
+        categoriesAfterRequest: [CATEGORY],
+        alreadyRetried: true,
+      }),
+    ).toBe(false);
   });
 });

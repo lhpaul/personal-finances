@@ -63,18 +63,29 @@ function SheetContent({
   const [type, setType] = useState<'debit' | 'credit'>('debit');
   const [productId, setProductId] = useState<string | null>(products[0]?.id ?? null);
   const [error, setError] = useState<ManualEntryError | null>(null);
+  const [submitFailed, setSubmitFailed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSave(): Promise<void> {
     setSubmitting(true);
-    const result = await onSubmit({ amountText, description, type, productId });
-    setSubmitting(false);
-    if (result !== null) {
-      setError(result);
-      return;
+    setSubmitFailed(false);
+    try {
+      const result = await onSubmit({ amountText, description, type, productId });
+      if (result !== null) {
+        setError(result);
+        return;
+      }
+      setError(null);
+      onDismiss();
+    } catch {
+      // Found in review on PR #82: a rejected `onSubmit` (e.g. a storage failure) must not
+      // leave the sheet silently stuck with a disabled Save button — surface it and let the
+      // person retry, matching item #13's `categorize.write_failed` precedent for a write
+      // failure with a visible surface.
+      setSubmitFailed(true);
+    } finally {
+      setSubmitting(false);
     }
-    setError(null);
-    onDismiss();
   }
 
   return (
@@ -145,6 +156,12 @@ function SheetContent({
           </Text>
         )}
       </View>
+
+      {submitFailed && (
+        <Text variant="hint" tone="danger" style={{ marginTop: theme.space['4'] }}>
+          {t('transactions.manual.error_submit')}
+        </Text>
+      )}
 
       <View style={{ marginTop: theme.space['5'] }}>
         <Button label={t('transactions.manual.save_action')} onPress={handleSave} disabled={submitting} />

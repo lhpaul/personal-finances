@@ -1,3 +1,4 @@
+import { deriveDateLocal } from '@finanzas/shared-utils';
 import { eq } from 'drizzle-orm';
 
 import fixtureWithIds from '../__fixtures__/bank-response-with-ids.json';
@@ -1087,6 +1088,15 @@ describe('transactions repository', () => {
 
         expect(seenIds).toHaveLength(10); // 6 sequential + 4 same-day
         expect(new Set(seenIds).size).toBe(10); // no duplicate
+        // `date_local desc, id desc`: the same-day group is visited in descending id order —
+        // proves the tiebreaker itself, not only that every row was visited once (found in
+        // review on PR #82).
+        expect(seenIds.filter((id) => id.startsWith('same-day-'))).toEqual([
+          'same-day-d',
+          'same-day-c',
+          'same-day-b',
+          'same-day-a',
+        ]);
       } finally {
         sqlite.close();
       }
@@ -1222,7 +1232,10 @@ describe('transactions repository', () => {
               type: 'debit',
               occurredAt: now,
               dateLocal: '2026-05-02',
-              rawDescription: 'LIDER SUPERMERCADO',
+              // Deliberately does not contain the search term below (found in review on PR #82)
+              // — a raw_description containing it would let the assertion pass without the
+              // merchants.name predicate ever being evaluated.
+              rawDescription: 'COMPRA TARJETA 1234',
               merchantId: 'lider',
               isManual: 0,
               createdAt: now,
@@ -1278,7 +1291,9 @@ describe('transactions repository', () => {
         const byRaw = listTransactionsPage(db, { ...params(undefined, { term: 'giro', categoryIds: [] }), cursor: null, limit: 10 }, 'es');
         expect(byRaw.rows.map((row) => row.id)).toEqual(['s15-raw']);
 
-        const byMerchant = listTransactionsPage(db, { ...params(undefined, { term: 'lider', categoryIds: [] }), cursor: null, limit: 10 }, 'es');
+        // 'der' matches only the seeded merchant name ('Líder') — not any row's raw_description
+        // or note — so a match here can only come from the merchants.name predicate.
+        const byMerchant = listTransactionsPage(db, { ...params(undefined, { term: 'der', categoryIds: [] }), cursor: null, limit: 10 }, 'es');
         expect(byMerchant.rows.map((row) => row.id)).toEqual(['s15-merchant']);
 
         const byNote = listTransactionsPage(db, { ...params(undefined, { term: 'semanales', categoryIds: [] }), cursor: null, limit: 10 }, 'es');
@@ -1334,6 +1349,63 @@ describe('transactions repository', () => {
               createdAt: now,
               updatedAt: now,
             },
+            {
+              id: 's15-literal-underscore',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-literal-underscore-dedup',
+              amount: 3000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-08',
+              rawDescription: 'LITERAL A_B',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-decoy-underscore',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-decoy-underscore-dedup',
+              amount: 3500,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-09',
+              rawDescription: 'LITERAL AXB', // would match a literal `_` treated as "any one character"
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-literal-backslash',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-literal-backslash-dedup',
+              amount: 4000,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-10',
+              rawDescription: 'LITERAL C\\D',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: 's15-decoy-backslash',
+              userFinancialProductId: productId,
+              externalId: null,
+              dedupHash: 's15-decoy-backslash-dedup',
+              amount: 4500,
+              type: 'debit',
+              occurredAt: now,
+              dateLocal: '2026-05-11',
+              // would match if an unescaped `\` collapsed the pattern's `\d` to a literal `d`
+              rawDescription: 'LITERAL CD',
+              isManual: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
           ])
           .run();
 
@@ -1343,6 +1415,22 @@ describe('transactions repository', () => {
           'es',
         );
         expect(result.rows.map((row) => row.id)).toEqual(['s15-literal-percent']);
+
+        // Scenario 6 (found in review on PR #82): the title claims all three special
+        // characters — exercise `_` and `\` too, each against its own decoy.
+        const underscore = listTransactionsPage(
+          db,
+          { ...params(undefined, { term: 'a_b', categoryIds: [] }), cursor: null, limit: 10 },
+          'es',
+        );
+        expect(underscore.rows.map((row) => row.id)).toEqual(['s15-literal-underscore']);
+
+        const backslash = listTransactionsPage(
+          db,
+          { ...params(undefined, { term: 'c\\d', categoryIds: [] }), cursor: null, limit: 10 },
+          'es',
+        );
+        expect(backslash.rows.map((row) => row.id)).toEqual(['s15-literal-backslash']);
       } finally {
         sqlite.close();
       }
@@ -1642,8 +1730,32 @@ describe('transactions repository', () => {
             expect(row.isManual).toBe(1);
             expect(row.transactionCategoryId).toBeNull(); // joins the categorization queue (Business Rule 6)
             expect(row.merchantId).toBeNull();
+            expect(row.currencyCode).toBe('CLP');
+            expect(row.dateLocal).toBe(deriveDateLocal(new Date(ports.now())));
           }
           expect(new Set(rows.map((row) => row.dedupHash)).size).toBe(2); // the id fold keeps them distinct
+        } finally {
+          sqlite.close();
+        }
+      });
+
+      it('stores the selected product\'s own currency, never a hard-coded CLP (found in review on PR #82)', async () => {
+        const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+        try {
+          const connectionId = createTestConnection(db, ports);
+          const usdProductId = createTestProduct(db, ports, connectionId, {
+            externalId: 'usd-product',
+            currencyCode: 'USD',
+          });
+
+          const id = await insertManualTransaction(
+            db,
+            { userFinancialProductId: usdProductId, type: 'debit', amount: 2000, rawDescription: 'International charge' },
+            ports,
+          );
+
+          const row = db.select().from(transactions).where(eq(transactions.id, id)).get();
+          expect(row?.currencyCode).toBe('USD');
         } finally {
           sqlite.close();
         }

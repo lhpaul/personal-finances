@@ -933,11 +933,14 @@ export function countTransactionsByMonth(db: AppDatabase, params: TransactionLis
 /**
  * Spec "Record a movement the bank never reported" (`transactions`, Decision 12). `occurred_at`
  * and `date_local` are stamped from `ports.now()` — there is no bank instant for a manual entry,
- * and the mockup's "Fecha" field is not editable in this item. `dedup_hash` folds in the reserved
- * row id (`isManual: true`), which is exactly what lets two otherwise-identical manual entries
- * both persist (Business Rule 5). Writes no person-owned column other than the ones the person
- * just supplied — `merchant_id`, `transaction_category_id` and `category_source` are `null`, so
- * the movement joins the categorization queue like any other (Business Rule 6).
+ * and the mockup's "Fecha" field is not editable in this item. `currency_code` is read from the
+ * selected product's own `currencyCode`, canonicalized the same way a bank-sourced write is
+ * (found in review on PR #82) — never hard-coded to `'CLP'`, so a manual entry against a
+ * foreign-currency product is not silently mislabeled into peso totals. `dedup_hash` folds in the
+ * reserved row id (`isManual: true`), which is exactly what lets two otherwise-identical manual
+ * entries both persist (Business Rule 5). Writes no person-owned column other than the ones the
+ * person just supplied — `merchant_id`, `transaction_category_id` and `category_source` are
+ * `null`, so the movement joins the categorization queue like any other (Business Rule 6).
  */
 export async function insertManualTransaction(
   db: AppDatabase,
@@ -945,6 +948,17 @@ export async function insertManualTransaction(
   ports: DbPorts,
 ): Promise<string> {
   assertPositiveMinorUnits(input.amount, 'transactions.amount');
+
+  // CodeRabbit finding on PR #82: the manual-entry sheet lists every product, including a
+  // foreign-currency one. A hard-coded 'CLP' would mislabel a USD product's entry, making it
+  // eligible for a peso total the `isPesoDenominated` guard (`fragments.ts`) is supposed to keep
+  // it out of. Read the selected product's own stated currency instead.
+  const product = db
+    .select({ currencyCode: userFinancialProducts.currencyCode })
+    .from(userFinancialProducts)
+    .where(eq(userFinancialProducts.id, input.userFinancialProductId))
+    .get() as { currencyCode: string } | undefined;
+  const currencyCode = canonicalizeCurrencyCode(product?.currencyCode);
 
   const id = ports.newId();
   const now = ports.now();
@@ -970,7 +984,7 @@ export async function insertManualTransaction(
       dedupHash,
       amount: input.amount,
       type: input.type,
-      currencyCode: 'CLP',
+      currencyCode,
       occurredAt: now,
       dateLocal,
       rawDescription: input.rawDescription,
