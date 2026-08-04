@@ -39,6 +39,39 @@ export async function loadDashboardData({
 }
 
 /**
+ * A stable string identity for a `DashboardDataParams` value (CodeRabbit review, PR #88,
+ * threads on `dashboard.tsx`/`use-dashboard-data.ts`): the fields are plain `DateLocal` strings
+ * and a `SupportedLocale` string, so `JSON.stringify` over them is deterministic and
+ * value-equal inputs (by content, not by reference) always produce the same key.
+ */
+export function dashboardDataParamsKey(params: DashboardDataParams): string {
+  return JSON.stringify([params.period, params.previousPeriod, params.trendWindow, params.locale]);
+}
+
+interface StoredDashboardDataState {
+  key: string;
+  result: DashboardDataState;
+}
+
+/**
+ * Guards against exposing a completed read's result under **newer** params (found in CodeRabbit
+ * review, PR #88): when the `month`/`week` segment toggles, or the locale changes, `params`
+ * changes identity before the in-flight read for the previous params has settled. Without this
+ * guard the hook would keep returning the *previous* `ready` (or `error`) result — `dashboard.tsx`
+ * would then compose the previous read's `windowDailyTotals` with the *new* `periodStarts`, a
+ * genuine data-correctness bug, not merely a stale-UI flash. Returns `pending` whenever `stored`'s
+ * key does not match `currentKey`, discarding a stale `ready` or `error` result rather than
+ * exposing it under labels/periods it does not describe — the same "renders nothing while
+ * transitioning" shape Assumption A13 already establishes for the initial bootstrap case.
+ */
+export function selectDashboardDataState(
+  stored: StoredDashboardDataState,
+  currentKey: string,
+): DashboardDataState {
+  return stored.key === currentKey ? stored.result : { status: 'pending' };
+}
+
+/**
  * `dashboard`'s single feature hook (implementation plan Decision 12). Re-reads when
  * `useFocusEffect` bumps its `reloadToken`, or when `params` (recomputed by the route whenever
  * `periodType` changes) gets a new identity, and delegates the cancellation-guarded read to
@@ -51,7 +84,11 @@ export async function loadDashboardData({
  * `ErrorBoundary` (Concurrent-event-source addendum).
  */
 export function useDashboardData(params: DashboardDataParams): DashboardDataState {
-  const [state, setState] = useState<DashboardDataState>({ status: 'pending' });
+  const currentKey = dashboardDataParamsKey(params);
+  const [stored, setStored] = useState<StoredDashboardDataState>({
+    key: currentKey,
+    result: { status: 'pending' },
+  });
   const [reloadToken, setReloadToken] = useState(0);
   const hasFocusedOnce = useRef(false);
   const { period, previousPeriod, trendWindow, locale } = params;
@@ -72,12 +109,13 @@ export function useDashboardData(params: DashboardDataParams): DashboardDataStat
 
   useEffect(() => {
     let cancelled = false;
+    const key = dashboardDataParamsKey({ period, previousPeriod, trendWindow, locale });
     loadDashboardData({
       getAppDatabase,
       params: { period, previousPeriod, trendWindow, locale },
       isCancelled: () => cancelled,
     }).then((next) => {
-      if (next !== undefined) setState(next);
+      if (next !== undefined) setStored({ key, result: next });
     });
     return () => {
       cancelled = true;
@@ -87,6 +125,12 @@ export function useDashboardData(params: DashboardDataParams): DashboardDataStat
     // month/week segment) — an unmemoized caller would re-read on every render, which is wasteful
     // but not incorrect (every read is idempotent).
   }, [period, previousPeriod, trendWindow, locale, reloadToken]);
+
+  // `selectDashboardDataState` discards `stored.result` in favour of `pending` whenever `stored`
+  // was written for a params identity that is no longer current (found in CodeRabbit review, PR
+  // #88) — this is what makes a mid-flight `month`/`week` toggle or locale change render nothing
+  // instead of combining a superseded read with the new periods.
+  const state = selectDashboardDataState(stored, currentKey);
 
   // Surfaces a bootstrap or read failure to the route's `ErrorBoundary` (Concurrent-event-source
   // addendum, "Error propagation across async boundaries").

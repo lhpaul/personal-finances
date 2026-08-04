@@ -88,6 +88,15 @@ export function TopBar({
           <Text style={{ fontSize: componentMetrics.topBar.buttonGlyphFontSize }}>{BACK_GLYPH}</Text>
         </Pressable>
       )}
+      {/* Found in CodeRabbit review, PR #88: with no `onBack`, the title's `flex: 1` region used
+       * to start at the container's left edge while `trailingAction` occupies a fixed box on the
+       * right — the centered `Text` then centers within that lopsided remaining space, landing
+       * left of the topbar's true center. A same-sized leading spacer balances it, exactly the
+       * way the trailing spacer already balances a centered title that has `onBack` but no
+       * `trailingAction`. */}
+      {titleAlign === 'center' && onBack === undefined && trailingAction !== undefined && (
+        <View style={{ width: componentMetrics.topBar.buttonSize }} />
+      )}
       <Text
         center={titleAlign === 'center'}
         style={{

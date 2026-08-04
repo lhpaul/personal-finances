@@ -107,6 +107,13 @@ describe('buildTrailingAverage', () => {
     expect(result.map((p) => p.periodIndex)).toEqual([0, 1, 2, 3]);
     expect(result).toHaveLength(series.length);
   });
+
+  /** Found in CodeRabbit review, PR #88: a non-positive-integer window would make `slice` empty
+   * for every point, producing `NaN` from a division by zero — exactly the "broken chart" brief
+   * AC4 forbids. */
+  it.each([0, -1, 1.5])('rejects an invalid window (%p) with a RangeError instead of producing NaN', (window) => {
+    expect(() => buildTrailingAverage(series, window)).toThrow(RangeError);
+  });
 });
 
 /** Scenario 13 of the dashboard implementation plan's Testing Strategy (brief AC4, Decision

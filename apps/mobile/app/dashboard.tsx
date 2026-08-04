@@ -1,7 +1,7 @@
 import { deriveDateLocal, formatMonthAbbreviation } from '@finanzas/shared-utils';
 import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,10 +24,11 @@ function isDashboardPeriodType(value: string | null): value is DashboardPeriodTy
 
 /**
  * `#screen=dashboard` (implementation plan for issue #17). Composition-only: derives `now` ->
- * `deriveDateLocal` -> the six period boundaries once (Decision 3 — the clock enters this
- * feature exactly once, at the route, unlike the `home` tab route which re-reads it on every
- * focus), owns the `month` / `week` segment, calls `useDashboardData`, and composes the topbar,
- * the segment and the three cards. No SQL, no business logic, no literal copy.
+ * `deriveDateLocal` -> the six period boundaries, re-derived on every focus (found in CodeRabbit
+ * review, PR #88 — this route can stay mounted under a pushed `/settings` screen and regain
+ * focus after a day/week/month boundary has passed, the same reason `home` re-reads its own
+ * clock on focus), owns the `month` / `week` segment, calls `useDashboardData`, and composes the
+ * topbar, the segment and the three cards. No SQL, no business logic, no literal copy.
  *
  * Every `useMemo` call runs unconditionally, before the `status !== 'ready'` early return (Rules
  * of Hooks) — mirrors `home`'s own established shape (found in its review).
@@ -38,9 +39,11 @@ export default function Dashboard() {
   const locale = toSupportedLocale(i18n.language);
   const preview = useFidelityPreview();
 
-  // Decision 3: the clock is read once, at mount — this is a pushed route, not a tab that stays
-  // mounted for a whole session, so it does not need `home`'s focus-driven re-derivation.
-  const [now] = useState(() => new Date());
+  // `home`'s exact pattern (Decision 8 there): re-read the clock on every focus, not only at
+  // mount, so a stale `now` cannot survive a round trip to `/settings` and back across a local
+  // day boundary.
+  const [now, setNow] = useState(() => new Date());
+  useFocusEffect(useCallback(() => setNow(new Date()), []));
   const dateLocal = deriveDateLocal(now);
 
   const [localPeriodType, setLocalPeriodType] = useState<DashboardPeriodType>('month');

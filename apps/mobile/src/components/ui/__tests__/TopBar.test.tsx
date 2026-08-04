@@ -85,4 +85,30 @@ describe('TopBar — centered title with a trailing action (issue #17)', () => {
     });
     expect(pressables(tree)).toHaveLength(1);
   });
+
+  /** Found in CodeRabbit review, PR #88: with no `onBack`, the centered title needs a leading
+   * spacer to balance the trailing action button — otherwise it centers within the lopsided
+   * remaining space and lands left of the topbar's true center. */
+  it('renders a leading spacer to balance the title when trailingAction is present and onBack is absent', () => {
+    const tree = TopBar({
+      title: 'Dashboard',
+      titleAlign: 'center',
+      trailingAction: { glyph: '⚙️', onPress: jest.fn(), accessibilityLabel: 'Configuración' },
+    });
+
+    const spacers = collectElements(
+      tree,
+      (el) => elementTypeName(el) === 'View' && el.props.style?.width !== undefined,
+    );
+    expect(spacers).toHaveLength(1);
+
+    // The spacer renders before the title, and the title itself is not treated as a spacer.
+    const children = (tree.props as { children: unknown[] }).children.flat().filter(Boolean);
+    const titleIndex = children.findIndex(
+      (child) => typeof child === 'object' && child !== null && (child as { props?: { children?: unknown } }).props?.children === 'Dashboard',
+    );
+    const spacerIndex = children.indexOf(spacers[0]);
+    expect(spacerIndex).toBeGreaterThanOrEqual(0);
+    expect(spacerIndex).toBeLessThan(titleIndex);
+  });
 });

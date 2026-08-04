@@ -50,7 +50,7 @@ export const TrendCard = memo(function TrendCard({ report, periodType }: TrendCa
     [averageSeries, viewBox, sharedMax],
   );
   const additionalSeries = useMemo(
-    () => [{ points: expensePoints, color: theme.colors.warning }],
+    () => [{ id: 'expense', points: expensePoints, color: theme.colors.warning }],
     [expensePoints],
   );
 

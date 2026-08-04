@@ -1,6 +1,7 @@
 import { transactions } from '../../../db/schema';
 import { createTestConnection, createTestProduct } from '../../../db/testing/product-fixture';
 import { openBootstrappedMemoryDb } from '../../../db/testing/memory-db';
+import * as categoriesRepo from '../../../db/repositories/categories';
 import * as transactionsRepo from '../../../db/repositories/transactions';
 import { totalForCategoryInPeriod } from '../../../db/repositories/transactions';
 import { readDashboardData } from '../read-dashboard-data';
@@ -111,6 +112,16 @@ describe('readDashboardData (issue #17)', () => {
         movementCount: 2,
       });
 
+      // Found in CodeRabbit review, PR #88: the assertion above only proves the *category*
+      // aggregate excludes the foreign-currency row — it says nothing about
+      // `windowDailyTotals` (`sumIncludedByDirectionAndDay`), the trend card's own source. A
+      // regression that removed `isPesoDenominated` from that function specifically would still
+      // pass every assertion above. Assert directly that no debit day row exists for the
+      // foreign-currency movement's date.
+      expect(
+        data.windowDailyTotals.some((row) => row.type === 'debit' && row.dateLocal === '2026-02-08'),
+      ).toBe(false);
+
       // Independent aggregate: totalForCategoryInPeriod must report the same figure.
       expect(totalForCategoryInPeriod(db, 'comida', { startDateLocal: period.start, endDateLocal: period.end })).toBe(
         50000,
@@ -120,11 +131,12 @@ describe('readDashboardData (issue #17)', () => {
     }
   });
 
-  it('issues exactly the four Decision-1 calls and no row-level read — Scenario 4', async () => {
+  it('issues exactly the five Decision-1 calls and no row-level read — Scenario 4', async () => {
     const { sqlite, db } = await openBootstrappedMemoryDb();
     try {
       const dayTotalsSpy = jest.spyOn(transactionsRepo, 'sumIncludedByDirectionAndDay');
       const categoryTotalsSpy = jest.spyOn(transactionsRepo, 'sumIncludedByDirectionAndCategory');
+      const listCategoriesSpy = jest.spyOn(categoriesRepo, 'listCategories');
       const listMonthSpy = jest.spyOn(transactionsRepo, 'listMonth');
       const listRecentMovementsSpy = jest.spyOn(transactionsRepo, 'listRecentMovements');
       const listByMerchantSpy = jest.spyOn(transactionsRepo, 'listByMerchant');
@@ -147,6 +159,13 @@ describe('readDashboardData (issue #17)', () => {
         startDateLocal: previousPeriod.start,
         endDateLocal: previousPeriod.end,
       });
+      // listCategories: twice, once per direction (found in CodeRabbit review, PR #88 — Decision
+      // 1's table names five calls in total: one daily aggregate, two category aggregates, and
+      // these two `listCategories` reads; the previous version of this test only spied on three
+      // of the five).
+      expect(listCategoriesSpy).toHaveBeenCalledTimes(2);
+      expect(listCategoriesSpy).toHaveBeenNthCalledWith(1, db, { income: 0, locale: 'es' });
+      expect(listCategoriesSpy).toHaveBeenNthCalledWith(2, db, { income: 1, locale: 'es' });
 
       expect(listMonthSpy).not.toHaveBeenCalled();
       expect(listRecentMovementsSpy).not.toHaveBeenCalled();

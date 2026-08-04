@@ -50,24 +50,30 @@ function BarChartComponent({ columns }: BarChartProps) {
           key={column.key}
           style={{
             flex: 1,
-            flexDirection: 'column',
             alignItems: 'center',
             gap,
             height: '100%',
-            justifyContent: 'flex-end',
           }}
         >
-          <View
-            style={{
-              width: '100%',
-              height: `${clampRatio(column.heightRatio) * 100}%`,
-              borderTopLeftRadius: barRadiusTop,
-              borderTopRightRadius: barRadiusTop,
-              borderBottomLeftRadius: barRadiusBottom,
-              borderBottomRightRadius: barRadiusBottom,
-              backgroundColor: column.color,
-            }}
-          />
+          {/* Found in CodeRabbit review, PR #88: at heightRatio === 1 a bar sized as a percentage
+           * of the *whole* column (as this used to be) claims 100% of the column's own height —
+           * leaving no room for `gap` and the label below it, so the bar overflows upward past
+           * the chart. This inner `flex: 1` track reserves exactly the column's remaining height
+           * (after the label and the gap) for the bar, so `heightRatio`'s percentage is always
+           * relative to the space actually available to it. */}
+          <View style={{ flex: 1, width: '100%', justifyContent: 'flex-end' }}>
+            <View
+              style={{
+                width: '100%',
+                height: `${clampRatio(column.heightRatio) * 100}%`,
+                borderTopLeftRadius: barRadiusTop,
+                borderTopRightRadius: barRadiusTop,
+                borderBottomLeftRadius: barRadiusBottom,
+                borderBottomRightRadius: barRadiusBottom,
+                backgroundColor: column.color,
+              }}
+            />
+          </View>
           <Text
             style={{
               fontSize: componentMetrics.barChart.labelFontSize,

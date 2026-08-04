@@ -102,11 +102,22 @@ export function buildTrendReport(
  * than being omitted or reaching outside the series (implementation plan Decision 15, Assumption
  * A6). Integer arithmetic with floor division on minor units — no float ever enters the money
  * path (non-negotiable 2).
+ *
+ * Throws `RangeError` when `window` is not a positive integer (found in CodeRabbit review, PR
+ * #88): a `window` of `0` or negative would make `slice` empty for every point, so
+ * `sum / slice.length` divides by zero and produces `NaN` — exactly the "broken chart" brief AC4
+ * forbids, and the one shaping function in this file that did not already guard its own
+ * arithmetic. `DASHBOARD_TREND_AVERAGE_WINDOW` (`3`) always satisfies this guard; the check exists
+ * for a future caller that might not.
  */
 export function buildTrailingAverage(
   series: readonly TrendSeriesPoint[],
   window: number,
 ): TrendSeriesPoint[] {
+  if (!Number.isInteger(window) || window < 1) {
+    throw new RangeError(`buildTrailingAverage: window must be a positive integer, received ${window}`);
+  }
+
   return series.map((point, index) => {
     const start = Math.max(0, index - window + 1);
     const slice = series.slice(start, index + 1);

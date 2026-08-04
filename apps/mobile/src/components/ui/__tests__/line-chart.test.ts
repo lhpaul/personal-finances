@@ -44,7 +44,7 @@ describe('LineChart — additionalSeries (issue #17 dashboard trend card)', () =
   it('paints primary, then each additional series, then the comparison series last', () => {
     const tree = renderLineChart({
       ...BASE_PROPS,
-      additionalSeries: [{ points: '0,20 10,30', color: '#f59e0b' }],
+      additionalSeries: [{ id: 'expense', points: '0,20 10,30', color: '#f59e0b' }],
       comparisonPoints: '0,40 10,50',
     });
     const lines = polylines(tree);
@@ -57,9 +57,40 @@ describe('LineChart — additionalSeries (issue #17 dashboard trend card)', () =
   it('renders no comparison line when additionalSeries is present but comparisonPoints is omitted', () => {
     const tree = renderLineChart({
       ...BASE_PROPS,
-      additionalSeries: [{ points: '0,20 10,30', color: '#f59e0b' }],
+      additionalSeries: [{ id: 'expense', points: '0,20 10,30', color: '#f59e0b' }],
     });
     const lines = polylines(tree);
     expect(lines).toHaveLength(2);
+  });
+
+  /** Found in CodeRabbit review, PR #88: `series.color` used to be the React key, which collides
+   * when two series legitimately share a colour. Two series with equal colours, reordered between
+   * renders, must still resolve to the correct `points` per series — proven here via `id`, not
+   * `color`. */
+  it('keys each additional series by its stable id, not its (possibly duplicate) colour', () => {
+    const sameColor = '#f59e0b';
+    const firstOrder = renderLineChart({
+      ...BASE_PROPS,
+      additionalSeries: [
+        { id: 'a', points: '0,1 1,1', color: sameColor },
+        { id: 'b', points: '0,2 1,2', color: sameColor },
+      ],
+    });
+    const firstLines = polylines(firstOrder);
+    expect(firstLines[1]?.key).toBe('a');
+    expect(firstLines[2]?.key).toBe('b');
+
+    const reordered = renderLineChart({
+      ...BASE_PROPS,
+      additionalSeries: [
+        { id: 'b', points: '0,2 1,2', color: sameColor },
+        { id: 'a', points: '0,1 1,1', color: sameColor },
+      ],
+    });
+    const reorderedLines = polylines(reordered);
+    expect(reorderedLines[1]?.key).toBe('b');
+    expect(reorderedLines[1]?.props.points).toBe('0,2 1,2');
+    expect(reorderedLines[2]?.key).toBe('a');
+    expect(reorderedLines[2]?.props.points).toBe('0,1 1,1');
   });
 });

@@ -19,8 +19,8 @@ export interface DashboardDataParams {
 
 /**
  * The pure composition `readDashboardData(db, params)` performs (implementation plan Decision 1,
- * Decision 12). Every field here traces to one of the four repository calls in Decision 1's
- * table — this item adds no fifth.
+ * Decision 12). Every field here traces to one of the five repository calls (four functions —
+ * `listCategories` is called twice) in Decision 1's table — this item adds no sixth.
  */
 export interface DashboardData {
   /** One row per `(date_local, type)` pair inside `trendWindow` — the trend card's, the spending
@@ -34,10 +34,10 @@ export interface DashboardData {
 }
 
 /**
- * The pure composition of four repository calls, all pre-existing (implementation plan Decision
+ * The pure composition of five repository calls, all pre-existing (implementation plan Decision
  * 1's table; brief AC1). No React, so it is testable against a real in-memory store in the `db`
  * tier (Scenario 5) — every call here is synchronous
- * (`BaseSQLiteDatabase<'sync', …>`), so all four reads happen in one uninterrupted pass: the
+ * (`BaseSQLiteDatabase<'sync', …>`), so all five reads happen in one uninterrupted pass: the
  * trend, the bars and both donuts are guaranteed to describe the same store state, with no
  * interleaved write (Decision 12).
  *

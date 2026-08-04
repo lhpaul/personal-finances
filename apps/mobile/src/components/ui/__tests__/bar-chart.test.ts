@@ -38,4 +38,35 @@ describe('BarChart', () => {
   it('never lands a label string as a bare child of a non-text host (Scenario 19)', () => {
     expect(findNakedText(renderBarChart(props), new Set([Text]))).toEqual([]);
   });
+
+  /** Found in CodeRabbit review, PR #88: at `heightRatio: 1`, a bar sized as a percentage of the
+   * *whole* column (rather than of a `flex: 1` track carved out above the label) claims 100% of
+   * the column's own height, leaving the label and the inter-item `gap` no room and overflowing
+   * the fixed-height chart upward. Asserts the fix's structural shape: the percentage-height bar
+   * View is nested one level inside a `flex: 1` track, not a direct child of the column. */
+  it('reserves label space by nesting the ratio-scaled bar inside a flex: 1 track', () => {
+    const tree = renderBarChart({
+      columns: [{ key: 'max', heightRatio: 1, color: '#f59e0b', label: 'max' }],
+    });
+
+    const bar = collectElements(
+      tree,
+      (el) => elementTypeName(el) === 'View' && el.props.style?.borderTopLeftRadius !== undefined,
+    )[0];
+    expect(bar?.props.style.height).toBe('100%');
+
+    const track = collectElements(
+      tree,
+      (el) => elementTypeName(el) === 'View' && el.props.children === bar,
+    )[0];
+    expect(track?.props.style.flex).toBe(1);
+
+    // The column itself no longer sizes the bar directly: it is not a direct parent of `bar`.
+    const column = collectElements(
+      tree,
+      (el) => elementTypeName(el) === 'View' && Array.isArray(el.props.children) && el.props.children.includes(track),
+    )[0];
+    expect(column).toBeDefined();
+    expect(column?.props.style.height).toBe('100%');
+  });
 });

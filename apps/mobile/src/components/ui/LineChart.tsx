@@ -4,8 +4,12 @@ import Svg, { Line, Polyline } from 'react-native-svg';
 import { componentMetrics, theme } from '../../theme';
 
 /** One extra series drawn between the primary series and the dashed comparison series
- * (dashboard implementation plan for issue #17, Decision 8). */
+ * (dashboard implementation plan for issue #17, Decision 8). `id` is a stable identity used as
+ * the React key (found in CodeRabbit review, PR #88): `color` alone is not unique — two series
+ * legitimately sharing a colour would collide as React keys and could misassociate a `Polyline`
+ * with the wrong series data across a reorder. */
 export type LineChartSeries = {
+  id: string;
   points: string;
   color: string;
 };
@@ -99,7 +103,7 @@ function LineChartComponent({
       />
       {additionalSeries.map((series) => (
         <Polyline
-          key={series.color}
+          key={series.id}
           points={series.points}
           fill="none"
           stroke={series.color}
