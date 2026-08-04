@@ -223,6 +223,7 @@
   "dev.sync_fixtures.hold_transactions_action": "Hold at \"Downloading movements\"",
   "dev.sync_fixtures.play_full_action": "Play the full sequence (slow)",
   "dev.sync_fixtures.complete_action": "Complete the read",
+  "dev.sync_fixtures.complete_with_data_action": "Complete with data (E2E)",
   "dev.sync_fixtures.fail_invalid_credentials_action": "Fail: credentials rejected",
   "dev.sync_fixtures.fail_session_closed_action": "Fail: session closed by the bank",
   "dev.sync_fixtures.fail_network_action": "Fail: no connection",

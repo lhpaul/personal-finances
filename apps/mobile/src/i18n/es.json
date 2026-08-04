@@ -223,6 +223,7 @@
   "dev.sync_fixtures.hold_transactions_action": "Mantener en «Descargando movimientos»",
   "dev.sync_fixtures.play_full_action": "Reproducir avance completo (lento)",
   "dev.sync_fixtures.complete_action": "Completar la lectura",
+  "dev.sync_fixtures.complete_with_data_action": "Completar con datos (E2E)",
   "dev.sync_fixtures.fail_invalid_credentials_action": "Fallar: credenciales rechazadas",
   "dev.sync_fixtures.fail_session_closed_action": "Fallar: sesión cerrada por el banco",
   "dev.sync_fixtures.fail_network_action": "Fallar: sin conexión",
