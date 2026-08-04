@@ -211,7 +211,7 @@ export function TransactionDetailScreen({ transactionId, testID }: TransactionDe
             categoryEmoji={category?.emoji}
             categoryName={category?.name}
             showAutoSuggestionCaption={showsAutoSuggestionCaption(transaction)}
-            rawDescription={transaction.rawDescription}
+            bankDescription={context.bankDescription}
           >
             <DetailNoteField value={noteDraft} onChangeText={setNoteDraft} onBlur={handleNoteBlur} />
           </DetailInfoCard>

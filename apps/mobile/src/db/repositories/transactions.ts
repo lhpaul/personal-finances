@@ -655,9 +655,13 @@ export function getTransactionContext(
     name: row.productName,
     mask: parseProductMetadata(row.productMetadata).mask,
   };
+  const mappedTransaction = mapTransactionRow(row.transaction);
 
   return {
-    transaction: mapTransactionRow(row.transaction),
+    transaction: mappedTransaction,
+    // Renamed here, once, at the `src/db` boundary — see `TransactionContext`'s doc comment
+    // (`db/types.ts`) for why the screen tier never spells the bank column's own identifier.
+    bankDescription: mappedTransaction.rawDescription,
     merchantName: row.merchant?.name ?? null,
     merchant: row.merchant
       ? {

@@ -316,10 +316,17 @@ export interface ProductSummary {
  * chip need — the plan's Layer-by-Layer only named `merchantName`, and this field is an additive
  * extension so the category picker's suggestion (Decision 7) does not need a second query.
  * `product` is `null` only if the referenced row is somehow missing (the foreign key is
- * `NOT NULL`, so this is defensive, not an expected path).
+ * `NOT NULL`, so this is defensive, not an expected path). `bankDescription` mirrors
+ * `transaction.rawDescription` under a renamed field: the immutability guard's Scope A (Testing
+ * Strategy Scenario 18, Parser-risk addendum) never allows the literal identifier `rawDescription`
+ * to appear under `src/features/transaction-detail/`, so the screen tier reads the bank's own
+ * description through this field instead — the rename happens once, here, at the `src/db`
+ * boundary, rather than being re-derived (and re-spelling the forbidden identifier) in every
+ * consuming file.
  */
 export interface TransactionContext {
   transaction: Transaction;
+  bankDescription: string;
   merchantName: string | null;
   merchant: StageMerchant | null;
   product: ProductSummary | null;

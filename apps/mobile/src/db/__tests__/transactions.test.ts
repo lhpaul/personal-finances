@@ -2225,6 +2225,7 @@ describe('transaction detail repository functions (#16)', () => {
 
       const context = getTransactionContext(db, 'detail-ctx');
       expect(context?.transaction.id).toBe('detail-ctx');
+      expect(context?.bankDescription).toBe(context?.transaction.rawDescription);
       expect(context?.merchantName).toBe('Líder S.A.');
       expect(context?.merchant).toEqual({
         id: 'detail-merchant',

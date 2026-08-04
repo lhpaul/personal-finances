@@ -32,6 +32,7 @@ const SNAPSHOT: TransactionDetailSnapshot = {
       createdAt: '2025-01-24T14:20:00.000Z',
       updatedAt: '2025-01-24T14:20:00.000Z',
     },
+    bankDescription: 'COMPRA LIDER EXPRESS',
     merchantName: null,
     merchant: null,
     product: { id: 'product-1', name: 'Cta. corriente', mask: undefined },

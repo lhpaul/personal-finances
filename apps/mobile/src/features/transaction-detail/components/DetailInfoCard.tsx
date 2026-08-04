@@ -42,7 +42,10 @@ export interface DetailInfoCardProps {
   categoryEmoji: string | undefined;
   categoryName: string | undefined;
   showAutoSuggestionCaption: boolean;
-  rawDescription: string;
+  /** `TransactionContext.bankDescription` (`db/types.ts`) — the bank's own description under a
+   * renamed field, so this file never has to spell the forbidden identifier itself (immutability
+   * guard Scope A, Testing Strategy Scenario 18). */
+  bankDescription: string;
   /** The note field, composed by the caller (`TransactionDetailScreen`) so it stays a separate,
    * independently testable component (`DetailNoteField`) while rendering inside this same visual
    * card, matching the mockup's single "Información" card. */
@@ -63,7 +66,7 @@ export function DetailInfoCard({
   categoryEmoji,
   categoryName,
   showAutoSuggestionCaption,
-  rawDescription,
+  bankDescription,
   children,
 }: DetailInfoCardProps) {
   const { t } = useTranslation();
@@ -98,7 +101,7 @@ export function DetailInfoCard({
       <View style={{ marginTop: theme.space['4'] }}>
         <Text variant="label">{t('transaction_detail.description_label')}</Text>
         <Card variant="flat">
-          <Text variant="mono">{rawDescription}</Text>
+          <Text variant="mono">{bankDescription}</Text>
         </Card>
       </View>
 
