@@ -57,7 +57,10 @@ jobs:
         id: check
         shell: bash
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          # TEMPORARY, revert-after-proof: wrong secret name on purpose, to prove the
+          # missing-token path skips green without touching the real EXPO_TOKEN repository
+          # secret. Reverted in a follow-up commit.
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN_WRONG_NAME_FOR_PROOF }}
         run: |
           if [ -n "${EXPO_TOKEN:-}" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
