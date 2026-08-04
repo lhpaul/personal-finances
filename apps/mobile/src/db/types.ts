@@ -33,6 +33,18 @@ export interface Category {
   sortOrder: number;
 }
 
+/**
+ * `#screen=settings-categories`'s row shape (implementation plan for issue #21, Decision 2, 6).
+ * `monthCount` is movements dated in the caller's month window; `totalCount` is all-time. Both
+ * include excluded movements — an excluded movement is still stored, still belongs to the
+ * category, and still gets re-parented when the category is deleted (Decision 6's doc comment on
+ * {@link listCategoriesWithUsage}).
+ */
+export interface CategoryWithUsage extends Category {
+  monthCount: number;
+  totalCount: number;
+}
+
 export interface ConnectableInstitution {
   id: string;
   name: string;
