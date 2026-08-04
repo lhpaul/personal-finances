@@ -170,4 +170,16 @@ describe('findUnguardedPesoTotals — parser-risk edge cases', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]?.line).toBe(2); // unguardedFirst()'s sum(...)
   });
+
+  it('17. an unrelated identifier that merely contains isPesoDenominated as a substring does not satisfy the guard (CodeRabbit finding on PR #87)', () => {
+    const source = [
+      `export function unguarded() {`,
+      `  const isPesoDenominatedForDisplay = true;`,
+      `  return sql${BACKTICK}coalesce(sum(\${includedAmount}), 0)${BACKTICK} && isPesoDenominatedForDisplay;`,
+      `}`,
+    ].join('\n');
+    const findings = findUnguardedPesoTotals(source, 'src/db/repositories/example.ts');
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.line).toBe(3);
+  });
 });

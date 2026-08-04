@@ -320,6 +320,13 @@ function extractSqlTagBodies(source: string): SqlTagBody[] {
 
 const SUM_CALL_PATTERN = /\bsum\s*\(/gi;
 
+// The guard identifier itself must be an exact token match (CodeRabbit finding on PR #87): a
+// substring check would accept an unrelated identifier that merely *contains* `isPesoDenominated`
+// as a substring — e.g. a hypothetical `isPesoDenominatedForDisplay` — as if it were the real
+// guard, vacuously clearing a scope that never actually names `isPesoDenominated`. `\b` anchors
+// on both sides so a longer identifier sharing this prefix does not satisfy the guard.
+const GUARD_IDENTIFIER_RE = /\bisPesoDenominated\b/;
+
 // Top-level (column-zero) declaration starts — the boundaries between one guard scope and the
 // next (issue #86, "Per-occurrence granularity" above). Matches an optional `export`/`default`/
 // `async` prefix followed by `function`, `class`, `interface`, `type <Name>`, or a
@@ -389,7 +396,7 @@ function findSumOfIncludedAmount(
       const absolutePosition = bodyStart + match.index;
       const { start, end } = scopeRangeFor(boundaries, absolutePosition, stripped.length);
       const scopeText = stripped.slice(start, end);
-      if (!scopeText.includes('isPesoDenominated')) {
+      if (!GUARD_IDENTIFIER_RE.test(scopeText)) {
         findings.push({
           filePath: '', // filled in by the caller
           line: lineAt(stripped, absolutePosition),
