@@ -20,7 +20,7 @@ import type { SQLiteColumn, SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { assignOccurrenceIndexes, buildDedupInput } from '../dedup';
 import { includedAmount, isIncluded, isPesoDenominated } from '../fragments';
 import type { DbPorts } from '../ids';
-import { mergeTransactionMetadata, parseAssets, parseCategoryLabels } from '../json';
+import { mergeTransactionMetadata, parseAssets, parseCategoryLabels, parseProductMetadata } from '../json';
 import type { SupportedLocale } from '../labels';
 import { resolveLabel } from '../labels';
 import { assertPositiveMinorUnits, canonicalizeCurrencyCode } from '../money';
@@ -31,9 +31,11 @@ import type {
   DirectionDayTotal,
   ManualTransactionInput,
   MonthCount,
+  ProductSummary,
   RecentMovement,
   StageMovement,
   Transaction,
+  TransactionContext,
   TransactionListCursor,
   TransactionListPage,
   TransactionListQueryParams,
@@ -621,6 +623,117 @@ export function excludeTransaction(
       exclusionReason: input.reason,
       exclusionNote: input.note?.trim() ? input.note.trim() : null,
       updatedAt: now,
+    })
+    .where(eq(transactions.id, transactionId))
+    .run();
+}
+
+interface TransactionContextMerchantRow {
+  id: string;
+  name: string;
+  transactionCategoryId: string | null;
+  userId: string | null;
+}
+
+interface TransactionContextRow {
+  transaction: TransactionRow;
+  merchant: TransactionContextMerchantRow | null;
+  productId: string;
+  productName: string;
+  productMetadata: string | null;
+}
+
+/**
+ * `transaction-detail`'s single-movement read (implementation plan for issue #16, Decision 3).
+ * No inclusion predicate — an excluded movement must still open (Business Rule 3). Joins
+ * `merchants` (nullable — a movement can have none) and `user_financial_products` (required by
+ * the `NOT NULL` foreign key). The category itself is **not** re-read here: the caller resolves
+ * it through the already-exported `getCategory` (`repositories/categories.ts`), so this file
+ * gains no second category mapper.
+ */
+export function getTransactionContext(
+  db: AppDatabase,
+  transactionId: string,
+): TransactionContext | undefined {
+  const row = db
+    .select({
+      transaction: transactions,
+      merchant: merchants,
+      productId: userFinancialProducts.id,
+      productName: userFinancialProducts.name,
+      productMetadata: userFinancialProducts.metadata,
+    })
+    .from(transactions)
+    .leftJoin(merchants, eq(transactions.merchantId, merchants.id))
+    .innerJoin(userFinancialProducts, eq(transactions.userFinancialProductId, userFinancialProducts.id))
+    .where(eq(transactions.id, transactionId))
+    .get() as TransactionContextRow | undefined;
+  if (!row) return undefined;
+
+  const product: ProductSummary = {
+    id: row.productId,
+    name: row.productName,
+    mask: parseProductMetadata(row.productMetadata).mask,
+  };
+  const mappedTransaction = mapTransactionRow(row.transaction);
+
+  return {
+    transaction: mappedTransaction,
+    // Renamed here, once, at the `src/db` boundary — see `TransactionContext`'s doc comment
+    // (`db/types.ts`) for why the screen tier never spells the bank column's own identifier.
+    bankDescription: mappedTransaction.rawDescription,
+    merchantName: row.merchant?.name ?? null,
+    merchant: row.merchant
+      ? {
+          id: row.merchant.id,
+          name: row.merchant.name,
+          transactionCategoryId: row.merchant.transactionCategoryId,
+          isUserDefined: row.merchant.userId !== null,
+        }
+      : null,
+    product,
+  };
+}
+
+/**
+ * Writes the person's own note for a movement (implementation plan for issue #16, Decision 3;
+ * brief *"the editable note"*). Trims the draft and stores `null` for a blank or whitespace-only
+ * value, so an empty string never reaches the column (Assumption A8). Nothing else is named in
+ * the `set` object — never a bank fact, never `included_amount`.
+ */
+export function setTransactionNote(
+  db: AppDatabase,
+  transactionId: string,
+  note: string | null,
+  ports: { now: () => string },
+): void {
+  const trimmed = note?.trim();
+  db.update(transactions)
+    .set({ note: trimmed ? trimmed : null, updatedAt: ports.now() })
+    .where(eq(transactions.id, transactionId))
+    .run();
+}
+
+/**
+ * Re-includes a movement in every total and chart (implementation plan for issue #16, Decision
+ * 6; brief *"re-inclusion"*, AC3). An `UPDATE` that clears exactly three columns — `excludedAt`,
+ * `exclusionReason` and `exclusionNote` — and never the category: the exclusion and the category
+ * are separate decisions, so a person who categorized a movement and then excluded it gets that
+ * category back (Assumption A2). `included_amount` is deliberately absent, as it is from every
+ * write in this file — partial inclusion has no UI in the MVP. Idempotent: re-running this on an
+ * already-included movement writes the same three nulls and bumps `updated_at` without throwing.
+ */
+export function reincludeTransaction(
+  db: AppDatabase,
+  transactionId: string,
+  ports: { now: () => string },
+): void {
+  db.update(transactions)
+    .set({
+      excludedAt: null,
+      exclusionReason: null,
+      exclusionNote: null,
+      updatedAt: ports.now(),
     })
     .where(eq(transactions.id, transactionId))
     .run();

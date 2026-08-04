@@ -654,6 +654,34 @@ export const componentMetrics = {
      * so the mapping is discoverable from this file. */
   },
 
+  /** `.mu-donut` (dashboard implementation plan for issue #17, Decision 8). */
+  donutChart: {
+    /** `.mu-donut` display width/height (bare literal). */
+    size: 132,
+    /** The `<svg viewBox="0 0 42 42">` coordinate space every `.mu-donut` in the mockup draws. */
+    viewBoxSize: 42,
+    /** The `<circle r="15.9">` radius (bare literal) — chosen upstream in the mockup so
+     * `2 * PI * r` is close enough to `100` that a bucket's `stroke-dasharray`/`stroke-dashoffset`
+     * can be expressed directly in percent-of-100 units instead of true arc length. */
+    radius: 15.9,
+    /** `<circle stroke-width="7">` (bare literal). */
+    strokeWidth: 7,
+  },
+
+  /** `.mu-bars` (dashboard implementation plan for issue #17, Decision 8). */
+  barChart: {
+    /** `.mu-bars` (L496) height. */
+    height: 120,
+    /** `.mu-bars` (L496) column gap, and `.mu-bars__col` (L497) internal bar/label gap — both
+     * read the same bare `6px` literal in the mockup. */
+    gap: 6,
+    /** `.mu-bars__bar` (L498) border-radius — asymmetric (rounded top, near-square bottom). */
+    barRadiusTop: 6,
+    barRadiusBottom: 2,
+    /** `.mu-bars__lbl` (L501) font-size (bare literal). */
+    labelFontSize: 10,
+  },
+
   topBar: {
     /** `.mu-topbar__btn` (L286-289) width/height. */
     buttonSize: 36,
@@ -793,6 +821,16 @@ export const screenMetrics = {
     /** `.mu-topbar__btn` (L286) glyph font-size. */
     closeButtonFontSize: 20,
   },
+  /** `#s-transaction-detail` (implementation plan for issue #16, Layer-by-Layer). The screen-local
+   * top bar mirrors #13's `StageTopBar` sizing (Decision 10 — `mu-topbar*` stays deferred). */
+  transactionDetail: {
+    /** The hero card's state glyph (🛒 / ❓ / 🚫), `font-size:34px` (bare literal). */
+    heroGlyphSize: 34,
+    /** `.mu-topbar__btn` width/height. */
+    topBarButtonSize: 36,
+    /** `.mu-topbar__btn` glyph font-size. */
+    topBarButtonGlyphSize: 20,
+  },
   /** `#s-bank-syncing` (implementation plan for issue #11). Its headline icon
    * (`<div style="font-size:52px">🔄</div>` in the progress states, `⚠️` in `error`) is a bare
    * inline style in the mockup, not a `mu-*` class, so `mu-class-map.ts` (V4) does not inventory
@@ -816,5 +854,16 @@ export const screenMetrics = {
     aboutBrandIconRadius: 20,
     /** Brand-block 💰 glyph font-size (L2476). */
     aboutBrandIconGlyphSize: 34,
+  },
+  /** `#s-dashboard` (implementation plan for issue #17, Decision 8, Layer-by-Layer). Belongs
+   * here, not `componentMetrics.lineChart`, for the same reason `screenMetrics.home` does: the
+   * trend card's aspect ratio is this screen's own layout choice, not a property of the
+   * `LineChart` primitive itself. Reuses `home`'s exact `viewBox`/gridline count (both trend
+   * cards draw a `300x120` chart with three gridlines), so this screen states no new geometry of
+   * its own for the line chart. */
+  dashboard: {
+    chartViewBoxWidth: 300,
+    chartViewBoxHeight: 120,
+    chartGridLineCount: 3,
   },
 } as const;

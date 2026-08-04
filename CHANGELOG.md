@@ -90,6 +90,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   credential rejection, the one failure that returns to the credentials form. The app's hidden
   `react-native-webview` host lives here, so no credential value ever reaches screen state, a
   log or an error payload.
+- **Transaction detail and exclusion** (#16): the movement detail screen with its categorized, uncategorized and excluded states — the immutable bank facts, the editable note, a category change, the merchant shortcut, the exclusion sheet, and re-inclusion, which clears the exclusion fields and restores the movement to every total.
+- **Dashboard** (#17): the trend, spending-overview and category-report cards in both
+  manifest states (`month`, `week`), with month/week period toggles, donut and bar charts
+  on `react-native-svg`, and per-card empty states. Every figure is produced by the same
+  `apps/mobile/src/db/repositories/transactions.ts` aggregates the home screen calls, so
+  the two screens cannot diverge; this item adds no SQL. Adds the `DonutChart` and
+  `BarChart` design-system primitives and wires the two `dashboard` design-fidelity targets
 - **Settings: hub, local profile and about** (#19): the settings hub, the local-profile screen
   and the about screen, plus the product's only destructive operation — a full local wipe of
   the SQLite store and every `expo-secure-store` credential key, behind an explicit

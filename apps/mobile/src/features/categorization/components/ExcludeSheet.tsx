@@ -35,30 +35,47 @@ function reasonLabel(t: ReturnType<typeof useTranslation>['t'], reason: StageExc
   }
 }
 
-/** Spec AC17: "one pre-selected" — the mockup draws the first radio `is-on`. */
-const DEFAULT_REASON: StageExclusionReason = 'personal_transfer';
-
 export interface ExcludeSheetProps {
   visible: boolean;
   onCancel: () => void;
   onConfirm: (input: { reason: StageExclusionReason; note: string }) => void;
+  /** Defaults to all five reasons — #13's own drawing. `transaction-detail` (#16) passes its own
+   * four (implementation plan Decision 5); the pre-selected radio is always `reasons[0]`, so a
+   * caller's own ordering decides the default, not a hardcoded value. */
+  reasons?: readonly StageExclusionReason[];
+  /** Defaults to `true` — #13 draws the optional note field. `transaction-detail` (#16) passes
+   * `false`: its sheet draws no note field, and `onConfirm`'s `note` stays `''` in that case
+   * (Decision 5) — the caller decides whether to persist it. */
+  showNote?: boolean;
 }
 
 /**
  * The exclusion sheet (spec Use Case 5, UX Rules → `exclude-sheet`, AC17-AC19). Cancel and
  * confirm are handled by the caller; this component only reports the chosen reason and the raw
  * (untrimmed) note text — trimming to `null` on blank happens in `excludeTransaction`.
+ *
+ * `reasons` and `showNote` are additive (implementation plan for issue #16, Decision 5): both
+ * default to this component's original behaviour, so #13's own call site
+ * (`CategorizeScreen.tsx`) is unchanged and untouched by this edit.
  */
-export function ExcludeSheet({ visible, onCancel, onConfirm }: ExcludeSheetProps) {
+export function ExcludeSheet({
+  visible,
+  onCancel,
+  onConfirm,
+  reasons = REASONS,
+  showNote = true,
+}: ExcludeSheetProps) {
   const { t } = useTranslation();
-  const [reason, setReason] = useState<StageExclusionReason>(DEFAULT_REASON);
+  const defaultReason = reasons[0] ?? REASONS[0] ?? 'other';
+  const [reason, setReason] = useState<StageExclusionReason>(defaultReason);
   const [note, setNote] = useState('');
 
   useEffect(() => {
     if (visible) {
-      setReason(DEFAULT_REASON);
+      setReason(defaultReason);
       setNote('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `defaultReason` is derived from `reasons`, a prop that is stable across a single sheet's lifetime in every known caller; re-running this reset on every `reasons` identity change would re-arm the default reason mid-interaction.
   }, [visible]);
 
   return (
@@ -69,7 +86,7 @@ export function ExcludeSheet({ visible, onCancel, onConfirm }: ExcludeSheetProps
       </Text>
 
       <View style={{ marginTop: theme.space['4'] }}>
-        {REASONS.map((candidate) => (
+        {reasons.map((candidate) => (
           <Pressable
             key={candidate}
             accessibilityRole="radio"
@@ -88,11 +105,13 @@ export function ExcludeSheet({ visible, onCancel, onConfirm }: ExcludeSheetProps
         ))}
       </View>
 
-      <TextField
-        value={note}
-        onChangeText={setNote}
-        placeholder={t('categorize.exclude_note_placeholder')}
-      />
+      {showNote && (
+        <TextField
+          value={note}
+          onChangeText={setNote}
+          placeholder={t('categorize.exclude_note_placeholder')}
+        />
+      )}
 
       <View style={{ flexDirection: 'row', gap: theme.space['3'], marginTop: theme.space['5'] }}>
         <View style={{ flex: 1 }}>
