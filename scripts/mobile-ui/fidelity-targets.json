@@ -718,26 +718,38 @@
     {
       "screen_id": "settings-categories",
       "state_id": "expense",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/categories.tsx",
+      "deep_link": "finanzas:///settings/categories?fidelity=1&fidelityScreen=settings-categories&fidelityState=expense",
+      "ready_test_id": "fidelity-settings-categories"
     },
     {
       "screen_id": "settings-categories",
       "state_id": "income",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/categories.tsx",
+      "deep_link": "finanzas:///settings/categories?fidelity=1&fidelityScreen=settings-categories&fidelityState=income",
+      "ready_test_id": "fidelity-settings-categories"
     },
     {
       "screen_id": "settings-categories",
       "state_id": "edit",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/categories.tsx",
+      "deep_link": "finanzas:///settings/categories?fidelity=1&fidelityScreen=settings-categories&fidelityState=edit",
+      "ready_test_id": "fidelity-settings-categories"
     },
     {
       "screen_id": "settings-categories",
       "state_id": "delete-confirm",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/categories.tsx",
+      "deep_link": "finanzas:///settings/categories?fidelity=1&fidelityScreen=settings-categories&fidelityState=delete-confirm",
+      "ready_test_id": "fidelity-settings-categories"
     }
   ]
 }

@@ -95,6 +95,29 @@ implemented in the description.
   call `getAppDatabase()` again after any reset completes.
 - Anything requiring a native module needs a dev build, not Expo Go. Say so in the PR.
 
+## Drag-to-reorder gestures
+
+Neither `react-native-gesture-handler` nor `react-native-reanimated` is installed, and that is
+deliberate (item #8's plan). `#screen=settings-categories`'s drag-to-reorder (issue #21) is the
+sanctioned pattern for the next surface that needs one:
+
+- The gesture shell (`PanResponder` + `Animated`) lives in exactly one presentational component —
+  `apps/mobile/src/features/categories/components/CategoryReorderList.tsx` — and nowhere else.
+- Every decision the drag makes (which index a drop resolves to, how the list re-orders) is a
+  **pure, React-free function** in a sibling module (`reorder.ts`: `moveItem`, `resolveDropIndex`),
+  unit-tested directly. The gesture shell only wires `PanResponder` callbacks to those functions
+  and to `View.onLayout` measurements — so only the shell can be wrong, and the shell itself is
+  thin enough to review by inspection.
+- `PanResponder` instances are created once per draggable row id and cached (a `Map` in a
+  `useRef`), not recreated every render; the callbacks read every value that can change across
+  renders (the current order, the latest `onReorder`) through refs, never through a closed-over
+  render-time variable — the same staleness class `useWipeLocalData`'s `phaseRef` solves for a
+  state machine.
+- Before adding `react-native-gesture-handler` or `react-native-reanimated` for a *different*
+  screen's gesture, re-read this decision and its rationale (implementation plan for issue #21,
+  Decision 10) — a native gesture library is a dependency decision for the parent orchestrator,
+  not a per-screen choice.
+
 ## Copy and formatting
 
 - **No user-facing literal strings in JSX.** Copy comes from the `src/i18n/` catalogues via
