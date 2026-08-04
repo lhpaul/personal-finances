@@ -48,10 +48,17 @@ export default [
     ignores: ['src/lib/secure-store/expo-secure-store.adapter.ts'],
   },
   // No credential value may ever reach a log line (AGENTS.md non-negotiable 1, Business Rule 1).
-  // `no-console` is `'warn'` for the rest of the workspace (root config); these two directories
-  // are the ones that see a plaintext RUT/password, so a stray `console.*` there is a hard error.
+  // `no-console` is `'warn'` for the rest of the workspace (root config); these directories are
+  // the ones that see a plaintext RUT/password, so a stray `console.*` there is a hard error.
+  // `src/features/bank-syncing/**` added for issue #11 (implementation plan Infrastructure /
+  // Configuration): `use-scraper-runner.tsx` and `use-bank-sync.ts` hold the credential for the
+  // life of an attempt, matching item #9's `src/features/connect-bank/**` precedent exactly.
   {
-    files: ['src/lib/secure-store/**/*.{ts,tsx}', 'src/features/connect-bank/**/*.{ts,tsx}'],
+    files: [
+      'src/lib/secure-store/**/*.{ts,tsx}',
+      'src/features/connect-bank/**/*.{ts,tsx}',
+      'src/features/bank-syncing/**/*.{ts,tsx}',
+    ],
     rules: {
       'no-console': 'error',
     },

@@ -352,34 +352,38 @@
     {
       "screen_id": "bank-syncing",
       "state_id": "login",
-      "status": "planned",
+      "status": "wired",
       "fixture": "seed-default",
-      "max_mismatch_pct": 6.0,
-      "threshold_note": "Progress animation is captured mid-flight; the frame is not deterministic"
+      "app_file": "apps/mobile/app/(onboarding)/bank-syncing.tsx",
+      "deep_link": "finanzas:///bank-syncing?fidelity=1&fidelityScreen=bank-syncing&fidelityState=login",
+      "ready_test_id": "fidelity-bank-syncing"
     },
     {
       "screen_id": "bank-syncing",
       "state_id": "products",
-      "status": "planned",
+      "status": "wired",
       "fixture": "seed-default",
-      "max_mismatch_pct": 6.0,
-      "threshold_note": "Progress animation is captured mid-flight; the frame is not deterministic"
+      "app_file": "apps/mobile/app/(onboarding)/bank-syncing.tsx",
+      "deep_link": "finanzas:///bank-syncing?fidelity=1&fidelityScreen=bank-syncing&fidelityState=products",
+      "ready_test_id": "fidelity-bank-syncing"
     },
     {
       "screen_id": "bank-syncing",
       "state_id": "transactions",
-      "status": "planned",
+      "status": "wired",
       "fixture": "seed-default",
-      "max_mismatch_pct": 6.0,
-      "threshold_note": "Progress animation is captured mid-flight; the frame is not deterministic"
+      "app_file": "apps/mobile/app/(onboarding)/bank-syncing.tsx",
+      "deep_link": "finanzas:///bank-syncing?fidelity=1&fidelityScreen=bank-syncing&fidelityState=transactions",
+      "ready_test_id": "fidelity-bank-syncing"
     },
     {
       "screen_id": "bank-syncing",
       "state_id": "error",
-      "status": "planned",
+      "status": "wired",
       "fixture": "seed-default",
-      "max_mismatch_pct": 6.0,
-      "threshold_note": "Progress animation is captured mid-flight; the frame is not deterministic"
+      "app_file": "apps/mobile/app/(onboarding)/bank-syncing.tsx",
+      "deep_link": "finanzas:///bank-syncing?fidelity=1&fidelityScreen=bank-syncing&fidelityState=error",
+      "ready_test_id": "fidelity-bank-syncing"
     },
     {
       "screen_id": "home",

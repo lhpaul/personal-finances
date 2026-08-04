@@ -743,4 +743,13 @@ export const screenMetrics = {
     /** `.mu-topbar__btn` (L286) glyph font-size. */
     closeButtonFontSize: 20,
   },
+  /** `#s-bank-syncing` (implementation plan for issue #11). Its headline icon
+   * (`<div style="font-size:52px">🔄</div>` in the progress states, `⚠️` in `error`) is a bare
+   * inline style in the mockup, not a `mu-*` class, so `mu-class-map.ts` (V4) does not inventory
+   * it — this is the screen's own layout choice, not a property of a shared primitive. Found
+   * during implementation: the plan's Layer-by-Layer claimed no new `componentMetrics` group,
+   * which held for every *class* this screen draws but missed this one inline literal. */
+  bankSyncing: {
+    headlineIconFontSize: 52,
+  },
 } as const;

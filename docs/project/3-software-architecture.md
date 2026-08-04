@@ -140,18 +140,28 @@ screen → feature hook (getAppDatabase() + repository functions) → src/db rep
 ```
 
 **The sync engine (item #10) is the one exception that renders nothing.** It sits in the same
-layer as a feature hook, but its own inbound edge is a *read result*, not a screen event:
+layer as a feature hook, but its own inbound edge is a *read result*, not a screen event. The
+seam end to end, across three items:
 
 ```
-(a later item's WebView host) → ScraperRunner port → src/features/sync (runSync / runAppOpenSync)
-                                                    → src/db repository → Drizzle → SQLite
+connect flow (item #9)          syncing screen (item #11)                sync engine (item #10)
+────────────────────────        ──────────────────────────────────       ─────────────────────────
+writes a connection row,   →    mounts the hidden <WebView>,         →   runSync(deps, request)
+hands a ConnectHandoff          implements ScraperRunner by              → ScraperRunner.run(...)
+{ connectionId, … } —            mounting BankScraperComponent,          → applySyncWrite(...)
+never a credential value         reads the credential late (after        → src/db repository
+                                  the device lock is held) and
+                                  clears it on every settlement path
 ```
 
-`@finanzas/bank-scraper` is imported **type-only** by `src/features/sync` — the concrete
-`ScraperRunner` implementation, and the hidden WebView it wraps, belong to the item that mounts
-it (connect flow / syncing screen). The engine itself never imports `expo-secure-store` or
-`expo-crypto`, and is handed only a connection's `credentials_key` (a secure-store *key name*,
-never a value) — the credential itself never enters this layer.
+`useScraperRunner` (`apps/mobile/src/features/bank-syncing/use-scraper-runner.tsx`) is the
+concrete `ScraperRunner` implementation and the only file in the app allowed the deep,
+headless-barrel-excluded import `@finanzas/bank-scraper/src/component` — the hidden WebView it
+wraps lives only while a read is in flight, keyed by a fresh identity per attempt, never reused
+across a retry. `@finanzas/bank-scraper` is imported **type-only** by `src/features/sync` — the
+engine itself never imports `expo-secure-store` or `expo-crypto`, and is handed only a
+connection's `credentials_key` (a secure-store *key name*, never a value) — the credential itself
+never enters this layer, only the syncing screen's own runner.
 
 - `src/db` is the only module that emits SQL. Repository functions return domain types.
 - Aggregates used by `home` and `dashboard` are SQL, not JS loops over the full table.
