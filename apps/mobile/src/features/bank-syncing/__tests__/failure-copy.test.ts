@@ -18,16 +18,14 @@ describe('FAILURE_BODY_KEY (scenario 6; brief AC2; Decision 7)', () => {
 
   it.each(ALL_KINDS)('%s resolves to a non-empty, non-key string in es', (kind) => {
     const key = FAILURE_BODY_KEY[kind];
-    const value = (es as Record<string, string>)[key];
-    expect(value).toBeDefined();
+    const value = (es as Record<string, string>)[key] ?? '';
     expect(value.length).toBeGreaterThan(0);
     expect(value).not.toBe(key); // the i18next "miss" signature is the raw key echoed back
   });
 
   it.each(ALL_KINDS)('%s resolves to a non-empty, non-key string in en', (kind) => {
     const key = FAILURE_BODY_KEY[kind];
-    const value = (en as Record<string, string>)[key];
-    expect(value).toBeDefined();
+    const value = (en as Record<string, string>)[key] ?? '';
     expect(value.length).toBeGreaterThan(0);
     expect(value).not.toBe(key);
   });
