@@ -24,7 +24,7 @@ describe('ListGroup', () => {
   });
 
   it('renders no divider for a single child', () => {
-    const tree = ListGroup({ children: <Text>Only</Text> });
+    const tree = ListGroup({ children: <Text>A</Text> });
     const dividers = collectElements(
       tree,
       (el) =>
