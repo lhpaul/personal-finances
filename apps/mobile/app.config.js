@@ -52,5 +52,14 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: ['expo-router', 'expo-localization', 'expo-sqlite'],
+    // Non-secret EAS project identifier (implementation plan Decision D12) — written by
+    // `eas init --account lhpaul --non-interactive` (H1). Public, not a credential; every
+    // build variant shares the one EAS project.
+    extra: {
+      eas: {
+        projectId: '2447749d-611f-4c85-8dc0-0a9b04200ef1',
+      },
+    },
+    owner: 'lhpaul',
   },
 };
