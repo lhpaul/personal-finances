@@ -97,9 +97,13 @@ headless barrel) is the only file in this package that imports `react`, `react-n
 it and is the **only** module allowed to import that deep path
 (`no-secure-store-import.test.ts` in that feature asserts this mechanically).
 
-- `react-native-webview` is a **native module**. A dev client built before this dependency was
-  added cannot resolve it at runtime (`Unable to resolve "react-native-webview"`) — rebuild the
-  dev client after pulling in this change, and never test this screen from Expo Go.
+- `react-native-webview` is a **native module**. A native runtime error (`Cannot find native
+  module ...`) needs a rebuilt dev client — never test this screen from Expo Go. `Unable to
+  resolve "react-native-webview"` is a **different** failure class: Metro's own
+  package-resolution graph, not the compiled binary (found in review — CodeRabbit PR #85). Run
+  `pnpm check:layout` to confirm the tree is still hoisted, then restart Metro with
+  `pnpm dev:mobile --clear`, before assuming a native rebuild is needed — see `AGENTS.md`'s
+  troubleshooting table for both symptoms side by side.
 - The component is mounted **only** while a read is in flight, keyed by a fresh identity per
   attempt — never reused across a retry. `ScrapeSession` is constructed and started inside a
   mount-only `useEffect` (not the render body — an earlier draft of this component started it in

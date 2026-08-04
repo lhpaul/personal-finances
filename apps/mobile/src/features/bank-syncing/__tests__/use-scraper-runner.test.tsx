@@ -137,6 +137,29 @@ describe('ScraperAttemptController (scenarios 8-11; the concurrency checklist)',
     expect(controller.getMountRequest()).toBeNull();
   });
 
+  it('real path: cancel() after the mount request is armed but before the host supplies a real cancel handle settles as cancelled (found in review — CodeRabbit PR #85 round 2)', async () => {
+    const controller = new ScraperAttemptController(buildDeps({ runScript: () => null }), () => undefined);
+
+    const promise = controller.run({ countryCode: 'cl', bankId: 'banco-de-chile' });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // The mount request exists (the host has been asked to render `BankScraperComponent`), but
+    // `setRealCancelHandle` — the component's own `ref` callback — has not fired yet. This is
+    // exactly the window an unmount that commits before that render reaches: `use-bank-sync.ts`
+    // calls `cancel()` from its effect cleanup, and the element is already gone, so no `ref`
+    // callback will ever arrive.
+    expect(controller.getMountRequest()).not.toBeNull();
+    expect(controller.getCredentialsSnapshot()).not.toBeNull();
+
+    controller.cancel();
+
+    const result = await promise;
+    expect(result.outcome).toBe('cancelled');
+    expect(controller.getCredentialsSnapshot()).toBeNull();
+    expect(controller.getMountRequest()).toBeNull();
+  });
+
   it('scenario 10: the credential snapshot is null after settle, on the success path', async () => {
     // Force the real (non-scripted) path so a credential is actually read.
     const controller = new ScraperAttemptController(buildDeps({ runScript: () => null }), () => undefined);

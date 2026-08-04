@@ -84,11 +84,19 @@ export class ScraperAttemptController {
   private settlement: Settlement | null = null;
   private devCancel: (() => void) | null = null;
   private realCancel: (() => void) | null = null;
-  /** Set by `cancel()` when neither `devCancel` nor `realCancel` exists yet — the window between
-   * `run()` starting the real path and `readCredentials()` resolving, during which nothing is
-   * mounted and no script is installed (found in review — CodeRabbit PR #85). Consumed once,
-   * immediately after that await, by `run()` itself. */
+  /** Set by `cancel()` when neither `devCancel` nor `realCancel` exists yet **and no mount
+   * request is armed either** — the window between `run()` starting the real path and
+   * `readCredentials()` resolving, during which nothing is mounted and no script is installed
+   * (found in review — CodeRabbit PR #85). Consumed once, immediately after that await, by
+   * `run()` itself. */
   private cancelRequestedBeforeMount = false;
+  /** The current attempt's request, held for the entire attempt lifecycle (set at the top of
+   * `run()`, cleared alongside everything else in `handleResult`) — not derivable from
+   * `mountRequest` (which does not exist until after the credential is read) or from a local
+   * variable in `run()` (which `cancel()`, called externally, cannot reach). Needed only for the
+   * second cancellation window below: mount request armed, but the host has not yet rendered its
+   * imperative handle (found in review — CodeRabbit PR #85 round 2). */
+  private activeRequest: { countryCode: string; bankId: string } | null = null;
   private nextAttemptId = 0;
 
   constructor(deps: ScraperAttemptControllerDeps, onMountRequestChange: () => void) {
@@ -122,6 +130,7 @@ export class ScraperAttemptController {
     this.devCancel = null;
     this.realCancel = null;
     this.cancelRequestedBeforeMount = false;
+    this.activeRequest = null;
     if (this.mountRequest !== null) {
       this.mountRequest = null;
       this.onMountRequestChange();
@@ -148,14 +157,29 @@ export class ScraperAttemptController {
       this.realCancel();
       return;
     }
-    // Neither handle exists yet — the real path may still be awaiting `readCredentials()`, with
-    // nothing mounted and no script installed (found in review — CodeRabbit PR #85). Record the
-    // request; `run()` checks it the moment that await resolves, so this is not a silent no-op.
+    if (this.mountRequest !== null) {
+      // Second cancellation window (found in review — CodeRabbit PR #85 round 2): a mount
+      // request was armed and `onMountRequestChange()` was called, but the host's re-render —
+      // and with it, `BankScraperComponent`'s `ref` callback supplying a real cancel handle — is
+      // still pending (`onMountRequestChange` triggers an async React state update). An unmount
+      // that commits before that render (`use-bank-sync.ts` calls `cancel()` in its cleanup)
+      // reaches exactly this window: the element is already gone, so no `ref` callback will ever
+      // arrive to populate `realCancel`. Settle directly instead of waiting for a handle that
+      // will never exist. `activeRequest` is guaranteed non-null here — it is set at the top of
+      // `run()` and cleared only together with `mountRequest`, in `handleResult`.
+      const request = this.activeRequest as { countryCode: string; bankId: string };
+      this.handleResult(buildCancelledResult(request.countryCode, request.bankId));
+      return;
+    }
+    // Neither a handle nor a mount request exists yet — the real path may still be awaiting
+    // `readCredentials()` (found in review — CodeRabbit PR #85). Record the request; `run()`
+    // checks it the moment that await resolves, so this is not a silent no-op.
     this.cancelRequestedBeforeMount = true;
   }
 
   async run(request: { countryCode: string; bankId: string }): Promise<ScrapeResult> {
     this.cancelRequestedBeforeMount = false;
+    this.activeRequest = { countryCode: request.countryCode, bankId: request.bankId };
 
     // __DEV__-only scripted path (Decision 10) — checked first, so a fixture run never reads the
     // keychain and never resolves a bank config. The settlement is armed *before* calling
