@@ -37,7 +37,7 @@
 
 | Item | Value |
 | --- | --- |
-| App id | `cl.finanzas.mobile` |
+| App id | `cl.finanzas.mobile.dev` (the development-`APP_VARIANT` bundle identifier since #23 — `apps/mobile/app.config.js`; confirmed on device, corrected from the plan's `cl.finanzas.mobile`, which is the production variant) |
 | URL scheme | `finanzas://` (flows use the three-slash form, e.g. `finanzas:///e2e-fixtures`) |
 | E2E fixture panel | `/(dev)/e2e-fixtures` — deep link `finanzas:///e2e-fixtures` (`__DEV__` only) |
 | Fixture states | `reset`, `synced-home`, `stage-queue`, `transaction-detail`, `scripted-read` |
@@ -62,8 +62,9 @@
 3. `pnpm e2e:test`
 
 **Expected result**: all three exit `0`. `pnpm e2e:contract` prints one row per declared flow with
-its id, status (`wired` / `planned`), fixture state, covered screens and owning issue; six rows
-read `wired`. Keep this table — it is the evidence attached to the PR.
+its id, status (`wired` / `planned`), fixture state, covered screens and owning issue; all ten
+rows read `wired` (Implementation Order step 12's promotion happened at dispatch — see Known
+Limitations). Keep this table — it is the evidence attached to the PR.
 
 ### Step 1: Prove the credential scanner works in both directions
 
@@ -91,7 +92,7 @@ nothing.
 
 1. With Metro stopped, run `pnpm e2e`.
 2. Restart Metro. Shut down the `Finanzas E2E` simulator and run `pnpm e2e` again.
-3. Boot the simulator but uninstall the app (`xcrun simctl uninstall booted cl.finanzas.mobile`)
+3. Boot the simulator but uninstall the app (`xcrun simctl uninstall booted cl.finanzas.mobile.dev`)
    and run `pnpm e2e` again.
 
 **Expected result**: three distinct, actionable errors — no Metro, no matching booted device (with
@@ -140,8 +141,11 @@ exits `0`.
 1. `bash scripts/e2e/run-e2e.sh .maestro/flows/03-categorize-batch.yaml`
 
 **Expected result**: the `stage-queue` state applies, the stage intro shows **4** pending
-movements, the flow categorises the batch (suggested chip + `Siguiente →`, with one `Omitir`), and
-the completion screen appears. Flow exits `0`.
+movements. The first movement (merchant "Consultoría Digital SpA") opens `merchant-edit` via the
+merchant-name tap and returns, then confirms its suggested category ("Freelance") and advances;
+the remaining three are skipped (`Omitir`) — one confirm and three skips within the same batch.
+The completion screen shows the partial outcome (1 of 4 resolved), and "Continuar a inicio" lands
+on home. Flow exits `0`.
 
 ### Step 7: Flow 04 — transaction detail and exclusion
 
@@ -149,10 +153,14 @@ the completion screen appears. Flow exits `0`.
 
 1. `bash scripts/e2e/run-e2e.sh .maestro/flows/04-transaction-detail-exclude.yaml`
 
-**Expected result**: the `transaction-detail` state applies, the transactions list opens, a
-movement's detail opens, `Excluir del análisis` opens the reason sheet, confirming records the
-exclusion, and the detail screen then shows the excluded badge and note. The movement is still
-present in the list — excluded, never deleted. Flow exits `0`.
+**Expected result**: the `transaction-detail` state applies, the transactions list opens. The
+flow's own note: `transaction-detail-v1.sql`'s three fixture movements share the exact same date,
+amount and merchant by design (its own header comment) — genuinely ambiguous to a list tap — so
+the flow deep-links to the concrete `detail-tx-categorized` id rather than tapping a list row,
+consistent with D5's own "deterministic state by deep link" philosophy. `Excluir del análisis`
+opens the reason sheet, confirming records the exclusion, and the detail screen then shows the
+excluded badge and note. The movement is still present in the list — excluded, never deleted. Flow
+exits `0`.
 
 ### Step 8: Flow 05 — dashboard
 
@@ -169,22 +177,74 @@ category-report sections render, and switching to the week segment re-renders th
 
 1. `bash scripts/e2e/run-e2e.sh .maestro/flows/06-resync-idempotent.yaml`
 
-**Expected result**: the first scripted sync writes the deterministic read; the transactions month
-header shows a movement count; the second scripted sync of the **same** read leaves that count
-unchanged. A duplicated movement fails this flow. Flow exits `0`.
+**Expected result**: the syncing screen auto-starts on mount (the `scripted-read` state already
+armed a pending handoff) and redirects to `bank-connected` on success — that redirect is the
+sync-completed signal. The flow `copyTextFrom`s the transactions month-header text
+(`"<mes> (<n>)"`) before the second sync, re-applies `scripted-read`, syncs again, and asserts the
+**same** copied text is visible afterward. A duplicated movement (a different count) fails this
+flow. Flow exits `0`.
 
-### Step 10: The acceptance command
+### Step 10: Flow 08 — settings banks
+
+**Maps to**: issue #20 (merged on `develop`; promoted from `planned` to `wired` per the
+implementation plan's Implementation Order step 12)
+
+1. `bash scripts/e2e/run-e2e.sh .maestro/flows/08-settings-banks.yaml`
+
+**Expected result**: the `synced-home` state applies, `settings-banks` shows the fixture
+connection's row ("Banco de Chile"), tapping it opens `bank-review` (`Productos` visible), and
+`Volver` returns to `settings-banks`. Non-destructive — no disconnect. Flow exits `0`.
+
+### Step 11: Flow 09 — settings categories
+
+**Maps to**: issue #21 (merged on `develop`; promoted per Implementation Order step 12)
+
+1. `bash scripts/e2e/run-e2e.sh .maestro/flows/09-settings-categories.yaml`
+
+**Expected result**: `settings-categories` opens on the expense tab ("+ Nueva categoría de
+gasto"), switching to "Ingresos" shows "+ Nueva categoría de ingreso", and switching back to
+"Gastos" restores the expense-tab copy. No category is created, edited or deleted — this flow only
+exercises tab switching. Flow exits `0`.
+
+### Step 12: Flow 10 — notifications
+
+**Maps to**: issue #18 (merged on `develop`; promoted per Implementation Order step 12)
+
+1. `bash scripts/e2e/run-e2e.sh .maestro/flows/10-notifications.yaml`
+
+**Expected result**: the flow deep-links directly to `finanzas:///notifications/schedule` —
+deliberately bypassing `notifications-intro`'s "Habilitar notificaciones", which would otherwise
+require handling a real OS permission dialog this suite does not depend on. Selecting the
+"Personalizada" custom-time chip, continuing to the days step, choosing "Solo días laborales" and
+continuing again saves the schedule and lands on `onboarding-ready`. `settings-notifications` is
+then opened directly and shows the schedule just written (`Recordatorios activados`, the time and
+days sections) — no toggle is tapped, avoiding any OS permission dialog. Flow exits `0`.
+
+### Step 13: Flow 07 — settings wipe (destructive, runs last)
+
+**Maps to**: issue #19 (merged on `develop`; promoted per Implementation Order step 12)
+
+1. `bash scripts/e2e/run-e2e.sh .maestro/flows/07-settings-wipe.yaml`
+
+**Expected result**: `settings` opens; `Acerca de` shows "Privacidad por diseño."; back to
+`settings`; `Perfil local` opens `settings-account`; `Borrar todos mis datos` opens the
+confirmation modal; `Borrar todo` wipes the store and the app re-enters at `onboarding-intro`
+("Bienvenido a Finanzas"). Run this flow **last** — never before another flow in the same session.
+Flow exits `0`.
+
+### Step 14: The acceptance command
 
 **Maps to**: AC1
 
 1. Reset the device state: deep-link to `finanzas:///e2e-fixtures` and tap the `reset` action.
 2. Run the literal acceptance command from the repository root: `maestro test .maestro/`
 
-**Expected result**: exactly six flows execute, in the order `.maestro/config.yaml` declares, and
-all six pass. No subflow under `.maestro/shared/` is executed as a flow, and no `planned` flow is
-attempted. Record the output — it is the evidence attached to the PR.
+**Expected result**: exactly ten flows execute, in the order `.maestro/config.yaml` declares
+(`07-settings-wipe` last, since it wipes the store), and all ten pass. No subflow under
+`.maestro/shared/` is executed as a flow. Record the output — it is the evidence attached to the
+PR.
 
-### Step 11: CI wiring
+### Step 15: CI wiring
 
 **Maps to**: AC1 (CI half), plan D14
 
@@ -197,7 +257,7 @@ attempted. Record the output — it is the evidence attached to the PR.
 **Expected result**: the cheap checks run on every PR; the macOS job is present, correctly gated,
 and costs nothing while the repository variable is unset.
 
-### Step 12: Release-build safety
+### Step 16: Release-build safety
 
 **Maps to**: AGENTS.md non-negotiable 7, plan D3
 
@@ -219,9 +279,9 @@ and costs nothing while the repository variable is unset.
 
 ## Assertions Checklist
 
-- [ ] **AC1** — `maestro test .maestro/` runs six flows against a booted simulator and all pass.
+- [ ] **AC1** — `maestro test .maestro/` runs ten flows against a booted simulator and all pass.
 - [ ] **AC2** — no real credential appears in any file under `.maestro/`; `pnpm e2e:lint` proves it
-      and fails on each of the three planted violations in Step 1.
+      and fails on each of the four planted violations in Step 1.
 - [ ] **AC3** — this runbook exists under `docs/testing/` and every step above has been executed.
 - [ ] Onboarding through bank connection completes with a fixture credential and a stubbed read.
 - [ ] A categorization session moves the four pending movements through the queue.
@@ -229,8 +289,10 @@ and costs nothing while the repository variable is unset.
       deleted.
 - [ ] Re-syncing the same scripted read does not change the movement count.
 - [ ] Every fixture state is idempotent.
-- [ ] `pnpm e2e:contract` reports every MVP screen as covered, planned (with an owning issue), or
-      excluded (with a reason).
+- [ ] Settings wipe, settings banks, settings categories and notifications — all four promoted
+      per Implementation Order step 12 — are wired and pass (Steps 10-13).
+- [ ] `pnpm e2e:contract` reports every MVP screen as covered by a wired flow, or excluded (with a
+      reason) — no `planned` rows remain.
 - [ ] The `maestro-ios` CI job is present, doubly gated, and skipped while `ENABLE_MAESTRO_E2E` is
       unset.
 - [ ] The `__DEV__` fixture surface is unreachable in a release build.
@@ -277,9 +339,11 @@ runbooks still works.
 - **Selector surface is copy.** Screens without a root `fidelityTestId(...)` anchor (`home`, the
   onboarding screens, every settings screen) are matched by Spanish copy. `pnpm e2e:lint` catches
   drift cheaply, but a copy change still requires a flow edit.
-- **Four flows are declared but not written**: settings wipe (#19), settings banks (#20), settings
-  categories (#21) and notifications (#18). Each is a `planned` row in
-  `.maestro/flow-contract.json` naming its owning issue.
+- **All four extension flows are wired, not planned.** By the time this item was implemented,
+  #18/#19/#20/#21 were all merged on `develop`, so Implementation Order step 12's promotion
+  happened immediately rather than being left for a future item: settings wipe, settings banks,
+  settings categories and notifications are all `wired` rows in `.maestro/flow-contract.json`
+  (issues #19/#20/#21/#18 respectively, for traceability).
 - **Cross-midnight runs.** The deterministic read anchors on the run's local day. Two syncs on
   opposite sides of local midnight legitimately produce different dates; re-run from `reset`.
 - **First-run confirmations.** Record here, during implementation: whether Maestro's `clearState`
