@@ -1,22 +1,25 @@
+import type { DbPorts } from '../../../db/ids';
 import type { AppDatabase, SyncConnection } from '../../../db/types';
 import type { ScraperRunner, SyncRunResult } from '../../sync';
-import { resolveRetryDecision, runAttempt, type AttemptOutcome, type RunAttemptDeps } from '../use-bank-sync';
-
-// `jest.mock` calls are hoisted above every import by `babel-plugin-jest-hoist` (found in
-// review — keeping the import with its siblings above clears the `import/first` lint warning,
-// `use-home-data.test.ts`'s own precedent). `use-bank-sync.ts` statically imports
-// `use-scraper-runner.tsx`, which statically imports the deep `@finanzas/bank-scraper/src/component`
-// — a real `react-native-webview` native module the Jest environment cannot resolve. This suite
-// exercises `runAttempt` / `resolveRetryDecision` as plain functions (no rendering, no runner
-// interaction), so a trivial stand-in is enough to let the module graph load.
-jest.mock('@finanzas/bank-scraper/src/component', () => ({ BankScraperComponent: () => null }));
+// Imported from `../sync-attempt` directly (not `../use-bank-sync`, which statically imports
+// `use-scraper-runner.tsx` and, through it, the deep `@finanzas/bank-scraper/src/component` — a
+// real `react-native-webview` native module) — `sync-attempt.ts` is React-free by design
+// precisely so this suite needs no mock at all to exercise `runAttempt` / `resolveRetryDecision`
+// as plain functions.
+import { resolveRetryDecision, runAttempt, type AttemptOutcome, type RunAttemptDeps } from '../sync-attempt';
 
 const FAKE_RUNNER: ScraperRunner = { run: jest.fn() };
 const FAKE_DB = {} as AppDatabase;
+const FAKE_PORTS: DbPorts = {
+  newId: () => 'test-id',
+  now: () => '2026-01-01T00:00:00.000Z',
+  digestSha256: async () => 'test-digest',
+};
 
 function buildDeps(overrides: Partial<RunAttemptDeps> = {}): RunAttemptDeps {
   return {
     db: FAKE_DB,
+    ports: FAKE_PORTS,
     runner: FAKE_RUNNER,
     runSync: jest.fn(),
     getConnection: jest.fn(),
