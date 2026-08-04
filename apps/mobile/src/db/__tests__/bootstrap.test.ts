@@ -1,6 +1,6 @@
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 
-import { __resetBootstrapForTests, ensureDatabaseReady } from '../bootstrap';
+import { __resetBootstrapForTests, ensureDatabaseReady, resetDatabaseBootstrap } from '../bootstrap';
 import { getSetting } from '../repositories/settings';
 import { financialInstitutions } from '../schema';
 import { latestJournalEntryTag, MIGRATIONS_FOLDER, openMemoryDb } from '../testing/memory-db';
@@ -57,6 +57,43 @@ describe('bootstrap', () => {
       expect(institutionRows).toHaveLength(6);
     } finally {
       sqlite.close();
+    }
+  });
+
+  it('resetDatabaseBootstrap forces the next ensureDatabaseReady call to genuinely re-run, rather than resolving the stale single-flight promise (Decision 3, Scenario 14)', async () => {
+    const first = openMemoryDb();
+    try {
+      const ports = createDeterministicPorts();
+      await ensureDatabaseReady({
+        db: first.db,
+        migrate: () => migrate(first.db, { migrationsFolder: MIGRATIONS_FOLDER }),
+        latestMigrationTag: latestJournalEntryTag(),
+        newId: ports.newId,
+        now: ports.now,
+      });
+      expect(getSetting(first.db, 'schema_version')).toBe(1);
+
+      resetDatabaseBootstrap();
+
+      // A brand-new, unmigrated store. Without `resetDatabaseBootstrap()`, `ensureDatabaseReady`
+      // would resolve the first store's already-settled promise and never touch this one.
+      const second = openMemoryDb();
+      try {
+        await ensureDatabaseReady({
+          db: second.db,
+          migrate: () => migrate(second.db, { migrationsFolder: MIGRATIONS_FOLDER }),
+          latestMigrationTag: latestJournalEntryTag(),
+          newId: ports.newId,
+          now: ports.now,
+        });
+        expect(getSetting(second.db, 'schema_version')).toBe(1);
+        const institutionRows = second.db.select().from(financialInstitutions).all();
+        expect(institutionRows).toHaveLength(6);
+      } finally {
+        second.sqlite.close();
+      }
+    } finally {
+      first.sqlite.close();
     }
   });
 });

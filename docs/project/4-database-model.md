@@ -172,6 +172,17 @@ deleting this row would silently destroy every movement and product the person h
 is left byte-identical on disconnect, so a later reconnect reuses the same deterministic secure-store
 key rather than creating a second entry.
 
+**The full local wipe (item #19, "Borrar todos mis datos") derives the credential key space from
+this table.** A keychain has no "list every key" API, so `collectCredentialKeys`
+(`apps/mobile/src/features/settings/wipe-local-data.ts`) unions two sources: every
+`credentials_key` this table holds (including `disconnected` rows — the derivation must not
+filter on `status`) and `credentialsKeyFor(id)` applied to every row of `financial_institutions`
+(the seeded catalogue), which sweeps an orphan key whose connection row was already deleted or
+that was written by a connect attempt that crashed before its transaction committed. The wipe
+deletes every derived key from `expo-secure-store` first, reads each back to confirm none
+survived, and only then destroys the store **as a file** — no `DELETE` statement is issued against
+this or any other table.
+
 **No `auto_sync` column.** Syncing is implicit: an `active` connection syncs on app open when
 its last successful sync is more than six hours old. The per-connection toggle has been removed
 from `#screen=bank-review` so the mockups and the schema agree. If per-bank control is wanted
@@ -362,10 +373,16 @@ first writer of the reminder keys, inherits the contract instead of re-deciding 
 | `reminder_enabled` | boolean | Treated as `false` — the reminder row is not rendered |
 | `reminder_time` | `"HH:mm"`, 24-hour, zero-padded | The reminder row renders with title only |
 | `reminder_days` | array of ISO weekday integers, `1` = Monday … `7` = Sunday | The reminder row renders with title only |
+| `first_launch_at` | ISO instant string, written once by `ensureFirstLaunchAt` on a fresh install | `readFirstLaunchAt` returns `undefined` for anything that is not a non-empty string |
 
-`apps/mobile/src/db/repositories/settings.ts`'s `isOnboardingCompleted`, `markOnboardingCompleted`
-and `readReminderSettings` are the sanctioned accessors for these keys; no caller reads
-`app_settings` directly for them.
+`first_launch_at` is not internal bookkeeping only — `settings-account` (item #19) surfaces it as
+"Usando la app desde `<mes año>`", so a *new* store (after the full local wipe, or a fresh install)
+genuinely shows the current month rather than a stale one, because bootstrap re-writes this key
+the moment the file is recreated.
+
+`apps/mobile/src/db/repositories/settings.ts`'s `isOnboardingCompleted`, `markOnboardingCompleted`,
+`readReminderSettings` and `readFirstLaunchAt` are the sanctioned accessors for these keys; no
+caller reads `app_settings` directly for them.
 
 ### `user_budgets`
 

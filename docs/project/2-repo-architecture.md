@@ -48,7 +48,7 @@ personal-finances/
 ├── docs/                           # Project specs, best practices, AI workflow protocols
 ├── e2e/                            # Playwright placeholder (see note below)
 ├── scripts/
-│   ├── design/                     # Mockup manifest verification (arrives with #24)
+│   ├── design/                     # Mockup manifest verification: verify-manifest.mjs, pnpm mockups:verify (#24)
 │   ├── mobile-ui/                  # Design-fidelity gate: contract, mockup/simulator capture, diff (#47)
 │   ├── development-workflow/       # AI workflow helpers
 │   └── dev/                        # Local dev helpers (arrives with a later item)
@@ -172,7 +172,8 @@ pnpm --filter @finanzas/mobile db:seed       # regenerate the bundled seed fixtu
 
 # Mockups
 pnpm mockups:mobile                          # open design/mockups/mobile/index.html
-pnpm mockups:verify                          # arrives with the mockup-verification item, #24
+pnpm mockups:verify                          # verify the manifest against the PR checklist (#24)
+pnpm mockups:verify:test                     # unit tests for the verifier itself
 
 # Store builds (declared only; both require EAS authentication, not run by this item or CI)
 pnpm mobile:build:dev-store

@@ -92,6 +92,12 @@ jobs:
       - name: Design-fidelity unit tests
         run: pnpm fidelity:test
 
+      - name: Mockup manifest verification
+        run: pnpm mockups:verify
+
+      - name: Mockup manifest verification unit tests
+        run: pnpm mockups:verify:test
+
   db-check:
     name: DB check
     runs-on: ubuntu-latest

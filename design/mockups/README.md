@@ -45,7 +45,7 @@ A state never gets its own `<section>`. Every screen is one node with `id="s-<sc
 
 The boot script sets `screenEl.dataset.state` and toggles `hidden` on each `[data-states]` descendant. Nodes without `data-states` are always visible. This keeps one screen = one DOM contract, as the framework requires.
 
-### Workflow (no scripts/)
+### Workflow
 
 1. Edit `mockup-manifest.js` and/or `index.html`
 2. Mirror token changes in `:root` when editing `tokens.json`
@@ -61,7 +61,8 @@ PR checklist:
 - [ ] Every `go('id')` / `go('id','state')` target exists
 - [ ] Token changes mirrored in `:root`
 
-The last three are mechanical — see the verification snippet in [mobile/README.md](./mobile/README.md#verification).
+All six items are mechanised — run `pnpm mockups:verify` (item #24). See
+[mobile/README.md](./mobile/README.md#verification).
 
 ### Evolving mockups
 

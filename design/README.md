@@ -58,6 +58,15 @@ design/
    (`categoryIcons` and `categoryLabels` are content, not CSS — they have no `:root` mirror)
 3. The Expo theme (`apps/mobile/src/theme.ts`) follows the JSON
 
+`pnpm mockups:verify` (item #24, `M010`) mechanically enforces step 2 for semantic colour
+tokens: every leaf under `colors.*` **excluding** `colors.palette.*` must appear, value-for-value
+after normalisation, as a `--*` custom property in the mockup's `:root` block. It is a
+value-level check — it does not catch a token *rename* that keeps the same value. Excluded by
+design: `colors.palette.*` (the raw ramp consumed by `theme.ts`, not mirrored in the mockup),
+`gradients` / `chart` / `typography` / `space` / `radius` / `shadow` / `layout` / `touchTarget`
+(composite or dimensional values with no one-to-one `:root` spelling), and `categoryIcons` /
+`categoryLabels` (content, per step 2 above).
+
 `apps/mobile/src/theme.ts` now exists and is parity-tested against `tokens.json`
 (`theme-tokens-parity.test.ts`, added by item #2): step 3 above is not optional busywork — a
 token added without a `theme.ts` mirror fails that test in CI. See

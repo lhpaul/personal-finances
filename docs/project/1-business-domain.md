@@ -72,7 +72,11 @@ and cannot be deleted.
    (with a reason) but the record stays. "Eliminar" does not exist as a concept for scraped
    movements. Re-including a movement (transaction detail, item #16) clears `excluded_at`,
    `exclusion_reason` and `exclusion_note` and returns it to every total and chart — still an
-   `UPDATE`, never a delete.
+   `UPDATE`, never a delete. This governs the lifecycle of a movement *inside a living profile* —
+   it does not describe the full local wipe (settings' "Borrar todos mis datos", item #19): that
+   operation does not delete a row, it destroys the profile itself by deleting the SQLite file and
+   every `expo-secure-store` credential key. No code path in the wipe issues a `DELETE` against
+   any table, so this rule and the wipe never collide — they govern different objects.
 4. **A transaction counts toward totals and charts when `excluded_at IS NULL`**, at
    `COALESCE(included_amount, amount)`. This rule is implemented once per layer — the SQL fragment
    in `apps/mobile/src/db/fragments.ts` for set-based queries, and `isIncludedInAnalysis` /

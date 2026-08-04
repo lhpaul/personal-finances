@@ -95,6 +95,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   state, per-bank detail with products, balances and cupo, manual re-sync and credential
   update hand-offs, and disconnection — which deletes the keychain entry and keeps every
   downloaded movement.
+- **Dashboard** (#17): the trend, spending-overview and category-report cards in both
+  manifest states (`month`, `week`), with month/week period toggles, donut and bar charts
+  on `react-native-svg`, and per-card empty states. Every figure is produced by the same
+  `apps/mobile/src/db/repositories/transactions.ts` aggregates the home screen calls, so
+  the two screens cannot diverge; this item adds no SQL. Adds the `DonutChart` and
+  `BarChart` design-system primitives and wires the two `dashboard` design-fidelity targets
+- **Mockup manifest verification script** (#24): `scripts/design/verify-manifest.mjs` and
+  `pnpm mockups:verify` enforce the mockup PR checklist mechanically — navigation targets,
+  unique local states, exactly one `initial: true`, no screen-level fields inside states,
+  manifest/DOM parity, declared `data-states`, resolvable `go()` targets, and semantic colour
+  tokens mirrored in `:root`. Runs in CI on every pull request and replaces the `node -e`
+  one-liner in `design/mockups/mobile/README.md`, including its two documented false positives
+- **Settings: hub, local profile and about** (#19): the settings hub, the local-profile screen
+  and the about screen, plus the product's only destructive operation — a full local wipe of
+  the SQLite store and every `expo-secure-store` credential key, behind an explicit
+  confirmation, returning the app to onboarding.
 
 ### Fixed
 

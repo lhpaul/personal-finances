@@ -1,5 +1,6 @@
 import {
   credentialsKeyFor,
+  deleteAllCredentials,
   deleteCredentials,
   readCredentials,
   writeCredentials,
@@ -78,5 +79,28 @@ describe('writeCredentials / readCredentials / deleteCredentials', () => {
       rut: '12.345.678-5',
       password: 'two',
     });
+  });
+});
+
+describe('deleteAllCredentials (implementation plan for issue #19, Decision 1)', () => {
+  it('deletes every key in the given list', async () => {
+    const port = createFakePort({
+      [credentialsKeyFor('banco-de-chile')]: 'a',
+      [credentialsKeyFor('santander')]: 'b',
+    });
+    await deleteAllCredentials(port, [credentialsKeyFor('banco-de-chile'), credentialsKeyFor('santander')]);
+    await expect(port.getItem(credentialsKeyFor('banco-de-chile'))).resolves.toBeNull();
+    await expect(port.getItem(credentialsKeyFor('santander'))).resolves.toBeNull();
+  });
+
+  it('tolerates a key that does not exist', async () => {
+    const port = createFakePort();
+    await expect(deleteAllCredentials(port, [credentialsKeyFor('banco-de-chile')])).resolves.toBeUndefined();
+  });
+
+  it('an empty key list is a no-op', async () => {
+    const port = createFakePort({ [credentialsKeyFor('banco-de-chile')]: 'a' });
+    await deleteAllCredentials(port, []);
+    await expect(port.getItem(credentialsKeyFor('banco-de-chile'))).resolves.toBe('a');
   });
 });

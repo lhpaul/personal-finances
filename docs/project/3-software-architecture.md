@@ -10,7 +10,7 @@
 | Secrets | **`expo-secure-store`** (iOS Keychain / Android Keystore) | The one place bank credentials may exist |
 | Scraping | **`react-native-webview`** + injected scripts (`@finanzas/bank-scraper`) | Ported from `bank-scrapper-app`. Banco de Chile is already implemented |
 | State | Feature hooks (`getAppDatabase()` + repository functions) + React Context for session state | Screens are read-heavy over SQLite. **Not yet using TanStack Query** — it is not installed; the current pattern is a hook that awaits `getAppDatabase()` and calls repository functions directly (established by issue #8's onboarding screens, the app's first real screens). Adopting a query library for caching/invalidation remains a possible future direction, not a current dependency |
-| Charts | Hand-rolled **`react-native-svg`** components | Item #12's home screen trend line is the first chart built (`src/components/ui/LineChart.tsx`); the dashboard (#17) needs four more shapes, all already drawn in the mockups. A chart library would cost more than it saves |
+| Charts | Hand-rolled **`react-native-svg`** components | Item #12's home screen trend line is the first chart built (`src/components/ui/LineChart.tsx`); the dashboard (#17) adds `DonutChart` and `BarChart` and widens `LineChart`/`Legend` additively, all already drawn in the mockups. A chart library would cost more than it saves |
 | i18n | **`i18next`** + `react-i18next` + `expo-localization`, enforced by `eslint-plugin-i18next` |
 | Notifications | **`expo-notifications`**, local scheduling only | Reminders are local; there is no push server |
 | Testing | **Jest** (unit) + **Maestro** (device E2E) | See [Testing Strategy](#testing-strategy) |
@@ -164,7 +164,14 @@ connection's `credentials_key` (a secure-store *key name*, never a value) — th
 never enters this layer, only the syncing screen's own runner.
 
 - `src/db` is the only module that emits SQL. Repository functions return domain types.
-- Aggregates used by `home` and `dashboard` are SQL, not JS loops over the full table.
+- Aggregates used by `home` and `dashboard` are SQL, not JS loops over the full table. `dashboard`
+  (item #17) adds no aggregate of its own: it reads through `getAppDatabase()` plus item #12's
+  `sumIncludedByDirectionAndCategory` / `sumIncludedByDirectionAndDay` / `listCategories` behind
+  one feature hook (`useDashboardData`), the same shape every screen in this campaign uses. Its
+  six-period trend chart folds one bounded day-grained read (≤ 368 rows for a six-month window)
+  into period buckets with a pure function — this is still "aggregate in SQL, not in JS," because
+  every filter and every `sum()` already happened in SQLite; the fold only reduces a row count
+  bounded by the window, never by movement volume.
 - The inclusion rule (`excluded_at IS NULL`, `COALESCE(included_amount, amount)`) has exactly
   **two** sanctioned statements: the shared SQL query fragment (`apps/mobile/src/db`) for
   set-based aggregates, and `@finanzas/shared-domain`'s `inclusion.ts` for in-memory plain
@@ -201,7 +208,7 @@ never enters this layer, only the syncing screen's own runner.
 | Database | SQLite in the app sandbox. Not encrypted at rest in the MVP — the OS sandbox plus device passcode is the boundary. **SQLCipher is a fast follow, tracked in the backlog** |
 | Auth | None. There is no account, no session and no authorization surface |
 | Network | The app makes no requests to first-party servers. The WebView is restricted to the target bank's exact origin (`URL.origin` equality, never a suffix/substring match), checked at three independent points before any credential is entered: the navigation gate (`onShouldStartLoadWithRequest`), the injection gate (re-checked at load-end, before any script runs), and an in-page gate the login script itself evaluates as its first statement |
-| Deletion | "Eliminar cuenta" wipes the SQLite file and every `expo-secure-store` key, irreversibly and locally |
+| Deletion | Settings' "Borrar todos mis datos" (item #19; there is no "cuenta" to eliminate — BR0) is an ordered, fail-closed sequence, not a bulk `DELETE`: (1) derive every `bank_creds:<institutionId>` key from `user_financial_institutions` ∪ the seeded institution catalogue, (2) delete each key from `expo-secure-store`, (3) read every key back and **stop before touching the database** if any survives, (4) only then close the SQLite handle and delete the file, and clear the memoized handle plus the bootstrap single-flight so the next launch genuinely re-bootstraps. Irreversible, local-only, and no code path in it issues a `DELETE` against any table (`apps/mobile/src/features/settings/wipe-local-data.ts`) |
 
 Threat model note: an attacker with an unlocked device has the data. That is the same exposure
 as the user's own banking app, and is the accepted trade for never centralizing credentials.

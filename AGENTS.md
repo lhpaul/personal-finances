@@ -192,6 +192,8 @@ pnpm dev:mobile
 
 # Mockups (the UI contract — open before implementing any screen)
 open design/mockups/mobile/index.html
+pnpm mockups:verify                             # verify the manifest against the PR checklist
+pnpm mockups:verify:test                        # unit tests for the verifier itself
 
 # Design-system gallery (dev build only — every apps/mobile/src/components/ui/ primitive with
 # sample data; never reachable in a release build). With `pnpm dev:mobile` running, navigate to
@@ -324,3 +326,4 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 | `Unable to resolve "@expo/metro-runtime"` from `expo-router/entry-classic.js` | The installed `node_modules` tree is isolated, not hoisted (pnpm 11 does not read `node-linker` from `.npmrc`; it reads `nodeLinker` from `pnpm-workspace.yaml`) | Run `pnpm check:layout` to confirm, then `pnpm install` (plain, no `--node-linker` flag) |
 | `pnpm fidelity` captures the wrong device, or fails with "no booted simulator matches profile" | The booted simulator is not named `Finanzas Fidelity` | `xcrun simctl list devices booted`; boot or create `Finanzas Fidelity` per `docs/best-practices/stack/mobile-ui-fidelity.md` — `scripts/mobile-ui/capture-simulator.sh --check-only` prints the exact `simctl create` command |
 | Movements disappeared after disconnecting a bank | Something deleted the `user_financial_institutions` row. Disconnect (item #20) is a status transition to `'disconnected'` plus a keychain delete — the two `ON DELETE cascade` chains (`user_financial_products` from `user_financial_institutions`, `transactions` from `user_financial_products`) make a `DELETE` on that row destroy every movement instead |
+| Settings still shows the old figures after "Borrar todos mis datos" | The memoized database handle was not reset | `resetAppDatabase()` (`apps/mobile/src/db/runtime.ts`) is the only sanctioned invalidation path (item #19) — check that `use-wipe-local-data.ts` passes it as `resetStore`, and that no screen holds its own copy of a pre-wipe `db` handle across the wipe |

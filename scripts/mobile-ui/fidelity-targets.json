@@ -221,7 +221,7 @@
       "states": [
         "advanced"
       ],
-      "reason": "Manifest marks this state mvp: false \u2014 partial-inclusion UI is drawn but not built in the MVP"
+      "reason": "Manifest marks this state mvp: false — partial-inclusion UI is drawn but not built in the MVP"
     }
   ],
   "mappings": [
@@ -590,16 +590,22 @@
     {
       "screen_id": "dashboard",
       "state_id": "month",
-      "status": "planned",
+      "status": "wired",
       "fixture": "seed-default",
+      "app_file": "apps/mobile/app/dashboard.tsx",
+      "deep_link": "finanzas:///dashboard?fidelity=1&fidelityScreen=dashboard&fidelityState=month",
+      "ready_test_id": "fidelity-dashboard",
       "max_mismatch_pct": 5.0,
       "threshold_note": "Same charts as home, plus the month/week bar series"
     },
     {
       "screen_id": "dashboard",
       "state_id": "week",
-      "status": "planned",
+      "status": "wired",
       "fixture": "seed-default",
+      "app_file": "apps/mobile/app/dashboard.tsx",
+      "deep_link": "finanzas:///dashboard?fidelity=1&fidelityScreen=dashboard&fidelityState=week",
+      "ready_test_id": "fidelity-dashboard",
       "max_mismatch_pct": 5.0,
       "threshold_note": "Same charts as home, plus the month/week bar series"
     },
@@ -656,19 +662,28 @@
     {
       "screen_id": "settings-account",
       "state_id": "default",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/account.tsx",
+      "deep_link": "finanzas:///settings/account?fidelity=1&fidelityScreen=settings-account&fidelityState=default",
+      "ready_test_id": "fidelity-settings-account"
     },
     {
       "screen_id": "settings-account",
       "state_id": "delete-confirm",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/account.tsx",
+      "deep_link": "finanzas:///settings/account?fidelity=1&fidelityScreen=settings-account&fidelityState=delete-confirm",
+      "ready_test_id": "fidelity-settings-account"
     },
     {
       "screen_id": "settings-about",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/about.tsx",
+      "deep_link": "finanzas:///settings/about?fidelity=1&fidelityScreen=settings-about",
+      "ready_test_id": "fidelity-settings-about"
     },
     {
       "screen_id": "settings-banks",

@@ -654,6 +654,34 @@ export const componentMetrics = {
      * so the mapping is discoverable from this file. */
   },
 
+  /** `.mu-donut` (dashboard implementation plan for issue #17, Decision 8). */
+  donutChart: {
+    /** `.mu-donut` display width/height (bare literal). */
+    size: 132,
+    /** The `<svg viewBox="0 0 42 42">` coordinate space every `.mu-donut` in the mockup draws. */
+    viewBoxSize: 42,
+    /** The `<circle r="15.9">` radius (bare literal) — chosen upstream in the mockup so
+     * `2 * PI * r` is close enough to `100` that a bucket's `stroke-dasharray`/`stroke-dashoffset`
+     * can be expressed directly in percent-of-100 units instead of true arc length. */
+    radius: 15.9,
+    /** `<circle stroke-width="7">` (bare literal). */
+    strokeWidth: 7,
+  },
+
+  /** `.mu-bars` (dashboard implementation plan for issue #17, Decision 8). */
+  barChart: {
+    /** `.mu-bars` (L496) height. */
+    height: 120,
+    /** `.mu-bars` (L496) column gap, and `.mu-bars__col` (L497) internal bar/label gap — both
+     * read the same bare `6px` literal in the mockup. */
+    gap: 6,
+    /** `.mu-bars__bar` (L498) border-radius — asymmetric (rounded top, near-square bottom). */
+    barRadiusTop: 6,
+    barRadiusBottom: 2,
+    /** `.mu-bars__lbl` (L501) font-size (bare literal). */
+    labelFontSize: 10,
+  },
+
   topBar: {
     /** `.mu-topbar__btn` (L286-289) width/height. */
     buttonSize: 36,
@@ -676,6 +704,22 @@ export const componentMetrics = {
      * derivation: 2 × vertical padding (`--sp3` = 12) + the name line (19) + `subMarginTop` (1) +
      * the sub line (`--sm` 12 × the inherited 1.5 line-height = 18) = 62. */
     minTouchHeight: 62,
+  },
+  /** `.mu-item`, `__icon`, `__title` (settings implementation plan for issue #19, Decision 12).
+   * `.mu-item__chev`, `__sub`, `__txt` are already `componentMetrics.bankRow` (owned jointly with
+   * `CategoryRow`/`BankRow` since item #12/#9) — `ListRow` reuses those literals rather than
+   * duplicating them under a second name. */
+  listRow: {
+    /** `.mu-item__icon` (L459-462) width/height. */
+    iconSize: 40,
+    /** `.mu-item__icon` (L461) glyph font-size. */
+    iconGlyphSize: 19,
+    /** `.mu-item__title` (L464) font-size (bare literal). */
+    titleFontSize: 15,
+    /** `.mu-item` (L454-457) has no explicit CSS height — content-driven. Conservative
+     * touch-target estimate for `TOUCH_METRICS`: 2 × vertical padding (`--sp4` = 16) + the icon
+     * size (40, which dominates the title+sub text stack) = 72. */
+    minTouchHeight: 72,
   },
 } as const;
 
@@ -795,5 +839,31 @@ export const screenMetrics = {
    * which held for every *class* this screen draws but missed this one inline literal. */
   bankSyncing: {
     headlineIconFontSize: 52,
+  },
+  /** `#s-settings-account`, `#s-settings-about` (implementation plan for issue #19,
+   * Layer-by-Layer). Both blocks are bare inline styles in the mockup, not `mu-*` classes. */
+  settings: {
+    /** `#s-settings-account`'s 📱 device-avatar circle width/height (L2216). */
+    accountDeviceAvatarSize: 64,
+    /** Device-avatar 📱 glyph font-size (L2216). */
+    accountDeviceAvatarGlyphSize: 28,
+    /** `#s-settings-about`'s 💰 brand-block icon width/height (L2476). */
+    aboutBrandIconSize: 74,
+    /** Brand-block icon border-radius — a bare literal in the mockup, not a `--r-*` token
+     * (L2476). */
+    aboutBrandIconRadius: 20,
+    /** Brand-block 💰 glyph font-size (L2476). */
+    aboutBrandIconGlyphSize: 34,
+  },
+  /** `#s-dashboard` (implementation plan for issue #17, Decision 8, Layer-by-Layer). Belongs
+   * here, not `componentMetrics.lineChart`, for the same reason `screenMetrics.home` does: the
+   * trend card's aspect ratio is this screen's own layout choice, not a property of the
+   * `LineChart` primitive itself. Reuses `home`'s exact `viewBox`/gridline count (both trend
+   * cards draw a `300x120` chart with three gridlines), so this screen states no new geometry of
+   * its own for the line chart. */
+  dashboard: {
+    chartViewBoxWidth: 300,
+    chartViewBoxHeight: 120,
+    chartGridLineCount: 3,
   },
 } as const;

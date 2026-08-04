@@ -1,8 +1,9 @@
 import * as Crypto from 'expo-crypto';
+import type { SQLiteDatabase } from 'expo-sqlite';
 import { migrate } from 'drizzle-orm/expo-sqlite/migrator';
 
-import { ensureDatabaseReady } from './bootstrap';
-import { openAppDatabase } from './client';
+import { ensureDatabaseReady, resetDatabaseBootstrap } from './bootstrap';
+import { deleteAppDatabaseFile, openAppDatabase } from './client';
 import type { DbPorts } from './ids';
 import type { AppDatabase } from './types';
 
@@ -49,10 +50,17 @@ function latestJournalTag(): string {
 // `src/db/bootstrap.ts`'s own single-flight guard, which remains the inner one.
 let handle: Promise<AppDatabase> | undefined;
 
+// The raw `sqlite` handle behind the memoized `db` above, kept alongside it so
+// `resetAppDatabase()` can close it before deleting the file (implementation plan for issue #19,
+// Decision 3). Set the moment `openAppDatabase()` returns, before `ensureDatabaseReady` even
+// starts — a wipe that races an in-flight bootstrap must still be able to close the real handle.
+let sqliteHandle: SQLiteDatabase | undefined;
+
 export function getAppDatabase(): Promise<AppDatabase> {
   if (!handle) {
     handle = (async () => {
-      const { db } = openAppDatabase();
+      const { sqlite, db } = openAppDatabase();
+      sqliteHandle = sqlite;
       await ensureDatabaseReady({
         db,
         migrate: () => migrate(db, migrations),
@@ -63,6 +71,7 @@ export function getAppDatabase(): Promise<AppDatabase> {
       return db;
     })().catch((error: unknown) => {
       handle = undefined;
+      sqliteHandle = undefined;
       throw error;
     });
   }
@@ -75,6 +84,32 @@ export function getAppDatabase(): Promise<AppDatabase> {
  * `bootstrap.ts`'s `__resetBootstrapForTests`. */
 export function __resetAppDatabaseForTests(): void {
   handle = undefined;
+  sqliteHandle = undefined;
+}
+
+/**
+ * The **only** sanctioned way to invalidate the memoized database handle (implementation plan
+ * for issue #19, Decision 3) — the last step of `wipeLocalData`'s ordered sequence
+ * (`src/features/settings/wipe-local-data.ts`), run only after every credential key has been
+ * confirmed deleted from the secure store.
+ *
+ * Order matters and is deliberately not the mirror image of `getAppDatabase()`'s own assembly:
+ * the memo is cleared **before** the file deletion is even awaited, so a caller that arrives
+ * mid-wipe (a feature hook re-reading on focus, per the concurrent-event-source addendum) starts
+ * a fresh `getAppDatabase()` call against a store that is about to be recreated, rather than
+ * receiving a handle to a file that is about to disappear out from under it. If no handle has
+ * ever been opened in this process (`sqliteHandle` is `undefined`), the file deletion is skipped
+ * — there is nothing to close and `expo-sqlite`'s own deletion API does not require an existing
+ * file, but skipping avoids depending on that being true forever.
+ */
+export async function resetAppDatabase(): Promise<void> {
+  const sqlite = sqliteHandle;
+  handle = undefined;
+  sqliteHandle = undefined;
+  if (sqlite !== undefined) {
+    await deleteAppDatabaseFile(sqlite);
+  }
+  resetDatabaseBootstrap();
 }
 
 /**

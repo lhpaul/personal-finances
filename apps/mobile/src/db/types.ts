@@ -474,3 +474,32 @@ export interface MerchantEditorSnapshot {
   categories: Category[];
   stats: MerchantSpendingStats;
 }
+
+/**
+ * `#screen=settings-account`'s single read (implementation plan for issue #19, Decisions 5, 10,
+ * 15, 16). `rut` is `null` when no credential entry exists anywhere (Assumption A5) — the screen
+ * renders an em dash rather than fabricating one. `firstLaunchAt` is the raw ISO instant;
+ * `local-profile.ts`'s `buildLocalProfile` derives the displayed month from it.
+ */
+export interface LocalProfile {
+  rut: string | null;
+  firstLaunchAt: string | undefined;
+  transactionCount: number;
+}
+
+/**
+ * `#screen=settings`'s five live subtitle sources, read together by `useSettingsHub()`
+ * (implementation plan for issue #19, Decision 15) so the hub's rows compose the same numbers the
+ * account/about screens verify independently. `bankCount` / `productCount` are already reduced
+ * from `listConnectedBankSummaries(db)` (issue #9) — the count of fully-synced connections and
+ * the sum of their product counts — not a raw list, because the hub subtitle needs only the two
+ * totals (Decision 15).
+ */
+export interface SettingsHubRow {
+  rut: string | null;
+  bankCount: number;
+  productCount: number;
+  reminders: ReminderSettings;
+  categories: { expense: number; income: number };
+  appVersion: string;
+}

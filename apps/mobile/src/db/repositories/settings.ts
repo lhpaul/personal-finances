@@ -24,6 +24,18 @@ export function setSetting(db: AppDatabase, key: string, value: unknown): void {
 }
 
 /**
+ * Typed, defensively-coerced accessor over `app_settings.first_launch_at` (implementation plan
+ * for issue #19, Decision 15) — `bootstrap.ts`'s `ensureFirstLaunchAt` writes this as an ISO
+ * instant string on every fresh install; this is the settings local-profile screen's first
+ * read of it. Returns `undefined` for anything that is not a non-empty string, so a caller never
+ * has to handle `unknown`.
+ */
+export function readFirstLaunchAt(db: AppDatabase): string | undefined {
+  const raw = getSetting(db, 'first_launch_at');
+  return typeof raw === 'string' && raw.length > 0 ? raw : undefined;
+}
+
+/**
  * Onboarding accessors over `app_settings.onboarding_completed` (implementation plan Decision 8
  * value-shape table). The value is a boolean JSON literal; anything else (absent, malformed,
  * `"true"` as a string, `1`, …) reads back as `false` — a first launch is never mistaken for a

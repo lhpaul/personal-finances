@@ -5,6 +5,7 @@ import {
   deriveZonedParts,
   differenceInDays,
   formatLongDate,
+  formatLongMonthYear,
   formatMonthAbbreviation,
   formatMonthHeading,
   formatMonthYear,
@@ -229,6 +230,17 @@ describe('dates', () => {
       expect(formatTimeOfDay(instant)).toBe('01:00');
     });
 
+    it('formatLongMonthYear is deterministic and pinned to UTC regardless of the host timezone', () => {
+      const originalTZ = process.env.TZ;
+      process.env.TZ = 'Pacific/Kiritimati'; // UTC+14 — a hostile host timezone
+      try {
+        expect(formatLongMonthYear('2025-01-24', 'es')).toBe('enero 2025');
+        expect(formatLongMonthYear('2025-01-24', 'es')).toBe(formatLongMonthYear('2025-01-24', 'es'));
+      } finally {
+        process.env.TZ = originalTZ;
+      }
+    });
+
     it('every exported function requires an explicit instant/dateLocal argument (compile-time guarantee)', () => {
       // deriveZonedParts, deriveDateLocal and formatTimeOfDay's `instant: Date` parameter has no
       // default; the four label formatters' `dateLocal` and `locale` parameters have no default
@@ -376,6 +388,13 @@ describe('dates', () => {
         expect(formatMonthYear(dateLocal, 'es')).toBe(expected);
       });
 
+      it.each([
+        ['2025-01-24', 'enero 2025'],
+        ['2024-12-01', 'diciembre 2024'],
+      ])('formatLongMonthYear(%p, "es") -> %p (no "de" connector)', (dateLocal, expected) => {
+        expect(formatLongMonthYear(dateLocal, 'es')).toBe(expected);
+      });
+
       // ICU/CLDR baseline: these are the labels Node's bundled full-ICU CLDR data produces for
       // the `es` locale at plan/implementation time (Decision 7's width caveat covers `sept`, the
       // four-letter form CLDR uses for September). This suite runs on Node in CI and is expected
@@ -425,6 +444,10 @@ describe('dates', () => {
 
       it('formatMonthYear honours en', () => {
         expect(formatMonthYear('2025-01-24', 'en')).toBe('Jan 2025');
+      });
+
+      it('formatLongMonthYear honours en', () => {
+        expect(formatLongMonthYear('2025-01-24', 'en')).toBe('January 2025');
       });
 
       it('formatMonthAbbreviation honours en', () => {
