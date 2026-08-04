@@ -14,7 +14,11 @@ export type CategoryChipState = 'default' | 'selected' | 'suggested';
 
 export type CategoryChipProps = {
   emoji: string;
-  label: string;
+  /** Optional (implementation plan for issue #21, Decision 9): the mockup's icon-grid chip
+   * (`#screen=settings-categories&state=edit`'s emoji picker) draws no label, only
+   * `mu-chip__emoji`. Every existing call site passes `label` and is unaffected — the label
+   * `Text` renders only when `label !== undefined`. */
+  label?: string;
   hint?: string;
   state?: CategoryChipState;
   onPress?: (event: GestureResponderEvent) => void;
@@ -34,7 +38,9 @@ export function CategoryChip({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      // A screen reader announces the emoji's own name when no label is given — language-
+      // independent, so it is not catalogue copy (Decision 9).
+      accessibilityLabel={label ?? emoji}
       accessibilityState={{ selected: state === 'selected' }}
       onPress={onPress}
       hitSlop={touchMetrics.hitSlop}
@@ -60,14 +66,16 @@ export function CategoryChip({
       >
         {emoji}
       </Text>
-      <Text
-        variant="small"
-        tone="primary"
-        center
-        style={{ fontWeight: fontWeight(theme.typography.weight.semibold) }}
-      >
-        {label}
-      </Text>
+      {label !== undefined && (
+        <Text
+          variant="small"
+          tone="primary"
+          center
+          style={{ fontWeight: fontWeight(theme.typography.weight.semibold) }}
+        >
+          {label}
+        </Text>
+      )}
       {hint !== undefined && (
         <Text
           variant="xs"
