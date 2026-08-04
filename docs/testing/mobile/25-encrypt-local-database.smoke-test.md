@@ -48,10 +48,18 @@ row V30). There is no baseline to compare against and none is invented.
 | --- | --- |
 | Legacy plaintext database | `finanzas.db` |
 | Encrypted database | `finanzas.enc.db` |
-| Secure-store key for the database key | `db_key:main` |
+| Secure-store key for the database key | `db_key.main` |
 | Commit marker | `app_settings` row with key `encryption_migrated_at` |
 | Dev probe | `finanzas://gallery` → **Encryption probe** |
 | Expected SQLCipher version | `4.7.0` |
+
+**Updated during implementation (real-device finding)**: the plan's Decision 3 wrote the
+secure-store key as `db_key:main` (colon). A real-device run of `openEncryptedStore()` hit
+`expo-secure-store`'s own key validator (`isValidKey`, `/^[\w.-]+$/`), which rejects a colon —
+confirmed against the installed `expo-secure-store@15.0.8` source, not inferred from the crash
+alone. The shipped key is `db_key.main` (period). The same defect affects
+`credentialsKeyFor`'s `bank_creds:<institutionId>` format (issue #9) — out of this item's scope,
+reported separately.
 
 ---
 
@@ -247,7 +255,7 @@ file always begins with that magic; an encrypted SQLCipher file begins with its 
 
 **Expected result**:
 
-- The probe reports **key present: no** — the `db_key:main` entry is gone.
+- The probe reports **key present: no** — the `db_key.main` entry is gone.
 - The probe reports no user tables in `finanzas.enc.db`.
 - The app has returned to `onboarding-intro`.
 

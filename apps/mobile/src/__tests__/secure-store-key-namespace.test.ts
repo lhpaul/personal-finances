@@ -230,8 +230,8 @@ describe('the credential key namespace is closed — every setItem() call passes
       expect(args.every(isAcceptedKeyArgument)).toBe(true);
     });
 
-    it("E3: port.setItem('db_key:main', keyHex) is rejected — a hard-coded literal bypasses the constant", () => {
-      const args = findSetItemFirstArgs("port.setItem('db_key:main', keyHex);");
+    it("E3: port.setItem('db_key.main', keyHex) is rejected — a hard-coded literal bypasses the constant", () => {
+      const args = findSetItemFirstArgs("port.setItem('db_key.main', keyHex);");
       expect(args.every(isAcceptedKeyArgument)).toBe(false);
     });
 
@@ -240,8 +240,8 @@ describe('the credential key namespace is closed — every setItem() call passes
       expect(args.every(isAcceptedKeyArgument)).toBe(false);
     });
 
-    it('E5: port.setItem(`db_key:${scope}`, value) is rejected — a template literal is not an enumerable namespace', () => {
-      const args = findSetItemFirstArgs('port.setItem(`db_key:${scope}`, value);');
+    it('E5: port.setItem(`db_key.${scope}`, value) is rejected — a template literal is not an enumerable namespace', () => {
+      const args = findSetItemFirstArgs('port.setItem(`db_key.${scope}`, value);');
       expect(args.every(isAcceptedKeyArgument)).toBe(false);
     });
 
