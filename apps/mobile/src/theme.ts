@@ -593,6 +593,11 @@ export const componentMetrics = {
     actionSize: 40,
     /** `.mu-head__action` glyph font-size. */
     actionGlyphFontSize: 18,
+    /** `.mu-head__action--dot::after` (implementation plan for issue #15, Decision 11)
+     * width/height. */
+    actionDotSize: 8,
+    /** `.mu-head__action--dot::after` top/right offset. */
+    actionDotOffset: 2,
     /** `.mu-head__title`: letter-spacing -.5px; unitless line-height 1.15 over `--xl` (24px) =
      * 27.6 -> 28. */
     titleLetterSpacing: -0.5,
@@ -746,5 +751,20 @@ export const screenMetrics = {
     barRadiusTop: 6,
     /** `.mu-bars__bar` (L498) border-radius, bottom corners. */
     barRadiusBottom: 2,
+  },
+  /** `#s-transactions` (implementation plan for issue #15, Layer-by-Layer). Most of what this
+   * screen draws is already token-based (`.mu-pad`, `.mu-tx-group`'s `var(--sp*)` margins);
+   * these are the few bare-literal values left, for the screen-local `mu-list`/`mu-item`
+   * (`FilterToggleRow`, Decision 11 — deferred to #19, composed here without touching
+   * `MU_CLASS_MAP`) and the sheet ✕ close button (`.mu-topbar__btn`, also still deferred). */
+  transactions: {
+    /** `.mu-item__title` (L464) font-size (bare literal). */
+    filterToggleTitleFontSize: 15,
+    /** `.mu-item__sub` (L465) margin-top. */
+    filterToggleSubMarginTop: 1,
+    /** `.mu-topbar__btn` (L286) width/height. */
+    closeButtonSize: 36,
+    /** `.mu-topbar__btn` (L286) glyph font-size. */
+    closeButtonFontSize: 20,
   },
 } as const;

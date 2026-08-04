@@ -478,26 +478,38 @@
     {
       "screen_id": "transactions",
       "state_id": "list",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(tabs)/transactions.tsx",
+      "deep_link": "finanzas:///(tabs)/transactions?fidelity=1&fidelityScreen=transactions&fidelityState=list",
+      "ready_test_id": "fidelity-transactions"
     },
     {
       "screen_id": "transactions",
       "state_id": "search",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(tabs)/transactions.tsx",
+      "deep_link": "finanzas:///(tabs)/transactions?fidelity=1&fidelityScreen=transactions&fidelityState=search",
+      "ready_test_id": "fidelity-transactions"
     },
     {
       "screen_id": "transactions",
       "state_id": "filters",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(tabs)/transactions.tsx",
+      "deep_link": "finanzas:///(tabs)/transactions?fidelity=1&fidelityScreen=transactions&fidelityState=filters",
+      "ready_test_id": "fidelity-transactions"
     },
     {
       "screen_id": "transactions",
       "state_id": "empty",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(tabs)/transactions.tsx",
+      "deep_link": "finanzas:///(tabs)/transactions?fidelity=1&fidelityScreen=transactions&fidelityState=empty",
+      "ready_test_id": "fidelity-transactions"
     },
     {
       "screen_id": "transaction-detail",
