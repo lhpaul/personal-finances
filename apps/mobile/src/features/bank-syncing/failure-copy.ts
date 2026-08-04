@@ -17,13 +17,17 @@ export type SyncFailureKind = FailureReasonCode | 'read_in_progress';
  * (Assumption A7) — those four keys render short badge labels on the bank detail screen (#20);
  * this screen needs full actionable sentences.
  */
-export const FAILURE_BODY_KEY: Record<SyncFailureKind, string> = {
+// `as const satisfies Record<...>` (rather than a `Record<SyncFailureKind, string>` annotation)
+// keeps each value's literal type instead of widening to `string` — `t()` is typed against the
+// exact key union `i18next.d.ts` derives from `es.json` (Decision 5 there), so a widened `string`
+// would not type-check at every call site that indexes this map.
+export const FAILURE_BODY_KEY = {
   invalid_credentials: 'bank_syncing.error.body.invalid_credentials',
   session_closed: 'bank_syncing.error.body.session_closed',
   network: 'bank_syncing.error.body.network',
   parse_failed: 'bank_syncing.error.body.parse_failed',
   read_in_progress: 'bank_syncing.error.body.read_in_progress',
-};
+} as const satisfies Record<SyncFailureKind, string>;
 
 export type RetryAction = 'restart_read' | 'reenter_credentials';
 

@@ -106,7 +106,15 @@ export interface UseBankSyncResult {
   retry: () => void;
 }
 
-export function useBankSync(): UseBankSyncResult {
+export interface UseBankSyncOptions {
+  /** `false` under a fidelity preview capture (Decision 12): the hook still mounts — Rules of
+   * Hooks forbids calling it conditionally — but its mount effect never consumes the pending
+   * handoff and never starts an attempt, so `element` stays `null` (no WebView), no keychain is
+   * read and no `runSync` call happens. Defaults to `true`. */
+  enabled?: boolean;
+}
+
+export function useBankSync({ enabled = true }: UseBankSyncOptions = {}): UseBankSyncResult {
   const router = useRouter();
   const [progress, setProgress] = useState<{ stepId: ScraperStepId; progress: number } | null>(null);
   const [outcome, setOutcome] = useState<AttemptOutcome | null>(null);
@@ -148,6 +156,7 @@ export function useBankSync(): UseBankSyncResult {
   );
 
   useEffect(() => {
+    if (!enabled) return undefined; // Decision 12: a fidelity preview starts no read at all
     unmountedRef.current = false;
     const handoff = consumePendingSyncHandoff();
     handoffRef.current = handoff;
@@ -162,10 +171,12 @@ export function useBankSync(): UseBankSyncResult {
       // synchronously while the runner's port is still alive (Decision 9, Assumption A1).
       cancel();
     };
-    // Runs once on mount only — the handoff is consumed exactly once (Decision 5); a retry
-    // reuses `handoffRef.current` instead of calling `consumePendingSyncHandoff()` again.
+    // Runs once on mount only (plus once more if `enabled` itself flips, which a given screen
+    // instance never does in practice — mirrors `useFidelityPreview()`'s own fixed-per-mount
+    // contract) — the handoff is consumed exactly once (Decision 5); a retry reuses
+    // `handoffRef.current` instead of calling `consumePendingSyncHandoff()` again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   const retry = useCallback(() => {
     const decision = resolveRetryDecision(outcome);
