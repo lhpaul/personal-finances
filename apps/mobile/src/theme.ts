@@ -866,4 +866,17 @@ export const screenMetrics = {
     chartViewBoxHeight: 120,
     chartGridLineCount: 3,
   },
+  /** `#s-notifications-intro`, `#s-notifications-schedule`, `#s-settings-notifications`
+   * (implementation plan for issue #18, Layer-by-Layer). */
+  reminders: {
+    /** `SamplePushCard`'s 💰 glyph, `<span style="font-size:20px">💰</span>` (`index.html:1005`). */
+    samplePushGlyphSize: 20,
+    /** `CustomTimeCard`'s two numeric boxes, `.mu-otp__box` inline `style="width:62px"`
+     * (`index.html:1061`). Square, so this is also the box height. */
+    customTimeBoxSize: 62,
+    /** `TimePresetGrid`'s `.mu-grid-2` two-column layout — React Native has no CSS grid, so this
+     * is the same percentage-column-width workaround `screenMetrics.merchants
+     * .categoryPickerColumnWidth` already uses for the identical mockup class. */
+    timeGridColumnWidth: '48%',
+  },
 } as const;

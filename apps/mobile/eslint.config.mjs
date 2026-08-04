@@ -2,7 +2,11 @@
 import expoConfig from 'eslint-config-expo/flat.js';
 import i18nextPlugin from 'eslint-plugin-i18next';
 
-import rootConfig, { dbAccessBoundary, secureStoreBoundary } from '../../eslint.config.mjs';
+import rootConfig, {
+  dbAccessBoundary,
+  notificationsBoundary,
+  secureStoreBoundary,
+} from '../../eslint.config.mjs';
 
 export default [
   ...rootConfig,
@@ -46,6 +50,15 @@ export default [
     ...secureStoreBoundary,
     files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
     ignores: ['src/lib/secure-store/expo-secure-store.adapter.ts'],
+  },
+  // Notifications access boundary (implementation plan for issue #18, Decision 1). Applied to
+  // `app/**` and `src/**`, with only `expo-notifications.adapter.ts` itself ignored — the one
+  // file allowed to import `expo-notifications`. See `notificationsBoundary`'s own doc comment
+  // in the root `eslint.config.mjs` for the rationale and the companion test.
+  {
+    ...notificationsBoundary,
+    files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/notifications/expo-notifications.adapter.ts'],
   },
   // No credential value may ever reach a log line (AGENTS.md non-negotiable 1, Business Rule 1).
   // `no-console` is `'warn'` for the rest of the workspace (root config); these directories are

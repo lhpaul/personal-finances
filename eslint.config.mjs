@@ -308,3 +308,36 @@ export const secureStoreBoundary = {
     ],
   },
 };
+
+/**
+ * Notifications access boundary (implementation plan for issue #18, Decision 1). Local reminder
+ * scheduling may only ever be handled by one module —
+ * `apps/mobile/src/lib/notifications/expo-notifications.adapter.ts` — so `expo-notifications` may
+ * not be imported anywhere else in the app. Mirrors `secureStoreBoundary`'s shape exactly.
+ * Applied only by `apps/mobile/eslint.config.mjs`, from `app/**` and `src/**`, with only that
+ * **exact file** ignored there (same rationale as `secureStoreBoundary`'s own doc comment —
+ * ignoring the whole `src/lib/notifications/**` directory would let a second file added there
+ * later bypass this rule).
+ *
+ * A companion test, `apps/mobile/src/__tests__/notifications-boundary.test.ts`, scans the same
+ * tree for the same import specifier — and additionally asserts that `requestPermission()` is
+ * called from exactly the one call site Decision 7 names — so both guarantees survive a
+ * lint-config regression.
+ */
+export const notificationsBoundary = {
+  files: ['**/*.{ts,tsx}'],
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            group: ['expo-notifications', 'expo-notifications/*'],
+            message:
+              'Only apps/mobile/src/lib/notifications/expo-notifications.adapter.ts may import expo-notifications. Screens and feature hooks use NotificationsPort instead (implementation plan for issue #18, Decision 1).',
+          },
+        ],
+      },
+    ],
+  },
+};
