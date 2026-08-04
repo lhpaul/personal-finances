@@ -53,7 +53,12 @@ than being duplicated per primitive).
   same doc-comment contract and the same graduation rule as `componentMetrics`. Example:
   `screenMetrics.onboarding.heroGlyphSize` (the 62px hero glyph shared by `onboarding-intro`,
   `onboarding-value` and `onboarding-ready`). Every later screen item follows this pattern
-  instead of stretching `componentMetrics` past its documented meaning.
+  instead of stretching `componentMetrics` past its documented meaning. Item #19 added
+  `componentMetrics.listRow` (the `ListRow`/`ListGroup` primitives — `.mu-item`, `.mu-item__icon`,
+  `.mu-item__title`; the shared `.mu-item__chev`/`__sub`/`__txt` stay under `componentMetrics.
+  bankRow`, jointly owned with `BankRow`/`CategoryRow`) and `screenMetrics.settings` (the
+  local-profile device avatar and the about screen's brand-block icon — both bare inline styles
+  in the mockup, not `mu-*` classes).
 
 Both `theme` and `componentMetrics` live in `theme.ts`, so "no hardcoded literal" holds
 literally: `no-style-literals.test.ts` scans every `.ts`/`.tsx` file under `apps/mobile/app/`
