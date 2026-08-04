@@ -38,6 +38,18 @@ describe('runAttempt (scenario 14; Decision 6; concurrency: re-entrancy)', () =>
     expect(outcome).toEqual({ phase: 'refused', failure: { reasonCode: 'read_in_progress' } });
     expect(getConnection).not.toHaveBeenCalled();
   });
+
+  it('never throws: an unexpected runSync rejection maps to phase "failed" / parse_failed rather than propagating (concurrency: error propagation)', async () => {
+    const rejection = new Error('boom — a real credential leaked into this message, on purpose, for the test below');
+    const runSync = jest.fn().mockRejectedValue(rejection);
+
+    const outcome = await runAttempt(buildDeps({ runSync }), { connectionId: 'conn-1' });
+
+    expect(outcome).toEqual({ phase: 'failed', failure: { reasonCode: 'parse_failed' } });
+    // The caught error's own message is never read (Decision 5) — nothing about it appears in
+    // the mapped outcome.
+    expect(JSON.stringify(outcome)).not.toContain('boom');
+  });
 });
 
 describe('runAttempt (Decision 6): completed outcomes', () => {

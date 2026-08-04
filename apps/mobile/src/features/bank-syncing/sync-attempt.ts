@@ -34,6 +34,13 @@ export interface AttemptOutcome {
 /**
  * The outcome mapping, extracted so it is testable without a renderer. `runSync`'s own device
  * lock is the re-entrancy net — this function does not add one of its own.
+ *
+ * Never throws (concurrency addendum, "error propagation across async boundaries"): `runSync`
+ * itself only rejects for a programming error (an unknown connection id, item #10's own
+ * contract), but that rejection is still caught here rather than left to propagate to a
+ * fire-and-forget caller, where it would surface as an unhandled promise rejection instead of a
+ * screen state. The caught error's own message is never read — only the fixed `parse_failed`
+ * code is (Decision 5's "never a raw exception" guarantee).
  */
 export async function runAttempt(deps: RunAttemptDeps, request: { connectionId: string }): Promise<AttemptOutcome> {
   const syncDeps: SyncDeps = {
@@ -44,7 +51,13 @@ export async function runAttempt(deps: RunAttemptDeps, request: { connectionId: 
     // hook awaits it before calling this function), so bootstrap is already complete.
     ready: Promise.resolve(),
   };
-  const result = await deps.runSync(syncDeps, request);
+
+  let result: SyncRunResult;
+  try {
+    result = await deps.runSync(syncDeps, request);
+  } catch {
+    return { phase: 'failed', failure: { reasonCode: 'parse_failed' } };
+  }
 
   if (result.status === 'refused') {
     // Scenario 14: no `getConnection` call for a refusal — item #10 wrote nothing.

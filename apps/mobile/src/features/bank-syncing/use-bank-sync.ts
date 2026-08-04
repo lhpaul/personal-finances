@@ -78,12 +78,18 @@ export function useBankSync({ enabled = true }: UseBankSyncOptions = {}): UseBan
       try {
         const db = await getAppDatabase();
         if (unmountedRef.current) return;
+        // `runAttempt` never throws (it catches its own unexpected errors — see
+        // `sync-attempt.ts`), but `getAppDatabase()` above can still reject (e.g. bootstrap
+        // failure); that path is also mapped rather than left as an unhandled rejection from
+        // this fire-and-forget call.
         const result = await runAttempt(
           { db, ports: createRuntimePorts(), runner, runSync: runSyncFn, getConnection: getConnectionFromDb },
           { connectionId: handoff.connectionId },
         );
         if (unmountedRef.current) return;
         setOutcome(result);
+      } catch {
+        if (!unmountedRef.current) setOutcome({ phase: 'failed', failure: { reasonCode: 'parse_failed' } });
       } finally {
         inFlightRef.current = false;
       }
