@@ -32,6 +32,17 @@ apps/mobile/android/
 # Temp files
 .tmp/
 
+# Signing material — EAS manages credentials remotely (implementation plan
+# docs/specs/developments/20260802155158_23-eas-build-release-ci Decision D12). Nothing
+# signable belongs in this repository; these patterns exist so a downloaded key or keystore
+# cannot be committed by accident.
+credentials.json
+*.p8
+*.p12
+*.mobileprovision
+*.keystore
+*.jks
+
 # Legacy working folders (own git repos; kept locally as reference)
 # - bank-scrapper-app: scraper prototype; ported into packages/bank-scraper
 # - personal-finances-app-mockups-v0: Figma Make prototype, superseded by design/mockups

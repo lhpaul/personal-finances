@@ -53,11 +53,15 @@ export default [
   // `src/features/bank-syncing/**` added for issue #11 (implementation plan Infrastructure /
   // Configuration): `use-scraper-runner.tsx` and `use-bank-sync.ts` hold the credential for the
   // life of an attempt, matching item #9's `src/features/connect-bank/**` precedent exactly.
+  // `src/features/banks/**` added for issue #20: `disconnect-bank.service.ts` and
+  // `use-disconnect-bank.ts` are the one write path that deletes the keychain entry, and the
+  // `no-credential-values.test.ts` source scan is the same guarantee's test-time backstop.
   {
     files: [
       'src/lib/secure-store/**/*.{ts,tsx}',
       'src/features/connect-bank/**/*.{ts,tsx}',
       'src/features/bank-syncing/**/*.{ts,tsx}',
+      'src/features/banks/**/*.{ts,tsx}',
     ],
     rules: {
       'no-console': 'error',

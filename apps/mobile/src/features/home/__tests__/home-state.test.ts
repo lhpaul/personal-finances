@@ -4,6 +4,7 @@ import { resolveHomeState } from '../home-state';
 function connection(overrides: Partial<BankConnection> = {}): BankConnection {
   return {
     id: 'conn-1',
+    institutionId: 'banco-de-chile',
     institutionName: 'Banco de Chile',
     institutionLogoUrl: undefined,
     institutionShortName: 'BCH',

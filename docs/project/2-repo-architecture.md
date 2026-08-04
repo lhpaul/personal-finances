@@ -36,7 +36,9 @@ personal-finances/
 │       ├── drizzle/                # Generated migrations: 0000_*.sql, meta/, migrations.js
 │       ├── scripts/
 │       │   └── db/                 # db:check (four-mode CLI), db:seed (fixture builder), dump.ts
-│       │                           # dev-*.sh, eas-build-*.sh still arrive with a later item
+│       │                           # dev-*.sh still arrives with a later item; EAS entry points
+│       │                           # are root package.json scripts (#23), not apps/mobile/scripts/
+│       ├── __tests__/                  # build-config.test.ts — eas.json <-> app.config.js anti-drift control (#23)
 │       ├── app.config.js · eas.json · metro.config.js
 │       ├── jest.config.js · eslint.config.mjs · tsconfig.json · expo-env.d.ts
 │       └── package.json
@@ -53,6 +55,10 @@ personal-finances/
 │   ├── development-workflow/       # AI workflow helpers
 │   └── dev/                        # Local dev helpers (arrives with a later item)
 ├── .maestro/                       # Device E2E flows (arrives with #22)
+├── .github/
+│   └── workflows/                  # ci.yml (lint/typecheck/test/db-check/bundle); eas-build.yml
+│                                    # — develop -> preview, main -> production (#23); deploy.yml
+│                                    # is the unused framework placeholder
 ├── turbo.json · pnpm-workspace.yaml · eslint.config.mjs · tsconfig.base.json
 ├── .nvmrc · .prettierrc.json · .prettierignore
 └── package.json                    # Workspace root; orchestrates via turbo
@@ -219,8 +225,11 @@ running the app — not merely asserted. Tool versions used: Node `v26.5.0` (sat
    retry:
 
    ```bash
-   lsof "$HOME/Library/Developer/Xcode/DerivedData/Finanzas-*/Build/Intermediates.noindex/XCBuildData/build.db"
+   lsof "$HOME/Library/Developer/Xcode/DerivedData/FinanzasDEV-*/Build/Intermediates.noindex/XCBuildData/build.db"
    ```
+
+   (The Xcode project is named `FinanzasDEV` for the `development` variant since #23 — see
+   below; the DerivedData folder name follows it.)
 
    `kill -9` terminates immediately and without cleanup, and `lsof` can also return the PID of a
    build that is still legitimately running. **Verify the reported PID belongs to a stale,
@@ -236,6 +245,18 @@ running the app — not merely asserted. Tool versions used: Node `v26.5.0` (sat
    rebuild the native project. Use step 6 again after any native dependency change.
 8. `cp .ai-dev-workflow.local.example.yaml .ai-dev-workflow.local.yaml` (AI workflow only, not
    required to run the app).
+
+**Since #23**: the local dev client is `Finanzas [DEV]`, bundle id `cl.finanzas.mobile.dev` — a
+distinct identity and sandbox from the `preview` (`Finanzas [BETA]` /
+`cl.finanzas.mobile.preview`) and `production` (`Finanzas` / `cl.finanzas.mobile`) variants, so
+all three can be installed on one Simulator/device at once. `expo-dev-client` is now a
+dependency, so `developmentClient: true` in `eas.json`'s `development` profile is backed by a
+real package. **An app installed before #23 landed carries the old, shared `cl.finanzas.mobile`
+identifier and must be deleted from the Simulator once** — step 6's rebuild installs the new
+identity alongside it rather than over it, which looks confusing (two "Finanzas" icons) until the
+stale one is removed. See
+[`5-release-and-signing-runbook.md`](5-release-and-signing-runbook.md) for the full variant table
+and the build/release pipeline.
 
 Verified outcome: the app boots on the simulator (iPhone 17, iOS 26.5) and lands on the
 `onboarding-intro` placeholder, matching

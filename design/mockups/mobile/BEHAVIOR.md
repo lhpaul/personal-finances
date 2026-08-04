@@ -275,6 +275,9 @@
   credencial del keychain y 🟡 conserva los movimientos ya descargados (la historia es del
   usuario; desconectar corta el futuro, no borra el pasado — coherente con BR3).
 - **Datos:** conexiones con su estado de sync y última fecha.
+- **Implementación (#20):** `disconnect-confirm` es un estado de **esta** ruta, alcanzable tanto
+  desde `settings-banks` (fila → *Desconectar {banco}*) como desde `bank-review` (*Desconectar
+  banco*, que navega aquí con el conector como parámetro) — nunca una ruta propia.
 
 ### bank-review
 
@@ -283,6 +286,10 @@
   de credenciales, re-ingresarlas vía `bank-credentials`).
 - **Acciones:** 🟡 sincronizar ahora (BR5 la hace siempre segura); ver productos de la conexión.
 - **Datos:** conexión + productos + resultado de la última sync.
+- **Implementación (#20):** `[bankId]` es el id de la institución (`financial_institutions.id`,
+  también el `bankId` del scraper), no el id de la conexión. *Sincronizar ahora* no sincroniza en
+  el lugar: entrega el conector a `bank-syncing` (la pantalla de sync de #11) y vuelve a
+  `/settings/banks` al terminar.
 
 ### settings-notifications
 

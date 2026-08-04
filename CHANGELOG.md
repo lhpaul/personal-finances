@@ -91,6 +91,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `react-native-webview` host lives here, so no credential value ever reaches screen state, a
   log or an error payload.
 - **Transaction detail and exclusion** (#16): the movement detail screen with its categorized, uncategorized and excluded states — the immutable bank facts, the editable note, a category change, the merchant shortcut, the exclusion sheet, and re-inclusion, which clears the exclusion fields and restores the movement to every total.
+- **Settings: connected banks and bank review** (#20): the connected-banks list with its empty
+  state, per-bank detail with products, balances and cupo, manual re-sync and credential
+  update hand-offs, and disconnection — which deletes the keychain entry and keeps every
+  downloaded movement.
 - **Dashboard** (#17): the trend, spending-overview and category-report cards in both
   manifest states (`month`, `week`), with month/week period toggles, donut and bar charts
   on `react-native-svg`, and per-card empty states. Every figure is produced by the same
@@ -111,6 +115,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   create, rename and re-icon, drag to reorder with persisted `sort_order`, and delete with
   re-parenting to ✨ Otros through the existing transactional cascade. The two ✨ Otros
   categories offer no edit, delete or reorder affordance.
+- **EAS build profiles and release CI** (#23): `eas.json` gains real `development`,
+  `preview` and `production` profiles with per-variant app names and bundle identifiers, a
+  new `.github/workflows/eas-build.yml` maps `develop` to internal builds and `main` to store
+  builds, and `docs/project/5-release-and-signing-runbook.md` documents the credential model
+  and the release procedure. Signing material stays in EAS-managed credentials; `EXPO_TOKEN`
+  is the only repository secret.
 
 ### Fixed
 
@@ -128,3 +138,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gone. A new `pnpm check:layout` check runs on every install and in CI, a new `iOS bundle` CI job
   runs `expo export:embed` so a tree that cannot build the app can no longer be green, and a test
   now proves the `@finanzas/shared-domain` import restriction rejects a deliberate violation.
+- **P0: the app crashed at first render on every device build** (#95): `getAppDatabase()`
+  (`apps/mobile/src/db/runtime.ts`) read `require('../../drizzle/migrations').journal`, but this
+  project's real `babel-preset-expo` interop compiles that file's `export default { journal,
+  migrations }` to `exports.default = {...}` in every real environment — Metro's bundle and
+  Jest's `babel-jest` transform both nest it under `.default` — so `.journal` was always
+  `undefined`. This retroactively explains every failed on-device fidelity capture in the
+  campaign: the app had never successfully booted on a device build. A new
+  `resolveMigrationsConfig` (`apps/mobile/src/db/migrations-config.ts`) accepts either the flat
+  or the `.default`-nested shape; `src/db/__tests__/migrations-journal-interop.test.ts` compiles
+  the real `drizzle/migrations.js` with the real Babel config under both a Metro-shaped and a
+  `babel-jest`-shaped caller and asserts the accessor resolves a defined journal — the pre-fix
+  `.journal`-only accessor is proven to fail in the same suite. `expo export:embed` alone did not
+  catch this (it already passed while the bug existed); the fix's evidence includes a real
+  simulator boot reaching the onboarding launch gate.
