@@ -380,6 +380,23 @@ export function formatMonthYear(dateLocal: DateLocal, locale: SupportedLocale): 
   return getLabelFormatter(locale, { month: 'short', year: 'numeric' }).format(instant);
 }
 
+/**
+ * `Enero de 2025` (`es`) / `January 2025` (`en`) — the `transactions` month-group heading
+ * (implementation plan for issue #15, Decision 8). `Intl`'s own long-month-and-year output
+ * (`enero de 2025` / `January 2025`) is upper-cased on its first code point only, because it
+ * heads a group — this is capitalization of the formatter's own output, not a second date
+ * implementation. Idempotent under re-capitalization: every supported month name in both
+ * locales starts with a plain ASCII letter, so calling this on an already-capitalized string's
+ * first character again is a no-op. No default locale.
+ */
+export function formatMonthHeading(dateLocal: DateLocal, locale: SupportedLocale): string {
+  const instant = civilDateAsUtcMidnightInstant(dateLocal);
+  const label = getLabelFormatter(locale, { month: 'long', year: 'numeric' }).format(instant);
+  const [firstCodePoint, ...rest] = [...label];
+  if (firstCodePoint === undefined) return label;
+  return firstCodePoint.toLocaleUpperCase(locale) + rest.join('');
+}
+
 /** `ene` (`es`) / `Jan` (`en`). No default locale. */
 export function formatMonthAbbreviation(dateLocal: DateLocal, locale: SupportedLocale): string {
   const instant = civilDateAsUtcMidnightInstant(dateLocal);

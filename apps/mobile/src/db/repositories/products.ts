@@ -1,8 +1,8 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
 import { mergeProductMetadata, type ProductMetadata } from '../json';
 import { userFinancialProducts } from '../schema';
-import type { AppDatabase } from '../types';
+import type { AppDatabase, UserProduct } from '../types';
 
 /**
  * `user_financial_products` repository (implementation plan Decision 4, Layer-by-Layer; spec
@@ -145,4 +145,22 @@ export function upsertBankProductsInTx(
   }
 
   return { discovered, refreshed };
+}
+
+/**
+ * Spec "What are every one of my products, across every connection?" (`transactions`, Assumption
+ * A6) — drives the **Producto** filter pills, one per row, ordered by name. Not scoped to a
+ * single connection: the sheet's pills describe every product the person has, not one bank's.
+ */
+export function listUserProducts(db: AppDatabase): UserProduct[] {
+  const rows = db
+    .select({
+      id: userFinancialProducts.id,
+      name: userFinancialProducts.name,
+      type: userFinancialProducts.type,
+    })
+    .from(userFinancialProducts)
+    .orderBy(asc(userFinancialProducts.name))
+    .all() as UserProduct[];
+  return rows;
 }

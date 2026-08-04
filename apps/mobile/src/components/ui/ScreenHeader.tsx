@@ -12,6 +12,13 @@ export type ScreenHeaderAction = {
   icon: ReactNode;
   accessibilityLabel: string;
   onPress: () => void;
+  /** `brand` renders `.mu-head__action--brand` — filled brand background, white icon — instead
+   * of the default `surface3` fill (implementation plan for issue #15, Decision 11; first drawn
+   * by `#screen=transactions`'s ⚙ action). */
+  variant?: 'default' | 'brand';
+  /** `.mu-head__action--dot` — a small badge in the action's top-right corner (implementation
+   * plan for issue #15, Decision 11), e.g. "a filter differs from the default." */
+  dot?: boolean;
 };
 
 export type ScreenHeaderProps = {
@@ -113,12 +120,33 @@ export function ScreenHeader({
             flexShrink: 0,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: theme.colors.surface3,
+            backgroundColor:
+              action.variant === 'brand' ? theme.colors.brandPrimary : theme.colors.surface3,
           }}
         >
-          <Text style={{ fontSize: componentMetrics.screenHeader.actionGlyphFontSize }}>
+          <Text
+            style={[
+              { fontSize: componentMetrics.screenHeader.actionGlyphFontSize },
+              action.variant === 'brand' && { color: theme.colors.textOnBrand },
+            ]}
+          >
             {action.icon}
           </Text>
+          {action.dot === true && (
+            <View
+              style={{
+                position: 'absolute',
+                top: componentMetrics.screenHeader.actionDotOffset,
+                right: componentMetrics.screenHeader.actionDotOffset,
+                width: componentMetrics.screenHeader.actionDotSize,
+                height: componentMetrics.screenHeader.actionDotSize,
+                borderRadius: theme.radius.pill,
+                backgroundColor: theme.colors.danger,
+                borderWidth: componentMetrics.borderWidth.control,
+                borderColor: theme.colors.surface1,
+              }}
+            />
+          )}
         </Pressable>
       )}
     </View>
