@@ -97,6 +97,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `apps/mobile/src/db/repositories/transactions.ts` aggregates the home screen calls, so
   the two screens cannot diverge; this item adds no SQL. Adds the `DonutChart` and
   `BarChart` design-system primitives and wires the two `dashboard` design-fidelity targets
+- **Mockup manifest verification script** (#24): `scripts/design/verify-manifest.mjs` and
+  `pnpm mockups:verify` enforce the mockup PR checklist mechanically — navigation targets,
+  unique local states, exactly one `initial: true`, no screen-level fields inside states,
+  manifest/DOM parity, declared `data-states`, resolvable `go()` targets, and semantic colour
+  tokens mirrored in `:root`. Runs in CI on every pull request and replaces the `node -e`
+  one-liner in `design/mockups/mobile/README.md`, including its two documented false positives
 
 ### Fixed
 

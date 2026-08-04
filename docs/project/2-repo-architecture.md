@@ -48,7 +48,7 @@ personal-finances/
 ├── docs/                           # Project specs, best practices, AI workflow protocols
 ├── e2e/                            # Playwright placeholder (see note below)
 ├── scripts/
-│   ├── design/                     # Mockup manifest verification (arrives with #24)
+│   ├── design/                     # Mockup manifest verification: verify-manifest.mjs, pnpm mockups:verify (#24)
 │   ├── mobile-ui/                  # Design-fidelity gate: contract, mockup/simulator capture, diff (#47)
 │   ├── development-workflow/       # AI workflow helpers
 │   └── dev/                        # Local dev helpers (arrives with a later item)
