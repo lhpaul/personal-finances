@@ -9,6 +9,7 @@ import fixtureWithoutIds from '../__fixtures__/bank-response-without-ids.json';
 import type { BankTransactionInput } from '../repositories/transactions';
 import {
   countCategorized,
+  countTransactions,
   countTransactionsByMonth,
   countUncategorized,
   excludeTransaction,
@@ -358,6 +359,34 @@ describe('transactions repository', () => {
       }
     },
   );
+
+  it('countTransactions counts every row, including excluded ones — a storage fact, not an analysis figure (implementation plan for issue #19, Decision 16)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      expect(countTransactions(db)).toBe(0);
+
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const firstId = await insertManualTransaction(
+        db,
+        { userFinancialProductId: productId, type: 'debit', amount: 1000, rawDescription: 'Café' },
+        ports,
+      );
+      await insertManualTransaction(
+        db,
+        { userFinancialProductId: productId, type: 'debit', amount: 2000, rawDescription: 'Almuerzo' },
+        ports,
+      );
+      expect(countTransactions(db)).toBe(2);
+
+      excludeTransaction(db, firstId, { reason: 'cash_withdrawal' }, ports);
+      // Excluding a movement must not change the total — this count is deliberately insensitive
+      // to the inclusion rule (Decision 16).
+      expect(countTransactions(db)).toBe(2);
+    } finally {
+      sqlite.close();
+    }
+  });
 
   /**
    * Issue #10 additions — the v2 dedup identity (Decisions 1-2), AC5, AC6, AC15, AC22.

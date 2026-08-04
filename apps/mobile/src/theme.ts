@@ -705,6 +705,22 @@ export const componentMetrics = {
      * the sub line (`--sm` 12 × the inherited 1.5 line-height = 18) = 62. */
     minTouchHeight: 62,
   },
+  /** `.mu-item`, `__icon`, `__title` (settings implementation plan for issue #19, Decision 12).
+   * `.mu-item__chev`, `__sub`, `__txt` are already `componentMetrics.bankRow` (owned jointly with
+   * `CategoryRow`/`BankRow` since item #12/#9) — `ListRow` reuses those literals rather than
+   * duplicating them under a second name. */
+  listRow: {
+    /** `.mu-item__icon` (L459-462) width/height. */
+    iconSize: 40,
+    /** `.mu-item__icon` (L461) glyph font-size. */
+    iconGlyphSize: 19,
+    /** `.mu-item__title` (L464) font-size (bare literal). */
+    titleFontSize: 15,
+    /** `.mu-item` (L454-457) has no explicit CSS height — content-driven. Conservative
+     * touch-target estimate for `TOUCH_METRICS`: 2 × vertical padding (`--sp4` = 16) + the icon
+     * size (40, which dominates the title+sub text stack) = 72. */
+    minTouchHeight: 72,
+  },
 } as const;
 
 /**
@@ -823,6 +839,21 @@ export const screenMetrics = {
    * which held for every *class* this screen draws but missed this one inline literal. */
   bankSyncing: {
     headlineIconFontSize: 52,
+  },
+  /** `#s-settings-account`, `#s-settings-about` (implementation plan for issue #19,
+   * Layer-by-Layer). Both blocks are bare inline styles in the mockup, not `mu-*` classes. */
+  settings: {
+    /** `#s-settings-account`'s 📱 device-avatar circle width/height (L2216). */
+    accountDeviceAvatarSize: 64,
+    /** Device-avatar 📱 glyph font-size (L2216). */
+    accountDeviceAvatarGlyphSize: 28,
+    /** `#s-settings-about`'s 💰 brand-block icon width/height (L2476). */
+    aboutBrandIconSize: 74,
+    /** Brand-block icon border-radius — a bare literal in the mockup, not a `--r-*` token
+     * (L2476). */
+    aboutBrandIconRadius: 20,
+    /** Brand-block 💰 glyph font-size (L2476). */
+    aboutBrandIconGlyphSize: 34,
   },
   /** `#s-dashboard` (implementation plan for issue #17, Decision 8, Layer-by-Layer). Belongs
    * here, not `componentMetrics.lineChart`, for the same reason `screenMetrics.home` does: the

@@ -103,6 +103,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   manifest/DOM parity, declared `data-states`, resolvable `go()` targets, and semantic colour
   tokens mirrored in `:root`. Runs in CI on every pull request and replaces the `node -e`
   one-liner in `design/mockups/mobile/README.md`, including its two documented false positives
+- **Settings: hub, local profile and about** (#19): the settings hub, the local-profile screen
+  and the about screen, plus the product's only destructive operation — a full local wipe of
+  the SQLite store and every `expo-secure-store` credential key, behind an explicit
+  confirmation, returning the app to onboarding.
 - **EAS build profiles and release CI** (#23): `eas.json` gains real `development`,
   `preview` and `production` profiles with per-variant app names and bundle identifiers, a
   new `.github/workflows/eas-build.yml` maps `develop` to internal builds and `main` to store

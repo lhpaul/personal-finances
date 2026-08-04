@@ -68,7 +68,8 @@ export type TouchMetricsKey =
   | 'categoryRow'
   | 'bankRow'
   | 'noteAction'
-  | 'topBarBtn';
+  | 'topBarBtn'
+  | 'listRow';
 
 /**
  * One entry per pressable primitive built in this item, keyed by primitive (plus a size/variant
@@ -131,4 +132,6 @@ export const TOUCH_METRICS = {
     width: componentMetrics.topBar.buttonSize,
     height: componentMetrics.topBar.buttonSize,
   }),
+  /** `ListRow` (implementation plan for issue #19, Decision 12). */
+  listRow: withMinTarget({ height: componentMetrics.listRow.minTouchHeight }),
 } satisfies Record<TouchMetricsKey, TouchMetrics>;

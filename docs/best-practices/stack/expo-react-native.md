@@ -101,6 +101,15 @@ for the full build/release pipeline.
   the library's own default omits the `…ThisDeviceOnly` suffix and would carry the entry into an
   encrypted device backup, which is a copy of the secret outside the phone it was typed on
   (item #9).
+- **Resetting the on-device store**: `resetAppDatabase()` (`apps/mobile/src/db/runtime.ts`) is the
+  **only** sanctioned way to invalidate the memoized database handle `getAppDatabase()` returns
+  (item #19). It clears the memo *before* awaiting the file deletion — so a caller that arrives
+  mid-reset starts a fresh bootstrap against a store that is about to exist, rather than holding a
+  handle to a file that is about to disappear — then closes and deletes the file
+  (`deleteAppDatabaseFile`, `apps/mobile/src/db/client.ts`), then clears the bootstrap
+  single-flight (`resetDatabaseBootstrap()`, `apps/mobile/src/db/bootstrap.ts`). A screen or
+  feature hook must never hold its own copy of the `sqlite`/`db` handle across a reset — always
+  call `getAppDatabase()` again after any reset completes.
 - Anything requiring a native module needs a dev build, not Expo Go. Say so in the PR.
 
 ## Copy and formatting
