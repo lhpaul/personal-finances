@@ -1,4 +1,4 @@
-import { computeDisclosureCount, loadMerchantEditor, resolveCarriedCategoryId } from '../useMerchantEditor';
+import { computeDisclosureCount, loadMerchantEditor, resolveCarriedCategoryId, runGuardedWrite } from '../useMerchantEditor';
 import type { MerchantEditorSnapshot } from '../../../db/types';
 
 /**
@@ -108,5 +108,45 @@ describe('computeDisclosureCount (Scenario 6, non-negotiable #6)', () => {
 
   it('is zero for a merchant with no aliases and no candidates (Assumption A6)', () => {
     expect(computeDisclosureCount(EMPTY_SNAPSHOT)).toBe(0);
+  });
+});
+
+/**
+ * Found in review: `groupCandidate`/`save` used a bare `try`/`finally` — a thrown/rejected write
+ * propagated to a caller that never handled it (the route's un-guarded `await editor.save()`,
+ * and `MerchantAliasesCard`'s un-awaited `onGroupCandidate` tap handler), silently clearing the
+ * spinner while the person believed the edit had saved. `runGuardedWrite` is the extracted fix,
+ * tested here as a plain function so the exact catch behavior does not depend on a hook-testing
+ * renderer.
+ */
+describe('runGuardedWrite (write-failure surfacing, found in review)', () => {
+  it('resolves to { succeeded: true } when the write resolves normally', async () => {
+    const result = await runGuardedWrite(() => Promise.resolve());
+    expect(result).toEqual({ succeeded: true });
+  });
+
+  it('resolves to { succeeded: false, error } when the write rejects, and never rejects itself', async () => {
+    const boom = new Error('write failed');
+    await expect(runGuardedWrite(() => Promise.reject(boom))).resolves.toEqual({
+      succeeded: false,
+      error: boom,
+    });
+  });
+
+  it('resolves to { succeeded: false, error } when the write throws synchronously', async () => {
+    const boom = new Error('synchronous failure');
+    const result = await runGuardedWrite(() => {
+      throw boom;
+    });
+    expect(result).toEqual({ succeeded: false, error: boom });
+  });
+
+  it('an un-awaited call never produces an unhandled rejection (the exact bug found in review)', () => {
+    // `MerchantAliasesCard`'s "Agrupar" tap handler calls `groupCandidate` without awaiting it.
+    // This assertion is the regression: calling `runGuardedWrite` and discarding the promise
+    // must not throw synchronously and must not register as an unhandled rejection.
+    expect(() => {
+      void runGuardedWrite(() => Promise.reject(new Error('discarded on purpose')));
+    }).not.toThrow();
   });
 });

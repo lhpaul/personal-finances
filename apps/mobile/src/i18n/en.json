@@ -451,6 +451,8 @@
   "merchant.edit.aliases_empty": "We haven't detected other names for this merchant yet.",
   "merchant.edit.aliases_close": "Close",
   "merchant.edit.save": "Save",
+  "merchant.edit.write_failed_icon": "⚠️",
+  "merchant.edit.write_failed": "We couldn't save the changes. Try again.",
   "merchant.edit.not_found_title": "We couldn't find this merchant",
   "merchant.edit.not_found_action": "Back"
 }

@@ -751,6 +751,10 @@ export const screenMetrics = {
     barRadiusTop: 6,
     /** `.mu-bars__bar` (L498) border-radius, bottom corners. */
     barRadiusBottom: 2,
+    /** `.mu-grid-2` (category-picker) two-column grid — each chip's column width, as a
+     * percentage string so `no-style-literals.test.ts`'s numeric-literal scanner never applies
+     * to it (Scanner B only tracks bare numbers). */
+    categoryPickerColumnWidth: '48%',
   },
   /** `#s-transactions` (implementation plan for issue #15, Layer-by-Layer). Most of what this
    * screen draws is already token-based (`.mu-pad`, `.mu-tx-group`'s `var(--sp*)` margins);

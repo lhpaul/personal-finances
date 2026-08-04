@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deriveDateLocal } from '@finanzas/shared-utils';
 
-import { Button, EmptyState, Text } from '../../../src/components/ui';
+import { Button, EmptyState, Note, Text } from '../../../src/components/ui';
 import { MerchantAliasesCard, MerchantAliasesDisclosure } from '../../../src/features/merchants/components/MerchantAliasesCard';
 import { MerchantCategoryPickerCard } from '../../../src/features/merchants/components/MerchantCategoryPickerCard';
 import { MerchantDefaultCategoryCard } from '../../../src/features/merchants/components/MerchantDefaultCategoryCard';
@@ -75,8 +75,10 @@ export default function MerchantEdit() {
   const disclosureCount = snapshot.aliases.length + snapshot.candidates.length;
 
   async function handleSave(): Promise<void> {
-    await editor.save();
-    router.back();
+    const succeeded = await editor.save();
+    // Only leave the screen on a real success (found in review) — navigating away on a failed
+    // save would lose the edit without the person ever knowing it did not persist.
+    if (succeeded) router.back();
   }
 
   return (
@@ -143,6 +145,12 @@ export default function MerchantEdit() {
               />
             )}
           </>
+        )}
+
+        {editor.writeFailed && (
+          <Note tone="danger" icon={t('merchant.edit.write_failed_icon')}>
+            {t('merchant.edit.write_failed')}
+          </Note>
         )}
 
         <Button label={t('merchant.edit.save')} onPress={() => void handleSave()} disabled={editor.busy} />

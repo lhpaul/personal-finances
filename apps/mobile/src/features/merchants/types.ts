@@ -23,6 +23,11 @@ export interface UseMerchantEditorResult {
   /** `true` while `groupCandidate` or `save` has a write in flight — disables the corresponding
    * affordance so a double tap cannot start two transactions (concurrent-event-source addendum). */
   busy: boolean;
+  /** `true` after the most recent `groupCandidate` or `save` call threw — surfaced so a failed
+   * write is never silently swallowed (found in review: a bare `try`/`finally` cleared the
+   * spinner but left the person believing an edit had saved). Cleared at the start of the next
+   * attempt. */
+  writeFailed: boolean;
   setName: (name: string) => void;
   openCategoryPicker: () => void;
   /** Updates the draft category directly — the picker has no separate "pending selection"; the
@@ -33,9 +38,12 @@ export interface UseMerchantEditorResult {
   confirmCategory: () => void;
   openSuggestions: () => void;
   closeSuggestions: () => void;
-  /** "Agrupar" — writes immediately (Decision 4, AC1, AC3). */
+  /** "Agrupar" — writes immediately (Decision 4, AC1, AC3). Never rejects — a failure sets
+   * `writeFailed` instead, so an un-awaited call from a tap handler cannot produce an unhandled
+   * rejection. */
   groupCandidate: (candidate: AliasCandidate) => Promise<void>;
   /** The bottom "Guardar" — the screen's single write of name + default category (Decision 4,
-   * AC2). Does not itself navigate; the screen leaves after it resolves. */
-  save: () => Promise<void>;
+   * AC2). Resolves to whether the write actually succeeded; the caller must check this before
+   * navigating away — leaving on a failed save would lose the edit without the person knowing. */
+  save: () => Promise<boolean>;
 }

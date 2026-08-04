@@ -3,9 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Button, Card, CategoryChip } from '../../../components/ui';
 import type { Category } from '../../../db/types';
-import { theme } from '../../../theme';
-
-const GRID_COLUMN_WIDTH = '48%';
+import { screenMetrics, theme } from '../../../theme';
 
 export interface MerchantCategoryPickerCardProps {
   /** The full taxonomy for the merchant's observed direction (Assumption A5) — not the curated,
@@ -43,7 +41,7 @@ export function MerchantCategoryPickerCard({
         }}
       >
         {categories.map((category) => (
-          <View key={category.id} style={{ width: GRID_COLUMN_WIDTH }}>
+          <View key={category.id} style={{ width: screenMetrics.merchants.categoryPickerColumnWidth }}>
             <CategoryChip
               emoji={category.emoji ?? ''}
               label={category.name}

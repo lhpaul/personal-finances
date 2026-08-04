@@ -70,6 +70,26 @@ export function computeDisclosureCount(snapshot: MerchantEditorSnapshot): number
   return snapshot.aliases.length + snapshot.candidates.length;
 }
 
+export type GuardedWriteResult = { succeeded: true } | { succeeded: false; error: unknown };
+
+/**
+ * The shared shape of `groupCandidate` and `save`'s error handling (found in review: a bare
+ * `try`/`finally` let a rejected write propagate to callers that never see it — the route's
+ * `handleSave` awaits `save()` with no `try` of its own, and `MerchantAliasesCard`'s "Agrupar"
+ * tap calls `groupCandidate` without awaiting it at all). Factored out as a plain function, over
+ * item #13's `loadStageData` precedent, so this exact catch behavior is independently testable
+ * without a hook-testing renderer: `run` never rejects through `runGuardedWrite` — a thrown
+ * error becomes `{ succeeded: false, error }` instead.
+ */
+export async function runGuardedWrite(run: () => void | Promise<void>): Promise<GuardedWriteResult> {
+  try {
+    await run();
+    return { succeeded: true };
+  } catch (error: unknown) {
+    return { succeeded: false, error };
+  }
+}
+
 export interface UseMerchantEditorParams {
   merchantId: string;
   /** The `categoryId` route param (Decision 3) — offered, not persisted, until "Guardar". */
@@ -94,6 +114,7 @@ export function useMerchantEditor(params: UseMerchantEditorParams): UseMerchantE
   const [draftName, setDraftName] = useState('');
   const [draftCategoryId, setDraftCategoryId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [writeFailed, setWriteFailed] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
 
   // `true` once the draft fields have been seeded for the current `merchantId` (concurrent-event
@@ -164,31 +185,46 @@ export function useMerchantEditor(params: UseMerchantEditorParams): UseMerchantE
     setState('default');
   }
 
+  // Both writes below route through `runGuardedWrite` — #13's `withWriteGuard` pattern
+  // (`features/categorization/CategorizeScreen.tsx`), factored into a plain, independently
+  // tested function. `writeFailed` surfaces a failure instead of letting it disappear, and is
+  // cleared at the start of the next attempt so a successful retry does not leave a stale error
+  // visible.
+
   async function groupCandidate(candidate: AliasCandidate): Promise<void> {
     if (busy) return;
     setBusy(true);
-    try {
+    setWriteFailed(false);
+    const result = await runGuardedWrite(async () => {
       const db = await getAppDatabase();
       groupAliasIntoMerchant(db, { merchantId: params.merchantId, rawPattern: candidate.rawPattern, newId, now });
+    });
+    if (result.succeeded) {
       setReloadToken((token) => token + 1);
-    } finally {
-      setBusy(false);
+    } else {
+      setWriteFailed(true);
     }
+    setBusy(false);
   }
 
-  async function save(): Promise<void> {
-    if (busy) return;
+  /** Returns whether the save actually succeeded, so the route only navigates away
+   * (`router.back()`) on success — otherwise the person would leave the screen believing an
+   * edit was saved when it was not (found in review). */
+  async function save(): Promise<boolean> {
+    if (busy) return false;
     setBusy(true);
-    try {
+    setWriteFailed(false);
+    const result = await runGuardedWrite(async () => {
       const db = await getAppDatabase();
       saveMerchantProfile(db, {
         merchantId: params.merchantId,
         name: draftName,
         transactionCategoryId: draftCategoryId,
       });
-    } finally {
-      setBusy(false);
-    }
+    });
+    if (!result.succeeded) setWriteFailed(true);
+    setBusy(false);
+    return result.succeeded;
   }
 
   return {
@@ -198,6 +234,7 @@ export function useMerchantEditor(params: UseMerchantEditorParams): UseMerchantE
     draftName,
     draftCategoryId,
     busy,
+    writeFailed,
     setName,
     openCategoryPicker,
     selectCategory,

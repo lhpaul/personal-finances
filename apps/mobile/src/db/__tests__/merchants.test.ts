@@ -42,6 +42,12 @@ function insertTestMovement(
     merchantId?: string | null;
     transactionCategoryId?: string | null;
     categorySource?: 'auto' | 'user' | 'rule' | null;
+    type?: 'debit' | 'credit';
+    amount?: number;
+    dateLocal?: string;
+    currencyCode?: string;
+    excludedAt?: string | null;
+    exclusionReason?: 'personal_transfer' | 'shared_expense' | 'not_relevant' | 'cash_withdrawal' | 'other' | null;
   },
 ): void {
   db.insert(transactions)
@@ -50,14 +56,17 @@ function insertTestMovement(
       userFinancialProductId: productId,
       externalId: `ext-${overrides.id}`,
       dedupHash: `dedup-${overrides.id}`,
-      amount: 1000,
-      type: 'debit',
+      amount: overrides.amount ?? 1000,
+      type: overrides.type ?? 'debit',
+      currencyCode: overrides.currencyCode ?? 'CLP',
       occurredAt: now,
-      dateLocal: '2026-02-01',
+      dateLocal: overrides.dateLocal ?? '2026-02-01',
       rawDescription: overrides.rawDescription,
       merchantId: overrides.merchantId ?? null,
       transactionCategoryId: overrides.transactionCategoryId ?? null,
       categorySource: overrides.categorySource ?? null,
+      excludedAt: overrides.excludedAt ?? null,
+      exclusionReason: overrides.exclusionReason ?? null,
       isManual: 0,
       createdAt: now,
       updatedAt: now,
@@ -365,6 +374,188 @@ describe('readMerchantEditor (AC4)', () => {
       expect(snapshot?.candidates.some((candidate) => candidate.rawPattern === 'ACME EXPRESS')).toBe(true);
       const disclosureCount = (snapshot?.aliases.length ?? 0) + (snapshot?.candidates.length ?? 0);
       expect(disclosureCount).toBe(2); // one "Actual" alias plus one "Agrupar" candidate
+    } finally {
+      sqlite.close();
+    }
+  });
+});
+
+/**
+ * `resolveMerchantDirection` (Assumption A5) is private to `merchants.ts`; exercised here through
+ * `readMerchantEditor`'s `categories` field, which is exactly the taxonomy the category picker
+ * renders. Every seeded category carries a boolean `income` flag, so asserting every returned
+ * category shares the same direction is equivalent to asserting the resolved direction itself.
+ */
+describe('readMerchantEditor — category-picker direction (Assumption A5)', () => {
+  it('a credit-majority merchant gets the income taxonomy', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTestMerchant(db, now, { id: 'acme' });
+      insertTestMovement(db, productId, now, { id: 'credit-1', rawDescription: 'ACME PAYOUT', merchantId: 'acme', type: 'credit' });
+      insertTestMovement(db, productId, now, { id: 'credit-2', rawDescription: 'ACME PAYOUT', merchantId: 'acme', type: 'credit' });
+      insertTestMovement(db, productId, now, { id: 'debit-1', rawDescription: 'ACME FEE', merchantId: 'acme', type: 'debit' });
+
+      const snapshot = readMerchantEditor(db, { merchantId: 'acme', today: '2026-01-20', locale: 'es' });
+
+      expect(snapshot?.categories.length).toBeGreaterThan(0);
+      expect(snapshot?.categories.every((category) => category.income === true)).toBe(true);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('a tied merchant (equal debit and credit counts) gets the expense taxonomy', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTestMerchant(db, now, { id: 'acme' });
+      insertTestMovement(db, productId, now, { id: 'credit-1', rawDescription: 'ACME PAYOUT', merchantId: 'acme', type: 'credit' });
+      insertTestMovement(db, productId, now, { id: 'debit-1', rawDescription: 'ACME FEE', merchantId: 'acme', type: 'debit' });
+
+      const snapshot = readMerchantEditor(db, { merchantId: 'acme', today: '2026-01-20', locale: 'es' });
+
+      expect(snapshot?.categories.length).toBeGreaterThan(0);
+      expect(snapshot?.categories.every((category) => category.income === false)).toBe(true);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('a merchant with no movements gets the expense taxonomy', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      insertTestMerchant(db, ports.now(), { id: 'acme' });
+
+      const snapshot = readMerchantEditor(db, { merchantId: 'acme', today: '2026-01-20', locale: 'es' });
+
+      expect(snapshot?.categories.length).toBeGreaterThan(0);
+      expect(snapshot?.categories.every((category) => category.income === false)).toBe(true);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('excluded movements do not count toward the direction tally', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTestMerchant(db, now, { id: 'acme' });
+      // Three excluded credit movements would tip this to income if isIncluded were not applied.
+      insertTestMovement(db, productId, now, {
+        id: 'excluded-credit-1',
+        rawDescription: 'ACME PAYOUT',
+        merchantId: 'acme',
+        type: 'credit',
+        excludedAt: now,
+        exclusionReason: 'other',
+      });
+      insertTestMovement(db, productId, now, {
+        id: 'excluded-credit-2',
+        rawDescription: 'ACME PAYOUT',
+        merchantId: 'acme',
+        type: 'credit',
+        excludedAt: now,
+        exclusionReason: 'other',
+      });
+      insertTestMovement(db, productId, now, { id: 'debit-1', rawDescription: 'ACME FEE', merchantId: 'acme', type: 'debit' });
+
+      const snapshot = readMerchantEditor(db, { merchantId: 'acme', today: '2026-01-20', locale: 'es' });
+
+      expect(snapshot?.categories.every((category) => category.income === false)).toBe(true);
+    } finally {
+      sqlite.close();
+    }
+  });
+});
+
+/**
+ * `totalForMerchantInPeriod` / `computeMerchantSpendingStats` (Decision 12) are private to
+ * `merchants.ts`; exercised here through `readMerchantEditor`'s `stats.months` field, with
+ * `today` pinned so the three-month window is exactly January-March 2026. Asserts the actual
+ * computed totals, not just their shape — date-boundary inclusivity, the debit-only filter, and
+ * the `isIncluded` / `isPesoDenominated` guards.
+ */
+describe('readMerchantEditor — spending stats totals (Decision 12, money/direction coverage)', () => {
+  it('sums only included, peso-denominated, debit movements, honouring inclusive month boundaries', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTestMerchant(db, now, { id: 'acme' });
+
+      // January: one movement on the first day of the month, one on the last day — both must
+      // land inside January's total (date-boundary inclusivity, not an off-by-one).
+      insertTestMovement(db, productId, now, {
+        id: 'jan-first',
+        rawDescription: 'ACME',
+        merchantId: 'acme',
+        dateLocal: '2026-01-01',
+        amount: 1000,
+      });
+      insertTestMovement(db, productId, now, {
+        id: 'jan-last',
+        rawDescription: 'ACME',
+        merchantId: 'acme',
+        dateLocal: '2026-01-31',
+        amount: 2000,
+      });
+
+      // February: a credit movement (must be excluded — stats count expense/debit only) and an
+      // excluded debit movement (must be excluded — the inclusion rule).
+      insertTestMovement(db, productId, now, {
+        id: 'feb-credit',
+        rawDescription: 'ACME REFUND',
+        merchantId: 'acme',
+        type: 'credit',
+        dateLocal: '2026-02-15',
+        amount: 50000,
+      });
+      insertTestMovement(db, productId, now, {
+        id: 'feb-excluded',
+        rawDescription: 'ACME',
+        merchantId: 'acme',
+        dateLocal: '2026-02-16',
+        amount: 70000,
+        excludedAt: now,
+        exclusionReason: 'other',
+      });
+
+      // March: a USD-denominated debit movement (must be excluded — the peso-total guard) and
+      // one ordinary CLP debit movement (must be counted).
+      insertTestMovement(db, productId, now, {
+        id: 'mar-usd',
+        rawDescription: 'ACME USD',
+        merchantId: 'acme',
+        dateLocal: '2026-03-10',
+        amount: 999999,
+        currencyCode: 'USD',
+      });
+      insertTestMovement(db, productId, now, {
+        id: 'mar-clp',
+        rawDescription: 'ACME',
+        merchantId: 'acme',
+        dateLocal: '2026-03-20',
+        amount: 5000,
+      });
+
+      const snapshot = readMerchantEditor(db, { merchantId: 'acme', today: '2026-03-15', locale: 'es' });
+
+      expect(snapshot?.stats.months).toEqual([
+        { monthLabel: 'ene', total: 3000 }, // 1000 (jan-first) + 2000 (jan-last)
+        { monthLabel: 'feb', total: 0 }, // credit and excluded movements both dropped
+        { monthLabel: 'mar', total: 5000 }, // only the CLP movement — the USD one never leaks in
+      ]);
+      expect(snapshot?.stats.monthlyAverage).toBe(Math.round((3000 + 0 + 5000) / 3));
+      expect(snapshot?.stats.delta.currentTotal).toBe(5000);
+      expect(snapshot?.stats.delta.previousTotal).toBe(0);
     } finally {
       sqlite.close();
     }

@@ -451,6 +451,8 @@
   "merchant.edit.aliases_empty": "Aún no detectamos otros nombres para este comercio.",
   "merchant.edit.aliases_close": "Cerrar",
   "merchant.edit.save": "Guardar",
+  "merchant.edit.write_failed_icon": "⚠️",
+  "merchant.edit.write_failed": "No pudimos guardar los cambios. Inténtalo de nuevo.",
   "merchant.edit.not_found_title": "No encontramos este comercio",
   "merchant.edit.not_found_action": "Volver"
 }
