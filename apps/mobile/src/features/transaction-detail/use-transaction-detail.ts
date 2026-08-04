@@ -57,7 +57,15 @@ export async function loadTransactionDetail(
  * is installed — Verification Log). `loadTransactionDetail` above is the part of this hook's
  * behavior that *is* independently testable.
  */
-export function useTransactionDetail(params: TransactionDetailParams): TransactionDetailState {
+export interface UseTransactionDetailResult {
+  state: TransactionDetailState;
+  /** Requests a re-read on the next effect pass — the same `reloadToken` bump a regained focus
+   * triggers, exposed so the screen can request one immediately after a successful write (a
+   * category change, an exclusion or a re-inclusion) instead of waiting for the next focus event. */
+  reload: () => void;
+}
+
+export function useTransactionDetail(params: TransactionDetailParams): UseTransactionDetailResult {
   const [state, setState] = useState<TransactionDetailState>({ status: 'pending' });
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -81,5 +89,5 @@ export function useTransactionDetail(params: TransactionDetailParams): Transacti
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `transactionId`/`locale` are the only fields loadTransactionDetail reads that can change; re-deriving `params` each render would defeat this effect's dependency stability.
   }, [params.transactionId, params.locale, reloadToken]);
 
-  return state;
+  return { state, reload: () => setReloadToken((token) => token + 1) };
 }

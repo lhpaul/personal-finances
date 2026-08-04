@@ -737,4 +737,14 @@ export const screenMetrics = {
     /** `.mu-topbar__btn` (L286) glyph font-size. */
     closeButtonFontSize: 20,
   },
+  /** `#s-transaction-detail` (implementation plan for issue #16, Layer-by-Layer). The screen-local
+   * top bar mirrors #13's `StageTopBar` sizing (Decision 10 — `mu-topbar*` stays deferred). */
+  transactionDetail: {
+    /** The hero card's state glyph (🛒 / ❓ / 🚫), `font-size:34px` (bare literal). */
+    heroGlyphSize: 34,
+    /** `.mu-topbar__btn` width/height. */
+    topBarButtonSize: 36,
+    /** `.mu-topbar__btn` glyph font-size. */
+    topBarButtonGlyphSize: 20,
+  },
 } as const;
