@@ -93,8 +93,17 @@ test that survives a lint-config regression. Three instances of the same shape e
 
 **Why:** every port is testable with an in-memory double and no simulator (`getAppDatabase()`'s
 Node-tier fixture, `createMemorySecureStore()`, `createMemoryNotificationsPort()`), a future
-platform change is a one-file diff, and no Jest project ever needs to mock a native module — the
-`app` project's tests exercise pure functions and hooks over the double, never the real package.
+platform change is a one-file diff, and no test ever calls a real native API through the port —
+every test exercises pure functions and hooks over the double, never the adapter's own
+implementation. This does **not** mean the real package's JS never loads: a hook that imports the
+`notifications` barrel by value (not `import type`) pulls in `expo-notifications.adapter.ts`
+transitively, so `expo-notifications`'s own module-scope code still runs under the `app` project —
+harmlessly (jest-expo's native-module shims are enough for it to load without a device), but not
+silently in every case. `expo-notifications` in particular logs an Expo-Go push-registration
+`console.warn` at import time; `expo-secure-store` does not have an equivalent module-scope side
+effect, so the same shape is quieter there. Neither package is ever explicitly mocked with
+`jest.mock(...)` — this is an accepted consequence of "one real adapter, reached only through a
+port," not a gap the port pattern was meant to close.
 
 ## Frontend Architecture
 

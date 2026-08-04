@@ -131,6 +131,33 @@ describe('saveReminders (issue #18)', () => {
     }
   });
 
+  it('a rejecting database write surfaces as a reported error, not a thrown exception (systemic write-path check)', async () => {
+    const { sqlite, db } = await openBootstrappedMemoryDb();
+    // Close the underlying handle *before* calling saveReminders, so writeReminderSettings'
+    // own statement execution throws — the same class of failure a locked file or a mid-wipe
+    // race (concurrency addendum) could produce. `sqlite.close()` is idempotent (verified: a
+    // second call is a no-op), so the outer `finally` below is still safe to call.
+    sqlite.close();
+    try {
+      const port = createMemoryNotificationsPort('granted');
+
+      const result = await saveReminders({
+        db,
+        port,
+        settings: { enabled: true, timeOfDay: '09:00', days: [1, 2, 3, 4, 5] },
+        content: TEST_CONTENT,
+      });
+
+      expect(result).toEqual({ status: 'error' });
+      // Nothing was scheduled — the write failure is caught *before* `applyReminderSchedule`
+      // is ever called (save-reminders.ts:59-63), so the port must show no side effects at all.
+      expect(port.scheduled.size).toBe(0);
+      expect(port.callLog).toEqual([]);
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it('a malformed stored value on a fresh store reads back through the defensive settings reader', async () => {
     const { sqlite, db } = await openBootstrappedMemoryDb();
     try {

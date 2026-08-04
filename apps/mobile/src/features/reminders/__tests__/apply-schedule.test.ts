@@ -82,4 +82,24 @@ describe('applyReminderSchedule (implementation plan for issue #18, Decision 2, 
     await applyReminderSchedule(port, [weeklyRequest(1, 9, 0)], 'Recordatorios');
     expect(port.channelPrepared).toBe(true);
   });
+
+  it('a rejecting cancel() call propagates rather than being swallowed (systemic write-path check)', async () => {
+    const port = createMemoryNotificationsPort('granted');
+    // Schedule one reminder first so there is an owned identifier to cancel on the next call.
+    await applyReminderSchedule(port, [weeklyRequest(1, 9, 0)], 'Recordatorios');
+
+    const error = new Error('native cancel call rejected');
+    port.failNext('cancel', error);
+
+    // `applyReminderSchedule` itself has no try/catch around the cancel loop — the rejection is
+    // the caller's (`saveReminders`) to handle, exactly like a rejecting `schedule()` call. A
+    // silently swallowed cancel failure here would let a stale trigger survive alongside the new
+    // one, which is precisely the duplication Decision 2 forbids.
+    await expect(applyReminderSchedule(port, [weeklyRequest(2, 9, 0)], 'Recordatorios')).rejects.toThrow(
+      error,
+    );
+    // The rejection must not have left the identifier scheduled twice — the failed cancel means
+    // the OS-side state is whatever it already was, not a partially-applied plan.
+    expect(port.scheduled.has('finanzas-reminder-w2')).toBe(false);
+  });
 });
