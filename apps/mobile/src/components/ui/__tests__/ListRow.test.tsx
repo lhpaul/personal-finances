@@ -62,3 +62,24 @@ describe('ListRow — chevron={false}', () => {
     expect(chevrons).toHaveLength(0);
   });
 });
+
+describe('ListRow — trailing (implementation plan for issue #21, Resolution R1)', () => {
+  it('renders the caller-supplied trailing element instead of the chevron', () => {
+    const handle = { type: 'View', props: { testID: 'drag-handle-test' } } as unknown as Parameters<
+      typeof collectElements
+    >[0];
+    const tree = ListRow({ icon: '🍔', title: 'Comida', onPress: jest.fn(), trailing: handle });
+
+    const chevrons = collectElements(tree, (el) => elementTypeName(el) === 'Text' && el.props.children === '›');
+    expect(chevrons).toHaveLength(0);
+
+    const handles = collectElements(tree, (el) => (el.props as { testID?: string }).testID === 'drag-handle-test');
+    expect(handles).toHaveLength(1);
+  });
+
+  it('every pre-#21 call site (no trailing) still renders the chevron unchanged', () => {
+    const tree = ListRow({ icon: '👤', title: 'Perfil local', onPress: jest.fn() });
+    const chevrons = collectElements(tree, (el) => elementTypeName(el) === 'Text' && el.props.children === '›');
+    expect(chevrons).toHaveLength(1);
+  });
+});

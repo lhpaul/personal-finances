@@ -20,8 +20,13 @@ export type ListRowProps = {
   /** Defaults to `true` — every `.mu-item` in the mockup draws a chevron, including the three
    * inert `settings-about` rows that have no `onPress` (implementation plan for issue #19,
    * Decision 8). Set `false` only for a row that should render with no trailing accessory at
-   * all. */
+   * all. Ignored when `trailing` is given. */
   chevron?: boolean;
+  /** Additive (implementation plan for issue #21, Resolution R1): replaces the chevron with a
+   * caller-supplied trailing element — `#screen=settings-categories`'s `☰` drag handle draws in
+   * the same `.mu-item__chev` slot the chevron uses, but is not a static glyph. Every pre-#21
+   * call site omits this and renders the chevron unchanged. */
+  trailing?: ReactNode;
 };
 
 /**
@@ -33,7 +38,7 @@ export type ListRowProps = {
  * }}` (Decision 8) — the settings-about screen's three inert rows render visually identical to
  * every pressable row, but announce as disabled to assistive tech and never navigate.
  */
-export function ListRow({ icon, title, subtitle, onPress, chevron = true }: ListRowProps) {
+export function ListRow({ icon, title, subtitle, onPress, chevron = true, trailing }: ListRowProps) {
   const touchMetrics = TOUCH_METRICS.listRow;
   const isDisabled = onPress === undefined;
   const accessibilityLabel = subtitle !== undefined ? `${title}, ${subtitle}` : title;
@@ -71,14 +76,16 @@ export function ListRow({ icon, title, subtitle, onPress, chevron = true }: List
           </Text>
         )}
       </View>
-      {chevron && (
-        <Text
-          tone="tertiary"
-          style={{ fontSize: componentMetrics.bankRow.chevronFontSize, flexShrink: 0 }}
-        >
-          {CHEVRON_GLYPH}
-        </Text>
-      )}
+      {trailing !== undefined
+        ? trailing
+        : chevron && (
+            <Text
+              tone="tertiary"
+              style={{ fontSize: componentMetrics.bankRow.chevronFontSize, flexShrink: 0 }}
+            >
+              {CHEVRON_GLYPH}
+            </Text>
+          )}
     </>
   );
 
