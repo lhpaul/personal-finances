@@ -90,6 +90,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   credential rejection, the one failure that returns to the credentials form. The app's hidden
   `react-native-webview` host lives here, so no credential value ever reaches screen state, a
   log or an error payload.
+- **Settings: hub, local profile and about** (#19): the settings hub, the local-profile screen
+  and the about screen, plus the product's only destructive operation — a full local wipe of
+  the SQLite store and every `expo-secure-store` credential key, behind an explicit
+  confirmation, returning the app to onboarding.
 
 ### Fixed
 
