@@ -121,6 +121,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   builds, and `docs/project/5-release-and-signing-runbook.md` documents the credential model
   and the release procedure. Signing material stays in EAS-managed credentials; `EXPO_TOKEN`
   is the only repository secret.
+- **Notifications and local reminders** (#18): the onboarding flow now asks for the OS
+  notification permission at `notifications-intro` (never at launch), treats a denial as a
+  supported state with how-to-re-enable copy, and lets the person pick a time and the days of
+  the week. Reminders are scheduled locally with `expo-notifications` behind a single adapter —
+  no push token, no server — and saving a schedule cancels the app's own scheduled
+  notifications before registering the new set, so changing it reschedules instead of
+  duplicating. `/settings/notifications` shows and edits the same schedule, and reflects a
+  revoked OS permission as disabled.
 
 ### Fixed
 

@@ -18,7 +18,9 @@ import {
   parseDateLocal,
   shiftMonthPeriod,
   shiftWeekPeriod,
+  timeOfDayFromParts,
   toDateLocal,
+  wallClockParts,
 } from './dates';
 
 // No @types/node in this dependency-free package (Decision — see package.json note in the
@@ -663,6 +665,38 @@ describe('dates', () => {
       expect(() => formatWallClockLabel('24:00')).toThrow(RangeError);
       expect(() => formatWallClockLabel('09:60')).toThrow(RangeError);
       expect(() => formatWallClockLabel('')).toThrow(RangeError);
+    });
+  });
+
+  /** Notifications item #18's implementation plan, Decision 10, Testing Strategy scenario 12. */
+  describe('wallClockParts / timeOfDayFromParts', () => {
+    it.each([
+      ['00:30', { hour12: 12, minute: 30, meridiem: 'am' }],
+      ['12:00', { hour12: 12, minute: 0, meridiem: 'pm' }],
+      ['09:05', { hour12: 9, minute: 5, meridiem: 'am' }],
+      ['23:59', { hour12: 11, minute: 59, meridiem: 'pm' }],
+    ] as const)('round-trips %p through wallClockParts and timeOfDayFromParts', (timeOfDay, parts) => {
+      expect(wallClockParts(timeOfDay)).toEqual(parts);
+      expect(timeOfDayFromParts(parts)).toBe(timeOfDay);
+    });
+
+    it('wallClockParts throws RangeError on a malformed input, including empty and whitespace-only', () => {
+      expect(() => wallClockParts('9am')).toThrow(RangeError);
+      expect(() => wallClockParts('')).toThrow(RangeError);
+      expect(() => wallClockParts('   ')).toThrow(RangeError);
+    });
+
+    it('timeOfDayFromParts clamps hour12 to 1-12 and minute to 0-59 (Decision 10)', () => {
+      // 13 clamps down to 12, which is midnight under 'am' — "00:30", not "12:30".
+      expect(timeOfDayFromParts({ hour12: 13, minute: 30, meridiem: 'am' })).toBe('00:30');
+      expect(timeOfDayFromParts({ hour12: 0, minute: 30, meridiem: 'am' })).toBe('01:30');
+      expect(timeOfDayFromParts({ hour12: 9, minute: 75, meridiem: 'am' })).toBe('09:59');
+      expect(timeOfDayFromParts({ hour12: 9, minute: -5, meridiem: 'am' })).toBe('09:00');
+    });
+
+    it('timeOfDayFromParts clamps a non-finite hour/minute rather than propagating NaN', () => {
+      expect(timeOfDayFromParts({ hour12: NaN, minute: 30, meridiem: 'pm' })).toBe('13:30');
+      expect(timeOfDayFromParts({ hour12: 9, minute: NaN, meridiem: 'am' })).toBe('09:00');
     });
   });
 

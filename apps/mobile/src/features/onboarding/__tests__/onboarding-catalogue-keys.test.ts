@@ -12,6 +12,7 @@ import { findTranslationKeys } from '../../../test-utils/catalogue-key-scan';
 
 const APP_ROOT = path.resolve(__dirname, '..', '..', '..', '..', 'app', '(onboarding)');
 const FEATURE_ROOT = path.resolve(__dirname, '..');
+const REMINDERS_FEATURE_ROOT = path.resolve(__dirname, '..', '..', 'reminders');
 
 const SCANNED_FILES = [
   path.join(APP_ROOT, 'intro.tsx'),
@@ -19,6 +20,12 @@ const SCANNED_FILES = [
   path.join(APP_ROOT, 'ready.tsx'),
   path.join(FEATURE_ROOT, 'components', 'ValueStepPage.tsx'),
   path.join(FEATURE_ROOT, 'components', 'ReadySummaryRow.tsx'),
+  // Implementation plan for issue #18: `reminder-content.ts` reads the three
+  // `reminders.notification_title` / `notification_body` / `channel_name` keys through the `i18n`
+  // instance directly (Decision 12) — not from any onboarding screen. Without this file in the
+  // scan, this suite's own "every reminders.* key is used by a screen" assertion below would fail
+  // for those three keys the moment item #18 adds them, even though they are genuinely used.
+  path.join(REMINDERS_FEATURE_ROOT, 'reminder-content.ts'),
 ];
 
 function scanAll(): { keys: string[]; dynamic: { file: string; line: number; column: number }[] } {

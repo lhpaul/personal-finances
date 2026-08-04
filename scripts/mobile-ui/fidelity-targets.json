@@ -612,44 +612,65 @@
     {
       "screen_id": "notifications-intro",
       "state_id": "default",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/notifications/index.tsx",
+      "deep_link": "finanzas:///notifications?fidelity=1&fidelityScreen=notifications-intro&fidelityState=default",
+      "ready_test_id": "fidelity-notifications-intro"
     },
     {
       "screen_id": "notifications-intro",
       "state_id": "denied",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/notifications/index.tsx",
+      "deep_link": "finanzas:///notifications?fidelity=1&fidelityScreen=notifications-intro&fidelityState=denied",
+      "ready_test_id": "fidelity-notifications-intro"
     },
     {
       "screen_id": "notifications-schedule",
       "state_id": "time",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/notifications/schedule.tsx",
+      "deep_link": "finanzas:///notifications/schedule?fidelity=1&fidelityScreen=notifications-schedule&fidelityState=time",
+      "ready_test_id": "fidelity-notifications-schedule"
     },
     {
       "screen_id": "notifications-schedule",
       "state_id": "custom-time",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/notifications/schedule.tsx",
+      "deep_link": "finanzas:///notifications/schedule?fidelity=1&fidelityScreen=notifications-schedule&fidelityState=custom-time",
+      "ready_test_id": "fidelity-notifications-schedule"
     },
     {
       "screen_id": "notifications-schedule",
       "state_id": "days",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/(onboarding)/notifications/schedule.tsx",
+      "deep_link": "finanzas:///notifications/schedule?fidelity=1&fidelityScreen=notifications-schedule&fidelityState=days",
+      "ready_test_id": "fidelity-notifications-schedule"
     },
     {
       "screen_id": "settings-notifications",
       "state_id": "enabled",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/notifications.tsx",
+      "deep_link": "finanzas:///settings/notifications?fidelity=1&fidelityScreen=settings-notifications&fidelityState=enabled",
+      "ready_test_id": "fidelity-settings-notifications"
     },
     {
       "screen_id": "settings-notifications",
       "state_id": "disabled",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/settings/notifications.tsx",
+      "deep_link": "finanzas:///settings/notifications?fidelity=1&fidelityScreen=settings-notifications&fidelityState=disabled",
+      "ready_test_id": "fidelity-settings-notifications"
     },
     {
       "screen_id": "settings",

@@ -84,3 +84,46 @@ export function readReminderSettings(db: AppDatabase): ReminderSettings {
     days: readReminderDays(getSetting(db, 'reminder_days')),
   };
 }
+
+const LOOSE_TIME_PATTERN = /^(\d{1,2}):(\d{1,2})$/;
+
+/** Zero-pads an `"H:mm"` / `"HH:m"` / `"HH:mm"` string into a canonical `"HH:mm"` one. A value that
+ * does not even loosely look like `hour:minute` passes through unchanged — `writeReminderSettings`
+ * is not the validation boundary (the screens that call it only ever produce well-formed strings
+ * through `timeOfDayFromParts` / the preset tables); this only guarantees the *shape* is canonical
+ * once it does reach storage. */
+export function normalizeTimeOfDay(time: string): string {
+  const match = LOOSE_TIME_PATTERN.exec(time);
+  if (!match) return time;
+  const hour = match[1]?.padStart(2, '0') ?? '';
+  const minute = match[2]?.padStart(2, '0') ?? '';
+  return `${hour}:${minute}`;
+}
+
+/**
+ * The write-side sibling of {@link readReminderSettings} (implementation plan for issue #18,
+ * Layer-by-Layer). Writes through the existing `setSetting` — `onConflictDoUpdate` on the primary
+ * key, hence idempotent (AGENTS.md non-negotiable 4) — and normalises before writing: `days`
+ * de-duplicated and sorted ascending, `timeOfDay` re-serialised as a zero-padded 24-hour `"HH:mm"`
+ * string. This is what makes scenario 9's "an unsorted duplicated day list proves normalisation"
+ * assertion true regardless of what a caller happens to pass in.
+ */
+/** De-duplicates and sorts ascending — the exact normalisation {@link writeReminderSettings}
+ * applies before writing, exported so a caller that must build a *derived* value (e.g. the
+ * schedule to plan and apply) from the same input can use the identical rule rather than
+ * re-deriving it. */
+export function normalizeReminderDays(days: number[]): number[] {
+  return Array.from(new Set(days)).sort((a, b) => a - b);
+}
+
+export function writeReminderSettings(
+  db: AppDatabase,
+  settings: { enabled: boolean; timeOfDay: string; days: number[] },
+): void {
+  const normalizedDays = normalizeReminderDays(settings.days);
+  const normalizedTime = normalizeTimeOfDay(settings.timeOfDay);
+
+  setSetting(db, 'reminder_enabled', settings.enabled);
+  setSetting(db, 'reminder_time', normalizedTime);
+  setSetting(db, 'reminder_days', normalizedDays);
+}

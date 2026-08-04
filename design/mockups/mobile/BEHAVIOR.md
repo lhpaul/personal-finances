@@ -123,18 +123,26 @@
 
 - **Ruta:** `/(onboarding)/notifications` · **Mockup:** `#screen=notifications-intro&state=default`
 - **Estados:** `default`; `denied` (permiso de OS denegado).
-- **Acciones:** 🟡 activar → pide permiso al OS; concedido → `notifications-schedule`; denegado →
-  estado `denied` con cómo habilitarlo en ajustes del sistema. Omitir → `onboarding-ready`
-  (recordatorios nunca bloquean, espíritu de BR6).
+- **Acciones:** activar → pide permiso al OS; concedido → `notifications-schedule`; denegado →
+  estado `denied` con cómo habilitarlo en ajustes del sistema. "Tal vez después" **sale** a
+  `onboarding-ready` directamente — no navega al estado `denied` (ese `onclick` del mockup solo
+  recorre su propia galería de estados; el estado `denied` real se alcanza únicamente cuando el
+  OS responde `denied`). Omitir nunca bloquea (espíritu de BR6). Implementado en #18.
 - **Datos:** recordatorios **locales** (no hay backend ni push remoto).
 
 ### notifications-schedule
 
 - **Ruta:** `/(onboarding)/notifications/schedule` · **Mockup:** `#screen=notifications-schedule&state=time`
 - **Estados:** `time` (horarios preset); `custom-time` (selector libre); `days` (qué días).
-- **Acciones:** 🟡 guardar → persiste en settings y programa las notificaciones locales →
-  `onboarding-ready`.
-- **Datos:** tabla `settings` (#3).
+- **Acciones:** guardar → persiste en settings y programa las notificaciones locales →
+  `onboarding-ready`. Implementado en #18.
+- **Datos:** tabla `settings` (#3). Solo se persiste `reminder_time` como `"HH:mm"` — nunca un id de
+  preset; qué chip/radio aparece seleccionado se **deriva** en cada render comparando ese valor
+  contra la tabla de presets de la pantalla activa. `notifications-schedule` y
+  `settings-notifications` dibujan **tablas de presets distintas** (7/9/12/18/20 h vs.
+  mañana/tarde/noche/personalizada) — es intencional, no una inconsistencia del mockup; como lo
+  persistido es la hora y no el id, un valor elegido en una tabla siempre se muestra correctamente
+  en la otra (como personalizado si no coincide con ninguno de sus presets).
 
 ### onboarding-ready
 
@@ -297,7 +305,19 @@
 - **Estados:** `enabled` (muestra horario/días, edita como `notifications-schedule`);
   `disabled`.
 - **Datos:** settings + permiso del OS (si el OS lo revocó, manda el OS y se muestra `disabled`
-  con cómo re-habilitar 🟡).
+  con cómo re-habilitar — el interruptor vuelve a habilitarse y el schedule guardado se restaura
+  sin pedirle a la persona que lo reconfigure). Implementado en #18. `disabled` cubre dos motivos
+  distintos, con una única nota de sistema mostrada solo en uno de los dos:
+
+  | Situación | Interruptor | Nota de sistema |
+  | --- | --- | --- |
+  | Intención activada, permiso concedido | apagado | oculta |
+  | Intención desactivada, permiso concedido | apagado | **oculta** |
+  | Permiso denegado, cualquier intención | apagado, no interactivo | **visible**, con "Abrir ajustes del teléfono" |
+
+  Ambas filas "apagado" dibujan el mismo marco `disabled`; solo la fila bloqueada a nivel de
+  sistema muestra la nota, porque su propio texto afirma un bloqueo del sistema que sería falso en
+  la otra fila.
 
 ### settings-categories
 

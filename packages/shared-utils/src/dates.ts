@@ -333,6 +333,50 @@ export function formatWallClockLabel(timeOfDay: string): string {
   return `${hour12}:${minute} ${period}`;
 }
 
+export interface WallClockParts {
+  /** `1..12`. */
+  hour12: number;
+  /** `0..59`. */
+  minute: number;
+  meridiem: 'am' | 'pm';
+}
+
+/**
+ * The inverse pair of {@link formatWallClockLabel} (implementation plan for issue #18, Decision
+ * 10) — lets `CustomTimeCard` round-trip a stored `"HH:mm"` value through an editable
+ * hour/minute/AM-PM control. Numeric only, no `Intl`, matching the reason item #8's
+ * `formatWallClockLabel` gave for living in this module rather than in the mobile app. Throws
+ * `RangeError` on a malformed input — same contract as `formatWallClockLabel`.
+ */
+export function wallClockParts(timeOfDay: string): WallClockParts {
+  const match = TIME_OF_DAY_PATTERN.exec(timeOfDay);
+  if (!match) {
+    throw new RangeError(`wallClockParts: expected a 24-hour "HH:mm" string, got "${timeOfDay}"`);
+  }
+  const hour24 = Number(match[1]);
+  const minute = Number(match[2]);
+  const meridiem: 'am' | 'pm' = hour24 < 12 ? 'am' : 'pm';
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return { hour12, minute, meridiem };
+}
+
+/**
+ * `timeOfDayFromParts({ hour12: 12, minute: 30, meridiem: 'am' }) === "00:30"`. Clamps `hour12` to
+ * `1..12` and `minute` to `0..59` **before** serialising (Decision 10) — the clamp lives here, in
+ * the pure converter, not in the editing component, so it is unit tested independently of any
+ * rendering concern. A non-finite input (e.g. `NaN` from an emptied text field) clamps to the
+ * nearest bound rather than propagating `NaN` into the stored string.
+ */
+export function timeOfDayFromParts(parts: WallClockParts): string {
+  const safeHour = Number.isFinite(parts.hour12) ? parts.hour12 : 1;
+  const safeMinute = Number.isFinite(parts.minute) ? parts.minute : 0;
+  const hour12 = Math.min(12, Math.max(1, Math.round(safeHour)));
+  const minute = Math.min(59, Math.max(0, Math.round(safeMinute)));
+  const hour24 =
+    parts.meridiem === 'am' ? (hour12 === 12 ? 0 : hour12) : hour12 === 12 ? 12 : hour12 + 12;
+  return `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
 function getLabelFormatter(
   locale: SupportedLocale,
   options: Intl.DateTimeFormatOptions,
