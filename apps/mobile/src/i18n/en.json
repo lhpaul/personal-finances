@@ -159,6 +159,17 @@
   "ds.legend.item_current": "This month",
   "ds.legend.item_previous": "Dec 2024",
 
+  "ds.section.legend_value": "Legend with value",
+  "ds.legend_value.item_name_1": "🍔 Food",
+  "ds.legend_value.item_value_1": "20.6%",
+  "ds.legend_value.item_name_2": "📦 Shopping",
+  "ds.legend_value.item_value_2": "17.4%",
+
+  "ds.section.donut_chart": "Donut chart",
+  "ds.donut_chart.label": "Expense breakdown by category",
+
+  "ds.section.bar_chart": "Bar chart",
+
   "ds.section.bank_row": "Bank row",
   "ds.bank_row.monogram": "BCH",
   "ds.bank_row.name": "Banco de Chile",
