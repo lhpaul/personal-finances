@@ -26,8 +26,11 @@ export type CategoriesOverlay =
   | { kind: 'delete-confirm'; categoryId: string };
 
 /** A closed union of catalogue keys, never an exception message (Decision 11) — a raw SQLite
- * error string in a UI surface is how internal identifiers leak into screenshots. */
-export type CategoriesSettingsErrorKey = 'reorder' | 'save' | 'delete';
+ * error string in a UI surface is how internal identifiers leak into screenshots. `'load'` is the
+ * initial (or focus/direction-triggered) read failing — found in review, PR #97: the load effect
+ * had no catch, so a `getAppDatabase()`/`readCategoriesSettings()` failure was an unhandled
+ * rejection that left the screen stuck on an empty list with no error and no retry. */
+export type CategoriesSettingsErrorKey = 'reorder' | 'save' | 'delete' | 'load';
 
 export interface CategoriesSettingsState {
   status: 'pending' | 'ready';
@@ -35,8 +38,9 @@ export interface CategoriesSettingsState {
   rows: CategoryWithUsage[];
   overlay: CategoriesOverlay;
   error: CategoriesSettingsErrorKey | null;
-  /** Set only alongside a non-null `error` — re-runs the exact write that just failed (systemic
-   * write-path error handling: every write surfaces a visible error state with a safe retry). */
+  /** Set only alongside a non-null `error` — re-runs the exact operation that just failed
+   * (systemic write-path error handling: every write, and the initial load, surfaces a visible
+   * error state with a safe retry). */
   retry: (() => void) | null;
 }
 
@@ -66,11 +70,45 @@ export interface AttemptWriteDeps {
 }
 
 /**
+ * A `deps.reloadRows()` failure that follows a *successful* write must retry only the read —
+ * never `action` again, which would replay a non-idempotent write (re-running a successful
+ * `createUserCategory` would create a second category). Returns a fresh retry closure on every
+ * failure so a repeated reload failure keeps chaining correctly (found in review, PR #97:
+ * CodeRabbit — `attemptWrite` awaited `deps.reloadRows()` unguarded on both branches, so a
+ * rejection there escaped as an unhandled rejection from the `void attemptWrite(...)` call site
+ * and never reached `setError`/`setRetry`).
+ */
+function retryReloadOnly(deps: AttemptWriteDeps, kind: CategoriesSettingsErrorKey): () => void {
+  return () => {
+    void deps
+      .reloadRows()
+      .then((rows) => {
+        deps.setRows(rows);
+        deps.setError(null);
+        deps.setRetry(null);
+      })
+      .catch(() => {
+        deps.setError(kind);
+        deps.setRetry(retryReloadOnly(deps, kind));
+      });
+  };
+}
+
+/**
  * Runs `action`, then always re-reads authoritative rows from a fresh read (Decision 11: "the
  * hook restores the last persisted state from a fresh read"). On success, clears the error and
- * the retry. On failure, sets `error` to `kind` (never the caught exception) and sets `retry` to
- * a closure that re-runs this same `attemptWrite` call — the safe-retry path every write (create,
- * rename, reorder, delete) shares.
+ * the retry. On failure, sets `error` to `kind` (never the caught exception).
+ *
+ * Every `deps.reloadRows()` call is independently guarded (never left to reject unhandled), and
+ * the two failure sources get two different retries, because they are not equally safe to
+ * replay:
+ *
+ * - **`action` failed**: it never committed (every write in this file is one all-or-nothing
+ *   `db.transaction`), so retrying means re-running `action` — always safe. The confirmation
+ *   read after a failed write is best-effort; if it also fails, the write's own failure still
+ *   surfaces.
+ * - **`action` succeeded but the read failed**: the write is already committed. Retrying must
+ *   re-run only the read ({@link retryReloadOnly}), never `action` again.
  */
 export async function attemptWrite(
   kind: CategoriesSettingsErrorKey,
@@ -79,17 +117,28 @@ export async function attemptWrite(
 ): Promise<void> {
   try {
     await action();
+  } catch {
+    try {
+      const rows = await deps.reloadRows();
+      deps.setRows(rows);
+    } catch {
+      // Best-effort: the write's own failure below is what must reach the user either way.
+    }
+    deps.setError(kind);
+    deps.setRetry(() => {
+      void attemptWrite(kind, action, deps);
+    });
+    return;
+  }
+
+  try {
     const rows = await deps.reloadRows();
     deps.setRows(rows);
     deps.setError(null);
     deps.setRetry(null);
   } catch {
-    const rows = await deps.reloadRows();
-    deps.setRows(rows);
     deps.setError(kind);
-    deps.setRetry(() => {
-      void attemptWrite(kind, action, deps);
-    });
+    deps.setRetry(retryReloadOnly(deps, kind));
   }
 }
 
@@ -106,6 +155,49 @@ export function applyOrderedIds(
     .filter((row): row is CategoryWithUsage => row !== undefined);
   const untouched = rows.filter((row) => !orderedIds.includes(row.id));
   return [...reorderedMovable, ...untouched];
+}
+
+/** The initial (and every focus/direction-triggered) read's outcome — `undefined` means a
+ * superseded run that must not `setState` (matches `loadHomeData`/`loadLocalProfile`'s
+ * cancellation-guarded read convention). */
+export type LoadCategoriesSettingsResult =
+  | { status: 'ready'; db: AppDatabase; rows: CategoryWithUsage[] }
+  | { status: 'error' };
+
+export interface LoadCategoriesSettingsArgs {
+  getAppDatabase: () => Promise<AppDatabase>;
+  direction: CategoryDirection;
+  locale: SupportedLocale;
+  isCancelled: () => boolean;
+}
+
+/**
+ * The cancellation-guarded read, extracted from the hook so the guard and the failure path are
+ * both testable without a renderer (implementation plan Decision 6's hook/pure split precedent —
+ * the same shape as `loadHomeData`/`loadLocalProfile`/`loadSettingsHub`). Returns `undefined`
+ * once `isCancelled()` flips true.
+ *
+ * Never throws (found in review, PR #97: the hook's load effect previously had no catch at all —
+ * a `getAppDatabase()` or `readCategoriesSettings()` failure was an unhandled rejection that left
+ * the screen stuck in `status: 'pending'` forever, with no error and no retry).
+ */
+export async function loadCategoriesSettingsRows({
+  getAppDatabase,
+  direction,
+  locale,
+  isCancelled,
+}: LoadCategoriesSettingsArgs): Promise<LoadCategoriesSettingsResult | undefined> {
+  try {
+    const db = await getAppDatabase();
+    if (isCancelled()) return undefined;
+    const todayDateLocal = deriveDateLocal(new Date());
+    const rows = readCategoriesSettings(db, { direction, locale, todayDateLocal });
+    if (isCancelled()) return undefined;
+    return { status: 'ready', db, rows };
+  } catch {
+    if (isCancelled()) return undefined;
+    return { status: 'error' };
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -187,18 +279,27 @@ export function useCategoriesSettings(locale: SupportedLocale): UseCategoriesSet
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const db = await getAppDatabase();
-      if (cancelled) return;
-      dbRef.current = db;
-      const todayDateLocal = deriveDateLocal(new Date());
-      const nextRows = readCategoriesSettings(db, { direction, locale, todayDateLocal });
-      if (cancelled) return;
-      setRows(nextRows);
-      setStatus('ready');
-      setError(null);
-      setRetry(null);
-    })();
+    loadCategoriesSettingsRows({
+      getAppDatabase,
+      direction,
+      locale,
+      isCancelled: () => cancelled,
+    }).then((result) => {
+      if (result === undefined) return;
+      if (result.status === 'ready') {
+        dbRef.current = result.db;
+        setRows(result.rows);
+        setStatus('ready');
+        setError(null);
+        setRetry(null);
+      } else {
+        // Retrying bumps `reloadToken`, which re-runs this same effect.
+        setError('load');
+        setRetry(() => {
+          setReloadToken((token) => token + 1);
+        });
+      }
+    });
     return () => {
       cancelled = true;
     };

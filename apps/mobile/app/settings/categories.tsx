@@ -34,6 +34,8 @@ function errorCopy(t: Translate, error: CategoriesSettingsErrorKey): string {
       return t('settings.categories.error_save');
     case 'delete':
       return t('settings.categories.error_delete');
+    case 'load':
+      return t('settings.categories.error_load');
   }
 }
 
@@ -69,6 +71,22 @@ export default function SettingsCategories() {
         ? { kind: 'delete-confirm', categoryId: previewCategoryId }
         : state.overlay;
 
+  // Found in review, PR #97: `direction` above is a *render-only* derivation — it drove the
+  // Segment and the create-button label, but `state.rows` still came from the hook's own
+  // `state.direction`, which only changes via `state.setDirection` (the real Segment's
+  // `onChange`). Under the `income` preview state, the Segment showed the income tab while
+  // `CategoryReorderList` still rendered expense rows. Drive the hook's direction from the
+  // preview so the loaded rows actually match what is rendered.
+  useEffect(() => {
+    if (!preview.active) return;
+    if (state.direction !== direction) state.setDirection(direction);
+    // `state` is a fresh object every render (the hook returns a plain object literal, not a
+    // stable ref), so depending on it would re-run this effect every render for no reason; the
+    // two members this effect actually reads (`state.direction`, `state.setDirection`) are
+    // listed explicitly instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview.active, direction, state.direction, state.setDirection]);
+
   const overlayKey = overlay.kind === 'editor' ? `${overlay.mode}:${overlay.categoryId ?? ''}` : null;
   useEffect(() => {
     if (overlay.kind !== 'editor') return;
@@ -80,7 +98,7 @@ export default function SettingsCategories() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overlayKey]);
 
-  const { canSave } = validateEditorForm(form);
+  const { canSave, normalizedName } = validateEditorForm(form);
   const rawPalette = emojiPaletteFor(direction);
   const palette = paletteWithCurrent(rawPalette, form.emoji);
 
@@ -169,7 +187,9 @@ export default function SettingsCategories() {
         onCancel={state.closeOverlay}
         onSave={() => {
           if (!canSave || form.emoji === undefined) return;
-          state.saveEditor({ name: form.name, emoji: form.emoji });
+          // `normalizedName`, not `form.name` (found in review, PR #97): the raw field value can
+          // carry leading/trailing whitespace the person typed but never intended to persist.
+          state.saveEditor({ name: normalizedName, emoji: form.emoji });
         }}
         onRequestDelete={() => {
           if (overlay.kind === 'editor' && overlay.categoryId !== null) {

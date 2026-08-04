@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { isOtrosSlug } from '../../../db/repositories/categories';
 import type { CategoryWithUsage } from '../../../db/types';
 import { ListGroup, ListRow, Text } from '../../../components/ui';
+import { TOUCH_METRICS } from '../../../components/ui/_internal/touch-metrics';
 import { componentMetrics, theme } from '../../../theme';
 import type { CategoryDirection } from '../direction';
 import { moveItem, resolveDropIndex, type RowOffset } from '../reorder';
@@ -56,7 +57,20 @@ export function CategoryReorderList({
   const onDragStateChangeRef = useRef(onDragStateChange);
   onDragStateChangeRef.current = onDragStateChange;
 
+  // `offsetsRef` is positional (index-aligned with `orderRef.current`), populated only by
+  // `handleLayout`. This component is not remounted on a tab switch (`direction` changes but
+  // `CategoryReorderList` stays the same instance), so without this reset a shorter new
+  // direction's list would leave stale trailing entries behind — `resolveDropIndex`'s
+  // `Math.min(offsets.length - 1, index)` would then clamp against the *old*, longer length,
+  // letting `finishDrag` compute a `dropIndex` past the end of the current `orderRef.current`
+  // (found in review, PR #97).
   const offsetsRef = useRef<RowOffset[]>([]);
+  const offsetsKeyRef = useRef('');
+  const offsetsKey = rows.map((row) => row.id).join(',');
+  if (offsetsKeyRef.current !== offsetsKey) {
+    offsetsKeyRef.current = offsetsKey;
+    offsetsRef.current = [];
+  }
   const dragStartIndexRef = useRef(0);
   const respondersRef = useRef<Map<string, GestureResponderHandlers>>(new Map());
   const translateY = useRef(new Animated.Value(0)).current;
@@ -170,6 +184,7 @@ export function CategoryReorderList({
                     onAccessibilityAction={(event) => {
                       moveByOneStep(row.id, event.nativeEvent.actionName === 'increment' ? -1 : 1);
                     }}
+                    hitSlop={TOUCH_METRICS.categoryReorderHandle.hitSlop}
                     style={{
                       width: componentMetrics.categoryReorderRow.handleSize,
                       height: componentMetrics.categoryReorderRow.handleSize,

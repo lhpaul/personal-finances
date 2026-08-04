@@ -750,6 +750,7 @@
   "settings.categories.error_reorder": "We couldn't save the order. Try again.",
   "settings.categories.error_save": "We couldn't save the category. Try again.",
   "settings.categories.error_delete": "We couldn't delete the category. Try again.",
+  "settings.categories.error_load": "We couldn't load your categories. Try again.",
   "settings.categories.error_icon": "⚠️",
   "settings.categories.retry_label": "Retry"
 }

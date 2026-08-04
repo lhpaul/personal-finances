@@ -21,12 +21,20 @@ export function initialEditorForm(
 export interface EditorFormValidation {
   valid: boolean;
   canSave: boolean;
+  /** `form.name.trim()` — the value a caller should persist, never the raw `form.name` (found in
+   * review, PR #97: `validateEditorForm` trimmed only to test emptiness and discarded the
+   * trimmed value, so a name typed as `'  Comida  '` was written verbatim by
+   * `createUserCategory`/`renameCategory` and rendered with the padding on every row and
+   * picker). Always the trimmed string, regardless of `valid` — an empty `normalizedName` is
+   * exactly what makes `valid` false in that case. */
+  normalizedName: string;
 }
 
 /** The name must be non-empty after trimming and an emoji must be selected. No length ceiling is
  * invented (Layer-by-Layer). `canSave` mirrors `valid` — kept as its own field so a caller never
  * has to know that today they are the same check. */
 export function validateEditorForm(form: { name: string; emoji: string | undefined }): EditorFormValidation {
-  const valid = form.name.trim().length > 0 && form.emoji !== undefined;
-  return { valid, canSave: valid };
+  const normalizedName = form.name.trim();
+  const valid = normalizedName.length > 0 && form.emoji !== undefined;
+  return { valid, canSave: valid, normalizedName };
 }

@@ -1,9 +1,21 @@
+import type { AppDatabase } from '../../../db/types';
 import {
   applyOrderedIds,
   attemptWrite,
   guardAndCloseOverlay,
+  loadCategoriesSettingsRows,
   type CategoriesOverlay,
 } from '../use-categories-settings';
+
+// `jest.mock` calls are hoisted above every import by `babel-plugin-jest-hoist`, so this applies
+// to `loadCategoriesSettingsRows`'s import above regardless of source order — the same
+// `loadHomeData`/`readHomeData` stubbing precedent (`use-home-data.test.ts`): this suite exercises
+// the cancellation guard and the failure path, not `readCategoriesSettings`'s own SQL composition
+// (that is `categories-settings.db.test.ts`, against a real store), so it is stubbed rather than
+// given a fake `AppDatabase` it would otherwise throw against.
+jest.mock('../read-categories', () => ({
+  readCategoriesSettings: jest.fn(() => [{ stubbed: true }]),
+}));
 
 /**
  * Scenarios 15-16 of the implementation plan for issue #21's Testing Strategy, plus the
@@ -105,6 +117,67 @@ describe('attemptWrite (Decision 11 — write-path error handling, safe retry)',
     expect(typeof deps.setRetry.mock.calls[0]?.[0]).toBe('function');
   });
 
+  /** Found in review, PR #97 (CodeRabbit): `makeDeps` always resolved `reloadRows`, so the
+   * unguarded reload path was never exercised by this suite. */
+  function makeRejectingReloadDeps() {
+    const setRows = jest.fn();
+    const setError = jest.fn();
+    const setRetry = jest.fn();
+    const reloadRows = jest.fn(async () => {
+      throw new Error('SQLITE_BUSY: leaking a raw db identifier');
+    });
+    return { reloadRows, setRows, setError, setRetry };
+  }
+
+  it('when the write rejects AND the confirmation reload also rejects: still resolves (never throws), still sets the closed-union error key and a retry function, and never calls setRows', async () => {
+    const deps = makeRejectingReloadDeps();
+    const action = jest.fn(async () => {
+      throw new Error('write failed');
+    });
+
+    await expect(attemptWrite('save', action, deps)).resolves.toBeUndefined();
+
+    expect(deps.setRows).not.toHaveBeenCalled();
+    expect(deps.setError).toHaveBeenCalledWith('save');
+    expect(deps.setRetry).toHaveBeenCalledTimes(1);
+    expect(typeof deps.setRetry.mock.calls[0]?.[0]).toBe('function');
+  });
+
+  it('when the write SUCCEEDS but the confirmation reload rejects: still resolves, sets the error key and a retry — and that retry re-runs only the reload, never the write again (replaying a create would duplicate the category)', async () => {
+    let reloadShouldFail = true;
+    const setRows = jest.fn();
+    const setError = jest.fn();
+    const setRetry = jest.fn();
+    const reloadRows = jest.fn(async () => {
+      if (reloadShouldFail) throw new Error('transient read failure');
+      return [{ id: 'mascotas' }] as never;
+    });
+    const deps = { reloadRows, setRows, setError, setRetry };
+    const action = jest.fn(async () => undefined);
+
+    await expect(attemptWrite('save', action, deps)).resolves.toBeUndefined();
+
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(setRows).not.toHaveBeenCalled();
+    expect(setError).toHaveBeenCalledWith('save');
+    expect(setRetry).toHaveBeenCalledTimes(1);
+
+    // Invoke the retry: the reload now succeeds.
+    const retryFn = setRetry.mock.calls[0]?.[0] as () => void;
+    reloadShouldFail = false;
+    retryFn();
+    for (let i = 0; i < 5; i++) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+
+    // The write is never replayed — only the reload retried.
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(reloadRows).toHaveBeenCalledTimes(2);
+    expect(setRows).toHaveBeenCalledWith([{ id: 'mascotas' }]);
+    expect(setError).toHaveBeenLastCalledWith(null);
+    expect(setRetry).toHaveBeenLastCalledWith(null);
+  });
+
   it('the retry function re-runs the same action, and a subsequent success clears the error', async () => {
     const deps = makeDeps([{ id: 'comida' }]);
     let shouldFail = true;
@@ -130,6 +203,64 @@ describe('attemptWrite (Decision 11 — write-path error handling, safe retry)',
     expect(action).toHaveBeenCalledTimes(2);
     expect(deps.setError).toHaveBeenLastCalledWith(null);
     expect(deps.setRetry).toHaveBeenLastCalledWith(null);
+  });
+});
+
+describe('loadCategoriesSettingsRows (found in review, PR #97 — the initial-load effect previously had no catch at all)', () => {
+  it('resolves to a ready state carrying the db and the rows when getAppDatabase resolves and isCancelled never flips', async () => {
+    const fakeDb = {} as AppDatabase;
+    const getAppDatabase = jest.fn().mockResolvedValue(fakeDb);
+
+    const result = await loadCategoriesSettingsRows({
+      getAppDatabase,
+      direction: 'expense',
+      locale: 'es',
+      isCancelled: () => false,
+    });
+
+    expect(result).toEqual({ status: 'ready', db: fakeDb, rows: [{ stubbed: true }] });
+  });
+
+  it('returns undefined (never a ready state) once isCancelled flips true before the handle resolves', async () => {
+    let cancelled = false;
+    const getAppDatabase = jest.fn().mockImplementation(() => {
+      cancelled = true; // simulates teardown racing the in-flight promise
+      return Promise.resolve({} as AppDatabase);
+    });
+
+    const result = await loadCategoriesSettingsRows({
+      getAppDatabase,
+      direction: 'expense',
+      locale: 'es',
+      isCancelled: () => cancelled,
+    });
+
+    expect(result).toBeUndefined();
+  });
+
+  it('resolves to an error state — never rejects — when getAppDatabase rejects', async () => {
+    const getAppDatabase = jest.fn().mockRejectedValue(new Error('bootstrap failed'));
+
+    await expect(
+      loadCategoriesSettingsRows({ getAppDatabase, direction: 'expense', locale: 'es', isCancelled: () => false }),
+    ).resolves.toEqual({ status: 'error' });
+  });
+
+  it('returns undefined for a rejected getAppDatabase once cancelled — a discarded failure has no side effect', async () => {
+    let cancelled = false;
+    const getAppDatabase = jest.fn().mockImplementation(() => {
+      cancelled = true;
+      return Promise.reject(new Error('bootstrap failed'));
+    });
+
+    const result = await loadCategoriesSettingsRows({
+      getAppDatabase,
+      direction: 'expense',
+      locale: 'es',
+      isCancelled: () => cancelled,
+    });
+
+    expect(result).toBeUndefined();
   });
 });
 

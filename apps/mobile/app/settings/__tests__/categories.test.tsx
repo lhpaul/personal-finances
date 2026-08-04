@@ -68,6 +68,14 @@ describe('app/settings/categories.tsx — the four manifest states (brief scope;
     expect(source).toMatch(/onConfirm=\{state\.confirmDelete\}/);
     expect(source).not.toMatch(/transactionCategoryId\s*:/);
   });
+
+  it('found in review, PR #97: drives the hook direction from the fidelity preview, so the loaded rows match the previewed tab', () => {
+    expect(source).toMatch(/state\.setDirection\(direction\)/);
+  });
+
+  it('found in review, PR #97: saveEditor persists the normalized (trimmed) name, not the raw form field', () => {
+    expect(source).toMatch(/saveEditor\(\{\s*name:\s*normalizedName/);
+  });
 });
 
 describe('CategoryReorderList — ✨ Otros renders with no onPress and no drag handle (brief AC2, Decision 3, Resolution R2)', () => {
@@ -88,6 +96,15 @@ describe('CategoryReorderList — ✨ Otros renders with no onPress and no drag 
   it('the fallback subtitle is the "default category" copy, not the movement-count copy', () => {
     expect(source).toMatch(/fallback_sub_expense/);
     expect(source).toMatch(/fallback_sub_income/);
+  });
+
+  it('found in review, PR #97: the drag handle carries the configured categoryReorderHandle hitSlop, not just its 36px visual box', () => {
+    expect(source).toMatch(/hitSlop=\{TOUCH_METRICS\.categoryReorderHandle\.hitSlop\}/);
+  });
+
+  it('found in review, PR #97: offsetsRef is reset when the row identity list changes (a tab switch does not remount this component)', () => {
+    expect(source).toMatch(/offsetsKeyRef/);
+    expect(source).toMatch(/offsetsRef\.current\s*=\s*\[\]/);
   });
 });
 

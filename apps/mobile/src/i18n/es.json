@@ -750,6 +750,7 @@
   "settings.categories.error_reorder": "No pudimos guardar el orden. Inténtalo de nuevo.",
   "settings.categories.error_save": "No pudimos guardar la categoría. Inténtalo de nuevo.",
   "settings.categories.error_delete": "No pudimos eliminar la categoría. Inténtalo de nuevo.",
+  "settings.categories.error_load": "No pudimos cargar tus categorías. Inténtalo de nuevo.",
   "settings.categories.error_icon": "⚠️",
   "settings.categories.retry_label": "Reintentar"
 }
