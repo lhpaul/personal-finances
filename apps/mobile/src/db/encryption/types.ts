@@ -22,7 +22,7 @@ export interface CipherHandle {
    * `statements.ts` from this module's own fixed constants and mechanically-retrieved
    * identifiers (a `DUMP_TABLE_ORDER` table name, a `PRAGMA table_info` column name) — never from
    * user input. */
-  query<T extends Record<string, unknown> = Record<string, unknown>>(sql: string): T[];
+  query<T = Record<string, unknown>>(sql: string): T[];
   /** `SELECT count(*) FROM [<schema>.]sqlite_schema WHERE type = 'table' AND name NOT LIKE
    * 'sqlite_%'` (Decision 7's existence probe, extended to accept a second-schema alias). */
   userTableCount(schema?: string): number;

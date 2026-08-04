@@ -83,7 +83,7 @@ function openHandle(filePath: string, directory: string): CipherHandle {
     exec(sql: string): void {
       sqlite.exec(sql);
     },
-    query<T extends Record<string, unknown> = Record<string, unknown>>(sql: string): T[] {
+    query<T = Record<string, unknown>>(sql: string): T[] {
       return sqlite.prepare<[], T>(sql).all();
     },
     userTableCount(schema?: string): number {
