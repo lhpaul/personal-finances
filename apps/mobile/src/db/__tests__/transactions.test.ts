@@ -4,11 +4,17 @@ import fixtureWithIds from '../__fixtures__/bank-response-with-ids.json';
 import fixtureWithoutIds from '../__fixtures__/bank-response-without-ids.json';
 import type { BankTransactionInput } from '../repositories/transactions';
 import {
+  countCategorized,
   countUncategorized,
+  excludeTransaction,
+  listPendingBatch,
   listRecentMovements,
   MovementValidationError,
+  setReviewFlag,
+  setUserCategory,
   sumIncludedByDirectionAndCategory,
   sumIncludedByDirectionAndDay,
+  sumIncludedExpensesInPeriod,
   totalForCategoryInPeriod,
   upsertBankTransactions,
 } from '../repositories/transactions';
@@ -960,5 +966,350 @@ describe('transactions repository', () => {
         sqlite.close();
       }
     });
+  });
+});
+
+/**
+ * Categorization flow (#13) implementation plan Testing Strategy, Scenarios 1-9.
+ */
+describe('categorization repository functions (#13)', () => {
+  function insertTransaction(
+    db: Awaited<ReturnType<typeof openBootstrappedMemoryDb>>['db'],
+    productId: string,
+    overrides: Partial<typeof transactions.$inferInsert> & { id: string },
+    now: string,
+  ) {
+    db.insert(transactions)
+      .values({
+        userFinancialProductId: productId,
+        externalId: null,
+        dedupHash: `dedup-${overrides.id}`,
+        amount: 1000,
+        type: 'debit',
+        occurredAt: now,
+        dateLocal: '2026-02-01',
+        rawDescription: 'Movement',
+        isManual: 0,
+        createdAt: now,
+        updatedAt: now,
+        ...overrides,
+      })
+      .run();
+  }
+
+  it('listPendingBatch returns only movements with no category that are not excluded, newest first, tie-broken by occurred_at then id, capped at the limit (AC2, AC4, BR11)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+
+      insertTransaction(db, productId, { id: 'p-oldest', dateLocal: '2026-02-01', occurredAt: '2026-02-01T10:00:00.000Z' }, now);
+      insertTransaction(db, productId, { id: 'p-newest', dateLocal: '2026-02-03', occurredAt: '2026-02-03T10:00:00.000Z' }, now);
+      insertTransaction(db, productId, { id: 'p-tie-a', dateLocal: '2026-02-02', occurredAt: '2026-02-02T10:00:00.000Z' }, now);
+      insertTransaction(db, productId, { id: 'p-tie-b', dateLocal: '2026-02-02', occurredAt: '2026-02-02T10:00:00.000Z' }, now);
+      insertTransaction(db, productId, { id: 'p-categorized', dateLocal: '2026-02-04', transactionCategoryId: 'comida' }, now);
+      insertTransaction(db, productId, { id: 'p-excluded', dateLocal: '2026-02-04', excludedAt: now, exclusionReason: 'other' }, now);
+
+      const batch = listPendingBatch(db, { limit: 10 });
+      expect(batch.map((m) => m.id)).toEqual(['p-newest', 'p-tie-a', 'p-tie-b', 'p-oldest']);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('listPendingBatch with fewer pending than the limit returns the whole queue (A14)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(db, productId, { id: 'only-one' }, now);
+
+      const batch = listPendingBatch(db, { limit: 10 });
+      expect(batch).toHaveLength(1);
+      expect(batch[0]?.id).toBe('only-one');
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('listPendingBatch resolves the merchant, or null when none matched (A8)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(db, productId, { id: 'with-merchant', merchantId: 'lider' }, now);
+      insertTransaction(db, productId, { id: 'without-merchant', dateLocal: '2026-01-01' }, now);
+
+      const batch = listPendingBatch(db, { limit: 10 });
+      const withMerchant = batch.find((m) => m.id === 'with-merchant');
+      const withoutMerchant = batch.find((m) => m.id === 'without-merchant');
+      expect(withMerchant?.merchant).toEqual({
+        id: 'lider',
+        name: 'Líder',
+        transactionCategoryId: 'supermercado',
+        isUserDefined: false,
+      });
+      expect(withoutMerchant?.merchant).toBeNull();
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('setUserCategory writes the category and category_source = user, clears review_flag, and never touches a pre-existing exclusion timestamp or partial-inclusion amount (AC10, AC22, AC24)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      // Seed opposing field states — a row that is *already* excluded and partially included —
+      // so the assertions below prove `setUserCategory`'s `set` object omits these columns
+      // entirely, rather than merely observing their default-null starting value.
+      insertTransaction(
+        db,
+        productId,
+        {
+          id: 'to-categorize',
+          reviewFlag: 'review_later',
+          excludedAt: '2026-01-01T00:00:00.000Z',
+          exclusionReason: 'other',
+          includedAmount: 500,
+        },
+        now,
+      );
+
+      setUserCategory(db, 'to-categorize', 'comida', ports);
+
+      const row = db.select().from(transactions).where(eq(transactions.id, 'to-categorize')).get();
+      expect(row?.transactionCategoryId).toBe('comida');
+      expect(row?.categorySource).toBe('user');
+      expect(row?.reviewFlag).toBeNull();
+      expect(row?.excludedAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(row?.exclusionReason).toBe('other');
+      expect(row?.includedAmount).toBe(500);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('after setUserCategory, countUncategorized drops by one (AC10, AC11)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(db, productId, { id: 'to-categorize-2' }, now);
+
+      const before = countUncategorized(db);
+      setUserCategory(db, 'to-categorize-2', 'comida', ports);
+      expect(countUncategorized(db)).toBe(before - 1);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('setReviewFlag writes the mark, writes no category, and the movement is still pending (AC14, AC15)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(db, productId, { id: 'to-defer' }, now);
+
+      const before = countUncategorized(db);
+      setReviewFlag(db, 'to-defer', 'review_later', ports);
+
+      const row = db.select().from(transactions).where(eq(transactions.id, 'to-defer')).get();
+      expect(row?.reviewFlag).toBe('review_later');
+      expect(row?.transactionCategoryId).toBeNull();
+      expect(countUncategorized(db)).toBe(before);
+
+      setReviewFlag(db, 'to-defer', 'uncertain', ports);
+      const updated = db.select().from(transactions).where(eq(transactions.id, 'to-defer')).get();
+      expect(updated?.reviewFlag).toBe('uncertain');
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('excludeTransaction writes the exclusion timestamp, the reason and the note; a blank note is stored as null; the row still exists, is still selectable, and its category is never touched (AC19, AC21)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      // Seed an already-categorized-by-hand row — the opposing field state — so the assertions
+      // below prove `excludeTransaction`'s `set` object omits `transactionCategoryId` and
+      // `categorySource` entirely, rather than merely observing their default-null value.
+      insertTransaction(
+        db,
+        productId,
+        { id: 'to-exclude', transactionCategoryId: 'comida', categorySource: 'user' },
+        now,
+      );
+      insertTransaction(db, productId, { id: 'to-exclude-blank-note' }, now);
+
+      excludeTransaction(db, 'to-exclude', { reason: 'shared_expense', note: '  Compartido  ' }, ports);
+      const row = db.select().from(transactions).where(eq(transactions.id, 'to-exclude')).get();
+      expect(row?.excludedAt).not.toBeNull();
+      expect(row?.exclusionReason).toBe('shared_expense');
+      expect(row?.exclusionNote).toBe('Compartido');
+      expect(row?.transactionCategoryId).toBe('comida');
+      expect(row?.categorySource).toBe('user');
+
+      excludeTransaction(db, 'to-exclude-blank-note', { reason: 'other', note: '   ' }, ports);
+      const blankRow = db
+        .select()
+        .from(transactions)
+        .where(eq(transactions.id, 'to-exclude-blank-note'))
+        .get();
+      expect(blankRow?.exclusionNote).toBeNull();
+
+      expect(db.select().from(transactions).where(eq(transactions.id, 'to-exclude')).all()).toHaveLength(1);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('an excluded movement leaves sumIncludedExpensesInPeriod and totalForCategoryInPeriod (AC20)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(db, productId, {
+        id: 'included',
+        amount: 20000,
+        transactionCategoryId: 'comida',
+        dateLocal: '2026-02-10',
+      }, now);
+      insertTransaction(db, productId, {
+        id: 'excluded-before',
+        amount: 30000,
+        transactionCategoryId: 'comida',
+        dateLocal: '2026-02-11',
+      }, now);
+
+      const period = { startDateLocal: '2026-02-01', endDateLocal: '2026-02-28' };
+      const before = sumIncludedExpensesInPeriod(db, period);
+      expect(before).toBe(50000);
+
+      excludeTransaction(db, 'excluded-before', { reason: 'not_relevant' }, ports);
+
+      expect(sumIncludedExpensesInPeriod(db, period)).toBe(20000);
+      expect(totalForCategoryInPeriod(db, 'comida', period)).toBe(20000);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('excludeTransaction never writes a partial-inclusion amount (AC22, AC24)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(db, productId, { id: 'never-partial' }, now);
+
+      excludeTransaction(db, 'never-partial', { reason: 'cash_withdrawal' }, ports);
+
+      const row = db.select().from(transactions).where(eq(transactions.id, 'never-partial')).get();
+      expect(row?.includedAmount).toBeNull();
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('countCategorized counts every movement with a category, whether or not it is later excluded (A6, P4)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      const before = countCategorized(db);
+      insertTransaction(db, productId, { id: 'categorized-then-excluded', transactionCategoryId: 'comida' }, now);
+
+      expect(countCategorized(db)).toBe(before + 1);
+
+      excludeTransaction(db, 'categorized-then-excluded', { reason: 'other' }, ports);
+      expect(countCategorized(db)).toBe(before + 1);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('a simulated re-sync (upsertBankTransactions) over a categorized and an excluded movement preserves both decisions (#10 seam)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId, { externalId: 'resync-acct' });
+
+      await upsertBankTransactions(
+        db,
+        productId,
+        [
+          {
+            externalId: 'resync-categorized',
+            amount: 5000,
+            type: 'debit',
+            occurredAt: '2026-02-01T12:00:00.000Z',
+            dateLocal: '2026-02-01',
+            rawDescription: 'CAFE CENTRAL',
+          },
+          {
+            externalId: 'resync-excluded',
+            amount: 8000,
+            type: 'debit',
+            occurredAt: '2026-02-02T12:00:00.000Z',
+            dateLocal: '2026-02-02',
+            rawDescription: 'GIRO CAJERO',
+          },
+        ],
+        ports,
+      );
+
+      const categorized = db.select().from(transactions).where(eq(transactions.externalId, 'resync-categorized')).get();
+      const excluded = db.select().from(transactions).where(eq(transactions.externalId, 'resync-excluded')).get();
+      if (!categorized || !excluded) throw new Error('fixture rows missing');
+
+      setUserCategory(db, categorized.id, 'comida', ports);
+      excludeTransaction(db, excluded.id, { reason: 'cash_withdrawal' }, ports);
+
+      // Re-sync: the exact same bank response, replayed.
+      await upsertBankTransactions(
+        db,
+        productId,
+        [
+          {
+            externalId: 'resync-categorized',
+            amount: 5000,
+            type: 'debit',
+            occurredAt: '2026-02-01T12:00:00.000Z',
+            dateLocal: '2026-02-01',
+            rawDescription: 'CAFE CENTRAL',
+          },
+          {
+            externalId: 'resync-excluded',
+            amount: 8000,
+            type: 'debit',
+            occurredAt: '2026-02-02T12:00:00.000Z',
+            dateLocal: '2026-02-02',
+            rawDescription: 'GIRO CAJERO',
+          },
+        ],
+        ports,
+      );
+
+      const afterCategorized = db.select().from(transactions).where(eq(transactions.externalId, 'resync-categorized')).get();
+      const afterExcluded = db.select().from(transactions).where(eq(transactions.externalId, 'resync-excluded')).get();
+      expect(afterCategorized?.transactionCategoryId).toBe('comida');
+      expect(afterCategorized?.categorySource).toBe('user');
+      expect(afterExcluded?.excludedAt).not.toBeNull();
+      expect(afterExcluded?.exclusionReason).toBe('cash_withdrawal');
+    } finally {
+      sqlite.close();
+    }
   });
 });

@@ -4,6 +4,7 @@ import {
   createCategory,
   deleteCategory,
   listCategories,
+  listMostUsedCategories,
   updateCategory,
   type CategoryWritable,
   type UpdateCategoryInput,
@@ -219,6 +220,121 @@ describe('categories repository', () => {
       expect(row?.income).toBe(0); // still expense — the forced income was stripped before the UPDATE was built
       expect(row?.labels).toBe(JSON.stringify({ es: 'Renombrada', en: 'Renamed' }));
       expect(row?.sortOrder).toBe(51);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  /**
+   * Categorization flow (#13) implementation plan Testing Strategy, Scenarios 10-11.
+   */
+  it('listMostUsedCategories orders by usage descending, ties by sort_order, excludes the suggested category, and honours the limit (AC8, A7)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+
+      // supermercado used twice, transporte once, comida once (tie with transporte, broken by
+      // sortOrder: comida=1 < transporte=3), compras never used (excluded from the result below).
+      db.insert(transactions)
+        .values([
+          {
+            id: 'use-1',
+            userFinancialProductId: productId,
+            externalId: null,
+            dedupHash: 'use-1',
+            amount: 1000,
+            type: 'debit',
+            occurredAt: now,
+            dateLocal: '2026-02-01',
+            rawDescription: 'a',
+            transactionCategoryId: 'supermercado',
+            isManual: 0,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'use-2',
+            userFinancialProductId: productId,
+            externalId: null,
+            dedupHash: 'use-2',
+            amount: 1000,
+            type: 'debit',
+            occurredAt: now,
+            dateLocal: '2026-02-02',
+            rawDescription: 'b',
+            transactionCategoryId: 'supermercado',
+            isManual: 0,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'use-3',
+            userFinancialProductId: productId,
+            externalId: null,
+            dedupHash: 'use-3',
+            amount: 1000,
+            type: 'debit',
+            occurredAt: now,
+            dateLocal: '2026-02-03',
+            rawDescription: 'c',
+            transactionCategoryId: 'transporte',
+            isManual: 0,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'use-4',
+            userFinancialProductId: productId,
+            externalId: null,
+            dedupHash: 'use-4',
+            amount: 1000,
+            type: 'debit',
+            occurredAt: now,
+            dateLocal: '2026-02-04',
+            rawDescription: 'd',
+            transactionCategoryId: 'comida',
+            isManual: 0,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'use-5-compras',
+            userFinancialProductId: productId,
+            externalId: null,
+            dedupHash: 'use-5-compras',
+            amount: 1000,
+            type: 'debit',
+            occurredAt: now,
+            dateLocal: '2026-02-05',
+            rawDescription: 'e',
+            transactionCategoryId: 'compras',
+            isManual: 0,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ])
+        .run();
+
+      const result = listMostUsedCategories(db, {
+        income: 0,
+        excludeCategoryId: 'compras',
+        limit: 7,
+        locale: 'es',
+      });
+
+      expect(result.map((c) => c.slug)).toEqual(['supermercado', 'comida', 'transporte']);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('listMostUsedCategories with no history returns an empty result (Decision 6 fallback)', async () => {
+    const { sqlite, db } = await openBootstrappedMemoryDb();
+    try {
+      const result = listMostUsedCategories(db, { income: 0, limit: 7, locale: 'es' });
+      expect(result).toEqual([]);
     } finally {
       sqlite.close();
     }
