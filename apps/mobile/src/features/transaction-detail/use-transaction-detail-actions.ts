@@ -21,6 +21,22 @@ export class TransactionDetailActionInFlightError extends Error {
   }
 }
 
+/**
+ * Distinguishes a single-flight rejection (a second action button tap that arrived while an
+ * earlier write was still running) from a genuine write failure. Extracted as a pure, exported
+ * function — not inlined into the screen's own catch block — so `TransactionDetailScreen`'s
+ * `withWriteGuard` can be unit-tested without a React renderer (item #2's no-renderer precedent).
+ *
+ * An in-flight rejection is never a real failure: the first call is still in progress and will
+ * resolve or reject on its own. The screen must not surface `transaction_detail.write_failed`
+ * for it (found in review on PR #84 — the screen previously mapped every rejection, including
+ * this one, to the write-failed note, which misreported an ordinary disabled-button race as a
+ * save error).
+ */
+export function isWriteInFlightError(error: unknown): boolean {
+  return error instanceof TransactionDetailActionInFlightError;
+}
+
 export interface TransactionDetailActionsCore {
   changeCategory(categoryId: string): Promise<void>;
   saveNote(note: string | null): Promise<void>;

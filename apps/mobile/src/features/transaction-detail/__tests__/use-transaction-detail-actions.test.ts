@@ -1,5 +1,6 @@
 import {
   createTransactionDetailActionsCore,
+  isWriteInFlightError,
   TransactionDetailActionInFlightError,
 } from '../use-transaction-detail-actions';
 import type { AppDatabase } from '../../../db/types';
@@ -73,5 +74,46 @@ describe('createTransactionDetailActionsCore single-flight guard', () => {
     expect(actions.isInFlight()).toBe(true);
     await pending;
     expect(actions.isInFlight()).toBe(false);
+  });
+});
+
+/**
+ * Found in review on PR #84: the concurrent-event-source addendum's "every action button renders
+ * disabled while a write is in flight" was only half-implemented — the single-flight ref existed,
+ * but nothing in the screen distinguished an in-flight rejection (an ordinary disabled-button
+ * race, not a failure) from a real write failure, so a double tap on "Volver a incluir" surfaced
+ * `transaction_detail.write_failed`. `isWriteInFlightError` is the pure classifier
+ * `TransactionDetailScreen`'s `withWriteGuard` now uses to tell the two apart.
+ */
+describe('isWriteInFlightError', () => {
+  it('classifies a TransactionDetailActionInFlightError as an in-flight rejection', () => {
+    expect(isWriteInFlightError(new TransactionDetailActionInFlightError())).toBe(true);
+  });
+
+  it('does not classify a generic Error as an in-flight rejection', () => {
+    expect(isWriteInFlightError(new Error('a real database failure'))).toBe(false);
+  });
+
+  it('does not classify a non-Error rejection value as an in-flight rejection', () => {
+    expect(isWriteInFlightError('boom')).toBe(false);
+    expect(isWriteInFlightError(undefined)).toBe(false);
+  });
+
+  it('a real double tap on reincludeMovement rejects with exactly the error isWriteInFlightError recognizes, never a generic failure', async () => {
+    const db = fakeDbRecordingCalls([]);
+    const actions = createTransactionDetailActionsCore(db, 'tx-1', { now: () => '2026-01-01T00:00:00.000Z' });
+
+    const first = actions.reincludeMovement();
+    const second = actions.reincludeMovement();
+
+    let capturedError: unknown;
+    try {
+      await second;
+    } catch (error) {
+      capturedError = error;
+    }
+
+    expect(isWriteInFlightError(capturedError)).toBe(true);
+    await first;
   });
 });

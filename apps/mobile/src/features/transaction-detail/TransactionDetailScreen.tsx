@@ -21,7 +21,7 @@ import { resolveActionSet, resolveDetailState, showsAutoSuggestionCaption } from
 import { DETAIL_EXCLUSION_REASONS, type DetailExclusionReason } from './exclusion-copy';
 import { formatProductLabel } from './product-label';
 import { useTransactionDetail, type UseTransactionDetailResult } from './use-transaction-detail';
-import { useTransactionDetailActions } from './use-transaction-detail-actions';
+import { isWriteInFlightError, useTransactionDetailActions } from './use-transaction-detail-actions';
 
 export interface TransactionDetailScreenProps {
   transactionId: string;
@@ -53,6 +53,11 @@ export function TransactionDetailScreen({ transactionId, testID }: TransactionDe
   const [excludeSheetOpen, setExcludeSheetOpen] = useState(false);
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [writeFailed, setWriteFailed] = useState(false);
+  // Concurrent-event-source addendum: "every action button renders disabled while a write is in
+  // flight" (found in review on PR #84 — this half of the guard was missing, so a double tap
+  // rejected via TransactionDetailActionInFlightError and that rejection was misreported as
+  // transaction_detail.write_failed instead of being silently absorbed).
+  const [isWriting, setIsWriting] = useState(false);
 
   // Refs so the teardown flush (below) and the focus-effect cleanup always read the latest
   // values, regardless of which render's closure last ran (concurrent-event-source addendum).
@@ -121,12 +126,20 @@ export function TransactionDetailScreen({ transactionId, testID }: TransactionDe
   }
 
   async function withWriteGuard(run: () => Promise<void>): Promise<void> {
+    setIsWriting(true);
     try {
       await run();
       setWriteFailed(false);
       reload();
-    } catch {
-      setWriteFailed(true);
+    } catch (error: unknown) {
+      // An in-flight rejection means the disabled state above did not arrive in time for this
+      // particular tap (a narrow race, not a real failure) — the first call is still running and
+      // will settle on its own. Never surface it as transaction_detail.write_failed.
+      if (!isWriteInFlightError(error)) {
+        setWriteFailed(true);
+      }
+    } finally {
+      setIsWriting(false);
     }
   }
 
@@ -233,6 +246,7 @@ export function TransactionDetailScreen({ transactionId, testID }: TransactionDe
 
         <DetailActions
           actions={actionSet}
+          disabled={isWriting}
           onCategorize={() => setCategoryPickerOpen(true)}
           onChangeCategory={() => setCategoryPickerOpen(true)}
           onMerchant={() => merchant && handleMerchantPress(merchant.id)}
