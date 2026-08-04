@@ -58,7 +58,7 @@ export function createTestProduct(
   db: AppDatabase,
   ports: { newId: () => string; now: () => string },
   userFinancialInstitutionId: string,
-  overrides?: { externalId?: string; type?: string; name?: string },
+  overrides?: { externalId?: string; type?: string; name?: string; currencyCode?: string },
 ): string {
   const id = ports.newId();
   db.insert(userFinancialProducts)
@@ -68,6 +68,9 @@ export function createTestProduct(
       externalId: overrides?.externalId ?? `product-${id}`,
       type: overrides?.type ?? 'checking',
       name: overrides?.name ?? 'Cuenta corriente',
+      // `currencyCode` defaults to the schema's own `'CLP'` default when omitted (found in
+      // review on PR #82 — needed to test a foreign-currency product's manual-entry write).
+      ...(overrides?.currencyCode !== undefined ? { currencyCode: overrides.currencyCode } : {}),
       updatedAt: ports.now(),
     })
     .run();

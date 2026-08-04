@@ -97,8 +97,9 @@ There is deliberately **no web app and no backend**. The product is local-first;
 server would undo the differentiator.
 
 `@finanzas/mobile` also depends on `react-native-svg` (added by item #12, the home screen's
-trend chart) — a native module, so it needs a **dev build** rebuild after install; Expo Go
-cannot run any screen that imports it.
+trend chart) and `@shopify/flash-list` (added by item #15, the transactions list's virtualized
+list — Decision 3) — both native modules, so each needs a **dev build** rebuild after install;
+Expo Go cannot run any screen that imports either one.
 
 ## Shared Packages / Libraries
 

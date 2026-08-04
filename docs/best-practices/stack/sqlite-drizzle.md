@@ -141,6 +141,15 @@ merchant or a category, even one that still has neither.
   client and the test client both issue it immediately after opening). SQLite disables
   foreign-key enforcement by default; without this pragma, every `ON DELETE CASCADE` in the data
   model is decorative and the deletion guarantees would pass in review and fail on a device.
+- Paginated reads use a keyset cursor on `(date_local desc, id desc)`, never `OFFSET`. `OFFSET`
+  drifts when a row is inserted between two page reads (a sync landing mid-scroll); a keyset
+  cursor is a total order (`id` is the primary key), so no row can be skipped or repeated
+  (item #15's `listTransactionsPage`).
+- A filtered read and its own count are built from one predicate builder, called twice with a
+  different `SELECT`/`GROUP BY` — never two hand-written `WHERE` clauses that happen to agree. A
+  filter added to the rows and forgotten in the count (or vice versa) is then not expressible
+  (item #15's `buildTransactionListPredicates` / `transactionListQuery`, behind
+  `listTransactionsPage` and `countTransactionsByMonth`).
 
 ## Dates
 

@@ -175,6 +175,105 @@ export interface ConnectedBankSummary {
 }
 
 /**
+ * `transactions` screen filter state (implementation plan for issue #15, Decision 7). Declared
+ * once here and imported by the feature layer — the shape is not redeclared in `src/features/`.
+ * `direction: 'all'` / `categorization: 'all'` / `productId: null` are each their control's
+ * "Todos"/"Todas" pill. `showExcluded` defaults to `true` (Decision 6).
+ */
+export interface TransactionListFilters {
+  direction: 'all' | 'debit' | 'credit';
+  categorization: 'all' | 'uncategorized' | 'categorized';
+  productId: string | null;
+  showExcluded: boolean;
+}
+
+/** A resolved, non-blank search term plus the category ids it already matched in TypeScript
+ * (implementation plan for issue #15, Decision 5) — the repository turns `term` into a `LIKE`
+ * pattern itself and adds `categoryIds` as an `IN (...)` disjunct. */
+export interface TransactionSearch {
+  term: string;
+  categoryIds: string[];
+}
+
+/** Shared by {@link listTransactionsPage} (via {@link TransactionPageParams}) and
+ * {@link countTransactionsByMonth}, so a filter cannot be applied to one and forgotten in the
+ * other (implementation plan for issue #15, Decision 2). */
+export interface TransactionListQueryParams {
+  filters: TransactionListFilters;
+  search: TransactionSearch | null;
+}
+
+/** The keyset cursor for {@link listTransactionsPage} — the last row's `(dateLocal, id)` pair,
+ * a total order because `id` is the primary key (implementation plan for issue #15, Decision
+ * 4). */
+export interface TransactionListCursor {
+  dateLocal: string;
+  id: string;
+}
+
+export interface TransactionPageParams extends TransactionListQueryParams {
+  /** `null` for the first page. */
+  cursor: TransactionListCursor | null;
+  limit: number;
+}
+
+/**
+ * One row of `listTransactionsPage`'s result, in domain shape (implementation plan for issue
+ * #15, Decision 2). Carries the raw inclusion fields (`amount`, `includedAmount`, `excludedAt`)
+ * rather than a precomputed `excluded` boolean, so the feature layer reads exclusion through
+ * `isIncludedInAnalysis` (`@finanzas/shared-domain`) — the sanctioned in-memory statement of the
+ * rule — instead of a repository-computed shortcut (Decision 6).
+ */
+export interface TransactionListRow {
+  id: string;
+  dateLocal: string;
+  amount: number;
+  type: 'debit' | 'credit';
+  rawDescription: string;
+  note: string | null;
+  excludedAt: string | null;
+  exclusionReason: Transaction['exclusionReason'];
+  includedAmount: number | null;
+  merchantName: string | undefined;
+  merchantEmoji: string | undefined;
+  categoryName: string | undefined;
+  categoryEmoji: string | undefined;
+}
+
+export interface TransactionListPage {
+  rows: TransactionListRow[];
+  /** `null` when this page's last row is the table's last matching row. */
+  nextCursor: TransactionListCursor | null;
+}
+
+/** One `📅 {month} ({count})` group header's source row (implementation plan for issue #15,
+ * Decision 8). `monthKey` is `substr(date_local, 1, 7)` — `"2025-01"` — never derived from
+ * `occurred_at`. */
+export interface MonthCount {
+  monthKey: string;
+  count: number;
+}
+
+/** Drives the **Producto** filter pills (implementation plan for issue #15, Assumption A6) — one
+ * per row in `user_financial_products`, not a fixed taxonomy. */
+export interface UserProduct {
+  id: string;
+  name: string;
+  type: string;
+}
+
+/** The validated manual-entry draft `insertManualTransaction` writes (implementation plan for
+ * issue #15, Decision 12). Carries no date: `date_local` and `occurred_at` are stamped from
+ * `ports.now()` at write time — there is no bank instant for a manual entry, and the mockup's
+ * "Fecha" field is not editable in this item. */
+export interface ManualTransactionInput {
+  userFinancialProductId: string;
+  type: 'debit' | 'credit';
+  amount: number;
+  rawDescription: string;
+}
+
+/**
  * A resolved merchant, in the shape `@finanzas/shared-domain`'s `suggestCategory` accepts
  * (implementation plan Decision 5, categorization flow #13). `isUserDefined` is derived from
  * `merchants.user_id !== null` (Null = seeded; set = created by the person).

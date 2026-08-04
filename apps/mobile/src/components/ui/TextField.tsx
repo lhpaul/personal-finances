@@ -23,6 +23,10 @@ export type TextFieldProps = {
    * #9, Decision 16) — a labelless search field would otherwise be announced as its emoji
    * placeholder. */
   accessibilityLabel?: string;
+  /** `'numeric'` requests the platform's numeric keypad (implementation plan for issue #15,
+   * Decision 12 — the manual-entry amount field). Defaults to `'default'`; this is a validation
+   * hint for the keyboard only, never a substitute for parsing/rejecting the typed value. */
+  keyboardType?: 'default' | 'numeric';
 };
 
 /** `.mu-field`, `.mu-label`, `.mu-input`, `--ph`, `.is-focus`, `.is-error`, `.is-locked`,
@@ -38,6 +42,7 @@ export function TextField({
   secureTextEntry = false,
   icon,
   accessibilityLabel,
+  keyboardType = 'default',
 }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
   const hasError = error !== null && error !== undefined;
@@ -89,6 +94,7 @@ export function TextField({
           // (found in review — CodeRabbit PR #80).
           autoCapitalize={secureTextEntry ? 'none' : undefined}
           autoCorrect={!secureTextEntry}
+          keyboardType={keyboardType}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           // `label` renders as a sibling Text, which React Native does not associate with the

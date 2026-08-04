@@ -5,9 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Text } from '../components/ui';
 import { theme } from '../theme';
-import { clearSampleData, loadSampleData, simulateSampleSyncError } from './sample-store';
+import { clearSampleData, generateDemoMovements, loadSampleData, simulateSampleSyncError } from './sample-store';
 
-type PanelAction = 'load' | 'simulate_error' | 'clear';
+type PanelAction = 'load' | 'simulate_error' | 'clear' | 'generate_demo';
 type PanelStatus =
   | { kind: 'idle' }
   | { kind: 'success'; action: PanelAction }
@@ -54,6 +54,11 @@ export function SampleDataPanel() {
           label={t('dev.sample_data.clear_action')}
           onPress={() => run('clear', clearSampleData)}
         />
+        <Button
+          variant="outline"
+          label={t('dev.sample_data.generate_demo_action')}
+          onPress={() => run('generate_demo', generateDemoMovements)}
+        />
 
         {status.kind === 'success' && status.action === 'load' && (
           <Text variant="body" tone="brand">
@@ -68,6 +73,11 @@ export function SampleDataPanel() {
         {status.kind === 'success' && status.action === 'clear' && (
           <Text variant="body" tone="brand">
             {t('dev.sample_data.clear_success')}
+          </Text>
+        )}
+        {status.kind === 'success' && status.action === 'generate_demo' && (
+          <Text variant="body" tone="brand">
+            {t('dev.sample_data.generate_demo_success')}
           </Text>
         )}
         {status.kind === 'error' && (
