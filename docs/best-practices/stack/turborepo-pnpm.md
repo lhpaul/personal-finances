@@ -52,7 +52,9 @@ pnpm --filter @finanzas/shared-domain test   # focused, fastest loop
 - **Do not pin an end-of-life runtime.** Node 20 went EOL in April 2026; this repo pins 22.
 - Do not adopt tooling that needs a different Node major without a repo-wide decision.
 - EAS may pin its own Node image for native builds. That decision lives in
-  `apps/mobile/eas.json` and must be called out in any PR that changes mobile build behaviour.
+  `apps/mobile/eas.json` and `.github/workflows/eas-build.yml`, and must be called out in any PR
+  that changes mobile build behaviour — see
+  [`docs/project/5-release-and-signing-runbook.md`](../../project/5-release-and-signing-runbook.md).
 - **Do not mix package managers.** This repo uses pnpm workspaces. A `package-lock.json` or a
   stray `npm install` in a workspace package is a bug, not a shortcut.
 

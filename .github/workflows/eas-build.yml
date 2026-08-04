@@ -1,0 +1,143 @@
+name: EAS build
+
+# Delivery workflow for @finanzas/mobile (implementation plan
+# docs/specs/developments/20260802155158_23-eas-build-release-ci, Decision D6). `develop` maps
+# to an internal `preview` build, `main` maps to a `production` store build, per
+# docs/project/3-software-architecture.md's Deployment Mapping. This is a project-owned
+# workflow, separate from the framework placeholder .github/workflows/deploy.yml, which is left
+# untouched (Decision D6).
+#
+# Builds are enqueued with `--no-wait` (Decision D8): EAS compiles remotely, this workflow only
+# uploads the project and returns. A build failure therefore does not turn this GitHub check red
+# — check the EAS dashboard, or docs/project/5-release-and-signing-runbook.md.
+
+on:
+  push:
+    branches: [develop, main]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/eas-build.yml"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "EAS build profile"
+        required: true
+        default: "preview"
+        type: choice
+        options: [preview, production]
+      platform:
+        description: "Target platform"
+        required: true
+        default: "ios"
+        type: choice
+        options: [ios, android, all]
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Check EAS configuration
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      # The `secrets` context is not available in a job-level `if:` (confirmed against the
+      # GitHub Actions contexts-availability reference at implementation time), which is why
+      # this preflight job exists: it reads the secret into a step-level `env:` instead, where
+      # `secrets` is allowed, and every build job below gates on this job's output.
+      - name: Check EXPO_TOKEN
+        id: check
+        shell: bash
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -n "${EXPO_TOKEN:-}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::EXPO_TOKEN is not configured; EAS builds are skipped. See docs/project/5-release-and-signing-runbook.md steps H1-H3."
+          fi
+
+  preview:
+    name: Preview build (internal)
+    needs: preflight
+    if: >-
+      needs.preflight.outputs.configured == 'true' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/develop' &&
+        vars.EAS_PREVIEW_ON_PUSH != 'false') ||
+       (github.event_name == 'workflow_dispatch' && inputs.profile == 'preview'))
+    runs-on: ubuntu-latest
+    environment: develop
+    concurrency:
+      group: eas-preview
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enqueue EAS preview build
+        working-directory: apps/mobile
+        shell: bash
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          PLATFORM: ${{ inputs.platform || 'ios' }}
+        run: |
+          pnpm dlx eas-cli@21.5.0 build \
+            --platform "$PLATFORM" \
+            --profile preview \
+            --non-interactive \
+            --no-wait
+
+  production:
+    name: Production build (store)
+    needs: preflight
+    if: >-
+      needs.preflight.outputs.configured == 'true' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'workflow_dispatch' && inputs.profile == 'production'))
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: eas-production
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enqueue EAS production build
+        working-directory: apps/mobile
+        shell: bash
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          PLATFORM: ${{ inputs.platform || 'ios' }}
+          AUTO_SUBMIT: ${{ vars.EAS_AUTO_SUBMIT }}
+        run: |
+          args=(build --platform "$PLATFORM" --profile production --non-interactive --no-wait)
+          if [ "${AUTO_SUBMIT:-}" = "true" ]; then
+            args+=(--auto-submit)
+          fi
+          pnpm dlx eas-cli@21.5.0 "${args[@]}"

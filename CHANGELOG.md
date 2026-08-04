@@ -111,6 +111,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the about screen, plus the product's only destructive operation — a full local wipe of
   the SQLite store and every `expo-secure-store` credential key, behind an explicit
   confirmation, returning the app to onboarding.
+- **EAS build profiles and release CI** (#23): `eas.json` gains real `development`,
+  `preview` and `production` profiles with per-variant app names and bundle identifiers, a
+  new `.github/workflows/eas-build.yml` maps `develop` to internal builds and `main` to store
+  builds, and `docs/project/5-release-and-signing-runbook.md` documents the credential model
+  and the release procedure. Signing material stays in EAS-managed credentials; `EXPO_TOKEN`
+  is the only repository secret.
 
 ### Fixed
 

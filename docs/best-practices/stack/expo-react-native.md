@@ -71,6 +71,23 @@ implemented in the description.
 - The scraper's WebView stays hidden and mounted only during a sync. Unmount it when the run
   ends.
 
+## Build variants
+
+`APP_VARIANT` (`development` / `preview` / `production`) is the **only** supported build-time
+switch, and `apps/mobile/app.config.js` is the **only** place it is read — every `eas.json`
+build profile sets it, it defaults to `development` for local `expo run:ios` and the CI `bundle`
+job, and an unrecognised value throws rather than falling back silently. It selects the app name
+and the iOS/Android bundle identifier only (`Finanzas [DEV]` / `[BETA]` / plain `Finanzas`,
+`cl.finanzas.mobile[.dev|.preview]` / `cl.finanzas.mobile`) — nothing else.
+
+**No feature code may read `process.env.APP_VARIANT` or branch on it.** There is no
+environment-dependent behaviour inside the app: no first-party server call differs by
+environment (there is no backend), and no feature flag is implemented this way. If a screen ever
+needs to know something at runtime, that is a product decision requiring its own design, not a
+reuse of the build variant. See
+[`docs/project/5-release-and-signing-runbook.md`](../../project/5-release-and-signing-runbook.md)
+for the full build/release pipeline.
+
 ## Native modules and permissions
 
 - Notifications: `expo-notifications`, **local scheduling only**. Ask for permission at the

@@ -48,8 +48,9 @@ store.
 2. Resolve the container and apply the fixture:
 
    ```bash
-   # cl.finanzas.mobile is apps/mobile/app.config.js -> expo.ios.bundleIdentifier.
-   CONTAINER=$(xcrun simctl get_app_container booted cl.finanzas.mobile data)
+   # cl.finanzas.mobile.dev is the development-variant bundle identifier since #23
+   # (apps/mobile/app.config.js -> expo.ios.bundleIdentifier).
+   CONTAINER=$(xcrun simctl get_app_container booted cl.finanzas.mobile.dev data)
    DB_PATH=$(find "$CONTAINER" -name 'finanzas.db' | head -1)
    sqlite3 "$DB_PATH" < apps/mobile/src/db/__fixtures__/stage-queue-v1.sql
    ```
