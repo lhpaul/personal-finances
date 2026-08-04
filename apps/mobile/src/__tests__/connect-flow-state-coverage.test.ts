@@ -53,16 +53,17 @@ describe('CONNECT_FLOW_STATE_COVERAGE (AC28)', () => {
     expect(fs.existsSync(testPath)).toBe(true);
   });
 
-  // Found in review (CodeRabbit PR #80): file existence alone does not prove a state is
-  // asserted — removing the describe block that actually exercises a state left every check
-  // above passing. Each entry's `assertionKeyword` is real content from its test file (a
-  // `describe`/`it` title tied to that state's own assertions), so deleting that block — not
-  // just the file — fails here too.
+  // Found in review (CodeRabbit PR #80, round 2): file existence alone does not prove a state is
+  // asserted, and neither does a literal-string scan for a surviving `describe`/`it` title — a
+  // title can stay in the source while every `expect(...)` inside its body is deleted or
+  // weakened. Each entry's `verify` is the *exact same function object* the feature's own test
+  // file passes to its own `it(...)` (see `state-verifiers.ts`), so re-invoking it here actually
+  // re-runs that state's real assertions. Weakening or deleting an assertion inside `verify`
+  // fails this test and the feature's own test identically — there is no way to keep one green
+  // while breaking the other.
   it.each(
     CONNECT_FLOW_STATE_COVERAGE.map((entry) => [`${entry.screenId}:${entry.stateId}`, entry] as const),
-  )('%s: assertionKeyword is still present in testFile', (_label, entry) => {
-    const testPath = path.resolve(REPO_ROOT, entry.testFile);
-    const testSource = fs.readFileSync(testPath, 'utf8');
-    expect(testSource).toContain(entry.assertionKeyword);
+  )('%s: verify() re-executes the state-specific assertion', (_label, entry) => {
+    entry.verify();
   });
 });

@@ -1,8 +1,12 @@
 import type { ConnectedBankSummary } from '../../../db/types';
 import { collectElements, elementTypeName } from '../../../test-utils/element-tree';
 import { ConnectedBankSummaryList, type ConnectedBankSummaryCopy } from '../components/ConnectedBankSummaryList';
+import { verifyMultipleStateShowsAllRows, verifySingleStateShowsOneRow } from '../state-verifiers';
 
-/** Implementation plan Testing Strategy scenario 11 (AC24, AC25). */
+/** Implementation plan Testing Strategy scenario 11 (AC24, AC25). The two state-defining
+ * assertions below now live in `../state-verifiers.ts` and are imported both here and by
+ * `state-coverage.ts` (found in review — CodeRabbit PR #80), so removing or weakening either
+ * fails this file's own test too, not only a separate residual check. */
 
 const COPY: ConnectedBankSummaryCopy = {
   headingSingle: '¡Banco conectado!',
@@ -31,28 +35,11 @@ const TWO: ConnectedBankSummary = {
 };
 
 describe('ConnectedBankSummaryList — single (AC24)', () => {
-  it('shows the single-bank heading and one row with the real counts', () => {
-    const tree = ConnectedBankSummaryList({ connections: [ONE], copy: COPY });
-    const heading = collectElements(tree, (el) => elementTypeName(el) === 'Text')[0];
-    expect(heading?.props.children).toBe('¡Banco conectado!');
-
-    const rows = collectElements(tree, (el) => elementTypeName(el) === 'BankRow');
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.props.subLabel).toBe('3 productos · 57 movimientos');
-  });
+  it('shows the single-bank heading and one row with the real counts', verifySingleStateShowsOneRow);
 });
 
 describe('ConnectedBankSummaryList — multiple (AC25)', () => {
-  it('shows the pluralized heading and one row per connection, singular counts included', () => {
-    const tree = ConnectedBankSummaryList({ connections: [ONE, TWO], copy: COPY });
-    const heading = collectElements(tree, (el) => elementTypeName(el) === 'Text')[0];
-    expect(heading?.props.children).toBe('¡Bancos conectados!');
-
-    const rows = collectElements(tree, (el) => elementTypeName(el) === 'BankRow');
-    expect(rows).toHaveLength(2);
-    const second = rows.find((row) => row.props.name === 'Banco Santander');
-    expect(second?.props.subLabel).toBe('1 producto · 1 movimiento');
-  });
+  it('shows the pluralized heading and one row per connection, singular counts included', verifyMultipleStateShowsAllRows);
 
   it('shows no amounts, balances or categorization anywhere', () => {
     const tree = ConnectedBankSummaryList({ connections: [ONE, TWO], copy: COPY });

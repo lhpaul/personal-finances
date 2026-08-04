@@ -1,5 +1,6 @@
-import { collectElements, elementTypeName } from '../../../test-utils/element-tree';
+import { collectElements } from '../../../test-utils/element-tree';
 import { SecurityAccordion, type SecurityAccordionCopy } from '../components/SecurityAccordion';
+import { verifyDefaultStateRendersCollapsed, verifyHowItWorksStateRendersSteps } from '../state-verifiers';
 
 /**
  * `#screen=connect-bank-intro` (`default`, `how-it-works`) — implementation plan Testing
@@ -10,7 +11,10 @@ import { SecurityAccordion, type SecurityAccordionCopy } from '../components/Sec
  * Added in review (CodeRabbit PR #80): before this file, `CONNECT_FLOW_STATE_COVERAGE`'s
  * `connect-bank-intro` entries pointed only at this file's own existence check, with no
  * assertion that either state's content actually renders — removing the `how-it-works` branch
- * from `SecurityAccordion` would not have failed anything.
+ * from `SecurityAccordion` would not have failed anything. The two state-defining assertions
+ * below now live in `../state-verifiers.ts` and are imported both here and by
+ * `state-coverage.ts`, so removing or weakening either fails this file's own test too, not only
+ * a separate residual check.
  */
 
 const COPY: SecurityAccordionCopy = {
@@ -21,15 +25,7 @@ const COPY: SecurityAccordionCopy = {
 };
 
 describe('SecurityAccordion — default (collapsed)', () => {
-  it('shows the toggle row and none of the three steps', () => {
-    const tree = SecurityAccordion({ expanded: false, onToggle: jest.fn(), copy: COPY });
-    const texts = collectElements(tree, (el) => elementTypeName(el) === 'Text').map(
-      (el) => el.props.children,
-    );
-    expect(texts).toContain(COPY.toggleLabel);
-    expect(texts).not.toContain(COPY.step1);
-    expect(collectElements(tree, (el) => elementTypeName(el) === 'Badge')).toHaveLength(0);
-  });
+  it('shows the toggle row and none of the three steps', verifyDefaultStateRendersCollapsed);
 
   it('is announced collapsed to assistive technology', () => {
     const tree = SecurityAccordion({ expanded: false, onToggle: jest.fn(), copy: COPY });
@@ -39,19 +35,7 @@ describe('SecurityAccordion — default (collapsed)', () => {
 });
 
 describe('SecurityAccordion — how-it-works (expanded)', () => {
-  it('shows the toggle row and all three numbered steps, verbatim', () => {
-    const tree = SecurityAccordion({ expanded: true, onToggle: jest.fn(), copy: COPY });
-    const texts = collectElements(tree, (el) => elementTypeName(el) === 'Text').map(
-      (el) => el.props.children,
-    );
-    expect(texts).toContain(COPY.toggleLabel);
-    expect(texts).toContain(COPY.step1);
-    expect(texts).toContain(COPY.step2);
-    expect(texts).toContain(COPY.step3);
-
-    const badges = collectElements(tree, (el) => elementTypeName(el) === 'Badge');
-    expect(badges.map((badge) => badge.props.label)).toEqual(['1', '2', '3']);
-  });
+  it('shows the toggle row and all three numbered steps, verbatim', verifyHowItWorksStateRendersSteps);
 
   it('is announced expanded to assistive technology', () => {
     const tree = SecurityAccordion({ expanded: true, onToggle: jest.fn(), copy: COPY });
