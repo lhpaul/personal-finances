@@ -91,6 +91,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `react-native-webview` host lives here, so no credential value ever reaches screen state, a
   log or an error payload.
 - **Transaction detail and exclusion** (#16): the movement detail screen with its categorized, uncategorized and excluded states — the immutable bank facts, the editable note, a category change, the merchant shortcut, the exclusion sheet, and re-inclusion, which clears the exclusion fields and restores the movement to every total.
+- **Settings: connected banks and bank review** (#20): the connected-banks list with its empty
+  state, per-bank detail with products, balances and cupo, manual re-sync and credential
+  update hand-offs, and disconnection — which deletes the keychain entry and keeps every
+  downloaded movement.
 
 ### Fixed
 
