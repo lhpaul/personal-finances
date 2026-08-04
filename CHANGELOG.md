@@ -56,9 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Home screen** (#12): the challenge hero, financial summary, trend chart, category
   breakdown, recent movements and connected-banks card, in all four manifest states
   (`pending`, `all-clear`, `empty`, `sync-error`), reading real aggregates through the
-  shared `isIncluded` / `includedAmount` fragments. Adds five design-system primitives
-  (`ScreenHeader`, `CategoryRow`, `LineChart`, `Legend`, `BankRow`), `formatPercentTenths`
-  in `@finanzas/shared-utils`, and a `__DEV__`-only sample-data route
+  shared `isIncluded` / `includedAmount` / `isPesoDenominated` fragments. Adds five
+  design-system primitives (`ScreenHeader`, `CategoryRow`, `LineChart`, `Legend`, `BankRow`),
+  `formatPercentTenths` in `@finanzas/shared-utils`, and a `__DEV__`-only sample-data route
 - **Connect a bank: picker, credentials and secure storage** (#9): the connect-bank
   introduction with its security accordion, the bank picker over the seeded institution
   catalogue, the credential form with shared RUT validation, the rejection and RUT-locked
@@ -92,6 +92,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Foreign-currency movements no longer leak into peso totals on home or the categorization
+  completion tiles** (#86): `sumIncludedByDirectionAndCategory`, `sumIncludedByDirectionAndDay`
+  and `sumIncludedExpensesInPeriod` now also filter on `isPesoDenominated`, matching
+  `totalForCategoryInPeriod`'s existing guard (#10) — a stored foreign-currency movement is
+  excluded from every peso total and chart, and still shows up unchanged everywhere else
+  (Business Rule 17). The guard's own scanner, `peso-total-scan.ts`, is tightened from a
+  file-level pairing to per-declaration-scope: a guarded aggregate can no longer vacuously clear
+  an unguarded sibling declared elsewhere in the same file — the exact gap that let this through.
 - **Fix the pnpm hoisted layout and add a CI bundle check** (#35): `nodeLinker: hoisted` now lives
   in `pnpm-workspace.yaml`, where pnpm 11 actually reads it — a plain `pnpm install` produces the
   hoisted layout the Expo/Metro resolver needs, and `.npmrc` (which pnpm 11 silently ignored) is
