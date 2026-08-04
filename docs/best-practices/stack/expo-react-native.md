@@ -105,20 +105,36 @@ for the full build/release pipeline.
   `apps/mobile/src/lib/secure-store/expo-secure-store.adapter.ts`, may import it — enforced by
   the `secureStoreBoundary` ESLint rule (`eslint.config.mjs`) and a source-text boundary scan
   (`secure-store-boundary.test.ts`), the same shape as the `dbAccessBoundary` pair for SQL
-  libraries. Every write passes `keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY` explicitly —
-  the library's own default omits the `…ThisDeviceOnly` suffix and would carry the entry into an
-  encrypted device backup, which is a copy of the secret outside the phone it was typed on
-  (item #9).
+  libraries. `SecureStorePort.setItem`'s `options.accessibility` (item #25) selects between
+  `keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY` (the default — every #9 credential call
+  site, unchanged) and `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` (the database key only, passed
+  explicitly — it must stay readable while the device is locked, e.g. a #18 notification wake).
+  Both omit the library's own bare default's `…ThisDeviceOnly` suffix problem: neither is carried
+  into an encrypted device backup, which is a copy of the secret outside the phone it was
+  generated or typed on.
+- Local database encryption: `expo-sqlite`'s `useSQLCipher: true` (`app.config.js`'s plugin
+  entry, item #25) — a **native build flag**, not a JS dependency; SQLCipher 4.7.0 is already
+  vendored inside the installed `expo-sqlite` package. `apps/mobile/src/db/client.ts` is the only
+  module that builds the real `CipherDatabasePort`; every encryption-specific decision (the
+  six-state resume/migrate/fail-closed machine, the plaintext→encrypted copy, the device key) is
+  worked out against that port's seam in `apps/mobile/src/db/encryption/`, never against
+  `expo-sqlite` directly. `PRAGMA cipher_version` gates every launch (`open-encrypted-store.ts`):
+  a binary built without the flag refuses to open the store rather than silently falling back to
+  plaintext.
 - **Resetting the on-device store**: `resetAppDatabase()` (`apps/mobile/src/db/runtime.ts`) is the
   **only** sanctioned way to invalidate the memoized database handle `getAppDatabase()` returns
-  (item #19). It clears the memo *before* awaiting the file deletion — so a caller that arrives
-  mid-reset starts a fresh bootstrap against a store that is about to exist, rather than holding a
-  handle to a file that is about to disappear — then closes and deletes the file
-  (`deleteAppDatabaseFile`, `apps/mobile/src/db/client.ts`), then clears the bootstrap
-  single-flight (`resetDatabaseBootstrap()`, `apps/mobile/src/db/bootstrap.ts`). A screen or
-  feature hook must never hold its own copy of the `sqlite`/`db` handle across a reset — always
-  call `getAppDatabase()` again after any reset completes.
-- Anything requiring a native module needs a dev build, not Expo Go. Say so in the PR.
+  (item #19, targeting the encrypted store since item #25). It clears the memo *before* awaiting
+  the file deletion — so a caller that arrives mid-reset starts a fresh bootstrap against a store
+  that is about to exist, rather than holding a handle to a file that is about to disappear — then
+  closes the open `CipherHandle` and deletes the encrypted file via the `CipherDatabasePort`, then
+  clears the bootstrap single-flight (`resetDatabaseBootstrap()`,
+  `apps/mobile/src/db/bootstrap.ts`) and the encryption-state memo (`resetEncryptionStateMemo()`,
+  `apps/mobile/src/db/encryption/open-encrypted-store.ts`). A screen or feature hook must never
+  hold its own copy of the `sqlite`/`db` handle across a reset — always call `getAppDatabase()`
+  again after any reset completes.
+- Anything requiring a native module needs a dev build, not Expo Go. Say so in the PR. A build
+  predating a native-flag change (`useSQLCipher: true`, item #25) is not enough either — the
+  binary itself must be rebuilt (`npx expo prebuild --clean`), not merely re-run.
 
 ## Drag-to-reorder gestures
 

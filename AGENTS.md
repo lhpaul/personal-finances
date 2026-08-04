@@ -28,7 +28,9 @@ only Inicio and Transacciones.
 ### Non-negotiables
 
 1. Credentials live only in `expo-secure-store`, only in the scraper's memory during a sync.
-   Never in SQLite, never in a log, never in an error payload.
+   Never in SQLite, never in a log, never in an error payload. The same rule covers the
+   database's own encryption key (`db_key:main`, item #25): `expo-secure-store` only, never
+   logged, never echoed in an error message.
 2. Money is `INTEGER` minor units. Never floats.
 3. Bank movements are never deleted — only excluded from analysis, with a reason.
 4. Re-syncing is idempotent.
@@ -342,3 +344,5 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 | An `EAS build` workflow run never enqueues a build after a merge to `develop`/`main` | Either `EXPO_TOKEN` is absent (expected before `docs/project/5-release-and-signing-runbook.md`'s H3) — check the `preflight` job's `::notice::` — or the push touched no path under the workflow's filter (`apps/**`, `packages/**`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`) |
 | `pnpm typecheck` fails with `TS2589: Type instantiation is excessively deep and possibly infinite` on a file that calls `t()` through a reused parameter type | The flat i18next catalogue (`es.json`) has grown past a size where `ReturnType<typeof useTranslation>['t']`, used as a standalone parameter type, blows up TypeScript's generic resolution for `i18next`'s `TFunction` overloads (found in review, item #21, at ~740 keys). Every affected file's helper function must take `t: TFunction` (`import type { TFunction } from 'i18next'`) instead of re-deriving the type from `useTranslation()` — the fix is mechanical (a type annotation only, no runtime change) but is not automatic: a newly-added helper that copies the old pattern will reintroduce the failure the next time the catalogue grows |
 | A reminder fires twice, or an old reminder still fires after the schedule changed | A write bypassed `applyReminderSchedule` | Every schedule change must go through `applyReminderSchedule` (`apps/mobile/src/features/reminders/apply-schedule.ts`, item #18), which cancels every `finanzas-reminder*` identifier it owns before scheduling the new set — a caller that calls `NotificationsPort.schedule()` directly skips that cancellation |
+| App fails to launch with `DatabaseEncryptionUnavailableError` | The binary was built without `useSQLCipher` (item #25) — `PRAGMA cipher_version` returned no row | Run `npx expo prebuild --clean` and rebuild the dev client. This is expected, fail-loud behaviour, not a bug: the app refuses to open a store it cannot prove is encrypted rather than silently falling back to plaintext |
+| App fails to launch with `DatabaseKeyMissingError` | The `db_key:main` keychain entry was removed (or is malformed) while an encrypted store still holds data (item #25) | Unrecoverable by design — the app never generates a replacement key over existing encrypted content, because doing so would make that content permanently unreadable garbage rather than recoverable. The only remedy is "Borrar todos mis datos" (a fresh key, a fresh store) or a reinstall |

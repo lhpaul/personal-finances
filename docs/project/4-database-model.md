@@ -16,9 +16,9 @@ keys are named after the table they reference.
 |----------|-------|
 | Engine | **SQLite** via `expo-sqlite` (device-local, no server) |
 | Access layer | **Drizzle ORM** + `drizzle-kit` migrations bundled in the app |
-| Hosting | None. The database file lives in the app sandbox |
+| Hosting | None. The database file lives in the app sandbox, **encrypted at rest with SQLCipher** (item #25 — `finanzas.enc.db`, canonical from that item forward; the pre-#25 plaintext file, `finanzas.db`, no longer exists once a device has migrated) |
 | Multi-tenancy | None. Single local profile, one row in `users`. No account, no sign-in |
-| Secrets | **Never in SQLite.** Bank credentials *and the RUT* live in `expo-secure-store` (iOS Keychain / Android Keystore) |
+| Secrets | **Never in SQLite.** Bank credentials *and the RUT* live in `expo-secure-store` (iOS Keychain / Android Keystore), as does the database's own 32-byte encryption key (`db_key:main`, item #25) — the store cannot be decrypted without it |
 | Money | Integer **minor units** (CLP has no cents → store pesos as integers). Never floats |
 | Dates | ISO-8601 `TEXT` in UTC; a `date_local` `TEXT` (`YYYY-MM-DD`) column carries the bank's calendar day for grouping |
 | Shape-varying data | JSON `TEXT` columns (`assets`, `metadata`, `labels`) where fields differ per row type or per locale. Anything the app **queries, sorts or filters on** stays a real column |
@@ -388,7 +388,11 @@ Gap #9. Key-value; avoids a migration per new preference.
 | `value` | `TEXT NOT NULL` (JSON) |
 
 MVP keys: `onboarding_completed`, `reminder_enabled`, `reminder_time`, `reminder_days`,
-`last_categorization_session_at`, `schema_version`, `first_launch_at`.
+`last_categorization_session_at`, `schema_version`, `first_launch_at`, `encryption_migrated_at`
+(item #25 — an ISO-8601 instant, written once by the plaintext-to-encrypted migration's commit
+step; **absent** on a device that has always been a fresh SQLCipher install, since no migration
+ever ran on it. Nothing in the app reads it at runtime; its presence is the migration's own
+on-disk commit marker, checked only by `open-encrypted-store.ts`'s state resolver).
 
 **Value shapes** (issue #8's implementation plan Decision 8 — recorded here so item #18, the
 first writer of the reminder keys, inherits the contract instead of re-deciding it):
