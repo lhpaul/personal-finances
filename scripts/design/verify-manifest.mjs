@@ -25,7 +25,7 @@ const TOTAL_CHECKS = 10;
  * context and returns `window.__MOCKUP_MANIFEST__`. Throws for every `M001` failure mode: file
  * missing, syntax error, or a missing/malformed `window.__MOCKUP_MANIFEST__` assignment.
  */
-export function loadManifest(manifestPath) {
+function loadManifest(manifestPath) {
   let source;
   try {
     source = fs.readFileSync(manifestPath, 'utf8');
@@ -59,7 +59,7 @@ export function loadManifest(manifestPath) {
  * equal-length whitespace so a match offset in the returned text still maps to the same offset —
  * and therefore the same line number — in the original file (implementation plan Decision 5).
  */
-export function stripNonMarkup(html) {
+function stripNonMarkup(html) {
   const blank = (match) => match.replace(/[^\n]/g, ' ');
   return html
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, blank)
@@ -67,7 +67,7 @@ export function stripNonMarkup(html) {
 }
 
 /** Recursively collects every `screen_id` in the `navigation[].items[]` tree. */
-export function collectNavScreenIds(navigation) {
+function collectNavScreenIds(navigation) {
   const ids = [];
   const walk = (items) => {
     for (const item of items || []) {
@@ -86,7 +86,7 @@ export function collectNavScreenIds(navigation) {
 }
 
 /** The DOM node id a screen is expected to render as: an explicit `dom_id`, or `s-{screen_id}`. */
-export function domIdFor(screen) {
+function domIdFor(screen) {
   return screen.dom_id ?? `s-${screen.screen_id}`;
 }
 
@@ -95,7 +95,7 @@ export function domIdFor(screen) {
  * leading-zero-less decimals (`.45` → `0.45`) so `rgba(15, 23, 42, .45)` and
  * `rgba(15,23,42,0.45)` compare equal (implementation plan Decision 4).
  */
-export function normalizeCssValue(value) {
+function normalizeCssValue(value) {
   return String(value)
     .trim()
     .toLowerCase()
