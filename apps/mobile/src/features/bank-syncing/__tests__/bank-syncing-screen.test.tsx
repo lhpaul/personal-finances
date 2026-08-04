@@ -6,6 +6,8 @@ import { PROGRESS_FLOOR } from '../bank-syncing-state';
 import { BankSyncingBody } from '../components/BankSyncingBody';
 import {
   BANK_SYNCING_SCREEN_COPY as COPY,
+  baseProps,
+  resolveComponents,
   verifyErrorStateRendersFailureAndButtons,
   verifyLoginStateRendersProgressCard,
   verifyProductsStateRendersProgressCard,
@@ -15,12 +17,10 @@ import {
 /** Testing Strategy scenarios 19-20, 23 (implementation plan, issue #11). Every string in
  * `BANK_SYNCING_SCREEN_COPY` (`state-verifiers.ts`) is a unique sentinel so a stray literal or a
  * mixed-up prop is unambiguous in a failure message — `BankSyncingBody` calls no hook (Decision
- * 8 precedent), so it stays directly callable here. */
-
-const RESOLVABLE_COMPONENT_NAMES = new Set(['SyncErrorState', 'SyncProgressCard', 'SyncStepRow']);
-function resolveComponents(typeName: string): boolean {
-  return RESOLVABLE_COMPONENT_NAMES.has(typeName);
-}
+ * 8 precedent), so it stays directly callable here. `resolveComponents` / `baseProps` are
+ * imported from `state-verifiers.ts` rather than re-declared here (found in review — CodeRabbit
+ * PR #85): a second, independent copy of the resolvable-component allowlist could silently drift
+ * from the shared one if a future sub-component were added to `BankSyncingBody`. */
 
 const KNOWN_TEXT_VALUES = new Set<string>([...Object.values(COPY), '🔄', '⚠️', '✅', '⏳', '💡']);
 
@@ -42,18 +42,6 @@ function noteNodes(tree: ReturnType<typeof BankSyncingBody>) {
 
 function progressNodes(tree: ReturnType<typeof BankSyncingBody>) {
   return collectElements(tree, (el) => elementTypeName(el) === 'Progress', { resolveComponents });
-}
-
-function baseProps() {
-  return {
-    progressValue: 0,
-    indeterminate: false,
-    ctaEnabled: false,
-    onViewResult: jest.fn(),
-    onRetry: jest.fn(),
-    onChooseOtherBank: jest.fn(),
-    copy: COPY,
-  };
 }
 
 describe('BankSyncingBody — all four manifest states (scenario 19; non-negotiable 6)', () => {
@@ -130,7 +118,9 @@ describe('BankSyncingBody — no literal strings (scenario 20; non-negotiable 8)
       const buttonLabels = buttonNodes(tree).map((el) => el.props.label as string);
 
       for (const value of [...texts, ...badgeLabels, ...buttonLabels]) {
-        expect(KNOWN_TEXT_VALUES.has(value as string)).toBe(true);
+        // `toContain` (rather than `.has(...).toBe(true)`) names the offending literal directly
+        // in the failure message (found in review — CodeRabbit PR #85).
+        expect([...KNOWN_TEXT_VALUES]).toContain(value as string);
       }
     },
   );

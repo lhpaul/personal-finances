@@ -12,8 +12,12 @@ import { BankSyncingBody, type BankSyncingBodyCopy } from './components/BankSync
  * second time under whichever suite imported it).
  */
 
-const RESOLVABLE_COMPONENT_NAMES = new Set(['SyncErrorState', 'SyncProgressCard', 'SyncStepRow']);
-function resolveComponents(typeName: string): boolean {
+// Exported (found in review — CodeRabbit PR #85) so `bank-syncing-screen.test.tsx` imports this
+// single definition instead of re-declaring it: two independent copies of the resolvable-name
+// allowlist could silently drift apart if a future sub-component were added to `BankSyncingBody`
+// and only one copy were updated, making the two suites walk different trees.
+export const RESOLVABLE_COMPONENT_NAMES = new Set(['SyncErrorState', 'SyncProgressCard', 'SyncStepRow']);
+export function resolveComponents(typeName: string): boolean {
   return RESOLVABLE_COMPONENT_NAMES.has(typeName);
 }
 
@@ -35,7 +39,7 @@ export const BANK_SYNCING_SCREEN_COPY: BankSyncingBodyCopy = {
   chooseOtherBankCta: 'COPY_CHOOSE_OTHER_BANK',
 };
 
-function baseProps() {
+export function baseProps() {
   return {
     progressValue: 0,
     indeterminate: false,

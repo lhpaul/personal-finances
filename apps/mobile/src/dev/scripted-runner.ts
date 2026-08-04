@@ -110,12 +110,25 @@ export function runInstalledScript(callbacks: ScriptRunCallbacks): ScriptRunHand
   if (script === null) return null;
 
   const timers: ReturnType<typeof setTimeout>[] = [];
+  let settled = false;
+
+  // Settle-once (found in review — CodeRabbit PR #85): `cancel()` can otherwise fire after a
+  // scheduled `complete` / `play_full` / failure result has already delivered, emitting a second,
+  // contradictory result for the same attempt. Every `onResult` call — scheduled or from
+  // `cancel()` — funnels through this one function.
+  function settle(result: ScrapeResult): void {
+    if (settled) return;
+    settled = true;
+    callbacks.onResult(result);
+  }
+
   function after(ms: number, fn: () => void): void {
     timers.push(setTimeout(fn, ms));
   }
   function cancel(): void {
+    if (settled) return;
     for (const timer of timers) clearTimeout(timer);
-    callbacks.onResult(cancelledResult());
+    settle(cancelledResult());
   }
 
   if (script === 'hold_login' || script === 'hold_products' || script === 'hold_transactions') {
@@ -124,7 +137,7 @@ export function runInstalledScript(callbacks: ScriptRunCallbacks): ScriptRunHand
   }
 
   if (script === 'complete') {
-    after(0, () => callbacks.onResult(completeResult()));
+    after(0, () => settle(completeResult()));
     return { cancel };
   }
 
@@ -138,12 +151,12 @@ export function runInstalledScript(callbacks: ScriptRunCallbacks): ScriptRunHand
     after(STEP_MS * 2, () => callbacks.onProgress({ stepId: 'login-start', progress: 0.05 }));
     after(STEP_MS * 3, () => callbacks.onProgress({ stepId: 'get-products-start', progress: 0.5 }));
     after(STEP_MS * 4, () => callbacks.onProgress({ stepId: 'get-transactions-start', progress: 0.95 }));
-    after(STEP_MS * 5, () => callbacks.onResult(completeResult()));
+    after(STEP_MS * 5, () => settle(completeResult()));
     return { cancel };
   }
 
   const reasonCode = FAILURE_CODE[script];
-  after(300, () => callbacks.onResult(failureResult(reasonCode)));
+  after(300, () => settle(failureResult(reasonCode)));
   return { cancel };
 }
 

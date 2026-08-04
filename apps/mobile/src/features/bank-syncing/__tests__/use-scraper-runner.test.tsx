@@ -108,6 +108,35 @@ describe('ScraperAttemptController (scenarios 8-11; the concurrency checklist)',
     expect(() => controller.cancel()).not.toThrow();
   });
 
+  it('real path: cancel() during the readCredentials() await settles as cancelled rather than silently no-oping (found in review — CodeRabbit PR #85)', async () => {
+    let resolveCredentials: ((value: { rut: string; password: string } | null) => void) | undefined;
+    const readCredentials = jest.fn(
+      () =>
+        new Promise<{ rut: string; password: string } | null>((resolve) => {
+          resolveCredentials = resolve;
+        }),
+    );
+    const controller = new ScraperAttemptController(
+      buildDeps({ runScript: () => null, readCredentials }),
+      () => undefined,
+    );
+
+    const promise = controller.run({ countryCode: 'cl', bankId: 'banco-de-chile' });
+    await Promise.resolve(); // let run() reach the readCredentials() await
+
+    // Neither devCancel nor realCancel exists yet in this window — nothing is mounted, no
+    // script is installed. Before the fix, this was a silent no-op.
+    controller.cancel();
+    resolveCredentials?.({ rut: '11.111.111-1', password: 'SENTINEL' });
+
+    const result = await promise;
+    expect(result.outcome).toBe('cancelled');
+    // The credential the resolved promise carried is never assigned to controller state — the
+    // snapshot stays null throughout, not merely "cleared after settle".
+    expect(controller.getCredentialsSnapshot()).toBeNull();
+    expect(controller.getMountRequest()).toBeNull();
+  });
+
   it('scenario 10: the credential snapshot is null after settle, on the success path', async () => {
     // Force the real (non-scripted) path so a credential is actually read.
     const controller = new ScraperAttemptController(buildDeps({ runScript: () => null }), () => undefined);
@@ -135,16 +164,18 @@ describe('ScraperAttemptController (scenarios 8-11; the concurrency checklist)',
 
   it('scenario 10: the credential snapshot is null after settle, on the cancel path', async () => {
     const controller = new ScraperAttemptController(buildDeps({ runScript: () => null }), () => undefined);
-    void controller.run({ countryCode: 'cl', bankId: 'banco-de-chile' });
+    const promise = controller.run({ countryCode: 'cl', bankId: 'banco-de-chile' });
     await Promise.resolve();
     await Promise.resolve();
 
     expect(controller.getCredentialsSnapshot()).not.toBeNull();
-    controller.cancel(); // real path: cancel() reaches realCancel, which is unset in this fake —
-    // exercised instead through handleResult directly, mirroring what the mounted component's
-    // imperative handle would trigger.
-    controller.handleResult(cancelledResult());
+    // Installs a real cancel handle — mirrors the hook's own `ref` callback on the mounted
+    // component — so `cancel()` itself drives the settlement, rather than calling `handleResult`
+    // directly and leaving `cancel()` an untested no-op (found in review — CodeRabbit PR #85).
+    controller.setRealCancelHandle(() => controller.handleResult(cancelledResult()));
+    controller.cancel();
     expect(controller.getCredentialsSnapshot()).toBeNull();
+    await expect(promise).resolves.toMatchObject({ outcome: 'cancelled' });
   });
 
   it('scenario 11: run() rejects with a value-free ScraperRunError("missing_credentials") when the keychain has no entry', async () => {

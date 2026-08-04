@@ -62,6 +62,13 @@ describe('runAttempt (Decision 6): completed outcomes', () => {
 
     const outcome = await runAttempt(buildDeps({ runSync }), { connectionId: 'conn-1' });
     expect(outcome).toEqual({ phase: 'succeeded', failure: null });
+    // Asserts the SyncDeps forwarded to runSync, not only the returned outcome (found in review
+    // — CodeRabbit PR #85): a wrong `db`/`ports`/`runner` would otherwise pass every assertion in
+    // this suite silently, since each test only inspects the mapped AttemptOutcome.
+    expect(runSync).toHaveBeenCalledWith(
+      expect.objectContaining({ db: FAKE_DB, ports: FAKE_PORTS, runner: FAKE_RUNNER }),
+      { connectionId: 'conn-1' },
+    );
   });
 
   it('connectionState.syncStatus "idle" maps to phase "stopped" with no failure (Assumption A1, Decision 9)', async () => {

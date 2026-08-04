@@ -58,6 +58,23 @@ interface Settlement {
   resolve: (result: ScrapeResult) => void;
 }
 
+/** The `'cancelled'` `ScrapeResult` shape `cancel()` settles with — mirrors
+ * `src/dev/scripted-runner.ts`'s own `cancelledResult()` (Decision 9: cancellation is a value,
+ * never an error). */
+function buildCancelledResult(countryCode: string, bankId: string): ScrapeResult {
+  return {
+    outcome: 'cancelled',
+    countryCode,
+    bankId,
+    products: [],
+    movements: [],
+    readFailure: null,
+    productFailures: [],
+    skippedProductKinds: [],
+    traces: [],
+  };
+}
+
 export class ScraperAttemptController {
   private readonly deps: ScraperAttemptControllerDeps;
   private readonly onMountRequestChange: () => void;
@@ -67,6 +84,11 @@ export class ScraperAttemptController {
   private settlement: Settlement | null = null;
   private devCancel: (() => void) | null = null;
   private realCancel: (() => void) | null = null;
+  /** Set by `cancel()` when neither `devCancel` nor `realCancel` exists yet — the window between
+   * `run()` starting the real path and `readCredentials()` resolving, during which nothing is
+   * mounted and no script is installed (found in review — CodeRabbit PR #85). Consumed once,
+   * immediately after that await, by `run()` itself. */
+  private cancelRequestedBeforeMount = false;
   private nextAttemptId = 0;
 
   constructor(deps: ScraperAttemptControllerDeps, onMountRequestChange: () => void) {
@@ -99,6 +121,7 @@ export class ScraperAttemptController {
     this.credentials = null;
     this.devCancel = null;
     this.realCancel = null;
+    this.cancelRequestedBeforeMount = false;
     if (this.mountRequest !== null) {
       this.mountRequest = null;
       this.onMountRequestChange();
@@ -121,10 +144,19 @@ export class ScraperAttemptController {
       this.devCancel();
       return;
     }
-    this.realCancel?.();
+    if (this.realCancel !== null) {
+      this.realCancel();
+      return;
+    }
+    // Neither handle exists yet — the real path may still be awaiting `readCredentials()`, with
+    // nothing mounted and no script installed (found in review — CodeRabbit PR #85). Record the
+    // request; `run()` checks it the moment that await resolves, so this is not a silent no-op.
+    this.cancelRequestedBeforeMount = true;
   }
 
   async run(request: { countryCode: string; bankId: string }): Promise<ScrapeResult> {
+    this.cancelRequestedBeforeMount = false;
+
     // __DEV__-only scripted path (Decision 10) — checked first, so a fixture run never reads the
     // keychain and never resolves a bank config. The settlement is armed *before* calling
     // `runScript` so a script that settles synchronously cannot race past `handleResult`'s guard.
@@ -145,8 +177,28 @@ export class ScraperAttemptController {
       throw new ScraperRunError('unsupported_bank');
     }
 
+    // Armed *before* the credential await (found in review — CodeRabbit PR #85): a `cancel()`
+    // that arrives while `readCredentials` is in flight has neither `devCancel` nor `realCancel`
+    // to reach, and would otherwise be a silent no-op that leaves this promise unsettled forever.
+    let resolveReal: ((result: ScrapeResult) => void) | undefined;
+    const promise = new Promise<ScrapeResult>((resolve) => {
+      resolveReal = resolve;
+    });
+    this.settlement = { settled: false, resolve: resolveReal as (result: ScrapeResult) => void };
+
     const credentials = await this.deps.readCredentials(request.bankId);
+
+    if (this.cancelRequestedBeforeMount) {
+      // The credential (if any was returned) is never assigned to `this.credentials` in this
+      // branch, so there is nothing for `handleResult`'s clearing step to do beyond its normal
+      // work — the plaintext local variable simply goes out of scope, same as it does across the
+      // `missing_credentials` branch below.
+      this.handleResult(buildCancelledResult(request.countryCode, request.bankId));
+      return promise;
+    }
+
     if (credentials === null) {
+      this.settlement = null; // no attempt is actually in flight — nothing is left armed
       throw new ScraperRunError('missing_credentials');
     }
 
@@ -154,12 +206,6 @@ export class ScraperAttemptController {
     this.nextAttemptId += 1;
     const credentialsRecord: Record<string, string> = { rut: credentials.rut, password: credentials.password };
     this.credentials = credentialsRecord;
-
-    let resolveReal: ((result: ScrapeResult) => void) | undefined;
-    const promise = new Promise<ScrapeResult>((resolve) => {
-      resolveReal = resolve;
-    });
-    this.settlement = { settled: false, resolve: resolveReal as (result: ScrapeResult) => void };
 
     this.mountRequest = { attemptId, config, credentials: credentialsRecord };
     this.onMountRequestChange();

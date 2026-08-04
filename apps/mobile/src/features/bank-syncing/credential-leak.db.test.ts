@@ -30,13 +30,15 @@ import { runAttempt } from './sync-attempt';
  * genuinely available — the trail is substantive) and echoes both the RUT and the password into
  * its `ScrapeResult.traces` **and** into a rejected `Error`'s message. `runAttempt` — the real
  * outcome-mapping function `use-bank-sync.ts` calls — is driven against a real in-memory SQLite
- * store. Afterwards: the whole database dump, every captured `console.*` call,
- * `JSON.stringify` of `runAttempt`'s own returned outcome (the hook's serialized state) and
- * `JSON.stringify` of the `BankSyncingBody` element tree built from that outcome are all scanned.
- * Neither sentinel appears anywhere in any of them — structurally, not by luck: `runAttempt`
- * never receives a `ScrapeResult` at all (only item #10's own `SyncRunResult`, whose
+ * store. Afterwards: the whole database dump, every captured `console.*` call, and
+ * `JSON.stringify` of `runAttempt`'s own returned outcome (the hook's serialized state) are all
+ * scanned. Neither sentinel appears anywhere in any of them — structurally, not by luck:
+ * `runAttempt` never receives a `ScrapeResult` at all (only item #10's own `SyncRunResult`, whose
  * `connectionState.lastErrorCode` is a closed four-value union), so a compromised runner's trace
- * or thrown-error text has no path into anything this screen renders, stores or logs.
+ * or thrown-error text has no path into anything this screen stores or logs. The "rendered
+ * element tree contains no literal string" half of the same guarantee is covered separately by
+ * `bank-syncing-screen.test.tsx` (the `app` project) — this file cannot import a React Native
+ * component (see the module-boundary note above), so it does not scan a tree itself.
  *
  * The **planted-defect proof** required in the PR body is recorded by temporarily removing the
  * `this.credentials = null;` line from `scraper-attempt-controller.ts`'s `handleResult`,

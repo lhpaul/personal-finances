@@ -147,11 +147,11 @@ seam end to end, across three items:
 connect flow (item #9)          syncing screen (item #11)                sync engine (item #10)
 ────────────────────────        ──────────────────────────────────       ─────────────────────────
 writes a connection row,   →    mounts the hidden <WebView>,         →   runSync(deps, request)
-hands a ConnectHandoff          implements ScraperRunner over            → ScraperRunner.run(...)
-{ connectionId, … } —            startBankRead(...), reads the           → applySyncWrite(...)
-never a credential value         credential late (after the device       → src/db repository
-                                  lock is held) and clears it on
-                                  every settlement path
+hands a ConnectHandoff          implements ScraperRunner by              → ScraperRunner.run(...)
+{ connectionId, … } —            mounting BankScraperComponent,          → applySyncWrite(...)
+never a credential value         reads the credential late (after        → src/db repository
+                                  the device lock is held) and
+                                  clears it on every settlement path
 ```
 
 `useScraperRunner` (`apps/mobile/src/features/bank-syncing/use-scraper-runner.tsx`) is the

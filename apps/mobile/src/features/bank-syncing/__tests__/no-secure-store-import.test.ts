@@ -34,9 +34,12 @@ function listSourceFiles(dir: string): string[] {
  * bare-prose mention of the specifier in a doc comment (this file's own module comment above, or
  * `scripted-runner.ts`'s) is not mistaken for a real import. */
 function findImport(source: string, specifier: string): boolean {
-  const pattern = new RegExp(
-    `(?:import\\s[^;]*?from\\s*|require\\s*\\(\\s*)['"]${specifier}(?:/[^'"]*)?['"]`,
-  );
+  // Escaped before interpolation (found in review — CodeRabbit PR #85): both call sites below
+  // pass a specifier with no regex metacharacters today, but an unescaped `.` in a future
+  // dotted-path specifier would silently become a wildcard, letting this boundary test pass
+  // against a near-miss import while the real credential/WebView boundary stayed broken.
+  const escaped = specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`(?:import\\s[^;]*?from\\s*|require\\s*\\(\\s*)['"]${escaped}(?:/[^'"]*)?['"]`);
   return pattern.test(source);
 }
 
