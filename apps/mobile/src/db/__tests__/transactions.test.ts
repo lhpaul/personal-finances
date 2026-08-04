@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { deriveDateLocal } from '@finanzas/shared-utils';
 import { eq } from 'drizzle-orm';
 
@@ -9,12 +12,15 @@ import {
   countTransactionsByMonth,
   countUncategorized,
   excludeTransaction,
+  getTransactionContext,
   insertManualTransaction,
   listPendingBatch,
   listRecentMovements,
   listTransactionsPage,
   MovementValidationError,
+  reincludeTransaction,
   setReviewFlag,
+  setTransactionNote,
   setUserCategory,
   sumIncludedByDirectionAndCategory,
   sumIncludedByDirectionAndDay,
@@ -22,7 +28,7 @@ import {
   totalForCategoryInPeriod,
   upsertBankTransactions,
 } from '../repositories/transactions';
-import { transactionCategories, transactions } from '../schema';
+import { merchants, transactionCategories, transactions, userFinancialProducts } from '../schema';
 import { createTestConnection, createTestProduct } from '../testing/product-fixture';
 import { openBootstrappedMemoryDb } from '../testing/memory-db';
 import type { TransactionListFilters, TransactionListQueryParams } from '../types';
@@ -2125,6 +2131,368 @@ describe('categorization repository functions (#13)', () => {
       expect(afterCategorized?.categorySource).toBe('user');
       expect(afterExcluded?.excludedAt).not.toBeNull();
       expect(afterExcluded?.exclusionReason).toBe('cash_withdrawal');
+    } finally {
+      sqlite.close();
+    }
+  });
+});
+
+/**
+ * `transaction-detail` (#16) implementation plan Testing Strategy, Scenarios 1-11. A separate
+ * top-level `describe` with its own local fixtures — the same shape #13's own block above uses
+ * — rather than interleaving into either existing block.
+ */
+describe('transaction detail repository functions (#16)', () => {
+  function insertTransaction(
+    db: Awaited<ReturnType<typeof openBootstrappedMemoryDb>>['db'],
+    productId: string,
+    overrides: Partial<typeof transactions.$inferInsert> & { id: string },
+    now: string,
+  ) {
+    db.insert(transactions)
+      .values({
+        userFinancialProductId: productId,
+        externalId: null,
+        dedupHash: `dedup-${overrides.id}`,
+        amount: 35000,
+        type: 'debit',
+        occurredAt: now,
+        dateLocal: '2026-02-01',
+        rawDescription: 'COMPRA LIDER EXPRESS',
+        isManual: 0,
+        createdAt: now,
+        updatedAt: now,
+        ...overrides,
+      })
+      .run();
+  }
+
+  function insertMerchant(
+    db: Awaited<ReturnType<typeof openBootstrappedMemoryDb>>['db'],
+    overrides: Partial<typeof merchants.$inferInsert> & { id: string; name: string },
+    now: string,
+  ) {
+    db.insert(merchants)
+      .values({ createdAt: now, ...overrides })
+      .run();
+  }
+
+  function createProductWithMetadata(
+    db: Awaited<ReturnType<typeof openBootstrappedMemoryDb>>['db'],
+    ports: { newId: () => string; now: () => string },
+    userFinancialInstitutionId: string,
+    metadata: string | null,
+  ): string {
+    const id = ports.newId();
+    db.insert(userFinancialProducts)
+      .values({
+        id,
+        userFinancialInstitutionId,
+        externalId: `product-${id}`,
+        type: 'checking',
+        name: 'Cta. corriente',
+        metadata,
+        updatedAt: ports.now(),
+      })
+      .run();
+    return id;
+  }
+
+  const BANK_OWNED_COLUMNS = [
+    'rawDescription',
+    'amount',
+    'type',
+    'occurredAt',
+    'dateLocal',
+    'externalId',
+    'dedupHash',
+  ] as const;
+
+  function bankFacts(row: Record<string, unknown>): Record<string, unknown> {
+    const facts: Record<string, unknown> = {};
+    for (const column of BANK_OWNED_COLUMNS) facts[column] = row[column];
+    return facts;
+  }
+
+  it('getTransactionContext returns the movement with its merchant name, product name and mask; undefined for an unknown id (Scenario 1)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createProductWithMetadata(db, ports, connectionId, JSON.stringify({ mask: '4821' }));
+      const now = ports.now();
+      insertMerchant(db, { id: 'detail-merchant', name: 'Líder S.A.', transactionCategoryId: 'supermercado' }, now);
+      insertTransaction(db, productId, { id: 'detail-ctx', merchantId: 'detail-merchant' }, now);
+
+      const context = getTransactionContext(db, 'detail-ctx');
+      expect(context?.transaction.id).toBe('detail-ctx');
+      expect(context?.merchantName).toBe('Líder S.A.');
+      expect(context?.merchant).toEqual({
+        id: 'detail-merchant',
+        name: 'Líder S.A.',
+        transactionCategoryId: 'supermercado',
+        isUserDefined: false,
+      });
+      expect(context?.product?.name).toBe('Cta. corriente');
+      expect(context?.product?.mask).toBe('4821');
+
+      expect(getTransactionContext(db, 'not-a-real-id')).toBeUndefined();
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('getTransactionContext returns an excluded movement — the read carries no inclusion predicate (Scenario 2, BR3)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(
+        db,
+        productId,
+        { id: 'detail-excluded', excludedAt: now, exclusionReason: 'shared_expense' },
+        now,
+      );
+
+      const context = getTransactionContext(db, 'detail-excluded');
+      expect(context?.transaction.excludedAt).toBe(now);
+      expect(context?.transaction.exclusionReason).toBe('shared_expense');
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('getTransactionContext returns merchantName: null for a movement with no merchant, and a product whose mask is undefined when the metadata has none (Scenario 3, A6, A9)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createProductWithMetadata(db, ports, connectionId, null);
+      const now = ports.now();
+      insertTransaction(db, productId, { id: 'detail-no-merchant' }, now);
+
+      const context = getTransactionContext(db, 'detail-no-merchant');
+      expect(context?.merchantName).toBeNull();
+      expect(context?.merchant).toBeNull();
+      expect(context?.product?.mask).toBeUndefined();
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('setTransactionNote writes a trimmed note, stores null for a blank or whitespace-only note, and bumps updated_at (Scenario 4, A8)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(db, productId, { id: 'detail-note', createdAt: now, updatedAt: now }, now);
+
+      setTransactionNote(db, 'detail-note', '  Compras del sábado  ', ports);
+      const row = db.select().from(transactions).where(eq(transactions.id, 'detail-note')).get();
+      expect(row?.note).toBe('Compras del sábado');
+      expect(row?.updatedAt).not.toBe(now);
+
+      setTransactionNote(db, 'detail-note', '   ', ports);
+      const blank = db.select().from(transactions).where(eq(transactions.id, 'detail-note')).get();
+      expect(blank?.note).toBeNull();
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('each of setTransactionNote, setUserCategory, excludeTransaction and reincludeTransaction leaves every bank-owned column byte-identical (Scenario 5, AC1, Decision 14)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(db, productId, { id: 'detail-immutable' }, now);
+      const before = bankFacts(
+        db.select().from(transactions).where(eq(transactions.id, 'detail-immutable')).get() as Record<
+          string,
+          unknown
+        >,
+      );
+
+      setTransactionNote(db, 'detail-immutable', 'una nota', ports);
+      setUserCategory(db, 'detail-immutable', 'comida', ports);
+      excludeTransaction(db, 'detail-immutable', { reason: 'other' }, ports);
+      reincludeTransaction(db, 'detail-immutable', ports);
+
+      const after = bankFacts(
+        db.select().from(transactions).where(eq(transactions.id, 'detail-immutable')).get() as Record<
+          string,
+          unknown
+        >,
+      );
+      expect(after).toEqual(before);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('reincludeTransaction clears the exclusion timestamp, reason and note, keeps the row and its category, and leaves the partial-inclusion amount null (Scenario 6, AC3)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(
+        db,
+        productId,
+        {
+          id: 'detail-reinclude',
+          transactionCategoryId: 'comida',
+          categorySource: 'user',
+          excludedAt: now,
+          exclusionReason: 'shared_expense',
+          exclusionNote: 'con roomies',
+        },
+        now,
+      );
+
+      reincludeTransaction(db, 'detail-reinclude', ports);
+
+      const row = db.select().from(transactions).where(eq(transactions.id, 'detail-reinclude')).get();
+      expect(row?.excludedAt).toBeNull();
+      expect(row?.exclusionReason).toBeNull();
+      expect(row?.exclusionNote).toBeNull();
+      expect(row?.transactionCategoryId).toBe('comida');
+      expect(row?.includedAmount).toBeNull();
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('a re-included movement re-enters totalForCategoryInPeriod, and an excluded one is absent from it (Scenario 7, AC3)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(
+        db,
+        productId,
+        {
+          id: 'detail-total',
+          transactionCategoryId: 'supermercado',
+          categorySource: 'user',
+          excludedAt: now,
+          exclusionReason: 'shared_expense',
+          dateLocal: '2026-02-01',
+        },
+        now,
+      );
+
+      const period = { startDateLocal: '2026-02-01', endDateLocal: '2026-02-28' };
+      expect(totalForCategoryInPeriod(db, 'supermercado', period)).toBe(0);
+
+      reincludeTransaction(db, 'detail-total', ports);
+      expect(totalForCategoryInPeriod(db, 'supermercado', period)).toBe(35000);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('exclude, re-include, exclude again is repeatable, and each step is observable in the row (Scenario 8, BR3)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(db, productId, { id: 'detail-cycle' }, now);
+
+      excludeTransaction(db, 'detail-cycle', { reason: 'other' }, ports);
+      let row = db.select().from(transactions).where(eq(transactions.id, 'detail-cycle')).get();
+      expect(row?.excludedAt).not.toBeNull();
+
+      reincludeTransaction(db, 'detail-cycle', ports);
+      row = db.select().from(transactions).where(eq(transactions.id, 'detail-cycle')).get();
+      expect(row?.excludedAt).toBeNull();
+
+      excludeTransaction(db, 'detail-cycle', { reason: 'not_relevant' }, ports);
+      row = db.select().from(transactions).where(eq(transactions.id, 'detail-cycle')).get();
+      expect(row?.excludedAt).not.toBeNull();
+      expect(row?.exclusionReason).toBe('not_relevant');
+
+      expect(db.select().from(transactions).where(eq(transactions.id, 'detail-cycle')).all()).toHaveLength(1);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('reincludeTransaction on a movement that is not excluded is a no-op that does not throw (Scenario 9, Decision 6)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId);
+      const now = ports.now();
+      insertTransaction(db, productId, { id: 'detail-already-included' }, now);
+
+      expect(() => reincludeTransaction(db, 'detail-already-included', ports)).not.toThrow();
+      const row = db.select().from(transactions).where(eq(transactions.id, 'detail-already-included')).get();
+      expect(row?.excludedAt).toBeNull();
+      expect(row?.exclusionReason).toBeNull();
+      expect(row?.exclusionNote).toBeNull();
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('no function this item adds issues a delete, and repositories/transactions.ts still exports no deleteTransaction (Scenario 10, BR3)', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '..', 'repositories', 'transactions.ts'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/export\s+(?:async\s+)?function\s+deleteTransaction/);
+    expect(source).not.toMatch(/\.delete\(\s*transactions\s*\)/);
+  });
+
+  it('a simulated re-sync over a re-included, noted, categorized movement preserves all four person-owned decisions (Scenario 11, #10 seam, Decision 3)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports);
+      const productId = createTestProduct(db, ports, connectionId, { externalId: 'acct-resync' });
+      const now = ports.now();
+      insertTransaction(
+        db,
+        productId,
+        {
+          id: 'detail-resync',
+          externalId: 'resync-detail',
+          transactionCategoryId: 'comida',
+          categorySource: 'user',
+          excludedAt: now,
+          exclusionReason: 'other',
+        },
+        now,
+      );
+
+      setTransactionNote(db, 'detail-resync', 'una nota', ports);
+      reincludeTransaction(db, 'detail-resync', ports);
+      setUserCategory(db, 'detail-resync', 'transporte', ports);
+
+      await upsertBankTransactions(
+        db,
+        productId,
+        [
+          {
+            externalId: 'resync-detail',
+            amount: 35000,
+            type: 'debit',
+            occurredAt: now,
+            dateLocal: '2026-02-01',
+            rawDescription: 'COMPRA LIDER EXPRESS',
+          },
+        ],
+        ports,
+      );
+
+      const row = db.select().from(transactions).where(eq(transactions.id, 'detail-resync')).get();
+      expect(row?.note).toBe('una nota');
+      expect(row?.transactionCategoryId).toBe('transporte');
+      expect(row?.categorySource).toBe('user');
+      expect(row?.excludedAt).toBeNull();
     } finally {
       sqlite.close();
     }

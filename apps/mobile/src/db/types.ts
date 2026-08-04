@@ -295,3 +295,32 @@ export interface Transaction {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * The bank product a movement belongs to, reduced to what `transaction-detail`'s *Producto* row
+ * needs (implementation plan for issue #16, Decision 3). `mask` is `undefined` when the stored
+ * `metadata` carries none — the same optionality `json.ts`'s `parseProductMetadata` already
+ * returns (Testing Strategy Scenario 3).
+ */
+export interface ProductSummary {
+  id: string;
+  name: string;
+  mask: string | undefined;
+}
+
+/**
+ * The single-movement read `transaction-detail` opens on (implementation plan for issue #16,
+ * Decision 3). Carries no inclusion predicate — an excluded movement must still open (Business
+ * Rule 3). `merchantName` is the display string for the *Comercio* row; `merchant` is the
+ * structured shape `suggestCategory` (`@finanzas/shared-domain`) and `CategoryPickerSheet`'s ✨
+ * chip need — the plan's Layer-by-Layer only named `merchantName`, and this field is an additive
+ * extension so the category picker's suggestion (Decision 7) does not need a second query.
+ * `product` is `null` only if the referenced row is somehow missing (the foreign key is
+ * `NOT NULL`, so this is defensive, not an expected path).
+ */
+export interface TransactionContext {
+  transaction: Transaction;
+  merchantName: string | null;
+  merchant: StageMerchant | null;
+  product: ProductSummary | null;
+}
