@@ -49,3 +49,4 @@ export {
   type TransactionRowProps,
   type TransactionRowState,
 } from './TransactionRow';
+export { TopBar, type TopBarProps, type TopBarTitleAlign } from './TopBar';

@@ -523,8 +523,10 @@ export function countCategorized(db: AppDatabase): number {
 
 /**
  * Both completion tiles (spec Business Rule 6, AC31, Decision 11): the sum of included expense
- * amounts in a period, read through the two shared inclusion-rule fragments — the one place that
- * condition is allowed to exist.
+ * amounts in a period, read through three shared fragments — `isIncluded`, `includedAmount` and
+ * `isPesoDenominated` (issue #86, matching {@link totalForCategoryInPeriod}'s pattern) — the one
+ * place those conditions are allowed to exist. A foreign-currency movement is stored (Business
+ * Rule 17) but never summed into a peso total.
  */
 export function sumIncludedExpensesInPeriod(
   db: AppDatabase,
@@ -537,6 +539,7 @@ export function sumIncludedExpensesInPeriod(
       and(
         eq(transactions.type, 'debit'),
         isIncluded,
+        isPesoDenominated,
         gte(transactions.dateLocal, period.startDateLocal),
         lte(transactions.dateLocal, period.endDateLocal),
       ),
@@ -729,9 +732,11 @@ export interface DateLocalPeriod {
 /**
  * `home`'s two stat tiles, its balance line and its whole category card, and #17 dashboard's
  * per-category report — the **same** function, not merely the same fragment (implementation plan
- * Decision 1, Risks — "home and dashboard still diverge"). Reads through both shared fragments,
- * so this is a consumer of the inclusion rule, never a second statement of it (item #3 Decision
- * 9, Business Rule 4).
+ * Decision 1, Risks — "home and dashboard still diverge"). Reads through three shared fragments —
+ * `isIncluded`, `includedAmount` and, since issue #86, `isPesoDenominated` — so this is a consumer
+ * of the inclusion rule and the currency guard, never a second statement of either (item #3
+ * Decision 9, Business Rule 4; issue #10 Decision 15, Business Rule 17). A foreign-currency
+ * movement is stored but never summed into, or counted toward, a peso total.
  *
  * The `null` `transaction_category_id` group is the "Sin categorizar" bucket and is returned like
  * any other: categorization is never mandatory, so an uncategorized movement must never be
@@ -752,6 +757,7 @@ export function sumIncludedByDirectionAndCategory(
     .where(
       and(
         isIncluded,
+        isPesoDenominated,
         gte(transactions.dateLocal, period.startDateLocal),
         lte(transactions.dateLocal, period.endDateLocal),
       ),
@@ -768,8 +774,8 @@ export function sumIncludedByDirectionAndCategory(
 }
 
 /** `home`'s trend chart's source series (implementation plan for issue #12, Decision 1), called
- * once per period (current, previous). Reads through both shared fragments, exactly like
- * {@link sumIncludedByDirectionAndCategory}. */
+ * once per period (current, previous). Reads through all three shared fragments, exactly like
+ * {@link sumIncludedByDirectionAndCategory} (issue #86). */
 export function sumIncludedByDirectionAndDay(
   db: AppDatabase,
   period: DateLocalPeriod,
@@ -784,6 +790,7 @@ export function sumIncludedByDirectionAndDay(
     .where(
       and(
         isIncluded,
+        isPesoDenominated,
         gte(transactions.dateLocal, period.startDateLocal),
         lte(transactions.dateLocal, period.endDateLocal),
       ),

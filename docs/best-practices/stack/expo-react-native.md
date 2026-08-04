@@ -52,8 +52,14 @@ implemented in the description.
   direction, not yet decided; do not write code against it until it is actually a dependency.
 - Invalidate precisely after a write. Categorizing one movement should not refetch the entire
   dashboard.
-- No global store. Session state (the current categorization run, the connect-bank wizard) is
-  React Context scoped to its flow, not app-wide.
+- No global store for app data. Session state for a **multi-route-group** flow — the connect-bank
+  wizard spans `(onboarding)` and the settings stack — cannot use a layout-scoped React context,
+  because no single layout wraps both groups. Item #9 uses a module-scoped store read through
+  `useSyncExternalStore` instead (`src/features/connect-bank/connect-flow-store.ts`): a plain
+  module-level object plus a `Set` of listeners, with a closed type (no credential field, no
+  index signature) so a later "just stash a secret here" edit is a compile error, not a runtime
+  leak. A flow contained within one route group (the categorization run) can still use React
+  Context scoped to that group.
 
 ## Performance
 
@@ -70,7 +76,14 @@ implemented in the description.
 - Notifications: `expo-notifications`, **local scheduling only**. Ask for permission at the
   point the mockups ask (`notifications-intro`), never on launch. Handle denial — it is a real
   state (`notifications-intro/denied`, `settings-notifications/disabled`), not an error.
-- Secrets: `expo-secure-store` only. See [bank-scraper.md](bank-scraper.md).
+- Secrets: `expo-secure-store` only. See [bank-scraper.md](bank-scraper.md). Exactly one module,
+  `apps/mobile/src/lib/secure-store/expo-secure-store.adapter.ts`, may import it — enforced by
+  the `secureStoreBoundary` ESLint rule (`eslint.config.mjs`) and a source-text boundary scan
+  (`secure-store-boundary.test.ts`), the same shape as the `dbAccessBoundary` pair for SQL
+  libraries. Every write passes `keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY` explicitly —
+  the library's own default omits the `…ThisDeviceOnly` suffix and would carry the entry into an
+  encrypted device backup, which is a copy of the secret outside the phone it was typed on
+  (item #9).
 - Anything requiring a native module needs a dev build, not Expo Go. Say so in the PR.
 
 ## Copy and formatting

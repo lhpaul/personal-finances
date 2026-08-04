@@ -2,7 +2,7 @@
 import expoConfig from 'eslint-config-expo/flat.js';
 import i18nextPlugin from 'eslint-plugin-i18next';
 
-import rootConfig, { dbAccessBoundary } from '../../eslint.config.mjs';
+import rootConfig, { dbAccessBoundary, secureStoreBoundary } from '../../eslint.config.mjs';
 
 export default [
   ...rootConfig,
@@ -34,5 +34,33 @@ export default [
     ...dbAccessBoundary,
     files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
     ignores: ['src/db/**'],
+  },
+  // Secure-store access boundary (implementation plan Decision 4, issue #9). Applied to
+  // `app/**` and `src/**`, with only `expo-secure-store.adapter.ts` itself ignored — that is
+  // the one file allowed to import `expo-secure-store` (found in review — CodeRabbit PR #80:
+  // ignoring the whole `src/lib/secure-store/**` directory would let a future second file there
+  // bypass this rule at lint time, even though the test-time boundary scan would still catch
+  // it). See `secureStoreBoundary`'s own doc comment in the root `eslint.config.mjs` for the
+  // rationale and the companion test.
+  {
+    ...secureStoreBoundary,
+    files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/secure-store/expo-secure-store.adapter.ts'],
+  },
+  // No credential value may ever reach a log line (AGENTS.md non-negotiable 1, Business Rule 1).
+  // `no-console` is `'warn'` for the rest of the workspace (root config); these directories are
+  // the ones that see a plaintext RUT/password, so a stray `console.*` there is a hard error.
+  // `src/features/bank-syncing/**` added for issue #11 (implementation plan Infrastructure /
+  // Configuration): `use-scraper-runner.tsx` and `use-bank-sync.ts` hold the credential for the
+  // life of an attempt, matching item #9's `src/features/connect-bank/**` precedent exactly.
+  {
+    files: [
+      'src/lib/secure-store/**/*.{ts,tsx}',
+      'src/features/connect-bank/**/*.{ts,tsx}',
+      'src/features/bank-syncing/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-console': 'error',
+    },
   },
 ];

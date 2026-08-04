@@ -67,7 +67,8 @@ export type TouchMetricsKey =
   | 'headerAction'
   | 'categoryRow'
   | 'bankRow'
-  | 'noteAction';
+  | 'noteAction'
+  | 'topBarBtn';
 
 /**
  * One entry per pressable primitive built in this item, keyed by primitive (plus a size/variant
@@ -125,4 +126,9 @@ export const TOUCH_METRICS = {
    * like `transactionRow`/`bankRow`, using `note.lineHeight` as the visual box `withMinTarget`
    * expands from. */
   noteAction: withMinTarget({ height: componentMetrics.note.lineHeight }),
+  /** `TopBar`'s back button (implementation plan for issue #9, Decision 10's contingency). */
+  topBarBtn: withMinTarget({
+    width: componentMetrics.topBar.buttonSize,
+    height: componentMetrics.topBar.buttonSize,
+  }),
 } satisfies Record<TouchMetricsKey, TouchMetrics>;

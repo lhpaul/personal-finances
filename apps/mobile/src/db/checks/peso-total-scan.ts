@@ -6,10 +6,19 @@
  * (`src/db/fragments.ts`'s `isIncluded` / `includedAmount`) counts a movement whenever it is not
  * excluded — it does not look at currency. A future aggregate that sums `includedAmount` without
  * also naming `isPesoDenominated` would silently add a foreign-currency movement into a peso
- * total. This scanner makes that mechanical: over comment-stripped source, it reports every file
- * whose `sql`-tagged template bodies (including nested `sql` tags, each its own occurrence)
- * apply `sum(` to `includedAmount`, unless that same file **also** names `isPesoDenominated`
- * somewhere in it.
+ * total. This scanner makes that mechanical: over comment-stripped source, it reports every
+ * `sql`-tagged template body (including nested `sql` tags, each its own occurrence) that applies
+ * `sum(` to `includedAmount`, unless the **same top-level declaration scope** (the enclosing
+ * top-level `function`, `class`, `interface`, `type`, or `const`/`let`/`var` declaration) also
+ * names `isPesoDenominated` somewhere within it.
+ *
+ * **Per-occurrence granularity (issue #86)**: the guard pairing used to be file-level — the same
+ * file naming `isPesoDenominated` *anywhere* cleared every occurrence in it. That let one guarded
+ * aggregate (`totalForCategoryInPeriod`) vacuously clear unguarded siblings in the same file
+ * (`sumIncludedByDirectionAndCategory`, `sumIncludedByDirectionAndDay`,
+ * `sumIncludedExpensesInPeriod`) — a one-directional check that let a real gap through undetected.
+ * The guard is now scoped to each occurrence's own enclosing top-level declaration: a guarded
+ * function can no longer clear an unguarded sibling declared elsewhere in the same file.
  *
  * `count(${includedAmount})` and `avg(${includedAmount})` are not flagged — a count of a dollar
  * row is legitimate; only a *summation* can add a dollar's numeric value into a peso figure.
@@ -311,10 +320,64 @@ function extractSqlTagBodies(source: string): SqlTagBody[] {
 
 const SUM_CALL_PATTERN = /\bsum\s*\(/gi;
 
+// The guard identifier itself must be an exact token match (CodeRabbit finding on PR #87): a
+// substring check would accept an unrelated identifier that merely *contains* `isPesoDenominated`
+// as a substring — e.g. a hypothetical `isPesoDenominatedForDisplay` — as if it were the real
+// guard, vacuously clearing a scope that never actually names `isPesoDenominated`. `\b` anchors
+// on both sides so a longer identifier sharing this prefix does not satisfy the guard.
+const GUARD_IDENTIFIER_RE = /\bisPesoDenominated\b/;
+
+// Top-level (column-zero) declaration starts — the boundaries between one guard scope and the
+// next (issue #86, "Per-occurrence granularity" above). Matches an optional `export`/`default`/
+// `async` prefix followed by `function`, `class`, `interface`, `type <Name>`, or a
+// `const`/`let`/`var` binding. Deliberately anchored to the start of a line with no leading
+// whitespace: this codebase never indents a top-level declaration, so an indented line that
+// happens to start with one of these keywords (e.g. a nested arrow function body) is correctly
+// excluded from acting as a scope boundary.
+const TOP_LEVEL_DECLARATION_RE =
+  /^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\b|class\b|interface\b|type\s+[A-Za-z_$]|(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*(?::[^=\n]*)?=)/gm;
+
+/** Every top-level declaration's start offset in `source`, plus `0` so the file's leading edge
+ * (imports, or any code before the first declaration) is always a valid scope start. */
+function findScopeBoundaries(source: string): number[] {
+  const boundaries = new Set<number>([0]);
+  const re = new RegExp(TOP_LEVEL_DECLARATION_RE);
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(source)) !== null) {
+    boundaries.add(match.index);
+    if (match[0].length === 0) re.lastIndex += 1;
+  }
+  return Array.from(boundaries).sort((a, b) => a - b);
+}
+
+/** The `[start, end)` span of the scope enclosing `position`: the last boundary at or before
+ * `position`, up to the next boundary (or the end of the source when `position` is in the last
+ * declaration). */
+function scopeRangeFor(
+  boundaries: number[],
+  position: number,
+  sourceLength: number,
+): { start: number; end: number } {
+  let start = 0;
+  for (const boundary of boundaries) {
+    if (boundary <= position) start = boundary;
+    else break;
+  }
+  const index = boundaries.indexOf(start);
+  const end = index + 1 < boundaries.length ? (boundaries[index + 1] as number) : sourceLength;
+  return { start, end };
+}
+
 /** Finds every `sum(...)` occurrence in `body` and reports the ones whose matching-paren span
  * contains `includedAmount` — tracking paren depth so `coalesce(sum(${includedAmount}), 0)`'s
- * nested call is still resolved to its own, correct closing paren. */
-function findSumOfIncludedAmount(body: string, bodyStart: number, stripped: string): PesoTotalScanFinding[] {
+ * nested call is still resolved to its own, correct closing paren — and whose own enclosing
+ * top-level declaration scope (`boundaries`) does not also name `isPesoDenominated`. */
+function findSumOfIncludedAmount(
+  body: string,
+  bodyStart: number,
+  stripped: string,
+  boundaries: number[],
+): PesoTotalScanFinding[] {
   const findings: PesoTotalScanFinding[] = [];
   SUM_CALL_PATTERN.lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -330,11 +393,16 @@ function findSumOfIncludedAmount(body: string, bodyStart: number, stripped: stri
     }
     const inner = body.slice(openParenIndex, i - 1);
     if (inner.includes('includedAmount')) {
-      findings.push({
-        filePath: '', // filled in by the caller
-        line: lineAt(stripped, bodyStart + match.index),
-        detail: `'${match[0]}…)' sums includedAmount without isPesoDenominated in the same file — use isPesoDenominated from src/db/fragments.ts.`,
-      });
+      const absolutePosition = bodyStart + match.index;
+      const { start, end } = scopeRangeFor(boundaries, absolutePosition, stripped.length);
+      const scopeText = stripped.slice(start, end);
+      if (!GUARD_IDENTIFIER_RE.test(scopeText)) {
+        findings.push({
+          filePath: '', // filled in by the caller
+          line: lineAt(stripped, absolutePosition),
+          detail: `'${match[0]}…)' sums includedAmount without isPesoDenominated in the same declaration scope — use isPesoDenominated from src/db/fragments.ts.`,
+        });
+      }
     }
     if (match[0].length === 0) SUM_CALL_PATTERN.lastIndex += 1;
   }
@@ -346,14 +414,11 @@ export function findUnguardedPesoTotals(source: string, filePath: string): PesoT
   if (isAllowlisted(filePath)) return [];
 
   const stripped = stripComments(source.replace(/\r\n/g, '\n'));
-
-  // File-level guard: the same file naming isPesoDenominated anywhere clears every occurrence in
-  // it (Decision 15's own scanner text — the guard is a file-level pairing, not per-occurrence).
-  if (stripped.includes('isPesoDenominated')) return [];
+  const boundaries = findScopeBoundaries(stripped);
 
   const findings: PesoTotalScanFinding[] = [];
   for (const { body, bodyStart } of extractSqlTagBodies(stripped)) {
-    for (const finding of findSumOfIncludedAmount(body, bodyStart, stripped)) {
+    for (const finding of findSumOfIncludedAmount(body, bodyStart, stripped, boundaries)) {
       findings.push({ ...finding, filePath });
     }
   }

@@ -56,9 +56,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Home screen** (#12): the challenge hero, financial summary, trend chart, category
   breakdown, recent movements and connected-banks card, in all four manifest states
   (`pending`, `all-clear`, `empty`, `sync-error`), reading real aggregates through the
-  shared `isIncluded` / `includedAmount` fragments. Adds five design-system primitives
-  (`ScreenHeader`, `CategoryRow`, `LineChart`, `Legend`, `BankRow`), `formatPercentTenths`
-  in `@finanzas/shared-utils`, and a `__DEV__`-only sample-data route
+  shared `isIncluded` / `includedAmount` / `isPesoDenominated` fragments. Adds five
+  design-system primitives (`ScreenHeader`, `CategoryRow`, `LineChart`, `Legend`, `BankRow`),
+  `formatPercentTenths` in `@finanzas/shared-utils`, and a `__DEV__`-only sample-data route
+- **Connect a bank: picker, credentials and secure storage** (#9): the connect-bank
+  introduction with its security accordion, the bank picker over the seeded institution
+  catalogue, the credential form with shared RUT validation, the rejection and RUT-locked
+  states, and the connected screen. Credentials are written only to `expo-secure-store`,
+  under a deterministic per-bank key, and the connection row holds the key and never a
+  value. `connectBank` re-checks the RUT lock server-side (not only in the UI) and restores
+  the prior credential if a reconnect's database write fails, so a stale password is never
+  left stranded disguised as the current one. Adds the `TopBar` design-system primitive,
+  extends `BankRow` and `TextField` additively, and adds a dev-only connect-flow fixtures
+  route
 - **Sync engine** (#10): a bank read is stored idempotently — products by the scraper's opaque
   instance identity, movements by an identity that now carries direction and an occurrence index,
   so two identical movements in one read stay two and a re-read adds none. The person's
@@ -71,10 +81,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   filter sheet (tipo, estado, producto, mostrar excluidas) with its header badge, the empty
   state and manual transaction entry, in all four manifest states (`list`, `search`,
   `filters`, `empty`). Excluded movements stay in the list, attenuated, per Business Rule 3
+- **Bank syncing progress screen** (#11): `#screen=bank-syncing` shows the real scraper
+  progress — every `ScraperStepId` moves the step list and the bar as it happens, and all four
+  manifest states (`login`, `products`, `transactions`, `error`) are implemented. The error
+  state explains what went wrong from a four-value failure code, never a raw exception, and
+  *Reintentar* re-runs the sync with the credential already in the keychain — except after a
+  credential rejection, the one failure that returns to the credentials form. The app's hidden
+  `react-native-webview` host lives here, so no credential value ever reaches screen state, a
+  log or an error payload.
 - **Transaction detail and exclusion** (#16): the movement detail screen with its categorized, uncategorized and excluded states — the immutable bank facts, the editable note, a category change, the merchant shortcut, the exclusion sheet, and re-inclusion, which clears the exclusion fields and restores the movement to every total.
 
 ### Fixed
 
+- **Foreign-currency movements no longer leak into peso totals on home or the categorization
+  completion tiles** (#86): `sumIncludedByDirectionAndCategory`, `sumIncludedByDirectionAndDay`
+  and `sumIncludedExpensesInPeriod` now also filter on `isPesoDenominated`, matching
+  `totalForCategoryInPeriod`'s existing guard (#10) — a stored foreign-currency movement is
+  excluded from every peso total and chart, and still shows up unchanged everywhere else
+  (Business Rule 17). The guard's own scanner, `peso-total-scan.ts`, is tightened from a
+  file-level pairing to per-declaration-scope: a guarded aggregate can no longer vacuously clear
+  an unguarded sibling declared elsewhere in the same file — the exact gap that let this through.
 - **Fix the pnpm hoisted layout and add a CI bundle check** (#35): `nodeLinker: hoisted` now lives
   in `pnpm-workspace.yaml`, where pnpm 11 actually reads it — a plain `pnpm install` produces the
   hoisted layout the Expo/Metro resolver needs, and `.npmrc` (which pnpm 11 silently ignored) is

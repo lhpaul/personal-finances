@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, View, type GestureResponderEvent } from 'react-native';
 
 import { componentMetrics, theme } from '../../theme';
@@ -20,6 +21,23 @@ export type BankRowProps = {
   subLabel: string;
   subLabelTone?: BankRowSubLabelTone;
   onPress?: (event: GestureResponderEvent) => void;
+  /**
+   * Additive extension for the connect-a-bank picker (implementation plan for issue #9,
+   * Resolution R4, Decision 12, AC9). When set and `onPress` is absent, the row renders as a
+   * non-pressable `View` marked `accessible`, whose accessible name is
+   * `"<name>, <unavailableLabel>"`, with no `accessibilityRole="button"` and no trailing chevron
+   * or accessory — a coming-soon bank must announce as unavailable, never as a dead button.
+   * Ignored when `onPress` is set.
+   */
+  unavailableLabel?: string;
+  /**
+   * Additive extension (issue #9): a trailing accessory rendered in place of the default chevron
+   * — e.g. a "Disponible" badge on a pressable row, or a success mark on a completed connection's
+   * row. Ignored when `unavailableLabel` produces the non-pressable/unavailable rendering (that
+   * state draws no trailing accessory at all, per Decision 12). Every existing call site (the
+   * home screen's `ConnectedBanksCard`) omits this prop and keeps its current chevron.
+   */
+  trailingAccessory?: ReactNode;
 };
 
 /** `.mu-bank`, `__logo`, `__name` plus the shared `.mu-item__txt`, `__sub`, `__chev` (home-screen
@@ -33,8 +51,11 @@ export function BankRow({
   subLabel,
   subLabelTone = 'default',
   onPress,
+  unavailableLabel,
+  trailingAccessory,
 }: BankRowProps) {
   const touchMetrics = TOUCH_METRICS.bankRow;
+  const isUnavailable = onPress === undefined && unavailableLabel !== undefined;
 
   const rowStyle = {
     flexDirection: 'row' as const,
@@ -48,6 +69,15 @@ export function BankRow({
     borderWidth: componentMetrics.borderWidth.hairline,
     borderColor: theme.colors.border,
   };
+
+  const trailing = isUnavailable ? null : (trailingAccessory ?? (
+    <Text
+      tone="tertiary"
+      style={{ fontSize: componentMetrics.bankRow.chevronFontSize, flexShrink: 0 }}
+    >
+      {CHEVRON_GLYPH}
+    </Text>
+  ));
 
   const content = (
     <>
@@ -90,14 +120,17 @@ export function BankRow({
           {subLabel}
         </Text>
       </View>
-      <Text
-        tone="tertiary"
-        style={{ fontSize: componentMetrics.bankRow.chevronFontSize, flexShrink: 0 }}
-      >
-        {CHEVRON_GLYPH}
-      </Text>
+      {trailing}
     </>
   );
+
+  if (isUnavailable) {
+    return (
+      <View style={rowStyle} accessible accessibilityLabel={`${name}, ${unavailableLabel}`}>
+        {content}
+      </View>
+    );
+  }
 
   if (onPress === undefined) {
     return <View style={rowStyle}>{content}</View>;

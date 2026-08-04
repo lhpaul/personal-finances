@@ -27,7 +27,7 @@
 |---|----------|--------|--------|
 | D1 | Etiquetas en inglés de las 16 categorías (`design/tokens.json → categoryLabels`): escritas sin validación; el español del mockup es la ruta de producción | Seed de #3, [`settings-categories`](#settings-categories) | 🔴 urgente apenas #3 llegue a merge |
 | D2 | Alcance del formato abreviado de montos (`3.7M`, `$279K`): ¿solo stat tiles y filas de categoría de `home`, o también dashboard/detalle? | [`home`](#home), [`dashboard`](#dashboard) | 🔴 |
-| D3 | ¿`bank-syncing` puede continuar en segundo plano si el usuario sale de la pantalla? | [`bank-syncing`](#bank-syncing) | 🔴 |
+| D3 | ¿`bank-syncing` puede continuar en segundo plano si el usuario sale de la pantalla? | [`bank-syncing`](#bank-syncing) | Resuelto con default (foreground-only) — sigue marcado para LH si se quiere segundo plano a futuro |
 | D4 | ¿Los bancos "Próximamente" quedan visibles (deshabilitados) en el selector, o se ocultan? | [`bank-picker`](#bank-picker) | 🔴 |
 | D5 | Monitoreo de crashes/errores (clase Sentry): el estándar personal lo exige, pero enviar stacks a un servidor tensiona el principio "nada sale del dispositivo". ¿Se adopta con scrubbing probado, o se declina explícitamente? | Toda la app; ninguna pantalla en particular | 🔴 antes de la primera release |
 
@@ -75,7 +75,11 @@
 - **Acciones:** seleccionar banco habilitado → `bank-credentials` con la institución elegida.
 - **Datos:** catálogo de instituciones (tabla `institutions`, seed de #3). En el MVP solo Banco
   de Chile está operativo.
-- **Pendiente:** 🔴 **D4** — bancos "Próximamente": ¿visibles deshabilitados u ocultos?
+- **Pendiente:** 🔴 **D4** — bancos "Próximamente": ¿visibles deshabilitados u ocultos? **Implementado
+  (#9) con el default reversible**: visibles, debajo de los disponibles, con la nota
+  "Próximamente" y no seleccionables (anunciados como no disponibles para lectores de pantalla,
+  sin `accessibilityRole="button"`). La confirmación del dueño de producto sigue pendiente — si
+  cambia, el ajuste es un filtro de una línea sobre la lista ya ordenada.
 
 ### bank-credentials
 
@@ -99,7 +103,13 @@
   idempotente (BR5).
 - **Datos:** el scraper (`@finanzas/bank-scraper`, WebView oculto) emite productos y movimientos;
   se persisten vía upsert `(user_financial_product_id, external_id)` / `dedup_hash`.
-- **Pendiente:** 🔴 **D3** — ¿continúa en segundo plano si el usuario abandona la pantalla?
+- **D3 resuelto (implementación #11):** la sincronización corre **solo en primer plano** en el
+  MVP, y no por preferencia sino porque el `WebViewPort` que maneja la lectura vive en el
+  `<WebView>` montado por esta pantalla — desmontarla destruye el puerto, así que una lectura no
+  puede sobrevivir a la pantalla. Salir de `bank-syncing` en cualquier estado detiene la lectura:
+  lo ya leído se guarda, la conexión vuelve a `idle` y **no** se registra ningún error (la persona
+  no causó un fallo). Si algún día se quiere segundo plano, es un ítem nuevo que mueve el host del
+  WebView por encima de esta ruta — no un cambio a esta pantalla.
 
 ### bank-connected
 

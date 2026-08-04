@@ -87,6 +87,36 @@ only for one read.
   they appear in none of the result, its traces, or any console call. That test is not optional,
   and its own planted-defect proof is recorded in the PR that added it.
 
+## Hosting the WebView (`apps/mobile`)
+
+The React component (`BankScraperComponent`, in `src/component/` — a deep import,
+`@finanzas/bank-scraper/src/component`, deliberately **not** re-exported from the package's
+headless barrel) is the only file in this package that imports `react`, `react-native` or
+`react-native-webview`. `apps/mobile` does not depend on `react-native-webview` on its own — item
+#11's `#screen=bank-syncing` (`apps/mobile/src/features/bank-syncing/use-scraper-runner.tsx`) adds
+it and is the **only** module allowed to import that deep path
+(`no-secure-store-import.test.ts` in that feature asserts this mechanically).
+
+- `react-native-webview` is a **native module**. A native runtime error (`Cannot find native
+  module ...`) needs a rebuilt dev client — never test this screen from Expo Go. `Unable to
+  resolve "react-native-webview"` is a **different** failure class: Metro's own
+  package-resolution graph, not the compiled binary (found in review — CodeRabbit PR #85). Run
+  `pnpm check:layout` to confirm the tree is still hoisted, then restart Metro with
+  `pnpm dev:mobile --clear`, before assuming a native rebuild is needed — see `AGENTS.md`'s
+  troubleshooting table for both symptoms side by side.
+- The component is mounted **only** while a read is in flight, keyed by a fresh identity per
+  attempt — never reused across a retry. `ScrapeSession` is constructed and started inside a
+  mount-only `useEffect` (not the render body — an earlier draft of this component started it in
+  the render body itself, which is a side effect during render with no unmount cleanup; that was
+  fixed before this component shipped), and `onResult`/`onProgress` are captured through a ref
+  that always reads the latest callback, so a caller's own re-renders never go stale.
+- The component is never rendered under React `StrictMode` — the app's root layout does not enable
+  it, and the hosting screen asserts this in its own test, because `StrictMode`'s double-invoke of
+  effects would otherwise risk starting two reads against one bank (a locked account is the
+  failure mode, not a harmless double render).
+- The credential the host passes in is read **late** — after the caller's own device lock is
+  already held — and held only until the session's single `onResult` fires, then dropped.
+
 ## Adding or repairing a bank
 
 Everything bank-specific stays in one directory:

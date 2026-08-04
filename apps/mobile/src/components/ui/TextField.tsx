@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
@@ -15,6 +16,13 @@ export type TextFieldProps = {
   /** `.mu-input.is-locked` — read-only display mode. */
   locked?: boolean;
   secureTextEntry?: boolean;
+  /** Leading slot (implementation plan for issue #9, Decision 16) — mirrors the mockup's search
+   * input's magnifier. Additive: every existing call site renders unchanged without it. */
+  icon?: ReactNode;
+  /** Overrides the accessible name React Native would otherwise derive from `placeholder` (issue
+   * #9, Decision 16) — a labelless search field would otherwise be announced as its emoji
+   * placeholder. */
+  accessibilityLabel?: string;
   /** `'numeric'` requests the platform's numeric keypad (implementation plan for issue #15,
    * Decision 12 — the manual-entry amount field). Defaults to `'default'`; this is a validation
    * hint for the keyboard only, never a substitute for parsing/rejecting the typed value. */
@@ -37,6 +45,8 @@ export function TextField({
   error = null,
   locked = false,
   secureTextEntry = false,
+  icon,
+  accessibilityLabel,
   keyboardType = 'default',
   onBlur,
 }: TextFieldProps) {
@@ -76,6 +86,7 @@ export function TextField({
           locked && { backgroundColor: theme.colors.surface3 },
         ]}
       >
+        {icon !== undefined && icon}
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -83,6 +94,12 @@ export function TextField({
           placeholderTextColor={theme.colors.textTertiary}
           editable={!locked}
           secureTextEntry={secureTextEntry}
+          // A masked field is always a credential — React Native's own defaults
+          // (`autoCapitalize: 'sentences'`, `autoCorrect: true`) would otherwise capitalize or
+          // "correct" the very characters the person types, changing what is actually submitted
+          // (found in review — CodeRabbit PR #80).
+          autoCapitalize={secureTextEntry ? 'none' : undefined}
+          autoCorrect={!secureTextEntry}
           keyboardType={keyboardType}
           onFocus={() => setFocused(true)}
           onBlur={() => {
@@ -91,9 +108,9 @@ export function TextField({
           }}
           // `label` renders as a sibling Text, which React Native does not associate with the
           // input on its own — set an explicit accessible name (falling back to the
-          // placeholder) and surface the error/hint as the accessibility hint (found in
-          // review).
-          accessibilityLabel={label ?? placeholder}
+          // placeholder, or the caller's own override) and surface the error/hint as the
+          // accessibility hint (found in review; `accessibilityLabel` override added issue #9).
+          accessibilityLabel={accessibilityLabel ?? label ?? placeholder}
           accessibilityHint={hasError ? (error ?? undefined) : hint}
           style={{
             flex: 1,
