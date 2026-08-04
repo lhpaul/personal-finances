@@ -1,4 +1,4 @@
-appId: cl.finanzas.mobile
+appId: cl.finanzas.mobile.dev
 ---
 # The one parameterised subflow every state application in every flow goes through
 # (implementation plan for issue #22, D5, D6). Opens the fixture panel, taps the state whose

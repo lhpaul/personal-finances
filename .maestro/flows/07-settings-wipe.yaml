@@ -1,4 +1,4 @@
-appId: cl.finanzas.mobile
+appId: cl.finanzas.mobile.dev
 name: 07 settings wipe (destructive — runs last)
 tags:
   - core
@@ -27,7 +27,7 @@ tags:
 # #screen=settings-account (`default` -> `delete-confirm`).
 - assertVisible: 'Perfil local'
 - tapOn: 'Borrar todos mis datos'
-- assertVisible: 'Esta acción es permanente y no se puede deshacer'
+- assertVisible: '¿Estás seguro? Esta acción es permanente y no se puede deshacer: se borran tus movimientos, categorías y las credenciales de tus bancos de este dispositivo.'
 - tapOn: 'Borrar todo'
 
 # `resetAppDatabase()` and the local profile are gone — the app re-enters at onboarding

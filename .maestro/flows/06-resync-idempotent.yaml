@@ -1,4 +1,4 @@
-appId: cl.finanzas.mobile
+appId: cl.finanzas.mobile.dev
 name: 06 re-sync is idempotent
 tags:
   - core

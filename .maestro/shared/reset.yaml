@@ -1,4 +1,4 @@
-appId: cl.finanzas.mobile
+appId: cl.finanzas.mobile.dev
 ---
 # launchApp(clearState) -> apply the `reset` fixture state -> re-enter through the real launch
 # gate (implementation plan for issue #22, D5). Does not re-implement fixture.yaml's tap

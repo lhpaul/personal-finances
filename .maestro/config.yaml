@@ -8,7 +8,7 @@
 # last, after every other flow (implementation plan Implementation Order step 12). Every other
 # flow re-applies its own fixture state at the start (via `.maestro/shared/fixture.yaml`), so the
 # rest of the order is not otherwise significant.
-appId: cl.finanzas.mobile
+appId: cl.finanzas.mobile.dev
 flows:
   - flows/01-onboarding-connect.yaml
   - flows/02-home-with-data.yaml
