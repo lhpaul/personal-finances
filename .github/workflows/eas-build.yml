@@ -13,11 +13,7 @@ name: EAS build
 
 on:
   push:
-    # TEMPORARY, revert-after-proof (implementation plan runbook Step 7 push-probe technique,
-    # same as item #35): adds this implementation branch so the workflow can be proved to run
-    # for real on GitHub Actions before merge, since `workflow_dispatch` is not dispatchable
-    # until this file lands on the default branch (confirmed T5). Reverted in a follow-up commit.
-    branches: [develop, main, feature/23-eas-build-release-ci]
+    branches: [develop, main]
     paths:
       - "apps/**"
       - "packages/**"
@@ -57,10 +53,7 @@ jobs:
         id: check
         shell: bash
         env:
-          # TEMPORARY, revert-after-proof: wrong secret name on purpose, to prove the
-          # missing-token path skips green without touching the real EXPO_TOKEN repository
-          # secret. Reverted in a follow-up commit.
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN_WRONG_NAME_FOR_PROOF }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           if [ -n "${EXPO_TOKEN:-}" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
