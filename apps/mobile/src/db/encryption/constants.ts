@@ -1,0 +1,30 @@
+/**
+ * Named constants for the encryption-at-rest feature (implementation plan Decision 5, Decision 3).
+ * Kept in their own file because both `client.ts` (the device adapter), the migration
+ * orchestrator, the wipe (`src/features/settings/wipe-local-data.ts`) and the widened
+ * `secure-store-key-namespace.test.ts` scanner need the exact same values — a copy-pasted string
+ * anywhere in that set would silently split the single source of truth this item depends on.
+ */
+
+/** The plaintext store #3 created. Read-only from this item's point of view, until it is
+ * deleted — never opened for a write. */
+export const LEGACY_DATABASE_NAME = 'finanzas.db';
+
+/** The encrypted store. Canonical from this item forward — every `getAppDatabase()` call
+ * resolves to this file, never `LEGACY_DATABASE_NAME`. */
+export const ENCRYPTED_DATABASE_NAME = 'finanzas.enc.db';
+
+/** An `app_settings` row written **inside the encrypted store** by the migration's last step.
+ * Its presence is the commit point (Decision 5) — nothing in this item ever reads it to decide
+ * anything at runtime; the settings key namespace already has a `getSetting`/`setSetting` pair. */
+export const ENCRYPTION_MARKER_SETTING = 'encryption_migrated_at';
+
+/** The `ATTACH` alias used during the plaintext → encrypted copy (Decision 1, Decision 6). A
+ * module constant, never user input. */
+export const EXPORT_ALIAS = 'encrypted';
+
+/** The `expo-secure-store` key holding the 32-byte raw database key, hex-encoded (Decision 3).
+ * The one and only entry in this second key namespace — `collectSecureStoreKeys`
+ * (`src/features/settings/wipe-local-data.ts`) and the widened
+ * `src/__tests__/secure-store-key-namespace.test.ts` both hold that claim mechanically. */
+export const DB_KEY_STORAGE_KEY = 'db_key:main';
