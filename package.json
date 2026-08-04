@@ -22,6 +22,8 @@
     "format": "prettier --write \"**/*.md\"",
     "format:code": "prettier --write \"{apps,packages}/**/*.{ts,tsx,js,jsx,json}\"",
     "mockups:mobile": "open design/mockups/mobile/index.html",
+    "mockups:verify": "node scripts/design/verify-manifest.mjs",
+    "mockups:verify:test": "node --test scripts/design/*.test.mjs",
     "mobile:build:dev-store": "pnpm --dir apps/mobile dlx eas-cli build --profile development",
     "mobile:build:production-store": "pnpm --dir apps/mobile dlx eas-cli build --profile production",
     "fidelity": "node scripts/mobile-ui/run-fidelity.mjs",

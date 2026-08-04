@@ -34,13 +34,15 @@ open 'http://127.0.0.1:8765/mobile/#screen=home&state=pending'
 
 ### Verification
 
-Run from `design/mockups/mobile/` before opening a PR:
+Run from the repository root before opening a PR:
 
 ```bash
-node -e "global.window={};require('./mockup-manifest.js');const m=window.__MOCKUP_MANIFEST__,fs=require('fs'),h=fs.readFileSync('index.html','utf8');const dom=[...h.matchAll(/<section class=\"app-screen\" id=\"([^\"]+)\"/g)].map(x=>x[1]);const ids=m.screens.map(s=>s.screen_id);const dec=Object.fromEntries(m.screens.map(s=>[s.screen_id,(s.states||[]).map(x=>x.state_id)]));const nav=[];(function w(i){for(const x of i||[]){if(x.screen_id)nav.push(x.screen_id);w(x.items)}})(m.navigation.flatMap(s=>s.items));const bad=[];ids.filter(i=>!dom.includes('s-'+i)).forEach(i=>bad.push('no DOM: '+i));dom.filter(d=>!ids.includes(d.slice(2))).forEach(d=>bad.push('orphan DOM: '+d));nav.filter(n=>!ids.includes(n)).forEach(n=>bad.push('nav not a screen: '+n));m.screens.filter(s=>s.states&&s.states.filter(x=>x.initial).length!==1).forEach(s=>bad.push('initial!=1: '+s.screen_id));for(const sec of h.split('<section class=\"app-screen\" id=\"').slice(1)){const id=sec.slice(0,sec.indexOf('\"')).slice(2);for(const mm of sec.matchAll(/data-states=\"([^\"]+)\"/g))for(const st of mm[1].split(/\s+/))if(!(dec[id]||[]).includes(st))bad.push('undeclared state '+id+' -> '+st)}for(const g of h.matchAll(/go\('([a-z0-9-]+)'(?:\s*,\s*'([a-z0-9-]+)')?\)/g))if(!ids.includes(g[1])||(g[2]&&!(dec[g[1]]||[]).includes(g[2])))bad.push('bad go(): '+g[0]);console.log(bad.length?bad.join('\n'):'OK — '+ids.length+' screens')"
+pnpm mockups:verify
 ```
 
-The `data-states` check reports two false positives (`a`, `b`) from the documentation comment in the boot script — ignore those two lines.
+This is `scripts/design/verify-manifest.mjs` (item #24) — it replaces the old `node -e "…"`
+one-liner and reports every violation of the PR checklist below under a stable check code
+(`M001`–`M010`), with no false positives against the current mockup.
 
 ### Screen kinds
 

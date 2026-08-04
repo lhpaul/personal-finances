@@ -192,6 +192,8 @@ pnpm dev:mobile
 
 # Mockups (the UI contract — open before implementing any screen)
 open design/mockups/mobile/index.html
+pnpm mockups:verify                             # verify the manifest against the PR checklist
+pnpm mockups:verify:test                        # unit tests for the verifier itself
 
 # Design-system gallery (dev build only — every apps/mobile/src/components/ui/ primitive with
 # sample data; never reachable in a release build). With `pnpm dev:mobile` running, navigate to
