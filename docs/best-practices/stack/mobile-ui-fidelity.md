@@ -88,6 +88,22 @@ screen's root `testID`). `pnpm fidelity:contract` statically verifies the file e
 selector appears in it — a screen PR that ships UI without wiring its targets fails a required
 CI check.
 
+### The preview-mode convention (a non-deterministic screen)
+
+A screen whose state is driven by a live process — an animated `Progress` bar, a timer, an
+in-flight read — cannot be captured deterministically by simply rendering it normally: the
+`app_file` in mid-flight might sit anywhere between two frames. `useFidelityPreview()`
+(`apps/mobile/src/lib/fidelity-preview.ts`) is the standard fix: `__DEV__`-only, it reads
+`fidelity` / `fidelityState` off the deep link's query params and returns `{ active, state }`.
+When `active`, the screen renders the named state from a **fixed presentation** instead of its
+live one — no timer started, no animation, no process kicked off. `#screen=bank-syncing` (item
+#11) is the reference case: its bar is normally driven by the scraper's own live progress, but
+under a preview capture it renders exactly at `PROGRESS_FLOOR[state]` (the same fixed width the
+mockup itself draws) and starts no bank read at all — no WebView mount, no keychain access, no
+sync call. A screen that owns a real side effect (a data hook, a mounted native component) still
+calls that hook unconditionally — React's Rules of Hooks forbid a conditional call — but gates the
+side effect itself behind `!preview.active` inside the hook, not around the hook call.
+
 ### Threshold policy
 
 `scripts/mobile-ui/fidelity-targets.json` sets `defaults.max_mismatch_pct` (currently `3.0`) and
