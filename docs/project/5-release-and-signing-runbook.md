@@ -77,8 +77,11 @@ It also accepts `workflow_dispatch` with `profile` (`preview` / `production`) an
 
 **No `EXPO_TOKEN` → the workflow stays green, builds are skipped.** A `preflight` job reads the
 secret into a step-level `env:` (the `secrets` context is not available in a job-level `if:`)
-and writes `configured=true|false`; every build job gates on that output. Until H1–H3 are done,
-every push produces a green run with a `::notice::` pointing back at this document.
+and writes `configured=true|false`; every build job gates on that output. Before a repository's
+H1–H3 are done, every push produces a green run with a `::notice::` pointing back at this
+document — this repository's own H1–H3 are already done (see below), so this describes the
+general design property new deployments of this pipeline rely on, not this repository's current
+state.
 
 **Builds are enqueued, not waited on** (`--non-interactive --no-wait`). EAS compiles remotely; a
 build failure shows up on the [EAS dashboard](https://expo.dev) and in the owner's email, not as
