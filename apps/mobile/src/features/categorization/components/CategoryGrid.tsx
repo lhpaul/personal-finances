@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { CategoryChip, Text } from '../../../components/ui';
@@ -22,8 +23,10 @@ export interface CategoryGridProps {
 
 /** Calls the translation function with a literal key argument in every branch — the pattern
  * `ready.tsx`'s `translateReminderDayKey` already established — required by the static
- * catalogue-key scan (`copy-contract.test.ts`) and `i18next.d.ts`'s compile-time key union. */
-function questionLabel(t: ReturnType<typeof useTranslation>['t'], question: CategoryGridQuestion): string {
+ * catalogue-key scan (`copy-contract.test.ts`) and `i18next.d.ts`'s compile-time key union.
+ * Takes `t: TFunction`, not `ReturnType<typeof useTranslation>['t']` (found in review, item #21 —
+ * see AGENTS.md's troubleshooting entry for the `TS2589` this avoids). */
+function questionLabel(t: TFunction, question: CategoryGridQuestion): string {
   switch (question) {
     case 'expense':
       return t('categorize.question_expense');
