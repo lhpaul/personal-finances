@@ -129,6 +129,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   notifications before registering the new set, so changing it reschedules instead of
   duplicating. `/settings/notifications` shows and edits the same schedule, and reflects a
   revoked OS permission as disabled.
+- **Maestro end-to-end flows** (#22): a contract-driven device E2E suite in `.maestro/` — ten
+  flows covering first-launch onboarding through bank connection, sync to a populated home, a
+  categorization session, transaction detail and exclusion, the dashboard, re-sync idempotency,
+  and (screens #18/#19/#20/#21 having all merged by the time this item was implemented) the
+  settings wipe, settings banks, settings categories and notifications flows the plan originally
+  declared as extensions. Adds the `__DEV__` `/(dev)/e2e-fixtures` panel with five named,
+  idempotent device states, a deterministic stubbed read (`complete_with_data`), and `pnpm e2e` /
+  `e2e:contract` / `e2e:lint` / `e2e:test`. No flow file contains a real credential, and the
+  credential scanner proves it in CI. The macOS `maestro-ios` job is wired but off until
+  `ENABLE_MAESTRO_E2E` is set.
 
 ### Fixed
 
