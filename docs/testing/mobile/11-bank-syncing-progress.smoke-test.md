@@ -37,7 +37,7 @@ Refactor-type item, so there is no spec. The behaviour contract is
 
 | Item | Value |
 | --- | --- |
-| Syncing route | `/(onboarding)/bank-syncing` — deep link `finanzas://(onboarding)/bank-syncing` |
+| Syncing route | `/(onboarding)/bank-syncing` — deep link `finanzas:///bank-syncing` (Expo Router route groups are not part of the URL) |
 | Dev sync-fixtures route | `/(dev)/sync-fixtures` — deep link `finanzas://sync-fixtures` (`__DEV__` only) |
 | Dev connect-fixtures route | `/(dev)/connect-fixtures` — deep link `finanzas://connect-fixtures` (`__DEV__` only, item #9) |
 | Mockup reference | `design/mockups/mobile/index.html#screen=bank-syncing&state=<state>` |
@@ -238,10 +238,20 @@ marking done"*; plan Decision 12.
 
 **Expected result**: all four states match the reference; `pnpm fidelity --issue 11` exits 0 for
 all four targets. The gate drives the screen through
-`finanzas:///(onboarding)/bank-syncing?fidelity=1&fidelityScreen=bank-syncing&fidelityState=<state>`,
-which renders the state without starting a read, so the capture is stable rather than mid-flight.
-Do **not** raise `max_mismatch_pct` to make a state pass — fix the screen, or record a
-`threshold_note` with a real measured reason.
+`finanzas:///bank-syncing?fidelity=1&fidelityScreen=bank-syncing&fidelityState=<state>` (no
+`(onboarding)` segment — Expo Router route groups are not part of the URL, matching every sibling
+onboarding screen's own wired mapping), which renders the state without starting a read, so the
+capture is stable rather than mid-flight. Do **not** raise `max_mismatch_pct` to make a state
+pass — fix the screen, or record a `threshold_note` with a real measured reason.
+
+**Recorded result (this implementation)**: all four targets **FAIL** at ~98.9% mismatch — the
+captured app screenshot shows the dev client's "No script URL provided" red-box error screen, not
+the syncing screen. This is the known stale-dev-client environment limitation the runbook's
+Known Limitations section already names (no dev build with `react-native-webview` linked, no
+`pnpm dev:mobile` bound to the booted simulator, in this execution environment) — not a defect in
+the screen. `pnpm fidelity:contract` itself passes (27 wired targets, up from 23, including all
+four of this item's), and `pnpm fidelity:test`'s 47 cases — including the one that proves a wired
+mapping's `app_file` genuinely contains its `fidelityTestId()` call — all pass.
 
 ### Step 13: The dev surface does not ship
 
