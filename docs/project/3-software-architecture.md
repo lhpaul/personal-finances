@@ -78,6 +78,24 @@ passcode and the OS sandbox.
 `mvp: false`. When sync ships, identity ships with it, backed by a managed auth provider that
 never sees financial data. `users.id` and stable UUID keys already exist as anchors.
 
+### 6. One port, one adapter, one boundary, per native capability
+
+Every native dependency this app talks to is wrapped in a narrow, hand-written port interface
+with exactly one production implementer, enforced twice: an ESLint `no-restricted-imports` rule
+(`eslint.config.mjs`) forbidding the package's import specifier anywhere else, and a source-scan
+test that survives a lint-config regression. Three instances of the same shape exist:
+
+| Native capability | Port | Adapter (the one sanctioned importer) | Boundary rule / test |
+|---|---|---|---|
+| SQL | repository functions over `AppDatabase` | `apps/mobile/src/db/` (the whole directory) | `dbAccessBoundary` / `db-access-boundary.test.ts` |
+| Secrets | `SecureStorePort` | `src/lib/secure-store/expo-secure-store.adapter.ts` | `secureStoreBoundary` / `secure-store-boundary.test.ts` |
+| Local notifications | `NotificationsPort` | `src/lib/notifications/expo-notifications.adapter.ts` | `notificationsBoundary` / `notifications-boundary.test.ts` (item #18) |
+
+**Why:** every port is testable with an in-memory double and no simulator (`getAppDatabase()`'s
+Node-tier fixture, `createMemorySecureStore()`, `createMemoryNotificationsPort()`), a future
+platform change is a one-file diff, and no Jest project ever needs to mock a native module — the
+`app` project's tests exercise pure functions and hooks over the double, never the real package.
+
 ## Frontend Architecture
 
 ```

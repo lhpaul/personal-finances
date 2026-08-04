@@ -73,9 +73,17 @@ implemented in the description.
 
 ## Native modules and permissions
 
-- Notifications: `expo-notifications`, **local scheduling only**. Ask for permission at the
-  point the mockups ask (`notifications-intro`), never on launch. Handle denial — it is a real
-  state (`notifications-intro/denied`, `settings-notifications/disabled`), not an error.
+- Notifications: `expo-notifications`, **local scheduling only** — no push token, no server
+  (item #18). Ask for permission at the point the mockups ask (`notifications-intro`), never on
+  launch. Handle denial — it is a real state (`notifications-intro/denied`,
+  `settings-notifications/disabled`), not an error. Exactly one module,
+  `apps/mobile/src/lib/notifications/expo-notifications.adapter.ts`, may import it — enforced by
+  the `notificationsBoundary` ESLint rule (`eslint.config.mjs`) and a source-text boundary scan
+  (`notifications-boundary.test.ts`), the same shape as `dbAccessBoundary` (SQL) and
+  `secureStoreBoundary` (secrets). Rescheduling is cancel-owned-then-schedule over deterministic
+  identifiers (`finanzas-reminder-w<isoWeekday>` / `finanzas-reminder-daily`) — every schedule
+  change must go through `applyReminderSchedule`, which cancels every identifier it owns before
+  registering the new set, so a bypass duplicates notifications instead of replacing them.
 - Secrets: `expo-secure-store` only. See [bank-scraper.md](bank-scraper.md). Exactly one module,
   `apps/mobile/src/lib/secure-store/expo-secure-store.adapter.ts`, may import it — enforced by
   the `secureStoreBoundary` ESLint rule (`eslint.config.mjs`) and a source-text boundary scan

@@ -375,8 +375,14 @@ genuinely shows the current month rather than a stale one, because bootstrap re-
 the moment the file is recreated.
 
 `apps/mobile/src/db/repositories/settings.ts`'s `isOnboardingCompleted`, `markOnboardingCompleted`,
-`readReminderSettings` and `readFirstLaunchAt` are the sanctioned accessors for these keys; no
-caller reads `app_settings` directly for them.
+`readReminderSettings`, `writeReminderSettings` and `readFirstLaunchAt` are the sanctioned
+accessors for these keys; no caller reads `app_settings` directly for them.
+
+**Write-side normalisation** (item #18's implementation plan, Layer-by-Layer): `writeReminderSettings`
+is the sole writer of the three reminder keys, and it normalises before writing — `reminder_days`
+is de-duplicated and sorted ascending, and `reminder_time` is re-serialised as a zero-padded
+24-hour `"HH:mm"` string. A future reader can therefore treat the stored form as canonical (already
+sorted, already zero-padded) without re-normalising on every read.
 
 ### `user_budgets`
 

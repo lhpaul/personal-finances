@@ -107,6 +107,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the about screen, plus the product's only destructive operation — a full local wipe of
   the SQLite store and every `expo-secure-store` credential key, behind an explicit
   confirmation, returning the app to onboarding.
+- **Notifications and local reminders** (#18): the onboarding flow now asks for the OS
+  notification permission at `notifications-intro` (never at launch), treats a denial as a
+  supported state with how-to-re-enable copy, and lets the person pick a time and the days of
+  the week. Reminders are scheduled locally with `expo-notifications` behind a single adapter —
+  no push token, no server — and saving a schedule cancels the app's own scheduled
+  notifications before registering the new set, so changing it reschedules instead of
+  duplicating. `/settings/notifications` shows and edits the same schedule, and reflects a
+  revoked OS permission as disabled.
 
 ### Fixed
 
