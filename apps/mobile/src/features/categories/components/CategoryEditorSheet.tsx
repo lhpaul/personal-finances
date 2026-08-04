@@ -67,8 +67,13 @@ export function CategoryEditorSheet({
             marginTop: theme.space['2'],
           }}
         >
-          {palette.map((candidate) => (
-            <View key={candidate} style={{ width: '31%' }}>
+          {palette.map((candidate, index) => (
+            // Composite key (implementation plan for issue #21, Pass 2 finding): `candidate`
+            // alone is not a structurally-guaranteed-unique React key — it depends on every
+            // seeded emoji in one direction's `design/tokens.json` palette being visually
+            // distinct, a data-authoring convention, not a type-level guarantee. Prefixing with
+            // the (stable, non-reordering) index removes that assumption.
+            <View key={`${index}:${candidate}`} style={{ width: '31%' }}>
               <CategoryChip
                 emoji={candidate}
                 state={candidate === emoji ? 'selected' : 'default'}

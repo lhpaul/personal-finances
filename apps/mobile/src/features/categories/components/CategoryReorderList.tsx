@@ -80,9 +80,14 @@ export function CategoryReorderList({
     const cached = respondersRef.current.get(categoryId);
     if (cached) return cached;
 
+    // Bubble-phase (not capture) for both `onStartShouldSetPanResponder` and
+    // `onMoveShouldSetPanResponder` (Pass 2 finding, fixed): the handle is the innermost view in
+    // its touch path, so bubble-phase negotiation (deepest-first) already lets it claim the
+    // responder before `ListRow`'s enclosing `Pressable` does. Mixing capture for one callback and
+    // bubble for the other made the negotiation harder to reason about for no behavioural gain.
     const responder = PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponderCapture: (_event, gesture) => Math.abs(gesture.dy) > 2,
+      onMoveShouldSetPanResponder: (_event, gesture) => Math.abs(gesture.dy) > 2,
       onPanResponderGrant: () => {
         dragStartIndexRef.current = orderRef.current.indexOf(categoryId);
         translateY.setValue(0);

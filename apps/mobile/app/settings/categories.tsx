@@ -39,10 +39,11 @@ function errorCopy(t: Translate, error: CategoriesSettingsErrorKey): string {
 
 /**
  * `#screen=settings-categories` (`expense`, `income`, `edit`, `delete-confirm` — implementation
- * plan for issue #21). Composition-only: `ScreenTopBar` (drawn by `TopBar`, item #19), the
- * `Segment` tabs, `CategoryReorderList`, the two create buttons, the inline error `Note`, the
- * editor `Sheet` and the delete `Modal`. Deletion is entirely `deleteCategory` (item #3's BR7
- * cascade) — this route adds no re-parenting logic of its own (Decision 1).
+ * plan for issue #21). Composition-only: `TopBar` (item #19's `mu-topbar*` owner — the plan
+ * assumed a component named `ScreenTopBar`; the merged primitive is `TopBar`, same role and
+ * ownership), the `Segment` tabs, `CategoryReorderList`, the two create buttons, the inline error
+ * `Note`, the editor `Sheet` and the delete `Modal`. Deletion is entirely `deleteCategory` (item
+ * #3's BR7 cascade) — this route adds no re-parenting logic of its own (Decision 1).
  */
 export default function SettingsCategories() {
   const { t, i18n } = useTranslation();
