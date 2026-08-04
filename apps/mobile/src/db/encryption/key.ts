@@ -16,6 +16,9 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 /**
+ * Exported so `open-encrypted-store.ts` can reuse the exact same "does a plain open throw"
+ * heuristic for its own `!keyPresent` probe branch, rather than duplicating this logic.
+ *
  * "Does the encrypted store already have content?" without a key to open it with (Decision 7's
  * existence probe, applied to the one file it was **not** originally written for). Opening a
  * genuinely SQLCipher-encrypted file with no key and then querying it fails — SQLite cannot
@@ -31,7 +34,7 @@ function bytesToHex(bytes: Uint8Array): string {
  * `openKeyed` call for the same path always gets a genuinely fresh, never-before-written file —
  * required for `PRAGMA key` to be the connection's true first statement (V15).
  */
-function encryptedStoreHasContent(port: CipherDatabasePort): boolean {
+export function encryptedStoreHasContent(port: CipherDatabasePort): boolean {
   const handle = port.openPlain(ENCRYPTED_DATABASE_NAME);
   let hasContent: boolean;
   try {
