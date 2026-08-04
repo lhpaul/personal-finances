@@ -71,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   filter sheet (tipo, estado, producto, mostrar excluidas) with its header badge, the empty
   state and manual transaction entry, in all four manifest states (`list`, `search`,
   `filters`, `empty`). Excluded movements stay in the list, attenuated, per Business Rule 3
+- **Transaction detail and exclusion** (#16): the movement detail screen with its categorized, uncategorized and excluded states — the immutable bank facts, the editable note, a category change, the merchant shortcut, the exclusion sheet, and re-inclusion, which clears the exclusion fields and restores the movement to every total.
 
 ### Fixed
 

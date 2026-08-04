@@ -285,14 +285,14 @@ The core table.
 | `occurred_at` | `TEXT NOT NULL` | ISO-8601 UTC |
 | `date_local` | `TEXT NOT NULL` | `YYYY-MM-DD` — month grouping in `transactions` |
 | `raw_description` | `TEXT NOT NULL` | Gap #6 — immutable, from the bank |
-| `note` | `TEXT` | Gap #6 — user-editable |
+| `note` | `TEXT` | Gap #6 — user-editable; the transaction detail screen (#16) is this column's writer |
 | `merchant_id` | `TEXT REFERENCES merchants(id)` | Resolved counterparty |
 | `transaction_category_id` | `TEXT REFERENCES transaction_categories(id)` | Null = "Necesita categorización" |
 | `category_source` | `TEXT` | Gap #4 — `auto` \| `user` \| `rule` — the categorization flow (#13) writes `user` only |
 | `review_flag` | `TEXT` | Gap #5 — `review_later` \| `uncertain` — written by the categorization flow (#13) |
-| `excluded_at` | `TEXT` | Gap #2 — non-null = out of every total and chart — written by the categorization flow (#13) |
-| `exclusion_reason` | `TEXT` | `personal_transfer` \| `shared_expense` \| `not_relevant` \| `cash_withdrawal` \| `other` — written by the categorization flow (#13) |
-| `exclusion_note` | `TEXT` | Free text, optional for every reason (not only `other` — the categorization flow's spec Conflict 3 resolves the mockup's own drawn note field over this cell's earlier phrasing) — written by the categorization flow (#13) |
+| `excluded_at` | `TEXT` | Gap #2 — non-null = out of every total and chart — written by the categorization flow (#13); cleared (re-included) by the transaction detail screen (#16) |
+| `exclusion_reason` | `TEXT` | `personal_transfer` \| `shared_expense` \| `not_relevant` \| `cash_withdrawal` \| `other` — written by the categorization flow (#13) and by the transaction detail screen's own exclusion sheet (#16, four of the five reasons — `cash_withdrawal` is reachable only from #13); cleared by re-inclusion (#16) |
+| `exclusion_note` | `TEXT` | Free text, optional for every reason (not only `other` — the categorization flow's spec Conflict 3 resolves the mockup's own drawn note field over this cell's earlier phrasing) — written by the categorization flow (#13); the transaction detail screen's own exclusion sheet (#16) always stores `null` here, since that sheet draws no note field; cleared by re-inclusion (#16), which is this column's only clearer |
 | `included_amount` | `INTEGER` | **No UI in the MVP** — always null. Kept as a column so the inclusion rule below never has to change when partial inclusion ships |
 | `metadata` | `TEXT` (JSON) | Bank-specific extras the scraper returns |
 | `is_manual` | `INTEGER NOT NULL DEFAULT 0` | Added by hand, not scraped |
