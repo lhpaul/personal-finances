@@ -42,6 +42,25 @@ function mapCategoryRow(row: TransactionCategoryRow, locale: SupportedLocale): C
   };
 }
 
+/**
+ * The settings hub's "Categorías" subtitle figure (implementation plan for issue #19, Decision
+ * 15) — one grouped `count(*) … group by income`, not two `listCategories(...).length` calls,
+ * which would each read the full table into JS and reduce it there (`sqlite-drizzle.md`'s
+ * "aggregate in SQL" rule). The seed guarantees both directions are always non-empty, so no
+ * fallback copy is needed for either count.
+ */
+export function countCategoriesByDirection(db: AppDatabase): { expense: number; income: number } {
+  const rows = db
+    .select({ income: transactionCategories.income, count: sql<number>`count(*)` })
+    .from(transactionCategories)
+    .groupBy(transactionCategories.income)
+    .all() as { income: number; count: number }[];
+
+  const expenseRow = rows.find((row) => row.income === 0);
+  const incomeRow = rows.find((row) => row.income === 1);
+  return { expense: expenseRow?.count ?? 0, income: incomeRow?.count ?? 0 };
+}
+
 /** Spec "What are my categories, in my chosen order, for this direction?" — backed by the
  * `transaction_categories_income_sort_order_idx` composite index. */
 export function listCategories(

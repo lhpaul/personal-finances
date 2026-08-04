@@ -20,7 +20,15 @@
  *   adding the project without the ignore makes every sync test run twice, once under a preset
  *   that cannot load the native driver.
  *
- * `pnpm --filter @finanzas/mobile test` runs all three projects, so AC24's "runs as part of the
+ * - `feature`: `testEnvironment: 'node'`, matching only `*.node.test.ts` files under
+ *   `src/features/` (implementation plan for issue #19, Decision 17; Resolution R1's
+ *   re-verification step 6 confirmed this project did not already exist at implementation time).
+ *   Same shape as `db`/`sync` — the settings wipe's proof (`wipe-local-data.node.test.ts`) runs
+ *   the real `wipeLocalData` against a real `better-sqlite3` store and an in-memory secure-store
+ *   fake, so it needs the native driver with no React Native module mocks, exactly like the other
+ *   two Node-tier projects.
+ *
+ * `pnpm --filter @finanzas/mobile test` runs all four projects, so AC24's "runs as part of the
  * repository's existing test command" holds with no new command.
  */
 /** @type {import('jest').Config} */
@@ -36,6 +44,7 @@ module.exports = {
         '<rootDir>/src/db/',
         '<rootDir>/src/features/sync/',
         '\\.db\\.test\\.ts$',
+        '\\.node\\.test\\.ts$',
       ],
     },
     {
@@ -53,6 +62,16 @@ module.exports = {
       testEnvironment: 'node',
       rootDir: __dirname,
       testMatch: ['<rootDir>/src/features/sync/**/*.test.ts'],
+      transform: {
+        '^.+\\.tsx?$': ['babel-jest', { presets: ['babel-preset-expo'] }],
+      },
+      testPathIgnorePatterns: ['/node_modules/', '/dist/', '/.expo/'],
+    },
+    {
+      displayName: 'feature',
+      testEnvironment: 'node',
+      rootDir: __dirname,
+      testMatch: ['<rootDir>/src/features/**/*.node.test.ts'],
       transform: {
         '^.+\\.tsx?$': ['babel-jest', { presets: ['babel-preset-expo'] }],
       },

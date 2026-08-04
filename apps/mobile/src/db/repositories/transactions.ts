@@ -375,6 +375,23 @@ export function countUncategorized(db: AppDatabase): number {
   return row?.count ?? 0;
 }
 
+/**
+ * The settings local-profile screen's "Movimientos guardados" figure (implementation plan for
+ * issue #19, Decision 16) — a **storage** fact, not an analysis figure: it counts every row in
+ * `transactions`, excluded ones included, with no `WHERE` clause at all. Deliberately does not
+ * import {@link isIncluded} or name `excluded_at` — this is a total-rows count, not a restatement
+ * of the inclusion rule, so `inclusion-rule-single-definition.test.ts`'s scan correctly leaves it
+ * alone. A future reader tempted to "fix" this into an inclusion-filtered count would make it
+ * disagree with the on-device fact it exists to report (how much this device has ever stored).
+ */
+export function countTransactions(db: AppDatabase): number {
+  const row = db
+    .select({ count: sql<number>`count(*)` })
+    .from(transactions)
+    .get() as { count: number } | undefined;
+  return row?.count ?? 0;
+}
+
 /** Spec "What are this month's movements, newest first?" (`transactions`) — backed by
  * `transactions_date_local_idx` (`date_local desc`). */
 export function listMonth(

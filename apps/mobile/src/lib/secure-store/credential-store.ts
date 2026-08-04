@@ -65,3 +65,22 @@ export async function readCredentials(
 export function deleteCredentials(port: SecureStorePort, institutionId: string): Promise<void> {
   return port.deleteItem(credentialsKeyFor(institutionId));
 }
+
+/**
+ * Deletes every key in `keys`, in order, tolerating a key that does not exist (implementation
+ * plan for issue #19, Decision 1) — `SecureStorePort.deleteItem` on a missing key is a no-op by
+ * the same contract `deleteCredentials` already relies on. Awaits each delete sequentially rather
+ * than `Promise.all`-ing them: the caller (`wipeLocalData`) reads every key back afterward to
+ * confirm none survived, and a sequential order keeps that read-back step's failure attributable
+ * to "this delete call did not take", not to a race between concurrent deletes on the same
+ * keychain. Contains no `console.*` call and no error message that interpolates a key (AGENTS.md
+ * non-negotiable 1).
+ */
+export async function deleteAllCredentials(
+  port: SecureStorePort,
+  keys: readonly string[],
+): Promise<void> {
+  for (const key of keys) {
+    await port.deleteItem(key);
+  }
+}

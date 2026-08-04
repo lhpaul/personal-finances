@@ -1,4 +1,4 @@
-import { openDatabaseSync } from 'expo-sqlite';
+import { deleteDatabaseAsync, openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 
 /**
@@ -17,4 +17,16 @@ export function openAppDatabase() {
   sqlite.execSync('PRAGMA foreign_keys = ON;');
   const db = drizzle(sqlite);
   return { sqlite, db };
+}
+
+/**
+ * The only place in the repository that may call `expo-sqlite`'s deletion API (implementation
+ * plan for issue #19, Decision 3) — the full local wipe's second-to-last step, after every
+ * credential key has been deleted from the secure store (`src/features/settings/wipe-local-
+ * data.ts`). Closes the handle first (`closeAsync`), then deletes the file named by the private
+ * `DATABASE_NAME` constant above — no caller outside this module ever learns the filename.
+ */
+export async function deleteAppDatabaseFile(sqlite: SQLiteDatabase): Promise<void> {
+  await sqlite.closeAsync();
+  await deleteDatabaseAsync(DATABASE_NAME);
 }

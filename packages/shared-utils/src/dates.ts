@@ -397,6 +397,20 @@ export function formatMonthHeading(dateLocal: DateLocal, locale: SupportedLocale
   return firstCodePoint.toLocaleUpperCase(locale) + rest.join('');
 }
 
+/**
+ * `enero 2025` (`es`) / `January 2025` (`en`) — the settings/local-profile "Usando la app desde"
+ * value (implementation plan for issue #19, Decision 10). `Intl`'s own `es` long-month-and-year
+ * output is `enero de 2025`; the mockup draws `enero 2025`, without the connector, so this strips
+ * `" de "` from the formatter's own output rather than re-implementing month names. Lower case,
+ * unlike {@link formatMonthHeading} (which capitalizes for use as a group heading) — this value
+ * is a sentence-internal label, not a heading. No default locale.
+ */
+export function formatLongMonthYear(dateLocal: DateLocal, locale: SupportedLocale): string {
+  const instant = civilDateAsUtcMidnightInstant(dateLocal);
+  const label = getLabelFormatter(locale, { month: 'long', year: 'numeric' }).format(instant);
+  return label.replace(' de ', ' ');
+}
+
 /** `ene` (`es`) / `Jan` (`en`). No default locale. */
 export function formatMonthAbbreviation(dateLocal: DateLocal, locale: SupportedLocale): string {
   const instant = civilDateAsUtcMidnightInstant(dateLocal);
