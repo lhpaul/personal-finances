@@ -207,6 +207,7 @@
   "dev.sync_fixtures.fail_parse_failed_action": "Fail: the bank changed its site",
   "dev.sync_fixtures.go_to_screen_action": "Go to the syncing screen",
   "dev.sync_fixtures.script_selected": "Selected script: {{script}}",
+  "dev.sync_fixtures.clear_selection_action": "Clear selected script",
   "dev.sync_fixtures.error": "Error: {{message}}",
 
   "onboarding_intro.title": "Welcome to Finanzas",

@@ -207,6 +207,7 @@
   "dev.sync_fixtures.fail_parse_failed_action": "Fallar: el banco cambió su sitio",
   "dev.sync_fixtures.go_to_screen_action": "Ir a la pantalla de sincronización",
   "dev.sync_fixtures.script_selected": "Guion seleccionado: {{script}}",
+  "dev.sync_fixtures.clear_selection_action": "Quitar guion seleccionado",
   "dev.sync_fixtures.error": "Error: {{message}}",
 
   "onboarding_intro.title": "Bienvenido a Finanzas",
