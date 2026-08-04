@@ -1,0 +1,34 @@
+import type { SecureStorePort } from '../types';
+
+/**
+ * An in-memory `SecureStorePort` fake for Node-tier tests (implementation plan for issue #19,
+ * Decision 17) — the one place in this codebase where "every key the store holds" can actually be
+ * enumerated, which is exactly what `wipe-local-data.node.test.ts` needs to prove AC1: the real
+ * `expo-secure-store` keychain offers no such API (`../types.ts`'s own doc comment), so this fake
+ * is what lets the wipe proof assert the store is **completely** empty afterward, not merely that
+ * `deleteItem` was called the expected number of times.
+ */
+export interface MemorySecureStorePort extends SecureStorePort {
+  /** A snapshot of every key/value pair currently held — the enumeration the real keychain
+   * cannot give us. */
+  entries(): Record<string, string>;
+}
+
+export function createMemorySecureStore(
+  initial: Record<string, string> = {},
+): MemorySecureStorePort {
+  const store = new Map(Object.entries(initial));
+
+  return {
+    getItem: (key) => Promise.resolve(store.has(key) ? (store.get(key) as string) : null),
+    setItem: (key, value) => {
+      store.set(key, value);
+      return Promise.resolve();
+    },
+    deleteItem: (key) => {
+      store.delete(key);
+      return Promise.resolve();
+    },
+    entries: () => Object.fromEntries(store),
+  };
+}
