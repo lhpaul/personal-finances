@@ -65,7 +65,7 @@ describe('dev-fixture', () => {
 
       expect(db.select().from(userFinancialInstitutions).all()).toHaveLength(1);
       expect(db.select().from(userFinancialProducts).all()).toHaveLength(2);
-      expect(db.select().from(transactions).all()).toHaveLength(13);
+      expect(db.select().from(transactions).all()).toHaveLength(20);
     } finally {
       sqlite.close();
     }
@@ -111,11 +111,11 @@ describe('dev-fixture', () => {
       expect(restoredConnection?.lastSuccessAt).not.toBeNull();
       expect(restoredConnection?.lastErrorCode).toBeNull();
 
-      // The fixture's own design excludes five of its thirteen movements on purpose (ids
+      // The fixture's own design excludes five of its twenty movements on purpose (ids
       // prefixed `seed-movement-excluded-`, covering every exclusion reason) — the upsert must
       // restore *that* state exactly, not blanket-null every row's `excludedAt`.
       const restoredTransactions = db.select().from(transactions).all();
-      expect(restoredTransactions).toHaveLength(13);
+      expect(restoredTransactions).toHaveLength(20);
       for (const row of restoredTransactions) {
         if (row.id.startsWith('seed-movement-excluded-')) {
           expect(row.excludedAt).not.toBeNull();

@@ -4,5 +4,6 @@ export * from './types';
 export * from './inclusion';
 export * from './apportionment';
 export * from './merchant-matching';
+export * from './merchant-suggestions';
 export * from './category-suggestion';
 export * from './aggregates';

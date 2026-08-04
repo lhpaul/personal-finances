@@ -255,7 +255,7 @@ Follows the original model.
 | `assets` | `TEXT` (JSON) | Logo / icon URLs |
 | `transaction_category_id` | `TEXT REFERENCES transaction_categories(id)` | Default category applied to future movements (`merchant-edit`) |
 | `country_code` | `TEXT` | **Null = international.** `CL` for Chilean-only merchants |
-| `user_id` | `TEXT REFERENCES users(id)` | Null = seeded; set = created by the user |
+| `user_id` | `TEXT REFERENCES users(id)` | Null = seeded; set = created by the user. `merchant-edit`'s `saveMerchantProfile` sets it to the single local `users` row's id the first time a person renames a seed-owned merchant or changes its default category — an already-set value is never overwritten. Future auto-categorization from a merchant with `user_id` set reads as `category_source = 'rule'` rather than `'auto'` |
 | `created_at` | `TEXT NOT NULL` | |
 
 ### `merchant_aliases`
@@ -273,7 +273,7 @@ A JSON array on `merchants` could not be indexed, counted or updated row by row.
 | `merchant_id` | `TEXT NOT NULL REFERENCES merchants(id) ON DELETE CASCADE` | |
 | `raw_pattern` | `TEXT NOT NULL` | Normalized fragment of the bank description, e.g. `MERCADOLIBRE COMPRA` |
 | `match_type` | `TEXT NOT NULL DEFAULT 'prefix'` | `prefix` \| `contains` \| `exact` |
-| `match_count` | `INTEGER NOT NULL DEFAULT 0` | "12 movimientos" in `merchant-edit/suggestions` |
+| `match_count` | `INTEGER NOT NULL DEFAULT 0` | "12 movimientos" in `merchant-edit/suggestions`. **Recomputed, never incremented**: on every `merchant-edit` load and inside every alias-grouping write, `recountMerchantAliases` re-derives every alias's count from `transactions` by resolving each of the merchant's movements through `resolveMerchant`'s total order, so a deleted, re-linked or re-pointed movement never leaves a stale count behind. Not seed-owned — a catalogue refresh never resets it |
 
 Unique: `(raw_pattern)`. Indexed on `(merchant_id)`.
 
