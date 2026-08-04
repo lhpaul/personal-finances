@@ -40,8 +40,13 @@ inclusion). This split is the heart of the model — see [4-database-model.md](4
 
 ### Merchant
 The counterparty behind a transaction, resolved from the raw bank description through aliases.
-One merchant folds many raw strings (`MERPAGO*MERCADOLIBRE`, `ML CHILE SPA`) and carries a
-default category applied to future movements.
+One merchant folds many raw strings (`MERCADOLIBRE COMPRA`, `MERPAGO*MERCADOLIBRE`) and carries a
+default category applied to future movements. `#screen=merchant-edit` (#14) is where a person
+acts on this: renaming the merchant, folding an on-device-detected raw string into it — a
+suggestion derived from the person's own movements, never a community source (there is no
+backend) — and setting the default category. Setting the default never rewrites a category the
+person already confirmed on a past movement; it only takes effect the next time a movement
+resolves to this merchant.
 
 ### Transaction category
 The user's spending taxonomy, split into expense and income. Seeded with a Chilean-flavored
@@ -62,7 +67,9 @@ and cannot be deleted.
    read-only. All connections belong to the same person.
 3. **Bank data is never deleted, only excluded.** A user can exclude a movement from analysis
    (with a reason) but the record stays. "Eliminar" does not exist as a concept for scraped
-   movements.
+   movements. Re-including a movement (transaction detail, item #16) clears `excluded_at`,
+   `exclusion_reason` and `exclusion_note` and returns it to every total and chart — still an
+   `UPDATE`, never a delete.
 4. **A transaction counts toward totals and charts when `excluded_at IS NULL`**, at
    `COALESCE(included_amount, amount)`. This rule is implemented once per layer — the SQL fragment
    in `apps/mobile/src/db/fragments.ts` for set-based queries, and `isIncludedInAnalysis` /

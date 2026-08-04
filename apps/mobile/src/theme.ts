@@ -756,6 +756,40 @@ export const screenMetrics = {
      * viewBox — quarter divisions). */
     chartGridLineCount: 3,
   },
+  /** `#s-merchant-edit` (implementation plan for issue #14, Layer-by-Layer). */
+  merchants: {
+    /** `.mu-topbar__btn` (L286-289) width/height — the same shared top-bar button geometry every
+     * other screen's own `screenMetrics.<screen>.topBarButtonSize` records (Decision 11's
+     * per-screen-local-composition precedent: `mu-topbar*` is `deferred` in `mu-class-map.ts`). */
+    topBarButtonSize: 36,
+    /** `.mu-topbar__btn` (L288) glyph font-size. */
+    topBarButtonGlyphSize: 20,
+    /** `.mu-item__chev` (L466) disclosure-row chevron glyph font-size. */
+    disclosureChevronSize: 18,
+    /** `.mu-item__icon` (L459-462) width/height. */
+    itemIconSize: 40,
+    /** `.mu-item__icon` (L461) glyph font-size. */
+    itemIconGlyphSize: 19,
+    /** `.mu-item__title` (L464) font-size (bare literal, not a `--*` token). */
+    itemTitleFontSize: 15,
+    /** `.mu-item__sub` (L465) margin-top. */
+    itemSubMarginTop: 1,
+    /** `#s-merchant-edit`'s `.mu-bars` inline `style="height:80px"` override (L1343) — not the
+     * class's own 120px default, which a different screen may use unmodified. */
+    barsHeight: 80,
+    /** `.mu-bars` / `.mu-bars__col` (L496-497) gap. */
+    barsGap: 6,
+    /** `.mu-bars__lbl` (L501) font-size. */
+    barLabelFontSize: 10,
+    /** `.mu-bars__bar` (L498) border-radius, top corners. */
+    barRadiusTop: 6,
+    /** `.mu-bars__bar` (L498) border-radius, bottom corners. */
+    barRadiusBottom: 2,
+    /** `.mu-grid-2` (category-picker) two-column grid — each chip's column width, as a
+     * percentage string so `no-style-literals.test.ts`'s numeric-literal scanner never applies
+     * to it (Scanner B only tracks bare numbers). */
+    categoryPickerColumnWidth: '48%',
+  },
   /** `#s-transactions` (implementation plan for issue #15, Layer-by-Layer). Most of what this
    * screen draws is already token-based (`.mu-pad`, `.mu-tx-group`'s `var(--sp*)` margins);
    * these are the few bare-literal values left, for the screen-local `mu-list`/`mu-item`
@@ -770,6 +804,16 @@ export const screenMetrics = {
     closeButtonSize: 36,
     /** `.mu-topbar__btn` (L286) glyph font-size. */
     closeButtonFontSize: 20,
+  },
+  /** `#s-transaction-detail` (implementation plan for issue #16, Layer-by-Layer). The screen-local
+   * top bar mirrors #13's `StageTopBar` sizing (Decision 10 — `mu-topbar*` stays deferred). */
+  transactionDetail: {
+    /** The hero card's state glyph (🛒 / ❓ / 🚫), `font-size:34px` (bare literal). */
+    heroGlyphSize: 34,
+    /** `.mu-topbar__btn` width/height. */
+    topBarButtonSize: 36,
+    /** `.mu-topbar__btn` glyph font-size. */
+    topBarButtonGlyphSize: 20,
   },
   /** `#s-bank-syncing` (implementation plan for issue #11). Its headline icon
    * (`<div style="font-size:52px">🔄</div>` in the progress states, `⚠️` in `error`) is a bare

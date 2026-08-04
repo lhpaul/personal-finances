@@ -27,6 +27,11 @@ export type TextFieldProps = {
    * Decision 12 — the manual-entry amount field). Defaults to `'default'`; this is a validation
    * hint for the keyboard only, never a substitute for parsing/rejecting the typed value. */
   keyboardType?: 'default' | 'numeric';
+  /** Additive (implementation plan for issue #16, Decision 9): fires alongside the field's own
+   * internal focus-tracking `onBlur`, so a caller can save a draft on blur (the note field's
+   * save-on-blur behaviour) without owning the focus state itself. Optional and unused by every
+   * existing call site, so this is a no-op for them. */
+  onBlur?: () => void;
 };
 
 /** `.mu-field`, `.mu-label`, `.mu-input`, `--ph`, `.is-focus`, `.is-error`, `.is-locked`,
@@ -43,6 +48,7 @@ export function TextField({
   icon,
   accessibilityLabel,
   keyboardType = 'default',
+  onBlur,
 }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
   const hasError = error !== null && error !== undefined;
@@ -96,7 +102,10 @@ export function TextField({
           autoCorrect={!secureTextEntry}
           keyboardType={keyboardType}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={() => {
+            setFocused(false);
+            onBlur?.();
+          }}
           // `label` renders as a sibling Text, which React Native does not associate with the
           // input on its own — set an explicit accessible name (falling back to the
           // placeholder, or the caller's own override) and surface the error/hint as the

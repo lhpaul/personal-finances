@@ -28,6 +28,9 @@
     },
     "stage-queue": {
       "description": "apps/mobile/src/db/__fixtures__/stage-queue-v1.sql applied on top of a bootstrapped store (#13)"
+    },
+    "transaction-detail": {
+      "description": "apps/mobile/src/db/__fixtures__/transaction-detail-v1.sql applied on top of a bootstrapped store (#16)"
     }
   },
   "coverage_sets": [
@@ -482,20 +485,35 @@
     {
       "screen_id": "merchant-edit",
       "state_id": "default",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/categorize/merchant/[merchantId].tsx",
+      "deep_link": "finanzas:///categorize/merchant/mercadolibre?fidelity=1&fidelityScreen=merchant-edit&fidelityState=default",
+      "ready_test_id": "fidelity-merchant-edit",
+      "max_mismatch_pct": 6.0,
+      "threshold_note": "The stats card's three bars are computed from the current three calendar months (anchored to today), while the committed fixture's movements are dated 2025-11 -> 2026-01, so the bars and amounts differ from the mockup's $60.200 / -55% sample."
     },
     {
       "screen_id": "merchant-edit",
       "state_id": "suggestions",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/categorize/merchant/[merchantId].tsx",
+      "deep_link": "finanzas:///categorize/merchant/mercadolibre?fidelity=1&fidelityScreen=merchant-edit&fidelityState=suggestions",
+      "ready_test_id": "fidelity-merchant-edit",
+      "max_mismatch_pct": 6.0,
+      "threshold_note": "The stats card's three bars are computed from the current three calendar months (anchored to today), while the committed fixture's movements are dated 2025-11 -> 2026-01, so the bars and amounts differ from the mockup's $60.200 / -55% sample."
     },
     {
       "screen_id": "merchant-edit",
       "state_id": "category-picker",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/categorize/merchant/[merchantId].tsx",
+      "deep_link": "finanzas:///categorize/merchant/mercadolibre?fidelity=1&fidelityScreen=merchant-edit&fidelityState=category-picker",
+      "ready_test_id": "fidelity-merchant-edit",
+      "max_mismatch_pct": 6.0,
+      "threshold_note": "The mockup draws six sample chips; the app draws the full taxonomy for the merchant's observed direction (Assumption A5), so the grid is taller."
     },
     {
       "screen_id": "transactions",
@@ -536,26 +554,38 @@
     {
       "screen_id": "transaction-detail",
       "state_id": "categorized",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "transaction-detail",
+      "app_file": "apps/mobile/app/transactions/[transactionId].tsx",
+      "deep_link": "finanzas:///transactions/detail-tx-categorized?fidelity=1&fidelityScreen=transaction-detail&fidelityState=categorized",
+      "ready_test_id": "fidelity-transaction-detail"
     },
     {
       "screen_id": "transaction-detail",
       "state_id": "uncategorized",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "transaction-detail",
+      "app_file": "apps/mobile/app/transactions/[transactionId].tsx",
+      "deep_link": "finanzas:///transactions/detail-tx-uncategorized?fidelity=1&fidelityScreen=transaction-detail&fidelityState=uncategorized",
+      "ready_test_id": "fidelity-transaction-detail"
     },
     {
       "screen_id": "transaction-detail",
       "state_id": "excluded",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "transaction-detail",
+      "app_file": "apps/mobile/app/transactions/[transactionId].tsx",
+      "deep_link": "finanzas:///transactions/detail-tx-excluded?fidelity=1&fidelityScreen=transaction-detail&fidelityState=excluded",
+      "ready_test_id": "fidelity-transaction-detail"
     },
     {
       "screen_id": "transaction-detail",
       "state_id": "exclude-sheet",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "transaction-detail",
+      "app_file": "apps/mobile/app/transactions/[transactionId].tsx",
+      "deep_link": "finanzas:///transactions/detail-tx-categorized?fidelity=1&fidelityScreen=transaction-detail&fidelityState=exclude-sheet",
+      "ready_test_id": "fidelity-transaction-detail"
     },
     {
       "screen_id": "dashboard",

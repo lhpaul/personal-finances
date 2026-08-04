@@ -184,10 +184,14 @@
 - **Ruta:** `/categorize/merchant/[merchantId]` · **Mockup:** `#screen=merchant-edit&state=default`
 - **Estados:** `default`; `suggestions` (alias crudos sugeridos para plegar bajo este comercio);
   `category-picker` (selector de categoría default).
-- **Acciones:** 🟡 renombrar comercio; aceptar/rechazar alias (un comercio pliega muchos strings
-  crudos: `MERPAGO*MERCADOLIBRE`, `ML CHILE SPA`); fijar categoría default → aplica a movimientos
-  futuros. 🟡 ¿Re-categoriza también los pasados no editados a mano? — **no** salvo que LH decida
-  lo contrario: las decisiones del usuario nunca se pisan (principio del upsert de #3).
+- **Acciones:** renombrar comercio (persiste solo al tocar "Guardar"); agrupar un alias detectado
+  (un comercio pliega muchos strings crudos, p. ej. `MERCADOLIBRE COMPRA` + `MERPAGO*MERCADOLIBRE`
+  — las sugerencias se derivan de los propios movimientos del dispositivo, nunca de una fuente
+  comunitaria; `ML CHILE SPA` es el ejemplo negativo del mockup, no comparte token distintivo con
+  el comercio y por eso el MVP no la sugiere); fijar categoría default → aplica a movimientos
+  futuros. ¿Re-categoriza también los pasados no editados a mano? — **no**: las decisiones del
+  usuario nunca se pisan (principio del upsert de #3); fijar la categoría default solo escribe la
+  fila del comercio, nunca una transacción (#14).
 - **Datos:** entidad *Merchant* + sus alias.
 
 ### categorize-complete

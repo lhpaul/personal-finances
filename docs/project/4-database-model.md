@@ -255,7 +255,7 @@ Follows the original model.
 | `assets` | `TEXT` (JSON) | Logo / icon URLs |
 | `transaction_category_id` | `TEXT REFERENCES transaction_categories(id)` | Default category applied to future movements (`merchant-edit`) |
 | `country_code` | `TEXT` | **Null = international.** `CL` for Chilean-only merchants |
-| `user_id` | `TEXT REFERENCES users(id)` | Null = seeded; set = created by the user |
+| `user_id` | `TEXT REFERENCES users(id)` | Null = seeded; set = created by the user. `merchant-edit`'s `saveMerchantProfile` sets it to the single local `users` row's id the first time a person renames a seed-owned merchant or changes its default category — an already-set value is never overwritten. Future auto-categorization from a merchant with `user_id` set reads as `category_source = 'rule'` rather than `'auto'` |
 | `created_at` | `TEXT NOT NULL` | |
 
 ### `merchant_aliases`
@@ -273,7 +273,7 @@ A JSON array on `merchants` could not be indexed, counted or updated row by row.
 | `merchant_id` | `TEXT NOT NULL REFERENCES merchants(id) ON DELETE CASCADE` | |
 | `raw_pattern` | `TEXT NOT NULL` | Normalized fragment of the bank description, e.g. `MERCADOLIBRE COMPRA` |
 | `match_type` | `TEXT NOT NULL DEFAULT 'prefix'` | `prefix` \| `contains` \| `exact` |
-| `match_count` | `INTEGER NOT NULL DEFAULT 0` | "12 movimientos" in `merchant-edit/suggestions` |
+| `match_count` | `INTEGER NOT NULL DEFAULT 0` | "12 movimientos" in `merchant-edit/suggestions`. **Recomputed, never incremented**: on every `merchant-edit` load and inside every alias-grouping write, `recountMerchantAliases` re-derives every alias's count from `transactions` by resolving each of the merchant's movements through `resolveMerchant`'s total order, so a deleted, re-linked or re-pointed movement never leaves a stale count behind. Not seed-owned — a catalogue refresh never resets it |
 
 Unique: `(raw_pattern)`. Indexed on `(merchant_id)`.
 
@@ -293,14 +293,14 @@ The core table.
 | `occurred_at` | `TEXT NOT NULL` | ISO-8601 UTC |
 | `date_local` | `TEXT NOT NULL` | `YYYY-MM-DD` — month grouping in `transactions` |
 | `raw_description` | `TEXT NOT NULL` | Gap #6 — immutable, from the bank |
-| `note` | `TEXT` | Gap #6 — user-editable |
+| `note` | `TEXT` | Gap #6 — user-editable; the transaction detail screen (#16) is this column's writer |
 | `merchant_id` | `TEXT REFERENCES merchants(id)` | Resolved counterparty |
 | `transaction_category_id` | `TEXT REFERENCES transaction_categories(id)` | Null = "Necesita categorización" |
 | `category_source` | `TEXT` | Gap #4 — `auto` \| `user` \| `rule` — the categorization flow (#13) writes `user` only |
 | `review_flag` | `TEXT` | Gap #5 — `review_later` \| `uncertain` — written by the categorization flow (#13) |
-| `excluded_at` | `TEXT` | Gap #2 — non-null = out of every total and chart — written by the categorization flow (#13) |
-| `exclusion_reason` | `TEXT` | `personal_transfer` \| `shared_expense` \| `not_relevant` \| `cash_withdrawal` \| `other` — written by the categorization flow (#13) |
-| `exclusion_note` | `TEXT` | Free text, optional for every reason (not only `other` — the categorization flow's spec Conflict 3 resolves the mockup's own drawn note field over this cell's earlier phrasing) — written by the categorization flow (#13) |
+| `excluded_at` | `TEXT` | Gap #2 — non-null = out of every total and chart — written by the categorization flow (#13); cleared (re-included) by the transaction detail screen (#16) |
+| `exclusion_reason` | `TEXT` | `personal_transfer` \| `shared_expense` \| `not_relevant` \| `cash_withdrawal` \| `other` — written by the categorization flow (#13) and by the transaction detail screen's own exclusion sheet (#16, four of the five reasons — `cash_withdrawal` is reachable only from #13); cleared by re-inclusion (#16) |
+| `exclusion_note` | `TEXT` | Free text, optional for every reason (not only `other` — the categorization flow's spec Conflict 3 resolves the mockup's own drawn note field over this cell's earlier phrasing) — written by the categorization flow (#13); the transaction detail screen's own exclusion sheet (#16) always stores `null` here, since that sheet draws no note field; cleared by re-inclusion (#16), which is this column's only clearer |
 | `included_amount` | `INTEGER` | **No UI in the MVP** — always null. Kept as a column so the inclusion rule below never has to change when partial inclusion ships |
 | `metadata` | `TEXT` (JSON) | Bank-specific extras the scraper returns |
 | `is_manual` | `INTEGER NOT NULL DEFAULT 0` | Added by hand, not scraped |
