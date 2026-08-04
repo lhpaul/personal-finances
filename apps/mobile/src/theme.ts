@@ -777,6 +777,16 @@ export const screenMetrics = {
     /** `.mu-topbar__btn` (L286) glyph font-size. */
     closeButtonFontSize: 20,
   },
+  /** `#s-transaction-detail` (implementation plan for issue #16, Layer-by-Layer). The screen-local
+   * top bar mirrors #13's `StageTopBar` sizing (Decision 10 — `mu-topbar*` stays deferred). */
+  transactionDetail: {
+    /** The hero card's state glyph (🛒 / ❓ / 🚫), `font-size:34px` (bare literal). */
+    heroGlyphSize: 34,
+    /** `.mu-topbar__btn` width/height. */
+    topBarButtonSize: 36,
+    /** `.mu-topbar__btn` glyph font-size. */
+    topBarButtonGlyphSize: 20,
+  },
   /** `#s-bank-syncing` (implementation plan for issue #11). Its headline icon
    * (`<div style="font-size:52px">🔄</div>` in the progress states, `⚠️` in `error`) is a bare
    * inline style in the mockup, not a `mu-*` class, so `mu-class-map.ts` (V4) does not inventory

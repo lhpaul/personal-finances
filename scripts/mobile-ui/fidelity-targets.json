@@ -28,6 +28,9 @@
     },
     "stage-queue": {
       "description": "apps/mobile/src/db/__fixtures__/stage-queue-v1.sql applied on top of a bootstrapped store (#13)"
+    },
+    "transaction-detail": {
+      "description": "apps/mobile/src/db/__fixtures__/transaction-detail-v1.sql applied on top of a bootstrapped store (#16)"
     }
   },
   "coverage_sets": [
@@ -551,26 +554,38 @@
     {
       "screen_id": "transaction-detail",
       "state_id": "categorized",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "transaction-detail",
+      "app_file": "apps/mobile/app/transactions/[transactionId].tsx",
+      "deep_link": "finanzas:///transactions/detail-tx-categorized?fidelity=1&fidelityScreen=transaction-detail&fidelityState=categorized",
+      "ready_test_id": "fidelity-transaction-detail"
     },
     {
       "screen_id": "transaction-detail",
       "state_id": "uncategorized",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "transaction-detail",
+      "app_file": "apps/mobile/app/transactions/[transactionId].tsx",
+      "deep_link": "finanzas:///transactions/detail-tx-uncategorized?fidelity=1&fidelityScreen=transaction-detail&fidelityState=uncategorized",
+      "ready_test_id": "fidelity-transaction-detail"
     },
     {
       "screen_id": "transaction-detail",
       "state_id": "excluded",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "transaction-detail",
+      "app_file": "apps/mobile/app/transactions/[transactionId].tsx",
+      "deep_link": "finanzas:///transactions/detail-tx-excluded?fidelity=1&fidelityScreen=transaction-detail&fidelityState=excluded",
+      "ready_test_id": "fidelity-transaction-detail"
     },
     {
       "screen_id": "transaction-detail",
       "state_id": "exclude-sheet",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "transaction-detail",
+      "app_file": "apps/mobile/app/transactions/[transactionId].tsx",
+      "deep_link": "finanzas:///transactions/detail-tx-categorized?fidelity=1&fidelityScreen=transaction-detail&fidelityState=exclude-sheet",
+      "ready_test_id": "fidelity-transaction-detail"
     },
     {
       "screen_id": "dashboard",

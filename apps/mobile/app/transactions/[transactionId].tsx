@@ -1,5 +1,9 @@
-import { RoutePlaceholder } from '../../src/components/RoutePlaceholder';
+import { useLocalSearchParams } from 'expo-router';
+
+import { TransactionDetailScreen } from '../../src/features/transaction-detail/TransactionDetailScreen';
+import { fidelityTestId } from '../../src/lib/fidelity-preview';
 
 export default function TransactionDetail() {
-  return <RoutePlaceholder screenId="transaction-detail" route="/transactions/[transactionId]" />;
+  const { transactionId } = useLocalSearchParams<{ transactionId: string }>();
+  return <TransactionDetailScreen transactionId={transactionId} testID={fidelityTestId('transaction-detail')} />;
 }
