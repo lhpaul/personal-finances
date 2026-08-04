@@ -10,6 +10,16 @@ import type { ScraperStepId } from '@finanzas/bank-scraper';
 /** Exactly the four states the manifest declares for `bank-syncing` (V2). */
 export type BankSyncingState = 'login' | 'products' | 'transactions' | 'error';
 
+const BANK_SYNCING_STATES: readonly BankSyncingState[] = ['login', 'products', 'transactions', 'error'];
+
+/** Validates a `?fidelityState=` route param against the closed `BankSyncingState` union
+ * (Decision 12) — an unrecognised or missing value falls back to `login`, the manifest's own
+ * `initial: true` state, rather than rendering nothing. */
+export function resolvePreviewBankSyncingState(raw: string | null): BankSyncingState {
+  const match = BANK_SYNCING_STATES.find((candidate) => candidate === raw);
+  return match ?? 'login';
+}
+
 /** The hook's own lifecycle phase (Decision 6). `starting` is before the first `onProgress`
  * arrives; `stopped` is the cancellation-on-unmount outcome (Assumption A1) and is unreachable
  * on screen, but is part of the union so the outcome mapping stays total. */

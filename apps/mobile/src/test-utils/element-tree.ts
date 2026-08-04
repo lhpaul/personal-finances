@@ -43,7 +43,16 @@ export function collectElements(
 
     if (predicate(node)) found.push(node);
 
-    if (options?.resolveComponents && typeof node.type === 'function') {
+    // A React *class* component (including every native host component under the RN Jest
+    // preset's mock — `View`, `ScrollView`, `Animated.View`… are all mocked as classes, found
+    // during implementation of issue #11) cannot be invoked as a plain function; `isReactComponent`
+    // on its prototype is the standard duck-typed detector. Skipping resolution for one falls
+    // through to the ordinary `props.children` walk below, which is still safe.
+    const isClassComponent =
+      typeof node.type === 'function' &&
+      Boolean((node.type as { prototype?: { isReactComponent?: unknown } }).prototype?.isReactComponent);
+
+    if (options?.resolveComponents && typeof node.type === 'function' && !isClassComponent) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see module doc comment
       const rendered = (node.type as (props: any) => ReactNode)(node.props);
       visit(rendered);

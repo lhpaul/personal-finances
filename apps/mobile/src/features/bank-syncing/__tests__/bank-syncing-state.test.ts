@@ -3,6 +3,7 @@ import type { ScraperStepId } from '@finanzas/bank-scraper';
 import {
   PROGRESS_FLOOR,
   resolveBankSyncingState,
+  resolvePreviewBankSyncingState,
   resolveProgressValue,
   resolveStepStatuses,
   STEP_TO_STATE,
@@ -106,5 +107,22 @@ describe('resolveStepStatuses (scenario 5; non-negotiable 6; Assumption A3)', ()
     expect(rows.login).toEqual({ icon: '✅', status: 'done' });
     expect(rows.products).toEqual({ icon: '✅', status: 'done' });
     expect(rows.transactions).toEqual({ icon: '✅', status: 'in_progress' });
+  });
+});
+
+describe('resolvePreviewBankSyncingState (Decision 12)', () => {
+  it.each(['login', 'products', 'transactions', 'error'] as BankSyncingState[])(
+    'accepts %s',
+    (state) => {
+      expect(resolvePreviewBankSyncingState(state)).toBe(state);
+    },
+  );
+
+  it('falls back to "login" for null (no ?fidelityState= param)', () => {
+    expect(resolvePreviewBankSyncingState(null)).toBe('login');
+  });
+
+  it('falls back to "login" for an unrecognised value', () => {
+    expect(resolvePreviewBankSyncingState('not-a-real-state')).toBe('login');
   });
 });

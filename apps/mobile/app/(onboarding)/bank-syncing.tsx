@@ -4,23 +4,20 @@ import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BankSyncingBody, type BankSyncingBodyCopy } from '../../src/features/bank-syncing/components/BankSyncingBody';
-import { resolveProgressValue, type BankSyncingState } from '../../src/features/bank-syncing/bank-syncing-state';
+import {
+  resolvePreviewBankSyncingState,
+  resolveProgressValue,
+  type BankSyncingState,
+} from '../../src/features/bank-syncing/bank-syncing-state';
 import { FAILURE_BODY_KEY, type SyncFailureKind } from '../../src/features/bank-syncing/failure-copy';
 import { useBankSync } from '../../src/features/bank-syncing/use-bank-sync';
 import { fidelityTestId, useFidelityPreview } from '../../src/lib/fidelity-preview';
 import { theme } from '../../src/theme';
 
-const PREVIEW_STATES: readonly BankSyncingState[] = ['login', 'products', 'transactions', 'error'];
-
 /** Decision 12's fallback instance for a preview capture of `error` — the mockup itself only
  * draws one failure body (`session_closed`, Assumption A4), so that is what a static capture
  * compares against. */
 const PREVIEW_FAILURE_KIND: SyncFailureKind = 'session_closed';
-
-function resolvePreviewState(raw: string | null): BankSyncingState {
-  const match = PREVIEW_STATES.find((candidate) => candidate === raw);
-  return match ?? 'login';
-}
 
 /**
  * `#screen=bank-syncing` (`login`, `products`, `transactions`, `error`) — implementation plan
@@ -38,7 +35,9 @@ export default function BankSyncing() {
 
   const bankSync = useBankSync({ enabled: !preview.active });
 
-  const state: BankSyncingState = preview.active ? resolvePreviewState(preview.state) : bankSync.state;
+  const state: BankSyncingState = preview.active
+    ? resolvePreviewBankSyncingState(preview.state)
+    : bankSync.state;
   const progressValue = preview.active
     ? resolveProgressValue(state, 0)
     : resolveProgressValue(state, bankSync.rawProgress ?? 0);
