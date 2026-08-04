@@ -20,7 +20,7 @@ import type { SecureStorePort } from '../../lib/secure-store/types';
  *
  * The claim "`bank_creds:<institutionId>` is the only key namespace this app ever writes" is held
  * by a test, not by this comment — `src/__tests__/secure-store-key-namespace.test.ts` scans every
- * `setItem(` call site under `src/**` and fails if one bypasses `credentialsKeyFor(...)`.
+ * `setItem` call site under `src/**` and fails if one bypasses `credentialsKeyFor(...)`.
  */
 export function collectCredentialKeys(db: AppDatabase): string[] {
   const fromConnections = listConnectionsForCredentialLookup(db).map(
