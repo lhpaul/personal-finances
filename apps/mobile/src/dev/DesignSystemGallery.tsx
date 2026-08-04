@@ -139,6 +139,11 @@ export function DesignSystemGallery() {
               onPress={() => undefined}
             />
             <Button
+              variant="ghostDanger"
+              label={t('ds.button.ghost_danger')}
+              onPress={() => undefined}
+            />
+            <Button
               variant="primary"
               size="sm"
               label={t('ds.button.small')}
@@ -176,6 +181,11 @@ export function DesignSystemGallery() {
                 label={t('ds.category_chip.default_label')}
                 onPress={() => undefined}
               />
+              {/* Emoji-only chip (implementation plan for issue #21, Decision 9) — the
+                  `settings-categories&state=edit` icon grid's `mu-chip` draws no label, only
+                  `mu-chip__emoji`. No new `ds.*` key: this reuses the labeled chip's own emoji
+                  constant, so `gallery-catalogue-keys.test.ts` stays green. */}
+              <CategoryChip emoji={DEFAULT_CATEGORY_EMOJI} onPress={() => undefined} />
             </View>
           </Section>
 

@@ -261,6 +261,32 @@ categories cannot be deleted at all: the app-level guard checks the slug, and a 
 `BEFORE DELETE` trigger raises `ABORT` for the same two slugs, so a raw `DELETE` that bypasses the
 app is rejected by the store itself, not only by the caller that is expected to check first.
 
+**`#screen=settings-categories` (issue #21) — the repository functions the screen owns**, all in
+`apps/mobile/src/db/repositories/categories.ts` beside `deleteCategory` above (unmodified by this
+item):
+
+- `listCategoriesWithUsage(db, { income, locale, startDateLocal, endDateLocal })` — one grouped
+  query returning every category of a direction with a `monthCount` (movements in the given
+  window) and a `totalCount` (all time). Both counts include excluded movements — an excluded
+  movement is still stored and still belongs to the category.
+- `createUserCategory(db, { income, name, emoji }, ports)` — derives a unique `slug` from `name`
+  (`slug.ts`'s `slugifyCategoryName` + `nextAvailableSlug`, checked against every existing slug
+  table-wide, not just the same direction) and inserts at ✨ Otros' current `sort_order`, pushing
+  ✨ Otros one position down. A category's `slug` is derived once, at creation, and never
+  re-derived by a later rename.
+- `renameCategory(db, id, { name, emoji })` — rewrites both locale labels and the emoji, passing
+  the existing `slug` and `sort_order` straight back through `updateCategory`. Refuses either ✨
+  Otros by slug (`isOtrosSlug`) — there is **no** store-level `BEFORE UPDATE` trigger backstopping
+  a rename the way `BEFORE DELETE` backstops a delete (a rename is recoverable by renaming back; a
+  deletion moves other rows irreversibly).
+- `reorderCategories(db, { income, orderedIds })` — the **only other** function, besides
+  `createUserCategory`, allowed to write `sort_order`. Validates `orderedIds` is exactly the set
+  of non-fallback ids of that direction, each once, then assigns `1…n` in the given order and pins
+  ✨ Otros at `n + 1`. An invalid list throws before any `UPDATE` runs.
+
+`isOtrosSlug(slug)` is the one exported predicate every guard (delete, rename, reorder) and the
+screen's own row rendering read, instead of re-spelling `'otros-gasto'` / `'otros-ingreso'`.
+
 ### `merchants`
 
 Follows the original model.

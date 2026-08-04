@@ -54,7 +54,8 @@ resolves to this merchant.
 ### Transaction category
 The user's spending taxonomy, split into expense and income. Seeded with a Chilean-flavored
 default set; fully editable. One system category per direction (✨ Otros) acts as the fallback
-and cannot be deleted.
+and cannot be deleted, and cannot be renamed; it is identified by its stable slug, never by its
+displayed name.
 
 ## Business Rules
 

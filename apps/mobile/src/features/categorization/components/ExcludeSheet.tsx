@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { Button, Radio, Sheet, Text, TextField } from '../../../components/ui';
@@ -19,8 +20,11 @@ const REASONS: StageExclusionReason[] = [
  * — the pattern `ready.tsx`'s `translateReminderDayKey` already established in this codebase.
  * This is what lets the static catalogue-key scan (`copy-contract.test.ts`) verify every key
  * against the catalogue, and what `i18next.d.ts`'s compile-time key union requires.
+ *
+ * Takes `t: TFunction`, not `ReturnType<typeof useTranslation>['t']` (found in review, item #21 —
+ * see AGENTS.md's troubleshooting entry for the `TS2589` this avoids).
  */
-function reasonLabel(t: ReturnType<typeof useTranslation>['t'], reason: StageExclusionReason): string {
+function reasonLabel(t: TFunction, reason: StageExclusionReason): string {
   switch (reason) {
     case 'personal_transfer':
       return t('categorize.exclude_reason_personal_transfer');

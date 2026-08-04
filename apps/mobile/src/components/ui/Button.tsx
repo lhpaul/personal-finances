@@ -9,7 +9,14 @@ import { componentMetrics, theme } from '../../theme';
 import { fontWeight } from './_internal/font-weight';
 import { TOUCH_METRICS } from './_internal/touch-metrics';
 
-export type ButtonVariant = 'primary' | 'muted' | 'outline' | 'ghost' | 'danger' | 'dangerSoft';
+export type ButtonVariant =
+  | 'primary'
+  | 'muted'
+  | 'outline'
+  | 'ghost'
+  | 'danger'
+  | 'dangerSoft'
+  | 'ghostDanger';
 export type ButtonSize = 'md' | 'sm';
 
 export type ButtonProps = {
@@ -38,6 +45,13 @@ const VARIANT_STYLE: Record<ButtonVariant, ViewStyle> = {
     borderWidth: componentMetrics.borderWidth.hairline,
     borderColor: theme.colors.dangerBorder,
   },
+  /** `.mu-btn--ghost` with an inline `color:var(--danger)` override (implementation plan for
+   * issue #21, `#screen=settings-categories&state=edit`'s *Eliminar categoría* button, L2452 —
+   * the mockup's **only** ghost button with a colour override; every other `.mu-btn--ghost`
+   * keeps `--t2`). Same transparent background as `ghost`, red text only (Decision 9's "a
+   * one-off is a signal the primitive is missing" — added here, additively, rather than as a
+   * per-instance style override). */
+  ghostDanger: { backgroundColor: 'transparent' },
 };
 
 const VARIANT_TEXT_COLOR: Record<ButtonVariant, string> = {
@@ -47,10 +61,11 @@ const VARIANT_TEXT_COLOR: Record<ButtonVariant, string> = {
   ghost: theme.colors.textSecondary,
   danger: theme.colors.textOnBrand,
   dangerSoft: theme.colors.danger,
+  ghostDanger: theme.colors.danger,
 };
 
 /**
- * `.mu-btn` — primary / muted / outline / ghost / danger / danger-soft, `size="sm"`.
+ * `.mu-btn` — primary / muted / outline / ghost / danger / danger-soft / ghost-danger, `size="sm"`.
  *
  * Presentational and copy-free: `label` is the only text, passed in by the caller
  * (Decision 3).
@@ -67,7 +82,7 @@ export function Button({
   const height =
     size === 'sm'
       ? componentMetrics.button.heightSm
-      : variant === 'ghost'
+      : variant === 'ghost' || variant === 'ghostDanger'
         ? componentMetrics.button.heightGhost
         : componentMetrics.button.height;
 
