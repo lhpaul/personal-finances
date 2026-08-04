@@ -124,3 +124,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gone. A new `pnpm check:layout` check runs on every install and in CI, a new `iOS bundle` CI job
   runs `expo export:embed` so a tree that cannot build the app can no longer be green, and a test
   now proves the `@finanzas/shared-domain` import restriction rejects a deliberate violation.
+- **P0: the app crashed at first render on every device build** (#95): `getAppDatabase()`
+  (`apps/mobile/src/db/runtime.ts`) read `require('../../drizzle/migrations').journal`, but this
+  project's real `babel-preset-expo` interop compiles that file's `export default { journal,
+  migrations }` to `exports.default = {...}` in every real environment — Metro's bundle and
+  Jest's `babel-jest` transform both nest it under `.default` — so `.journal` was always
+  `undefined`. This retroactively explains every failed on-device fidelity capture in the
+  campaign: the app had never successfully booted on a device build. A new
+  `resolveMigrationsConfig` (`apps/mobile/src/db/migrations-config.ts`) accepts either the flat
+  or the `.default`-nested shape; `src/db/__tests__/migrations-journal-interop.test.ts` compiles
+  the real `drizzle/migrations.js` with the real Babel config under both a Metro-shaped and a
+  `babel-jest`-shaped caller and asserts the accessor resolves a defined journal — the pre-fix
+  `.journal`-only accessor is proven to fail in the same suite. `expo export:embed` alone did not
+  catch this (it already passed while the bug existed); the fix's evidence includes a real
+  simulator boot reaching the onboarding launch gate.
