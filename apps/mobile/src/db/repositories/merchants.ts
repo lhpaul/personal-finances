@@ -287,9 +287,18 @@ export function saveMerchantProfile(
     .run();
 }
 
-/** Assumption A5 — the category picker lists the full taxonomy for the merchant's *observed*
+/**
+ * Assumption A5 — the category picker lists the full taxonomy for the merchant's *observed*
  * direction: the direction of most of its included movements, expense (`0`) on a tie or when it
- * has none. */
+ * has none.
+ *
+ * Grouped by `transactions.type` rather than counted with two separate `WHERE` queries, so a
+ * merchant's movements are scanned once regardless of how lopsided the split is. `isIncluded` is
+ * applied here (unlike `recountMerchantAliases`, which deliberately counts every movement
+ * regardless of exclusion, per Decision 7) because this is a *display* decision about which
+ * taxonomy to show, not an alias-attribution count — an excluded movement should not tip which
+ * category grid the person sees.
+ */
 function resolveMerchantDirection(db: AppDatabase, merchantId: string): 0 | 1 {
   const rows = db
     .select({ type: transactions.type, count: sql<number>`count(*)` })
