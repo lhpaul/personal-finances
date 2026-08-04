@@ -158,13 +158,19 @@ The user's link to one institution on this device. **Holds no secrets** — only
 
 Unique: `(financial_institution_id)` — one connection per bank.
 
-**Item #9 is the only writer of `status`, `credentials_key` and the `idle → syncing` transition.**
-Connecting a bank creates the row (`status: 'active'`, `sync_status: 'idle'`) or, if one already
-exists for that institution, updates only `status` — `credentials_key`, `last_sync_at`,
-`last_success_at` and the error columns survive a reconnect untouched. `credentials_key` is
-deterministic (`bank_creds:<financial_institution_id>`), which is what lets a reconnect resolve
-to the same secure-store entry instead of creating a second one. Item #10 owns every
-`ok` / `error` transition and the last-attempt/last-success bookkeeping that follows a real sync.
+**Item #9 is the only writer of `status: 'active'`, `credentials_key` and the `idle → syncing`
+transition.** Connecting a bank creates the row (`status: 'active'`, `sync_status: 'idle'`) or, if
+one already exists for that institution, updates only `status` — `credentials_key`,
+`last_sync_at`, `last_success_at` and the error columns survive a reconnect untouched.
+`credentials_key` is deterministic (`bank_creds:<financial_institution_id>`), which is what lets a
+reconnect resolve to the same secure-store entry instead of creating a second one. Item #10 owns
+every `ok` / `error` transition and the last-attempt/last-success bookkeeping that follows a real
+sync. **Item #20's settings disconnect action is the only writer of `status: 'disconnected'`** —
+an `UPDATE` of that one column, never a `DELETE`: `user_financial_products` cascades from this
+table (`ON DELETE cascade`) and `transactions` cascades from `user_financial_products`, so
+deleting this row would silently destroy every movement and product the person has. `credentials_key`
+is left byte-identical on disconnect, so a later reconnect reuses the same deterministic secure-store
+key rather than creating a second entry.
 
 **No `auto_sync` column.** Syncing is implicit: an `active` connection syncs on app open when
 its last successful sync is more than six hours old. The per-connection toggle has been removed
