@@ -482,20 +482,35 @@
     {
       "screen_id": "merchant-edit",
       "state_id": "default",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/categorize/merchant/[merchantId].tsx",
+      "deep_link": "finanzas:///categorize/merchant/mercadolibre?fidelity=1&fidelityScreen=merchant-edit&fidelityState=default",
+      "ready_test_id": "fidelity-merchant-edit",
+      "max_mismatch_pct": 6.0,
+      "threshold_note": "The stats card's three bars are computed from the current three calendar months (anchored to today), while the committed fixture's movements are dated 2025-11 -> 2026-01, so the bars and amounts differ from the mockup's $60.200 / -55% sample."
     },
     {
       "screen_id": "merchant-edit",
       "state_id": "suggestions",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/categorize/merchant/[merchantId].tsx",
+      "deep_link": "finanzas:///categorize/merchant/mercadolibre?fidelity=1&fidelityScreen=merchant-edit&fidelityState=suggestions",
+      "ready_test_id": "fidelity-merchant-edit",
+      "max_mismatch_pct": 6.0,
+      "threshold_note": "The stats card's three bars are computed from the current three calendar months (anchored to today), while the committed fixture's movements are dated 2025-11 -> 2026-01, so the bars and amounts differ from the mockup's $60.200 / -55% sample."
     },
     {
       "screen_id": "merchant-edit",
       "state_id": "category-picker",
-      "status": "planned",
-      "fixture": "seed-default"
+      "status": "wired",
+      "fixture": "seed-default",
+      "app_file": "apps/mobile/app/categorize/merchant/[merchantId].tsx",
+      "deep_link": "finanzas:///categorize/merchant/mercadolibre?fidelity=1&fidelityScreen=merchant-edit&fidelityState=category-picker",
+      "ready_test_id": "fidelity-merchant-edit",
+      "max_mismatch_pct": 6.0,
+      "threshold_note": "The mockup draws six sample chips; the app draws the full taxonomy for the merchant's observed direction (Assumption A5), so the grid is taller."
     },
     {
       "screen_id": "transactions",
