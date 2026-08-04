@@ -39,15 +39,23 @@ function listSourceFiles(dir: string): string[] {
   return results;
 }
 
-/** Matches a static `import ... from '<specifier>'` (or a subpath), `require('<specifier>')`, or
- * a dynamic `import('<specifier>')` (S9) — the specifier must end exactly at the package name or
- * a `/` boundary (S4, S5). The pattern is a fixed literal, not built from a variable (found in
- * review — CodeRabbit PR #80's `ast-grep` ReDoS finding against the earlier
- * template-interpolated version): there is exactly one forbidden specifier here, unlike
- * `db-access-boundary.test.ts`'s array of three, so no interpolation is needed at all. */
+/** Matches a static `import ... from '<specifier>'` (or a subpath), a compact or side-effect
+ * static import with no space after the `import` keyword (S10, S11 — found in review, CodeRabbit
+ * PR #80 round 3: `import\s` required at least one space, so `import{x}from '...'` and
+ * `import'...'` both escaped detection), `require('<specifier>')`, or a dynamic
+ * `import('<specifier>')` (S9) — the specifier must end exactly at the package name or a `/`
+ * boundary (S4, S5). The `(?=\s|[{*'"])` lookahead after `import` requires the *next* character to
+ * be whitespace or the start of an import clause (`{`, `*`, a quote for a side-effect import) —
+ * this is what lets the pattern detect a zero-space compact import while still rejecting an
+ * identifier that merely starts with the letters "import", such as `importantly` (S12; found in
+ * review round 3 against an earlier `import\s*` relaxation that would have matched it). The
+ * pattern is a fixed literal, not built from a variable (found in review — CodeRabbit PR #80's
+ * `ast-grep` ReDoS finding against the earlier template-interpolated version): there is exactly
+ * one forbidden specifier here, unlike `db-access-boundary.test.ts`'s array of three, so no
+ * interpolation is needed at all. */
 function findForbiddenImports(source: string): boolean {
   const pattern =
-    /(?:import\s[^;]*?from\s*|import\s*\(\s*|require\s*\(\s*)['"]expo-secure-store(?:\/[^'"]*)?['"]/;
+    /(?:import(?=\s|[{*'"])\s*(?:[^;]*?from\s*)?['"]expo-secure-store(?:\/[^'"]*)?['"]|(?:import|require)\s*\(\s*['"]expo-secure-store(?:\/[^'"]*)?['"])/;
   return pattern.test(source);
 }
 
@@ -122,6 +130,22 @@ describe('no file outside src/lib/secure-store/ imports expo-secure-store (non-n
       expect(
         findForbiddenImports("import('expo-secure-store/build/SecureStore').then((m) => m);"),
       ).toBe(true);
+    });
+
+    it("S10: `import{ getItemAsync }from 'expo-secure-store'` (no whitespace, valid ECMAScript) is flagged", () => {
+      expect(findForbiddenImports("import{ getItemAsync }from 'expo-secure-store';")).toBe(true);
+      expect(findForbiddenImports("import*as SecureStore from 'expo-secure-store';")).toBe(true);
+    });
+
+    it("S11: `import'expo-secure-store'` (side-effect import, with or without a leading space) is flagged", () => {
+      expect(findForbiddenImports("import 'expo-secure-store';")).toBe(true);
+      expect(findForbiddenImports("import'expo-secure-store';")).toBe(true);
+    });
+
+    it('S12: an identifier that merely starts with the letters "import" is NOT flagged', () => {
+      expect(
+        findForbiddenImports("importantly from 'expo-secure-store';"),
+      ).toBe(false);
     });
 
     it('S8: two import statements on one line both flag — the scan is global, not first-match', () => {

@@ -74,7 +74,7 @@ export function TopBar({ title, onBack, backAccessibilityLabel, titleAlign = 'ce
       >
         {title}
       </Text>
-      {titleAlign === 'center' && (
+      {titleAlign === 'center' && onBack !== undefined && (
         <View style={{ width: componentMetrics.topBar.buttonSize }} />
       )}
     </View>

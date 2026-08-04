@@ -55,8 +55,8 @@ export interface ConnectBankResult {
 }
 
 /**
- * Decision 7's ordered write sequence, plus two hardening steps added in review (CodeRabbit
- * PR #80):
+ * Decision 7's ordered write sequence, plus hardening steps added in review (CodeRabbit PR #80,
+ * across two rounds):
  *
  * 0. Re-check Business Rule 13's RUT lock server-side, not only in the UI (`CredentialForm`'s
  *    `locked` prop already prevents editing the RUT field once any credential entry exists, but
@@ -75,12 +75,23 @@ export interface ConnectBankResult {
  *    (Business Rule 17).
  * 3. On failure of step 2: for a *new* connection, compensate by deleting the connection row (a
  *    no-op if the transaction already rolled it back) and the just-written secure-store entry, so
- *    nothing is left behind. For an *existing* connection (a reconnect), restore the credential
- *    that was in place before step 1 overwrote it — the earlier version of this function left the
- *    unconfirmed new value in place on a database failure, which could strand a stale password
- *    disguised as the current one. Each compensation step is isolated in its own `try`/`catch` so
- *    a failure *during* cleanup can never replace the fixed `ConnectBankError` the caller expects
+ *    nothing is left behind. For an *existing* connection (a reconnect): if a prior credential was
+ *    read in step 1, restore it — the earlier version of this function left the unconfirmed new
+ *    value in place on a database failure, which could strand a stale password disguised as the
+ *    current one. If step 1 found *no* prior credential (a pre-existing connection with nothing in
+ *    the secure store — a data-inconsistency edge case, found in review round 2), delete the
+ *    just-written entry instead of leaving it behind: a stored-but-unconfirmed credential could
+ *    otherwise lock a later connection attempt through `resolveLockedRut` even though this attempt
+ *    itself reports failure. Each compensation step is isolated in its own `try`/`catch` so a
+ *    failure *during* cleanup can never replace the fixed `ConnectBankError` the caller expects
  *    with a raw provider error (which could carry implementation detail in its message).
+ *
+ * Step 0's `resolveLockedRut` and step 1's `writeCredentials` both run **before** the database
+ * `try` block below and are not covered by it — a rejection from either (found in review round
+ * 2) would otherwise reach the caller as a raw, provider-shaped error instead of the fixed
+ * `ConnectBankError`. They are wrapped in their own boundary that re-throws `rut_locked_mismatch`
+ * unchanged (it already carries no implementation detail) and maps every other failure to
+ * `connection_write_failed`, matching the database-transaction branch below exactly.
  */
 export async function connectBank(
   deps: ConnectBankDeps,
@@ -91,14 +102,20 @@ export async function connectBank(
 
   const existedBefore = getConnectionByInstitution(deps.db, institutionId) !== undefined;
 
-  const lockedRut = await resolveLockedRut(deps.db, deps.secureStore);
-  if (lockedRut !== null && normalizeRut(lockedRut) !== normalizeRut(rut)) {
-    throw new ConnectBankError('rut_locked_mismatch');
+  let priorCredentials: Awaited<ReturnType<typeof readCredentials>> = null;
+  try {
+    const lockedRut = await resolveLockedRut(deps.db, deps.secureStore);
+    if (lockedRut !== null && normalizeRut(lockedRut) !== normalizeRut(rut)) {
+      throw new ConnectBankError('rut_locked_mismatch');
+    }
+
+    priorCredentials = existedBefore ? await readCredentials(deps.secureStore, institutionId) : null;
+
+    await writeCredentials(deps.secureStore, institutionId, { rut, password });
+  } catch (error) {
+    if (error instanceof ConnectBankError) throw error;
+    throw new ConnectBankError('connection_write_failed');
   }
-
-  const priorCredentials = existedBefore ? await readCredentials(deps.secureStore, institutionId) : null;
-
-  await writeCredentials(deps.secureStore, institutionId, { rut, password });
 
   let connectionId: string | undefined;
   try {
@@ -133,6 +150,14 @@ export async function connectBank(
         await writeCredentials(deps.secureStore, institutionId, priorCredentials);
       } catch {
         // Same: best-effort restore; the caller still sees the fixed failure reason.
+      }
+    } else {
+      // existedBefore is true but step 1 found nothing to restore — the just-written credential
+      // must not remain stored under a failed write (found in review round 2).
+      try {
+        await deps.secureStore.deleteItem(credentialsKey);
+      } catch {
+        // Same: best-effort cleanup; the caller still sees the fixed failure reason.
       }
     }
     throw new ConnectBankError('connection_write_failed');

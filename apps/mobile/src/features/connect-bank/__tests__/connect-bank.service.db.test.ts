@@ -1,3 +1,4 @@
+import { upsertConnection } from '../../../db/repositories/institutions';
 import { userFinancialInstitutions } from '../../../db/schema';
 import { openBootstrappedMemoryDb } from '../../../db/testing/memory-db';
 import type { AppDatabase } from '../../../db/types';
@@ -54,6 +55,15 @@ function createFakePort(): SecureStorePort {
       store.delete(key);
       return Promise.resolve();
     },
+  };
+}
+
+/** Wraps a real `SecureStorePort` so its next `setItem` call rejects — simulates a keychain
+ * write failure happening *before* `connectBank`'s database transaction ever opens. */
+function withFailingWrite(port: SecureStorePort): SecureStorePort {
+  return {
+    ...port,
+    setItem: () => Promise.reject(new Error('simulated keychain write failure')),
   };
 }
 
@@ -288,6 +298,71 @@ describe('connectBank (issue #9)', () => {
       const rows = db.select().from(userFinancialInstitutions).all() as ConnectionRow[];
       expect(rows.filter((row) => row.financialInstitutionId === 'santander')).toHaveLength(0);
       await expect(readCredentials(port, 'santander')).resolves.toBeNull();
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('maps a pre-transaction secure-store write failure to ConnectBankError, not a raw error (found in review round 3)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    const port = createFakePort();
+    try {
+      let thrown: unknown;
+      try {
+        await connectBank(
+          { db, secureStore: withFailingWrite(port), newId: ports.newId, now: ports.now },
+          { institutionId: 'banco-de-chile', rut: '12.345.678-5', password: 'clave-uno' },
+        );
+      } catch (error: unknown) {
+        thrown = error;
+      }
+
+      // Not the raw "simulated keychain write failure" Error — the fixed, value-free reason the
+      // caller expects, exactly as a database-transaction failure below it would produce.
+      expect(thrown).toBeInstanceOf(ConnectBankError);
+      expect((thrown as ConnectBankError).reason).toBe('connection_write_failed');
+
+      // Nothing reached the database — writeCredentials rejected before the transaction opened.
+      const rows = db.select().from(userFinancialInstitutions).all();
+      expect(rows.filter((row) => row.financialInstitutionId === 'banco-de-chile')).toHaveLength(0);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('deletes an unconfirmed credential after a failed reconnect that had nothing to restore (found in review round 3)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    const port = createFakePort();
+    try {
+      // A connection row exists (existedBefore === true) but its secure-store entry does not —
+      // a data-inconsistency edge case connectBank itself cannot normally produce, but which
+      // resolveLockedRut's own contract does not rule out.
+      const credentialsKey = 'bank_creds:banco-de-chile';
+      upsertConnection(db, {
+        institutionId: 'banco-de-chile',
+        credentialsKey,
+        newId: ports.newId,
+        now: ports.now,
+      });
+      await expect(readCredentials(port, 'banco-de-chile')).resolves.toBeNull();
+
+      let thrown: unknown;
+      try {
+        await connectBank(
+          { db: withFailingTransaction(db), secureStore: port, newId: ports.newId, now: ports.now },
+          { institutionId: 'banco-de-chile', rut: '12.345.678-5', password: 'clave-nueva' },
+        );
+      } catch (error: unknown) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(ConnectBankError);
+      expect((thrown as ConnectBankError).reason).toBe('connection_write_failed');
+
+      // The just-written credential must not remain stored under a failed, unconfirmed write —
+      // it could otherwise lock a later connection attempt through resolveLockedRut even though
+      // this attempt itself reported failure.
+      await expect(readCredentials(port, 'banco-de-chile')).resolves.toBeNull();
     } finally {
       sqlite.close();
     }
