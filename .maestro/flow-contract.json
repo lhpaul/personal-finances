@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "app_id": "cl.finanzas.mobile",
+  "credential_fixtures": {
+    "rut": "12.345.678-5",
+    "password": "ZZE2EPASSZZ",
+    "note": "Fixture values. Never a real credential (issue #22 AC2)."
+  },
+  "forbidden_hosts": ["bancochile.cl", "portalpersonas.bancochile.cl"],
+  "fixture_states": [
+    { "id": "reset", "action_key": "dev.e2e_fixtures.reset_action" },
+    { "id": "synced-home", "action_key": "dev.e2e_fixtures.synced_home_action" },
+    { "id": "stage-queue", "action_key": "dev.e2e_fixtures.stage_queue_action" },
+    { "id": "transaction-detail", "action_key": "dev.e2e_fixtures.transaction_detail_action" },
+    { "id": "scripted-read", "action_key": "dev.e2e_fixtures.scripted_read_action" }
+  ],
+  "data_selectors": [
+    {
+      "text": "Banco de Chile",
+      "fixture_state": "reset",
+      "note": "The seeded institution catalogue's own name (design/tokens.json-derived, not an i18n key) — visible on bank-picker, bank-credentials, bank-connected, settings-banks and bank-review regardless of fixture state."
+    },
+    {
+      "text": "Consultoría Digital SpA",
+      "fixture_state": "stage-queue",
+      "note": "Merchant name from stage-queue-v1.sql's stage-tx-income row — tapped to open merchant-edit."
+    },
+    {
+      "text": "Freelance",
+      "fixture_state": "stage-queue",
+      "note": "The 'freelance' category's Spanish display name (design/tokens.json categoryLabels.income), suggested for stage-tx-income by its merchant's default category."
+    }
+  ],
+  "input_values": [],
+  "flows": [
+    {
+      "id": "01-onboarding-connect",
+      "file": "flows/01-onboarding-connect.yaml",
+      "fixture_state": "reset",
+      "screens": [
+        "onboarding-intro",
+        "onboarding-value",
+        "connect-bank-intro",
+        "bank-picker",
+        "bank-credentials",
+        "bank-syncing",
+        "bank-connected",
+        "notifications-intro",
+        "onboarding-ready"
+      ],
+      "status": "wired",
+      "issue": 22
+    },
+    {
+      "id": "02-home-with-data",
+      "file": "flows/02-home-with-data.yaml",
+      "fixture_state": "synced-home",
+      "screens": ["home"],
+      "status": "wired",
+      "issue": 22
+    },
+    {
+      "id": "03-categorize-batch",
+      "file": "flows/03-categorize-batch.yaml",
+      "fixture_state": "stage-queue",
+      "screens": ["stage-intro", "categorize", "merchant-edit", "categorize-complete"],
+      "status": "wired",
+      "issue": 22
+    },
+    {
+      "id": "04-transaction-detail-exclude",
+      "file": "flows/04-transaction-detail-exclude.yaml",
+      "fixture_state": "transaction-detail",
+      "screens": ["transactions", "transaction-detail"],
+      "status": "wired",
+      "issue": 22
+    },
+    {
+      "id": "05-dashboard",
+      "file": "flows/05-dashboard.yaml",
+      "fixture_state": "synced-home",
+      "screens": ["dashboard"],
+      "status": "wired",
+      "issue": 22
+    },
+    {
+      "id": "06-resync-idempotent",
+      "file": "flows/06-resync-idempotent.yaml",
+      "fixture_state": "scripted-read",
+      "screens": ["transactions"],
+      "status": "wired",
+      "issue": 22
+    },
+    {
+      "id": "07-settings-wipe",
+      "file": "flows/07-settings-wipe.yaml",
+      "fixture_state": "synced-home",
+      "screens": ["settings", "settings-about", "settings-account", "onboarding-intro"],
+      "status": "wired",
+      "issue": 19,
+      "note": "Promoted from planned (Implementation Order step 12): #19 is merged on develop. Runs last in .maestro/config.yaml — it wipes the store."
+    },
+    {
+      "id": "08-settings-banks",
+      "file": "flows/08-settings-banks.yaml",
+      "fixture_state": "synced-home",
+      "screens": ["settings-banks", "bank-review"],
+      "status": "wired",
+      "issue": 20,
+      "note": "Promoted from planned (Implementation Order step 12): #20 is merged on develop."
+    },
+    {
+      "id": "09-settings-categories",
+      "file": "flows/09-settings-categories.yaml",
+      "fixture_state": "synced-home",
+      "screens": ["settings-categories"],
+      "status": "wired",
+      "issue": 21,
+      "note": "Promoted from planned (Implementation Order step 12): #21 is merged on develop."
+    },
+    {
+      "id": "10-notifications",
+      "file": "flows/10-notifications.yaml",
+      "fixture_state": "synced-home",
+      "screens": ["notifications-schedule", "settings-notifications"],
+      "status": "wired",
+      "issue": 18,
+      "note": "Promoted from planned (Implementation Order step 12): #18 is merged on develop."
+    }
+  ],
+  "exclusions": [
+    { "screen_id": "ds-components", "reason": "Design-system reference page, not a product screen" },
+    { "screen_id": "ds-colors", "reason": "Design-system reference page, not a product screen" },
+    { "screen_id": "ds-typography", "reason": "Design-system reference page, not a product screen" }
+  ]
+}
