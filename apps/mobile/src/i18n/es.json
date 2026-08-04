@@ -794,6 +794,7 @@
   "settings.account.delete_failed_icon": "⚠️",
   "settings.account.delete_failed": "No pudimos borrar todos tus datos. No se borró nada; inténtalo de nuevo.",
   "settings.account.delete_failed_store": "Ya borramos las credenciales de tus bancos. Los datos locales quedaron pendientes de borrar; puedes intentarlo de nuevo con seguridad.",
+  "settings.account.delete_failed_db_key": "Ya borramos tus datos locales. Quedó pendiente un último paso interno; puedes intentarlo de nuevo con seguridad.",
 
   "settings.about.title": "Acerca de",
   "settings.about.brand_icon": "💰",

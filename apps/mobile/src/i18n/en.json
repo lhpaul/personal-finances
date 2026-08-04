@@ -794,6 +794,7 @@
   "settings.account.delete_failed_icon": "⚠️",
   "settings.account.delete_failed": "We couldn't delete all your data. Nothing was deleted; try again.",
   "settings.account.delete_failed_store": "We already deleted your bank credentials. Your local data is still pending deletion; it's safe to try again.",
+  "settings.account.delete_failed_db_key": "We already deleted your local data. One last internal step is still pending; it's safe to try again.",
 
   "settings.about.title": "About",
   "settings.about.brand_icon": "💰",
