@@ -560,16 +560,22 @@
     {
       "screen_id": "dashboard",
       "state_id": "month",
-      "status": "planned",
+      "status": "wired",
       "fixture": "seed-default",
+      "app_file": "apps/mobile/app/dashboard.tsx",
+      "deep_link": "finanzas:///dashboard?fidelity=1&fidelityScreen=dashboard&fidelityState=month",
+      "ready_test_id": "fidelity-dashboard",
       "max_mismatch_pct": 5.0,
       "threshold_note": "Same charts as home, plus the month/week bar series"
     },
     {
       "screen_id": "dashboard",
       "state_id": "week",
-      "status": "planned",
+      "status": "wired",
       "fixture": "seed-default",
+      "app_file": "apps/mobile/app/dashboard.tsx",
+      "deep_link": "finanzas:///dashboard?fidelity=1&fidelityScreen=dashboard&fidelityState=week",
+      "ready_test_id": "fidelity-dashboard",
       "max_mismatch_pct": 5.0,
       "threshold_note": "Same charts as home, plus the month/week bar series"
     },

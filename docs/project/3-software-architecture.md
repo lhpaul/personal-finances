@@ -10,7 +10,7 @@
 | Secrets | **`expo-secure-store`** (iOS Keychain / Android Keystore) | The one place bank credentials may exist |
 | Scraping | **`react-native-webview`** + injected scripts (`@finanzas/bank-scraper`) | Ported from `bank-scrapper-app`. Banco de Chile is already implemented |
 | State | Feature hooks (`getAppDatabase()` + repository functions) + React Context for session state | Screens are read-heavy over SQLite. **Not yet using TanStack Query** — it is not installed; the current pattern is a hook that awaits `getAppDatabase()` and calls repository functions directly (established by issue #8's onboarding screens, the app's first real screens). Adopting a query library for caching/invalidation remains a possible future direction, not a current dependency |
-| Charts | Hand-rolled **`react-native-svg`** components | Item #12's home screen trend line is the first chart built (`src/components/ui/LineChart.tsx`); the dashboard (#17) needs four more shapes, all already drawn in the mockups. A chart library would cost more than it saves |
+| Charts | Hand-rolled **`react-native-svg`** components | Item #12's home screen trend line is the first chart built (`src/components/ui/LineChart.tsx`); the dashboard (#17) adds `DonutChart` and `BarChart` and widens `LineChart`/`Legend` additively, all already drawn in the mockups. A chart library would cost more than it saves |
 | i18n | **`i18next`** + `react-i18next` + `expo-localization`, enforced by `eslint-plugin-i18next` |
 | Notifications | **`expo-notifications`**, local scheduling only | Reminders are local; there is no push server |
 | Testing | **Jest** (unit) + **Maestro** (device E2E) | See [Testing Strategy](#testing-strategy) |
@@ -164,7 +164,14 @@ connection's `credentials_key` (a secure-store *key name*, never a value) — th
 never enters this layer, only the syncing screen's own runner.
 
 - `src/db` is the only module that emits SQL. Repository functions return domain types.
-- Aggregates used by `home` and `dashboard` are SQL, not JS loops over the full table.
+- Aggregates used by `home` and `dashboard` are SQL, not JS loops over the full table. `dashboard`
+  (item #17) adds no aggregate of its own: it reads through `getAppDatabase()` plus item #12's
+  `sumIncludedByDirectionAndCategory` / `sumIncludedByDirectionAndDay` / `listCategories` behind
+  one feature hook (`useDashboardData`), the same shape every screen in this campaign uses. Its
+  six-period trend chart folds one bounded day-grained read (≤ 368 rows for a six-month window)
+  into period buckets with a pure function — this is still "aggregate in SQL, not in JS," because
+  every filter and every `sum()` already happened in SQLite; the fold only reduces a row count
+  bounded by the window, never by movement volume.
 - The inclusion rule (`excluded_at IS NULL`, `COALESCE(included_amount, amount)`) has exactly
   **two** sanctioned statements: the shared SQL query fragment (`apps/mobile/src/db`) for
   set-based aggregates, and `@finanzas/shared-domain`'s `inclusion.ts` for in-memory plain

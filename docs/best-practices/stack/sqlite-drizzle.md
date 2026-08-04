@@ -131,6 +131,15 @@ merchant or a category, even one that still has neither.
 
 - Aggregate in SQL, not in JS. `home` and `dashboard` must not `SELECT *` and reduce in
   JavaScript — these tables grow unbounded.
+  - **This is compatible with folding a day-grained SQL result into period buckets in a pure
+    function**, which is what `dashboard`'s trend card does (item #17, Decision 2): every filter
+    (inclusion, period, currency) and every `sum()` still happens in SQLite; the row set crossing
+    into JavaScript is bounded by the **window**, not by movement volume (at most one row per
+    local day × direction — ≤ 368 rows for a six-month window, ≤ 84 for six weeks). The hazard
+    this rule guards against is reducing an *unbounded* row set in JavaScript; a bounded fold over
+    an already-aggregated SQL result is the same technique `home`'s `buildCumulativeSeries`
+    already established. A future screen re-litigating this should read item #17's Decision 2
+    before adding a second SQL aggregate that merely groups by period instead of by day.
 - The "por categorizar" count runs on every app open. It has a partial index; keep the
   predicate matching it exactly (`category_id IS NULL AND excluded_at IS NULL`).
 - Repository functions return domain types, not Drizzle rows. Screens must not know a column
