@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { attemptConfirmDelete, type WipePhase } from '../use-wipe-local-data';
 import type { WipeResult } from '../wipe-local-data';
 
@@ -64,25 +67,67 @@ describe('attemptConfirmDelete (Decision 7, concurrency checklist item 2)', () =
     expect(phase).toBe('wiping');
   });
 
-  it('on { status: credentials_failed }, sets the phase to "failed" and does not call onSuccess', async () => {
+  it('on { status: credentials_failed }, sets the phase to "failed_credentials" and does not call onSuccess', async () => {
     let phase: WipePhase = 'confirming';
     const wipe = jest.fn(async (): Promise<WipeResult> => ({ status: 'credentials_failed' }));
     const onSuccess = jest.fn();
 
     await attemptConfirmDelete({ getPhase: () => phase, setPhase: (next) => (phase = next), wipe, onSuccess });
 
-    expect(phase).toBe('failed');
+    expect(phase).toBe('failed_credentials');
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
-  it('on { status: store_failed }, sets the phase to "failed" and does not call onSuccess', async () => {
+  it('on { status: store_failed }, sets the phase to "failed_store" and does not call onSuccess', async () => {
     let phase: WipePhase = 'confirming';
     const wipe = jest.fn(async (): Promise<WipeResult> => ({ status: 'store_failed' }));
     const onSuccess = jest.fn();
 
     await attemptConfirmDelete({ getPhase: () => phase, setPhase: (next) => (phase = next), wipe, onSuccess });
 
-    expect(phase).toBe('failed');
+    expect(phase).toBe('failed_store');
     expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('found in review: a rejecting wipe() (e.g. getAppDatabase() failing before wipeLocalData ever runs) sets the phase to "failed_credentials" — nothing was touched — and never escapes as an unhandled rejection', async () => {
+    let phase: WipePhase = 'confirming';
+    const wipe = jest.fn(() => Promise.reject(new Error('bootstrap failed')));
+    const onSuccess = jest.fn();
+
+    let unhandled: unknown;
+    const onUnhandledRejection = (reason: unknown) => {
+      unhandled = reason;
+    };
+    process.on('unhandledRejection', onUnhandledRejection);
+
+    try {
+      await attemptConfirmDelete({ getPhase: () => phase, setPhase: (next) => (phase = next), wipe, onSuccess });
+      expect(phase).toBe('failed_credentials');
+      expect(onSuccess).not.toHaveBeenCalled();
+    } finally {
+      await new Promise((resolve) => setImmediate(resolve));
+      process.removeListener('unhandledRejection', onUnhandledRejection);
+    }
+    expect(unhandled).toBeUndefined();
+  });
+});
+
+/**
+ * Found in review: the real hook's success path must dismiss the settings stack before replacing
+ * the route with onboarding (Decision 4) — a source-text assertion, since `useWipeLocalData` calls
+ * `useRouter()` and cannot be exercised as a plain function (no renderer, no
+ * `@testing-library/react-native` — Decision 11).
+ */
+describe('useWipeLocalData — the real onSuccess navigation (Decision 4)', () => {
+  const source = fs.readFileSync(path.resolve(__dirname, '..', 'use-wipe-local-data.ts'), 'utf8');
+
+  it("calls router.dismissAll() then router.replace('/(onboarding)/intro') on success", () => {
+    expect(source).toMatch(/router\.dismissAll\(\)/);
+    expect(source).toMatch(/router\.replace\('\/\(onboarding\)\/intro'\)/);
+
+    const dismissIndex = source.indexOf('router.dismissAll()');
+    const replaceIndex = source.indexOf("router.replace('/(onboarding)/intro')");
+    expect(dismissIndex).toBeGreaterThan(-1);
+    expect(replaceIndex).toBeGreaterThan(dismissIndex);
   });
 });

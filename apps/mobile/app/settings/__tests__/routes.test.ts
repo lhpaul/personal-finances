@@ -46,7 +46,9 @@ describe('account.tsx wires the confirmation modal to the wipe phase machine (De
     expect(source).toMatch(/visible=\{phase === 'confirming'/);
   });
 
-  it('the danger note is gated on phase === "failed" (Assumption A3)', () => {
-    expect(source).toMatch(/phase === 'failed'/);
+  it('the danger note is gated on both failure phases, with distinct copy per phase (Assumption A3; found in review)', () => {
+    expect(source).toMatch(/phase === 'failed_credentials'/);
+    expect(source).toMatch(/phase === 'failed_store'/);
+    expect(source).toMatch(/delete_failed_store/);
   });
 });

@@ -68,20 +68,31 @@ export interface WipeLocalDataDeps {
  *    never throws, so a caller can never receive an unhandled rejection from the only operation
  *    in the product that cannot be undone.
  *
+ * Steps 1-3 are wrapped in their own `try`/`catch` (found in review): a real keychain can reject
+ * on I/O — a locked device, a Keystore error — not just silently no-op, and `deleteAllCredentials`
+ * / the read-back loop had no guard of their own before this. Any such rejection is reported as
+ * `'credentials_failed'`, the same safe outcome as a detected survivor: the database is
+ * unreachable from this branch either way, so a mid-loop I/O failure leaves the device in exactly
+ * the same consistent, retryable state as a confirmed-surviving key.
+ *
  * No `DELETE` statement is issued anywhere in this module — the store is destroyed as a file, not
  * as a set of rows (Decision 11). That is what keeps this operation from ever being reusable to
  * delete a single movement, which Business Rule 3 forbids.
  */
 export async function wipeLocalData(deps: WipeLocalDataDeps): Promise<WipeResult> {
-  const keys = collectCredentialKeys(deps.db);
+  try {
+    const keys = collectCredentialKeys(deps.db);
 
-  await deleteAllCredentials(deps.secureStore, keys);
+    await deleteAllCredentials(deps.secureStore, keys);
 
-  for (const key of keys) {
-    const survivor = await deps.secureStore.getItem(key);
-    if (survivor !== null) {
-      return { status: 'credentials_failed' };
+    for (const key of keys) {
+      const survivor = await deps.secureStore.getItem(key);
+      if (survivor !== null) {
+        return { status: 'credentials_failed' };
+      }
     }
+  } catch {
+    return { status: 'credentials_failed' };
   }
 
   try {

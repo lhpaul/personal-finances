@@ -138,6 +138,63 @@ describe('wipeLocalData — scenario 2: fail-closed (Decision 1)', () => {
   });
 });
 
+describe('wipeLocalData — scenario 2b: fail-closed on a rejecting keychain (found in review — a real keychain can reject on I/O, not just silently no-op)', () => {
+  it('a deleteItem that REJECTS (not silently no-ops) returns credentials_failed, never calls resetStore, and the rejection never escapes as an unhandled rejection', async () => {
+    const { db, secureStore } = await buildFixture();
+    const rejectingKey = credentialsKeyFor('falabella');
+
+    const flakyStore = {
+      ...secureStore,
+      deleteItem: async (key: string) => {
+        if (key === rejectingKey) throw new Error('simulated keychain I/O error');
+        return secureStore.deleteItem(key);
+      },
+    };
+    const resetStore = jest.fn(async () => undefined);
+
+    let unhandled: unknown;
+    const onUnhandledRejection = (reason: unknown) => {
+      unhandled = reason;
+    };
+    process.on('unhandledRejection', onUnhandledRejection);
+
+    try {
+      const result = await wipeLocalData({ db, secureStore: flakyStore, resetStore });
+      expect(result).toEqual<WipeResult>({ status: 'credentials_failed' });
+      expect(resetStore).not.toHaveBeenCalled();
+      // The database is untouched.
+      expect(db.select().from(userFinancialInstitutions).all()).toHaveLength(2);
+      // The key whose delete rejected is still present — deleteAllCredentials stopped there.
+      expect(secureStore.entries()[rejectingKey]).toBeDefined();
+    } finally {
+      await new Promise((resolve) => setImmediate(resolve));
+      process.removeListener('unhandledRejection', onUnhandledRejection);
+    }
+
+    expect(unhandled).toBeUndefined();
+  });
+
+  it('a getItem that REJECTS during the read-back loop also returns credentials_failed and never calls resetStore', async () => {
+    const { db, secureStore } = await buildFixture();
+    const rejectingKey = credentialsKeyFor('falabella');
+
+    const flakyStore = {
+      ...secureStore,
+      getItem: async (key: string) => {
+        if (key === rejectingKey) throw new Error('simulated keychain read error');
+        return secureStore.getItem(key);
+      },
+    };
+    const resetStore = jest.fn(async () => undefined);
+
+    const result = await wipeLocalData({ db, secureStore: flakyStore, resetStore });
+
+    expect(result).toEqual<WipeResult>({ status: 'credentials_failed' });
+    expect(resetStore).not.toHaveBeenCalled();
+    expect(db.select().from(userFinancialInstitutions).all()).toHaveLength(2);
+  });
+});
+
 describe('wipeLocalData — scenario 3: store failure (Decision 1; concurrency checklist item 7)', () => {
   it('credentials delete cleanly, resetStore rejects: returns store_failed and the rejection never escapes as an unhandled rejection', async () => {
     const { db, secureStore } = await buildFixture();

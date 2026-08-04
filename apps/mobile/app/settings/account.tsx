@@ -108,10 +108,12 @@ export default function SettingsAccount() {
           </Note>
         </View>
 
-        {phase === 'failed' && (
+        {(phase === 'failed_credentials' || phase === 'failed_store') && (
           <View style={{ marginTop: theme.space['4'] }}>
             <Note tone="danger" icon={t('settings.account.delete_failed_icon')}>
-              {t('settings.account.delete_failed')}
+              {phase === 'failed_credentials'
+                ? t('settings.account.delete_failed')
+                : t('settings.account.delete_failed_store')}
             </Note>
           </View>
         )}
