@@ -225,9 +225,18 @@ passes. A red run here means an unconfigured repository would block every merge 
 
 **Maps to**: S4 preconditions H1–H3
 
-1. `cd apps/mobile && pnpm dlx eas-cli@<pinned> login`
-2. `pnpm dlx eas-cli@<pinned> init` — accept the project creation. Commit the
-   `extra.eas.projectId` it writes into `app.config.js`.
+**Already satisfied as of the implementation PR** (#23): the owner had an active EAS session and
+had already set the `EXPO_TOKEN` repository secret before implementation began; the
+implementation PR itself ran `eas init` non-interactively and committed the resulting
+`extra.eas.projectId`. `app.config.js` is a **dynamic** config (`.js`, not `.json`), so `eas init`
+could not write the field automatically — it required a manual commit (see
+[`5-release-and-signing-runbook.md`](../../project/5-release-and-signing-runbook.md#human-steps-h1h8)).
+The steps below remain the reference procedure for a from-scratch setup on a different project.
+
+1. `cd apps/mobile && pnpm dlx eas-cli@21.5.0 login`
+2. `pnpm dlx eas-cli@21.5.0 init` — accept the project creation. Commit the
+   `extra.eas.projectId` it writes into `app.config.js` (or, for a dynamic config, add it
+   manually from the command's printed output).
 3. Create a personal access token at expo.dev → Account settings → Access tokens.
 4. `gh secret set EXPO_TOKEN` and paste the token.
 5. `gh secret list` to confirm it exists.
@@ -244,7 +253,7 @@ exists as a repository secret; nothing else was added to the repository.
 1. `pnpm mobile:build:preview` — or dispatch `EAS build` with `profile: preview`.
 2. Follow the EAS dashboard link the command prints.
 3. When the build finishes, install it on the iPhone from the internal-distribution link
-   (register the device first with `pnpm dlx eas-cli@<pinned> device:create` if EAS asks).
+   (register the device first with `pnpm dlx eas-cli@21.5.0 device:create` if EAS asks).
 4. Launch it.
 5. Merge something app-relevant into `develop` and confirm the workflow enqueues a preview build
    automatically.

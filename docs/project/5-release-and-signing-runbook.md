@@ -24,7 +24,7 @@ Nothing signable lives in this repository. Every credential either lives on the 
 | App Store Connect API key | Uploaded once to EAS | The owner, when prompted during the first interactive submit (H6) |
 | Android keystore | EAS-managed credentials | EAS, generated on the first Android build (not required for the acceptance bar — see [Android scope](#android-scope)) |
 | `EXPO_TOKEN` (Expo personal access token) | GitHub repository secret, referenced **by name only** in `.github/workflows/eas-build.yml` | The owner (H2–H3) |
-| EAS project id (`extra.eas.projectId`) | Committed, plain text, in `apps/mobile/app.config.js` | `eas init` writes it (H1) — this is a public identifier, not a credential |
+| EAS project id (`extra.eas.projectId`) | Committed, plain text, in `apps/mobile/app.config.js` | `eas init` writes it (H1) for a **static** `app.json` — this project's `app.config.js` is a **dynamic** config, so `eas init` cannot write the field automatically; it was committed by hand after `eas init --account <owner> --non-interactive` printed it. Either way, this is a public identifier, not a credential |
 | Bundle identifiers (`cl.finanzas.mobile[.dev\|.preview]`) | Committed, plain text, in `apps/mobile/app.config.js` | This item |
 
 **Never commit**: a certificate, a provisioning profile, an API key, a keystore, or a password,
@@ -130,12 +130,18 @@ the acceptance bar (AC3 / S4), which iOS satisfies alone.
 These are the only steps this repository cannot perform on its own — each needs the owner's Expo
 or Apple account. Everything else in this item is designed to be verified without one.
 
+**H1–H3 status: done, as of this implementation PR.** The owner already had an active EAS
+session and had set the `EXPO_TOKEN` repository secret before implementation began; the
+implementation PR ran `eas init --account <owner> --non-interactive` and committed the resulting
+`extra.eas.projectId` by hand (dynamic config — see the Credential model table above). The rows
+below stay as the reference procedure for a from-scratch project.
+
 | # | Step | Command / place | Blocks |
 | --- | --- | --- | --- |
-| H1 | Create or sign in to an Expo account and link this app to an EAS project. Commit the `extra.eas.projectId` that `eas init` writes into `app.config.js` (non-secret) | `cd apps/mobile && pnpm dlx eas-cli@21.5.0 login` then `pnpm dlx eas-cli@21.5.0 init` | H2–H8 |
+| H1 | Create or sign in to an Expo account and link this app to an EAS project. Commit the `extra.eas.projectId` that `eas init` writes into `app.config.js` (non-secret) — for a dynamic `app.config.js`, add it by hand from the command's printed output | `cd apps/mobile && pnpm dlx eas-cli@21.5.0 login` then `pnpm dlx eas-cli@21.5.0 init --account <owner> --non-interactive` | H2–H8 |
 | H2 | Create an Expo personal access token | expo.dev → Account settings → Access tokens | H3 |
 | H3 | Add the token as the repository secret `EXPO_TOKEN` | `gh secret set EXPO_TOKEN` | Every automated build |
-| H4 | Run the first preview build and confirm the pnpm workspace installs on EAS | `pnpm mobile:build:preview` (or dispatch **EAS build** with `profile: preview`) | AC1 (preview half) |
+| H4 | Run the first preview build and confirm the pnpm workspace installs on EAS. **Android half already proven** in the implementation PR (`eas build --profile preview --platform android --non-interactive --no-wait` reached `IN_QUEUE`); the **iOS half still needs H5** — iOS `preview` targets a real device and needs Apple signing credentials, unlike the Simulator-only `development` profile | `pnpm mobile:build:preview` (or dispatch **EAS build** with `profile: preview`) | AC1 (preview half) |
 | H5 | Enrol in the Apple Developer Program (if not already) and let EAS generate the distribution certificate and provisioning profile on the first production build | `pnpm mobile:build:production-store`, answering credential prompts once | AC1 (store half), AC3 |
 | H6 | Create the App Store Connect app record for `cl.finanzas.mobile`, then submit the finished build **interactively once** so any missing identifier surfaces with a human present. Upload the App Store Connect API key to EAS when prompted | App Store Connect → Apps → New App, then `pnpm mobile:submit:ios` | AC3, D9 |
 | H7 | Configure the GitHub `production` Environment with a required reviewer, and the `develop` Environment with none | Repository → Settings → Environments | The production job's approval gate |

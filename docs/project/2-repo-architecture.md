@@ -55,6 +55,10 @@ personal-finances/
 │   ├── development-workflow/       # AI workflow helpers
 │   └── dev/                        # Local dev helpers (arrives with a later item)
 ├── .maestro/                       # Device E2E flows (arrives with #22)
+├── .github/
+│   └── workflows/                  # ci.yml (lint/typecheck/test/db-check/bundle); eas-build.yml
+│                                    # — develop -> preview, main -> production (#23); deploy.yml
+│                                    # is the unused framework placeholder
 ├── turbo.json · pnpm-workspace.yaml · eslint.config.mjs · tsconfig.base.json
 ├── .nvmrc · .prettierrc.json · .prettierignore
 └── package.json                    # Workspace root; orchestrates via turbo
