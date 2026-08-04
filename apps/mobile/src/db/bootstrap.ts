@@ -94,8 +94,21 @@ export function ensureDatabaseReady(deps: BootstrapDeps): Promise<void> {
   return bootstrapPromise;
 }
 
-/** Test-only escape hatch: clears the single-flight promise so each test starts clean. Not
- * exported for app use — production code never needs to force a re-bootstrap mid-process. */
-export function __resetBootstrapForTests(): void {
+/**
+ * Clears the single-flight promise so the next {@link ensureDatabaseReady} call genuinely
+ * re-runs migrate → bootstrap → seed against whatever database the caller opens next, instead of
+ * resolving a stale promise for a store that may no longer exist (implementation plan for issue
+ * #19, Decision 3). This is the app-facing half of `resetAppDatabase()`
+ * (`apps/mobile/src/db/runtime.ts`) — the other half, clearing the memoized handle and deleting
+ * the file, lives there.
+ */
+export function resetDatabaseBootstrap(): void {
   bootstrapPromise = undefined;
+}
+
+/** Test-only escape hatch: clears the single-flight promise so each test starts clean. Kept as a
+ * thin delegate so no existing test call site changes (implementation plan for issue #19,
+ * Decision 3). */
+export function __resetBootstrapForTests(): void {
+  resetDatabaseBootstrap();
 }
