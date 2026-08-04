@@ -164,6 +164,16 @@
   "ds.bank_row.name": "Banco de Chile",
   "ds.bank_row.sub_label": "Synced 2h ago",
 
+  "ds.section.list_group": "List",
+  "ds.list_row.icon_one": "👤",
+  "ds.list_row.title_one": "Local profile",
+  "ds.list_row.sub_one": "RUT 18.456.789-0",
+  "ds.list_row.icon_two": "🏦",
+  "ds.list_row.title_two": "Connected banks",
+  "ds.list_row.sub_two": "1 bank · 3 products",
+  "ds.list_row.icon_three": "📄",
+  "ds.list_row.title_three": "Inert row (no onPress)",
+
   "dev.placeholder.title": "PLACEHOLDER — not implemented",
   "dev.placeholder.screen": "Mockup screen: {{screenId}}",
   "dev.placeholder.route": "Route: {{route}}",

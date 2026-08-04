@@ -17,6 +17,8 @@ import {
   Hero,
   Legend,
   LineChart,
+  ListGroup,
+  ListRow,
   Modal,
   Note,
   Pill,
@@ -475,6 +477,24 @@ export function DesignSystemGallery() {
               name={t('ds.bank_row.name')}
               subLabel={t('ds.bank_row.sub_label')}
             />
+          </Section>
+
+          <Section title={t('ds.section.list_group')}>
+            <ListGroup>
+              <ListRow
+                icon={t('ds.list_row.icon_one')}
+                title={t('ds.list_row.title_one')}
+                subtitle={t('ds.list_row.sub_one')}
+                onPress={() => undefined}
+              />
+              <ListRow
+                icon={t('ds.list_row.icon_two')}
+                title={t('ds.list_row.title_two')}
+                subtitle={t('ds.list_row.sub_two')}
+                onPress={() => undefined}
+              />
+              <ListRow icon={t('ds.list_row.icon_three')} title={t('ds.list_row.title_three')} />
+            </ListGroup>
           </Section>
         </View>
       </ScrollView>

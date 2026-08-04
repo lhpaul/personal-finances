@@ -23,6 +23,8 @@ export { EmptyState, type EmptyStateAction, type EmptyStateProps } from './Empty
 export { Hero, type HeroGradient, type HeroProps } from './Hero';
 export { Legend, type LegendItem, type LegendProps } from './Legend';
 export { LineChart, type LineChartProps } from './LineChart';
+export { ListGroup, type ListGroupProps } from './ListGroup';
+export { ListRow, type ListRowProps } from './ListRow';
 export { Modal, type ModalProps } from './Modal';
 export { Note, type NoteProps, type NoteTone } from './Note';
 export { Pill, type PillProps } from './Pill';

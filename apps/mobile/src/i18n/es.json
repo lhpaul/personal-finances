@@ -164,6 +164,16 @@
   "ds.bank_row.name": "Banco de Chile",
   "ds.bank_row.sub_label": "Sincronizado hace 2 h",
 
+  "ds.section.list_group": "Lista",
+  "ds.list_row.icon_one": "👤",
+  "ds.list_row.title_one": "Perfil local",
+  "ds.list_row.sub_one": "RUT 18.456.789-0",
+  "ds.list_row.icon_two": "🏦",
+  "ds.list_row.title_two": "Bancos conectados",
+  "ds.list_row.sub_two": "1 banco · 3 productos",
+  "ds.list_row.icon_three": "📄",
+  "ds.list_row.title_three": "Fila inerte (sin onPress)",
+
   "dev.placeholder.title": "PLACEHOLDER — sin implementar",
   "dev.placeholder.screen": "Pantalla de maqueta: {{screenId}}",
   "dev.placeholder.route": "Ruta: {{route}}",
