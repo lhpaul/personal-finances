@@ -118,4 +118,56 @@ describe('findUnguardedPesoTotals — parser-risk edge cases', () => {
     const findings = findUnguardedPesoTotals(source, 'src/db/repositories/example.ts');
     expect(findings).toHaveLength(1);
   });
+
+  /**
+   * Issue #86: the guard pairing was file-level — the same file naming `isPesoDenominated`
+   * *anywhere* cleared every occurrence in it. That let a guarded aggregate vacuously clear an
+   * unguarded sibling in the same file (`totalForCategoryInPeriod` guarded,
+   * `sumIncludedByDirectionAndCategory` / `sumIncludedByDirectionAndDay` /
+   * `sumIncludedExpensesInPeriod` unguarded — the real production gap). Cases 14-16 prove the
+   * tightened, per-declaration-scope guard both catches that exact shape and still does not
+   * over-fire on a properly guarded neighbor.
+   */
+  it('14. a guarded function does not vacuously clear an unguarded sibling function in the same file (the exact issue #86 gap)', () => {
+    const source = [
+      `export function guarded() {`,
+      `  return sql${BACKTICK}coalesce(sum(\${includedAmount}), 0)${BACKTICK} && isPesoDenominated;`,
+      `}`,
+      ``,
+      `export function unguarded() {`,
+      `  return sql${BACKTICK}coalesce(sum(\${includedAmount}), 0)${BACKTICK};`,
+      `}`,
+    ].join('\n');
+    const findings = findUnguardedPesoTotals(source, 'src/db/repositories/example.ts');
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.line).toBe(6); // the unguarded() function's sum(...), not guarded()'s
+  });
+
+  it('15. restoring the guard on the previously-unguarded sibling clears the finding (both-directions proof)', () => {
+    const source = [
+      `export function guarded() {`,
+      `  return sql${BACKTICK}coalesce(sum(\${includedAmount}), 0)${BACKTICK} && isPesoDenominated;`,
+      `}`,
+      ``,
+      `export function alsoGuarded() {`,
+      `  return sql${BACKTICK}coalesce(sum(\${includedAmount}), 0)${BACKTICK} && isPesoDenominated;`,
+      `}`,
+    ].join('\n');
+    expect(findUnguardedPesoTotals(source, 'src/db/repositories/example.ts')).toEqual([]);
+  });
+
+  it('16. a guard declared in one function does not clear a sibling declared earlier in the file (order-independence)', () => {
+    const source = [
+      `export function unguardedFirst() {`,
+      `  return sql${BACKTICK}coalesce(sum(\${includedAmount}), 0)${BACKTICK};`,
+      `}`,
+      ``,
+      `export function guardedSecond() {`,
+      `  return sql${BACKTICK}coalesce(sum(\${includedAmount}), 0)${BACKTICK} && isPesoDenominated;`,
+      `}`,
+    ].join('\n');
+    const findings = findUnguardedPesoTotals(source, 'src/db/repositories/example.ts');
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.line).toBe(2); // unguardedFirst()'s sum(...)
+  });
 });
