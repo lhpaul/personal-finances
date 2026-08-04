@@ -13,7 +13,11 @@ name: EAS build
 
 on:
   push:
-    branches: [develop, main]
+    # TEMPORARY, revert-after-proof (implementation plan runbook Step 7 push-probe technique,
+    # same as item #35): adds this implementation branch so the workflow can be proved to run
+    # for real on GitHub Actions before merge, since `workflow_dispatch` is not dispatchable
+    # until this file lands on the default branch (confirmed T5). Reverted in a follow-up commit.
+    branches: [develop, main, feature/23-eas-build-release-ci]
     paths:
       - "apps/**"
       - "packages/**"
