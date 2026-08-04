@@ -70,16 +70,20 @@ read `wired`. Keep this table — it is the evidence attached to the PR.
 **Maps to**: AC2
 
 1. Confirm `pnpm e2e:lint` is green on the committed suite (Step 0 already did).
-2. Temporarily add `# rut 11.111.111-1` to any file under `.maestro/`, re-run `pnpm e2e:lint`.
-3. Revert, then temporarily add a line `password: "hunter2"`, re-run `pnpm e2e:lint`.
-4. Revert, then temporarily add `https://portalpersonas.bancochile.cl/login`, re-run
-   `pnpm e2e:lint`.
-5. Revert all three edits and confirm `pnpm e2e:lint` is green again, and that
+2. Temporarily add `# rut 11.111.111-1` to any file under `.maestro/`, re-run `pnpm e2e:lint` (R1).
+3. Revert, then temporarily add a line `password: "hunter2"`, re-run `pnpm e2e:lint` (R2).
+4. Revert, then temporarily add `- inputText: 'mi-clave-real'` to a flow, re-run `pnpm e2e:lint`
+   (R3 — this is the rule that actually closes the credential path, since typing is how a secret
+   would enter a flow).
+5. Revert, then temporarily add `https://portalpersonas.bancochile.cl/login`, re-run
+   `pnpm e2e:lint` (R4).
+6. Revert all four edits and confirm `pnpm e2e:lint` is green again, and that
    `git status` is clean.
 
 **Expected result**: each planted line produces a `file:line:rule` finding and a non-zero exit; the
-declared fixture RUT and fixture password do **not** produce a finding; the tree is clean at the
-end. A scanner that only ever passes proves nothing.
+declared fixture RUT, the declared fixture password and the declared `input_values` entries do
+**not** produce a finding; the tree is clean at the end. A scanner that only ever passes proves
+nothing.
 
 ### Step 2: Preflight failures are actionable
 

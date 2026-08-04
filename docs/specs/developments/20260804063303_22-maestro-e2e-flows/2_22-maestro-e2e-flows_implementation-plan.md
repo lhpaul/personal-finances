@@ -124,6 +124,13 @@ assuming it.
 4. **Tap targets**: the `Button` primitive sets `accessibilityLabel={label}` and renders the same
    string, so `tapOn: "<copy>"` is expected to resolve. Rows (`TransactionRow`, `CategoryChip`)
    are confirmed individually.
+5. **Maestro 2.6.0 syntax** — unverified from this repository, because nothing here uses Maestro
+   yet. Confirm against the installed CLI before relying on any of it: that `.maestro/config.yaml`
+   `flows:` restricts what `maestro test .maestro/` executes (D11 depends on this for AC1); that
+   `runFlow` accepts an `env:` map for the parameterised fixture subflow; that `repeat` with
+   `times`/`commands` is available; and that `openLink` accepts a custom scheme. If `flows:` does
+   not behave as assumed, the fallback is to move the subflows out of `.maestro/` (for example to
+   `.maestro-shared/`) so the directory contains only flows — record whichever holds.
 
 ---
 
@@ -151,7 +158,8 @@ whichever run finds #19 merged (D2, Implementation Order step 12).
 
 `.maestro/flow-contract.json` is the single source for: the declared fixture states, the flow
 list (id, file, fixture state, covered `screen_id`s, status, owning issue), the fixture credential
-constants, and the data-derived selector allowlist. `scripts/e2e/flow-contract.mjs` validates it;
+constants, the typed-input allowlist (`input_values`), and the data-derived selector allowlist
+(`data_selectors`). `scripts/e2e/flow-contract.mjs` validates it;
 `scripts/e2e/flow-lint.mjs` scans the flow files against it. Both run in CI with no simulator, in
 the existing `test` job — exactly the split `fidelity:contract` / `fidelity:test` already uses.
 
@@ -207,16 +215,23 @@ the three-slash form (`finanzas:///<route>`) throughout, matching the fidelity g
 
 ### D6 — The five named fixture states (the fixture contract)
 
-`/(dev)/e2e-fixtures` exposes exactly these, each **idempotent** (running it twice converges on
-the same state) and each composed from the existing dev stores wherever one exists:
+`/(dev)/e2e-fixtures` exposes exactly these, each composed from the existing dev stores wherever
+one exists. The **idempotency column names the mechanism** that makes re-applying a state
+converge rather than accumulate — no state relies on "run it only once":
 
-| State id | What it establishes | Built from |
-| --- | --- | --- |
-| `reset` | First launch: `app_settings.onboarding_completed` cleared, the sample fixture's connection/movement rows reset, secure-store entries for `banco-de-chile` and `santander` deleted, any installed scraper script cleared | new `src/db/dev-e2e-fixture.ts` + existing `clearSampleFixture` + `deleteCredentials` + `clearScript` |
-| `synced-home` | Onboarding complete and `store-v1.sql` loaded — home, transactions and dashboard have data | existing `loadSampleData` + the onboarding flag write |
-| `stage-queue` | Onboarding complete and `stage-queue-v1.sql` applied — 4 pending movements for a categorization session | new `src/db/dev-e2e-fixture.ts` (inlined `.sql`) |
-| `transaction-detail` | Onboarding complete and `transaction-detail-v1.sql` applied — the categorized / uncategorized / excluded rows #16's runbook uses | new `src/db/dev-e2e-fixture.ts` (inlined `.sql`) |
-| `scripted-read` | Onboarding complete, a fixture connection exists, and the `complete_with_data` script is installed, ready for a sync run | existing `ensureFixtureConnection` + `installScript` |
+| State id | Onboarding flag | What it establishes | Built from | Idempotent because |
+| --- | --- | --- | --- | --- |
+| `reset` | set to `false` | First launch: the sample fixture's connection/movement rows reset, secure-store entries for `banco-de-chile` and `santander` deleted, any installed scraper script cleared | new `src/db/dev-e2e-fixture.ts` + existing `clearSampleFixture` + `deleteCredentials` + `clearScript` | every operation is a set-to-a-literal (`UPDATE … SET`, `deleteItemAsync`, `installedScript = null`), never an increment |
+| `synced-home` | set to `true` | `store-v1.sql` loaded — home, transactions and dashboard have data | existing `loadSampleData` + `setOnboardingCompleted(db, true)` | `loadSampleFixture`'s existing `ON CONFLICT("id") DO UPDATE` upsert resets every non-id column to the fixture's own value |
+| `stage-queue` | set to `true` | `stage-queue-v1.sql` applied — 4 pending movements for a categorization session | new `src/db/dev-e2e-fixture.ts` (inlined `.sql`) | the fixture file is `INSERT OR REPLACE` with literal ids, by construction (its own header says re-applying is a no-op) |
+| `transaction-detail` | set to `true` | `transaction-detail-v1.sql` applied — the categorized / uncategorized / excluded rows #16's runbook uses | new `src/db/dev-e2e-fixture.ts` (inlined `.sql`) | same `INSERT OR REPLACE` construction |
+| `scripted-read` | **untouched** | A fixture connection exists and `complete_with_data` is installed, ready for a sync run | existing `ensureFixtureConnection` + `installScript` | `upsertConnection` is keyed on the institution, and `installedScript` is a single slot that is overwritten, not appended |
+
+`scripted-read` deliberately leaves the onboarding flag alone, because flow 01 applies it
+**before** onboarding (it needs the stubbed read installed while the flag is still `false`) and
+flow 06 reaches the transactions tab by deep link, which does not consult the flag — only
+`app/index.tsx`'s launch gate does. Its connection upsert is harmless in flow 01: the real
+connect flow upserts the same `banco-de-chile` row and overwrites the pending handoff.
 
 `.sql` text is inlined at bundle time by `babel-plugin-inline-import`, the mechanism
 `src/dev/sample-store.ts` already uses for `store-v1.sql` — no new build machinery.
@@ -308,14 +323,19 @@ mockup-manifest steps already there. No macOS, no simulator, no cost.
 
 ### D13 — AC2 is enforced by shape rules with no suppression directive
 
-`flow-lint.mjs` implements three credential rules over every file under `.maestro/`, recursively:
+`flow-lint.mjs` implements four credential rules over every file under `.maestro/`, recursively:
 
 - **R1 — RUT shape**: `\d{1,2}\.\d{3}\.\d{3}-[\dkK]` and `\d{7,8}-[\dkK]`, anywhere in the file,
   including inside comments. Allowed only if the literal equals `credential_fixtures.rut`.
 - **R2 — credential-shaped YAML key**: a line whose key is `password`, `clave`, `contraseña`,
   `contrasena`, `secret`, `token` or `apiKey` with a literal scalar value. Allowed only if the
   value equals `credential_fixtures.password`, or is a `${…}` reference (no literal present).
-- **R3 — real-bank host**: a hostname under `bancochile.cl` (or any host in the contract's
+- **R3 — typed input allowlist**: every `inputText:` literal must be declared — in
+  `credential_fixtures` or in the contract's `input_values` array (search terms, exclusion notes,
+  and similar). This rule, not R2, is what actually closes the credential path: typing is how a
+  secret would enter a flow, and `inputText` is not a credential-named key, so a shape rule alone
+  would not see it. An undeclared typed literal is a finding regardless of what it looks like.
+- **R4 — real-bank host**: a hostname under `bancochile.cl` (or any host in the contract's
   `forbidden_hosts` list). Never allowed. Matches hosts only, so the prose "Banco de Chile" and
   the `banco-de-chile` institution id do not trip it.
 
@@ -419,12 +439,16 @@ construction.
 
 - [ ] `.maestro/config.yaml` — `flows:` enumerating the six wired files (D11); `appId`.
 - [ ] `.maestro/flow-contract.json` — `schema_version`, `app_id`, `fixture_states`,
-      `credential_fixtures`, `forbidden_hosts`, `data_selectors`, `flows`.
+      `credential_fixtures`, `forbidden_hosts`, `input_values`, `data_selectors`, `flows`,
+      `exclusions`.
 - [ ] `.maestro/README.md` — how to run the suite, the extension obligation (D2/D6), the
       selector rule (D10), and the "never a real credential" rule (D13).
-- [ ] `.maestro/shared/reset.yaml` — `launchApp` with `clearState`, then apply the `reset` state.
-- [ ] `.maestro/shared/fixture.yaml` — parameterised subflow: open `finanzas:///e2e-fixtures`,
-      tap the state passed as `STATE_LABEL`, assert its success line.
+- [ ] `.maestro/shared/fixture.yaml` — the one parameterised subflow: open
+      `finanzas:///e2e-fixtures`, tap the state whose action copy is passed as `STATE_LABEL`,
+      assert the panel's success line. Every state application in every flow goes through here.
+- [ ] `.maestro/shared/reset.yaml` — `launchApp` with `clearState`, then `runFlow` of
+      `fixture.yaml` with the `reset` label (it does not re-implement the tap sequence), then
+      `openLink: 'finanzas:///'` so the flow re-enters through the real launch gate.
 - [ ] `.maestro/flows/01-onboarding-connect.yaml` — `reset` → intro → 3 value pages → connect
       intro → picker (Banco de Chile) → credentials (fixture RUT/password) → syncing (scripted
       `complete_with_data`) → bank connected → ready → lands on the stage intro.
@@ -488,8 +512,9 @@ Device E2E (the suite itself), Smoke (the runbook).
 Each maps to a brief criterion or to a scope sentence in the brief.
 
 1. `maestro test .maestro/` runs six flows to green against a booted simulator — **AC1**.
-2. `pnpm e2e:lint` fails on a planted non-fixture RUT, on a planted `password:` literal, and on a
-   planted real-bank host — **AC2**, proven in both directions.
+2. `pnpm e2e:lint` fails on a planted non-fixture RUT (R1), a planted `password:` literal (R2), a
+   planted undeclared `inputText:` literal (R3) and a planted real-bank host (R4) — **AC2**,
+   proven in both directions.
 3. The runbook walks the whole suite, including the local build prerequisites — **AC3**.
 4. Onboarding through bank connection completes with no real bank and no real credential — brief
    scope sentence 1.
@@ -546,20 +571,24 @@ input and planted-clean counterpart where the case is a negative):
 | E9 | `password: ${E2E_PASSWORD}` | no finding — no literal is present |
 | E10 | `- tapOn: "Clave de internet"` (copy that contains a credential word in a selector value, not as a key) | no finding — R2 matches keys, not values |
 | E11 | `passwordless: true` | no finding — the key must match exactly |
-| E12 | `https://portalpersonas.bancochile.cl/…` | R3 finding |
-| E13 | the prose `Banco de Chile` and the id `banco-de-chile` | no finding — R3 matches hosts |
-| E14 | a credential-shaped literal in `.maestro/shared/fixture.yaml` and in `.maestro/README.md` | findings — the walk is recursive and extension-agnostic |
-| E15 | a file with CRLF line endings | scanned; line numbers correct |
-| E16 | selector text equal to an `es.json` value | no finding |
-| E17 | selector text matching no `es.json` value and no `data_selectors` entry | selector finding, naming the file and line |
-| E18 | selector text equal to an `es.json` value that contains `{{count}}` | selector finding — interpolated copy is not a legal selector (D10) |
-| E19 | selector text listed in `data_selectors` | no finding |
-| E20 | an empty `.maestro/` tree | hard error — the scanner must not pass vacuously |
+| E12 | `inputText: 'ZZE2EPASSZZ'` (declared in `credential_fixtures`) | no finding — R3 allowlist |
+| E13 | `inputText: 'Jumbo'` (declared in `input_values`) | no finding — R3 allowlist |
+| E14 | `inputText: 'mi-clave-real'` (undeclared literal) | R3 finding — typing is the real credential path, and `inputText` is not a credential-named key |
+| E15 | `https://portalpersonas.bancochile.cl/…` | R4 finding |
+| E16 | the prose `Banco de Chile` and the id `banco-de-chile` | no finding — R4 matches hosts |
+| E17 | a credential-shaped literal in `.maestro/shared/fixture.yaml` and in `.maestro/README.md` | findings — the walk is recursive and extension-agnostic |
+| E18 | a file with CRLF line endings | scanned; line numbers correct |
+| E19 | selector text equal to an `es.json` value | no finding |
+| E20 | selector text matching no `es.json` value and no `data_selectors` entry | selector finding, naming the file and line |
+| E21 | selector text equal to an `es.json` value that contains `{{count}}` | selector finding — interpolated copy is not a legal selector (D10) |
+| E22 | selector text listed in `data_selectors` | no finding |
+| E23 | an empty `.maestro/` tree | hard error — the scanner must not pass vacuously |
 
 **Suppression semantics**: **none**, deliberately (D13). No inline directive is recognised, in any
-position; the only permitted exceptions are the two `credential_fixtures` constants and the
-`data_selectors` allowlist, both declared in `.maestro/flow-contract.json` and both reviewable in
-one place. Because there is no directive, there is no multi-suppression-on-one-line behaviour to
+position; the only permitted exceptions are the declared `credential_fixtures` constants and the
+`input_values` / `data_selectors` allowlists, all declared in `.maestro/flow-contract.json` and
+reviewable in one place. Because there is no directive, there is no multi-suppression-on-one-line
+behaviour to
 define.
 
 ### Concurrent-event-source addendum
@@ -715,6 +744,9 @@ To be performed by the developer during implementation, not now.
     { "text": "MercadoLibre Chile", "fixture_state": "stage-queue" },
     { "text": "Banco de Chile", "fixture_state": "synced-home" }
   ],
+  "input_values": [
+    { "text": "Jumbo", "usage": "transactions search term", "fixture_state": "synced-home" }
+  ],
   "flows": [
     {
       "id": "01-onboarding-connect",
@@ -747,24 +779,27 @@ name: 01 first launch, onboarding and bank connection
 tags:
   - core
 ---
+# reset.yaml: launchApp(clearState) -> apply `reset` -> openLink finanzas:///
 - runFlow: ../shared/reset.yaml
+
+# Install the stubbed read while the onboarding flag is still false (D6): the scripted
+# path is checked before readCredentials, so no keychain value is ever used (D8).
+# STATE_LABEL is the es.json value of dev.e2e_fixtures.scripted_read_action.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: '<dev.e2e_fixtures.scripted_read_action>'
+- openLink: 'finanzas:///'
 
 # Onboarding. `Comenzar` is also onboarding-ready's CTA, so anchor first (D10).
 - assertVisible: 'Bienvenido a Finanzas'
 - tapOn: 'Comenzar'
+# The third `Continuar` navigates to /(onboarding)/connect-bank (value.tsx).
 - repeat:
     times: 3
     commands:
       - tapOn: 'Continuar'
 
-# Install the stubbed read before entering the credential form: the scripted path is
-# checked before readCredentials, so no keychain value is ever used (D8).
-- runFlow:
-    file: ../shared/fixture.yaml
-    env:
-      STATE_LABEL: 'Instalar lectura determinista'
-
-- openLink: 'finanzas:///connect-bank'
 - tapOn: 'Conectar con mi banco'
 - assertVisible: 'Selecciona tu banco'
 - tapOn: 'Banco de Chile'
@@ -772,6 +807,11 @@ tags:
 - tapOn:
     below: 'RUT'
 - inputText: '12.345.678-5'   # fixture RUT — flow-contract.json credential_fixtures.rut
+- tapOn:
+    below: '<connect_credentials.password_label>'
+- inputText: 'ZZE2EPASSZZ'    # fixture password — credential_fixtures.password.
+                              # canConnect() requires both fields; omitting either
+                              # leaves `Conectar` disabled.
 - tapOn: 'Conectar'
 
 - assertVisible: '¡Banco conectado!'
@@ -857,9 +897,9 @@ this plan does not assume the answer.
    `app/(dev)/e2e-fixtures.tsx`, the `dev.e2e_fixtures.*` keys in `es.json`/`en.json`, and the
    route guard test. Verify: `pnpm lint`, `pnpm typecheck`, `pnpm --filter @finanzas/mobile test`;
    and on the simulator, `finanzas:///e2e-fixtures` opens the panel and each button reports success.
-5. **Contract**: write `.maestro/flow-contract.json` with all ten rows (six `wired`, four
-   `planned`) and `.maestro/config.yaml`. At this point no flow file exists yet, so the contract's
-   `wired` rows are written last in this step, immediately before step 7.
+5. **Contract**: write `.maestro/flow-contract.json` with all ten flow rows (six `wired`, four
+   `planned`), the five fixture states, the credential fixtures, the `input_values` and
+   `data_selectors` allowlists, and `.maestro/config.yaml`.
 6. **Contract validator**: add `scripts/e2e/flow-contract.mjs` and `flow-contract.test.mjs`; wire
    `pnpm e2e:contract` and `pnpm e2e:test`. Verify: `pnpm e2e:test` passes and `pnpm e2e:contract`
    currently **fails** on the missing flow files — that failure is the proof the validator works;
@@ -873,10 +913,10 @@ this plan does not assume the answer.
    `pnpm e2e`. Verify: `pnpm e2e` from a clean shell gives an actionable error when Metro is down,
    when the app is not installed, and when no `Finanzas E2E` device is booted — check all three.
    Then run `python3 scripts/lint/workflow-shell-snippet-lint.py --base-ref origin/develop`.
-10. **Flow lint**: add `scripts/e2e/flow-lint.mjs` and `flow-lint.test.mjs` covering E1–E20; wire
+10. **Flow lint**: add `scripts/e2e/flow-lint.mjs` and `flow-lint.test.mjs` covering E1–E23; wire
     `pnpm e2e:lint`. Verify **in both directions**: the committed suite passes, and each of the
-    three rules fails on a planted violation (the planted files live in the test's own fixtures,
-    never in `.maestro/`).
+    four credential rules (R1–R4) plus the selector check fails on a planted violation (the
+    planted files live in the test's own fixtures, never in `.maestro/`).
 11. **CI**: append the three steps to `ci.yml`'s `test` job and add the `maestro-ios` job to
     `e2e-regression.yml`. Verify: the PR's CI run shows the three new steps green, and the
     `maestro-ios` job is skipped (the repository variable is unset).
