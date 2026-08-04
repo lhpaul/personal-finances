@@ -43,7 +43,7 @@ pnpm --filter @finanzas/shared-domain test   # focused, fastest loop
 |----------------|-----|--------|
 | `e2e/` | outside the pnpm workspace | Playwright placeholder; this product has no web surface |
 | `hooks/` | outside the pnpm workspace | Git hooks; linted by the root ESLint config when edited |
-| `.maestro/` | no scripts | YAML flows run by the `maestro` CLI, not by node |
+| `.maestro/` | YAML flows themselves carry no scripts | Run by the `maestro` CLI, not by node — but the root `package.json` now owns `e2e`, `e2e:contract`, `e2e:lint`, `e2e:test` (`scripts/e2e/`), which validate and drive this directory (item #22) |
 
 ## Versions and engines
 

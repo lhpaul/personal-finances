@@ -301,7 +301,7 @@ arithmetic). Testing weight goes there.
 | **Unit — domain** | Jest | `packages/shared-domain/**/*.test.ts` | Every rule in [1-business-domain.md](1-business-domain.md#business-rules). Mandatory |
 | **Unit — data** | Jest + in-memory SQLite | `apps/mobile/src/db/**/*.test.ts` | Repositories, migrations, dedup on re-sync. Mandatory |
 | **Unit — scraper** | Jest — `node` for the engine/security/parsers, `jsdom` for the four reading routines | `packages/bank-scraper/src/**/*.test.ts` (engine, security, parsing) and `packages/bank-scraper/src/**/*.dom.test.ts` (injected script generators against fixtures) | Every reading routine against a recorded/hand-authored HTML fixture; the security perimeter (origin allowlist, credential holder, redaction) against planted violations. Ported from `bank-scrapper-app` (issue #6) |
-| **Device E2E** | Maestro | `.maestro/` | Happy paths only: onboarding, categorization, exclusion |
+| **Device E2E** | Maestro, contract-driven | `.maestro/` | Ten flows: first-launch onboarding through bank connection, sync to a populated home, a categorization session, transaction detail and exclusion, the dashboard, re-sync idempotency, settings wipe, settings banks, settings categories, and notifications (item #22). `.maestro/flow-contract.json` + `scripts/e2e/flow-contract.mjs`/`flow-lint.mjs` run in CI on every PR (no simulator); the device leg is label-gated (see below) |
 | **Toolchain — layout & bundle** | `scripts/check-node-linker-layout.mjs` + `expo export:embed` | `pnpm check:layout` (postinstall + CI), CI `bundle` job | Every install and every PR. Proves the `node_modules` tree is hoisted and that Metro can actually produce an iOS bundle — CI cannot be green on a tree that cannot build the app |
 | **UI — design fidelity** | `scripts/mobile-ui/` (Playwright + pixelmatch, `node --test`) | `pnpm fidelity:contract` / `fidelity:test` in CI; `pnpm fidelity` / `fidelity:verify-gate` local-only | Every screen item: the manifest-driven contract (`fidelity-targets.json`) and its unit tests run in CI on every PR; the mockup-vs-simulator pixel diff needs a booted device and stays local (item #47) |
 
@@ -312,12 +312,32 @@ The automated suite is the canonical record of what works.
 ```bash
 pnpm test                                   # all unit tiers
 pnpm --filter @finanzas/shared-domain test           # fastest feedback loop
-pnpm --filter @finanzas/mobile exec maestro test .maestro/   # device flows, requires a booted simulator
+pnpm e2e:contract                           # E2E flow contract validation — CI, no simulator
+pnpm e2e:lint                               # E2E credential scanner + selector rule — CI, no simulator
+pnpm e2e:test                               # E2E toolchain unit tests — CI, no simulator
+pnpm e2e                                    # AC1's device suite: maestro test .maestro/, wrapped with
+                                             # preflight checks — local only (or the label-gated
+                                             # maestro-ios CI job), needs a booted "Finanzas E2E"
+                                             # simulator and a Debug (__DEV__) build
+maestro test .maestro/                      # the literal AC1 acceptance command
 pnpm fidelity:contract                      # design-fidelity contract validation — CI, no simulator
 pnpm fidelity:test                          # design-fidelity contract + comparator unit tests — CI
 pnpm fidelity --screen home --state pending # mockup vs. running-app pixel diff — local only, needs
                                              # a booted "Finanzas Fidelity" simulator and a dev build
 ```
+
+`Finanzas E2E` and `Finanzas Fidelity` are two separate, dedicated simulators (`.maestro/README.md`,
+item #22 D4) — the E2E suite's `reset` fixture state deletes secure-store credentials, which must
+never happen on whichever device a fidelity capture is mid-run on, and an E2E run leaves the
+database in a flow-specific state that would corrupt a subsequent fidelity comparison.
+
+The device leg of the Maestro suite is wired but **off by default**: `e2e-regression.yml`'s
+`maestro-ios` job (macOS runner) is gated on both the `ready-for-regression` label and the
+repository variable `ENABLE_MAESTRO_E2E`. Until an owner sets that variable, the job never starts
+and bills nothing — the suite is fully usable locally via `pnpm e2e` in the meantime. A follow-up
+(not adopted in item #22) is consuming an EAS-built simulator artifact (item #23's `development`
+profile) instead of compiling the native project on the runner, once that profile's own posture
+supports it.
 
 Non-negotiable cases:
 

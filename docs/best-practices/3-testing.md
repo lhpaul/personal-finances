@@ -69,6 +69,25 @@ Any PR that adds a new filter parameter to a tool schema (Zod, JSON Schema, Joi,
 
 **Framework-agnostic**: The requirement is satisfied regardless of language or test framework. The substance — two invocations, differing results — is what matters.
 
+## Device E2E
+
+Device E2E flows live in `.maestro/` and are driven by `.maestro/flow-contract.json` — see
+[`.maestro/README.md`](../../.maestro/README.md) for the full contract and how to run the suite.
+Three rules apply to every flow, regardless of which item adds it:
+
+- **Selector rule**: a `tapOn`/`assertVisible`/`below`/`above` literal must be either an exact
+  `apps/mobile/src/i18n/es.json` value or a declared `data_selectors` entry (for data-derived
+  text — a seeded name, a fixture merchant — never app copy). `pnpm e2e:lint` fails the moment a
+  selector drifts from the catalogue, before any device run.
+- **Fixture-state extension obligation**: a flow that needs a new device state adds a row to
+  `E2E_FIXTURE_STATES` (`apps/mobile/src/dev/e2e-fixture-store.ts`) **and** declares it in
+  `flow-contract.json`'s `fixture_states`. `pnpm e2e:contract` fails if a flow references an
+  undeclared state, or if a declared state has no flow using it.
+- **Never a real credential**: `pnpm e2e:lint` proves this mechanically over every file under
+  `.maestro/` — no inline suppression directive exists, by design. The only exceptions are the two
+  declared `credential_fixtures` constants (a fixture RUT and password) and the `input_values`
+  allowlist, all declared once in `flow-contract.json`.
+
 ## Test Data and Seed Data
 
 - Tests that require data should use deterministic seed data, not random values

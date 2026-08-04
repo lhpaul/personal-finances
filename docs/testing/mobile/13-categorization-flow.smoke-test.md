@@ -58,6 +58,10 @@ store.
    The `find` is deliberate: the exact directory `expo-sqlite` uses under the app container is
    **unverified** in this runbook — the implementer confirms it on the first run and may pin the
    path here afterwards. Every later SQL step in this runbook reuses `$DB_PATH`.
+
+   > A faster in-app alternative (item #22): deep-link to `finanzas:///e2e-fixtures` (a `__DEV__`
+   > build) and tap "Cargar cola de categorización" — applies this same fixture without leaving
+   > the app. See [`.maestro/README.md`](../../../.maestro/README.md).
 3. Relaunch the app.
 
 **Expected result**: no error; the file applies cleanly and re-applying it a second time also
