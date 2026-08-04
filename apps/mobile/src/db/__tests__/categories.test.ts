@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import {
+  countCategoriesByDirection,
   createCategory,
   deleteCategory,
   listCategories,
@@ -18,6 +19,21 @@ import { openBootstrappedMemoryDb } from '../testing/memory-db';
  * Strategy's test-file table.
  */
 describe('categories repository', () => {
+  it('countCategoriesByDirection matches listCategories(...).length per direction on the seeded store (implementation plan for issue #19, Decision 15)', async () => {
+    const { sqlite, db } = await openBootstrappedMemoryDb();
+    try {
+      const result = countCategoriesByDirection(db);
+      expect(result.expense).toBe(listCategories(db, { income: 0, locale: 'es' }).length);
+      expect(result.income).toBe(listCategories(db, { income: 1, locale: 'es' }).length);
+      // The seed guarantees both directions are non-empty (no fallback copy is needed either).
+      expect(result.expense).toBeGreaterThan(0);
+      expect(result.income).toBeGreaterThan(0);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+
   it('deleting a spending category moves its movements to otros-gasto, leaves the movement count unchanged, and a forced mid-transaction failure leaves the store exactly as it was (AC8)', async () => {
     const { sqlite, db, ports } = await openBootstrappedMemoryDb();
     try {
