@@ -81,6 +81,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   filter sheet (tipo, estado, producto, mostrar excluidas) with its header badge, the empty
   state and manual transaction entry, in all four manifest states (`list`, `search`,
   `filters`, `empty`). Excluded movements stay in the list, attenuated, per Business Rule 3
+- **Bank syncing progress screen** (#11): `#screen=bank-syncing` shows the real scraper
+  progress — every `ScraperStepId` moves the step list and the bar as it happens, and all four
+  manifest states (`login`, `products`, `transactions`, `error`) are implemented. The error
+  state explains what went wrong from a four-value failure code, never a raw exception, and
+  *Reintentar* re-runs the sync with the credential already in the keychain — except after a
+  credential rejection, the one failure that returns to the credentials form. The app's hidden
+  `react-native-webview` host lives here, so no credential value ever reaches screen state, a
+  log or an error payload.
 
 ### Fixed
 
