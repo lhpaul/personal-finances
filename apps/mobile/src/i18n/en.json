@@ -8,6 +8,7 @@
   "ds.button.ghost": "Tertiary",
   "ds.button.danger": "Destructive",
   "ds.button.danger_soft": "Destructive soft",
+  "ds.button.ghost_danger": "Ghost destructive",
   "ds.button.small": "Small",
 
   "ds.section.badges": "Badges",
@@ -748,5 +749,7 @@
   "settings.categories.delete_modal_confirm": "Delete",
   "settings.categories.error_reorder": "We couldn't save the order. Try again.",
   "settings.categories.error_save": "We couldn't save the category. Try again.",
-  "settings.categories.error_delete": "We couldn't delete the category. Try again."
+  "settings.categories.error_delete": "We couldn't delete the category. Try again.",
+  "settings.categories.error_icon": "⚠️",
+  "settings.categories.retry_label": "Retry"
 }

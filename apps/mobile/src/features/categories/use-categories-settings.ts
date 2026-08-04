@@ -202,7 +202,7 @@ export function useCategoriesSettings(locale: SupportedLocale): UseCategoriesSet
     return () => {
       cancelled = true;
     };
-  }, [direction, locale, reloadToken, setRows]);
+  }, [direction, locale, reloadToken, setRows, setRetry]);
 
   const reloadRows = useCallback(async (): Promise<CategoryWithUsage[]> => {
     const db = dbRef.current ?? (await getAppDatabase());
@@ -235,7 +235,7 @@ export function useCategoriesSettings(locale: SupportedLocale): UseCategoriesSet
 
   const writeDeps = useCallback(
     (): AttemptWriteDeps => ({ reloadRows, setRows, setError, setRetry }),
-    [reloadRows, setRows],
+    [reloadRows, setRows, setRetry],
   );
 
   const saveEditor = useCallback(

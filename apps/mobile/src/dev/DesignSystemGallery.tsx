@@ -139,6 +139,11 @@ export function DesignSystemGallery() {
               onPress={() => undefined}
             />
             <Button
+              variant="ghostDanger"
+              label={t('ds.button.ghost_danger')}
+              onPress={() => undefined}
+            />
+            <Button
               variant="primary"
               size="sm"
               label={t('ds.button.small')}
