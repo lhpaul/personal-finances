@@ -54,3 +54,61 @@ describe('TopBar — left-aligned title', () => {
     expect(spacers).toHaveLength(0);
   });
 });
+
+/**
+ * `trailingAction` (dashboard implementation plan for issue #17, Decision 9) — additive: the
+ * three describe blocks above pass no `trailingAction` and must keep asserting exactly what they
+ * asserted before this prop existed (verified above, unchanged).
+ */
+describe('TopBar — centered title with a trailing action (issue #17)', () => {
+  it('renders the back button and the trailing action button, and no spacer', () => {
+    const tree = TopBar({
+      title: 'Dashboard',
+      onBack: jest.fn(),
+      titleAlign: 'center',
+      trailingAction: { glyph: '⚙️', onPress: jest.fn(), accessibilityLabel: 'Configuración' },
+    });
+    expect(pressables(tree)).toHaveLength(2);
+
+    const spacers = collectElements(
+      tree,
+      (el) => elementTypeName(el) === 'View' && el.props.style?.width !== undefined,
+    );
+    expect(spacers).toHaveLength(0);
+  });
+
+  it('renders only the trailing action button when there is no onBack', () => {
+    const tree = TopBar({
+      title: 'Dashboard',
+      titleAlign: 'center',
+      trailingAction: { glyph: '⚙️', onPress: jest.fn(), accessibilityLabel: 'Configuración' },
+    });
+    expect(pressables(tree)).toHaveLength(1);
+  });
+
+  /** Found in CodeRabbit review, PR #88: with no `onBack`, the centered title needs a leading
+   * spacer to balance the trailing action button — otherwise it centers within the lopsided
+   * remaining space and lands left of the topbar's true center. */
+  it('renders a leading spacer to balance the title when trailingAction is present and onBack is absent', () => {
+    const tree = TopBar({
+      title: 'Dashboard',
+      titleAlign: 'center',
+      trailingAction: { glyph: '⚙️', onPress: jest.fn(), accessibilityLabel: 'Configuración' },
+    });
+
+    const spacers = collectElements(
+      tree,
+      (el) => elementTypeName(el) === 'View' && el.props.style?.width !== undefined,
+    );
+    expect(spacers).toHaveLength(1);
+
+    // The spacer renders before the title, and the title itself is not treated as a spacer.
+    const children = (tree.props as { children: unknown[] }).children.flat().filter(Boolean);
+    const titleIndex = children.findIndex(
+      (child) => typeof child === 'object' && child !== null && (child as { props?: { children?: unknown } }).props?.children === 'Dashboard',
+    );
+    const spacerIndex = children.indexOf(spacers[0]);
+    expect(spacerIndex).toBeGreaterThanOrEqual(0);
+    expect(spacerIndex).toBeLessThan(titleIndex);
+  });
+});

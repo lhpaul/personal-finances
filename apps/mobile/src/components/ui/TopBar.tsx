@@ -11,6 +11,18 @@ const BACK_GLYPH = '←';
 
 export type TopBarTitleAlign = 'center' | 'left';
 
+/** A pressable glyph on the trailing edge (dashboard implementation plan for issue #17,
+ * Decision 9 — found during Step 0's residual verification: `mu-topbar*` flipped from
+ * `deferred` to `primitive`, owned by this component, when item #9 shipped it; #17 is the first
+ * consumer needing a *trailing* action, not just the leading back button). Renders in the same
+ * visual box as the back button (`componentMetrics.topBar.buttonSize`), matching the mockup's
+ * single `.mu-topbar__btn` class for both. */
+export type TopBarAction = {
+  glyph: string;
+  onPress: () => void;
+  accessibilityLabel: string;
+};
+
 export type TopBarProps = {
   title: string;
   /** Required (and rendered) only when `titleAlign` is `'center'` — the default. */
@@ -21,17 +33,29 @@ export type TopBarProps = {
    * CodeRabbit PR #80: the back button was rendering unconditionally, contradicting this same
    * doc comment). Defaults to `'center'`, the shape every product screen uses. */
   titleAlign?: TopBarTitleAlign;
+  /** Additive (implementation plan for issue #17, Decision 9): when present, replaces the
+   * trailing spacer with a real pressable button. Every pre-#17 call site omits this and renders
+   * pixel-for-pixel unchanged — the spacer keeps the title centered exactly as before. */
+  trailingAction?: TopBarAction;
 };
 
 /**
  * `.mu-topbar`, `__btn`, `__title`, `__title--left` (implementation plan for issue #9, Decision
  * 10's contingency: `mu-topbar*` was deferred first to #12, then retargeted to #8, and neither
  * shipped a topbar primitive by this item's implementation time — see the plan's
- * Implementation-start re-verification step 6). Renders no top safe-area padding of its own,
- * mirroring `ScreenHeader`'s convention: the route wraps in `SafeAreaView({ edges: ['top'] })`
- * and this component supplies only the padding below that inset.
+ * Implementation-start re-verification step 6; widened additively for a trailing action by the
+ * dashboard implementation plan for issue #17, Decision 9). Renders no top safe-area padding of
+ * its own, mirroring `ScreenHeader`'s convention: the route wraps in
+ * `SafeAreaView({ edges: ['top'] })` and this component supplies only the padding below that
+ * inset.
  */
-export function TopBar({ title, onBack, backAccessibilityLabel, titleAlign = 'center' }: TopBarProps) {
+export function TopBar({
+  title,
+  onBack,
+  backAccessibilityLabel,
+  titleAlign = 'center',
+  trailingAction,
+}: TopBarProps) {
   const touchMetrics = TOUCH_METRICS.topBarBtn;
 
   return (
@@ -64,6 +88,15 @@ export function TopBar({ title, onBack, backAccessibilityLabel, titleAlign = 'ce
           <Text style={{ fontSize: componentMetrics.topBar.buttonGlyphFontSize }}>{BACK_GLYPH}</Text>
         </Pressable>
       )}
+      {/* Found in CodeRabbit review, PR #88: with no `onBack`, the title's `flex: 1` region used
+       * to start at the container's left edge while `trailingAction` occupies a fixed box on the
+       * right — the centered `Text` then centers within that lopsided remaining space, landing
+       * left of the topbar's true center. A same-sized leading spacer balances it, exactly the
+       * way the trailing spacer already balances a centered title that has `onBack` but no
+       * `trailingAction`. */}
+      {titleAlign === 'center' && onBack === undefined && trailingAction !== undefined && (
+        <View style={{ width: componentMetrics.topBar.buttonSize }} />
+      )}
       <Text
         center={titleAlign === 'center'}
         style={{
@@ -74,7 +107,26 @@ export function TopBar({ title, onBack, backAccessibilityLabel, titleAlign = 'ce
       >
         {title}
       </Text>
-      {titleAlign === 'center' && onBack !== undefined && (
+      {titleAlign === 'center' && trailingAction !== undefined && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={trailingAction.accessibilityLabel}
+          onPress={trailingAction.onPress}
+          hitSlop={touchMetrics.hitSlop}
+          style={{
+            width: componentMetrics.topBar.buttonSize,
+            height: componentMetrics.topBar.buttonSize,
+            borderRadius: theme.radius.sm,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ fontSize: componentMetrics.topBar.buttonGlyphFontSize }}>
+            {trailingAction.glyph}
+          </Text>
+        </Pressable>
+      )}
+      {titleAlign === 'center' && trailingAction === undefined && onBack !== undefined && (
         <View style={{ width: componentMetrics.topBar.buttonSize }} />
       )}
     </View>

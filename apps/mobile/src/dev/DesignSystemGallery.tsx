@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   Amount,
+  BarChart,
   Badge,
   BankRow,
   Button,
@@ -13,6 +14,7 @@ import {
   CategoryRow,
   Checkbox,
   Dots,
+  DonutChart,
   EmptyState,
   Hero,
   Legend,
@@ -34,7 +36,7 @@ import {
   TopBar,
   TransactionRow,
 } from '../components/ui';
-import { screenMetrics, theme } from '../theme';
+import { componentMetrics, screenMetrics, theme } from '../theme';
 
 /** Decorative sample glyphs for the `CategoryChip` demo rows below: language-independent, not
  *  user-facing copy, so they do not belong in the i18n catalogues (implementation plan Decision
@@ -60,6 +62,21 @@ const SEARCH_ICON_GLYPH = '🔍';
  * does not belong in the i18n catalogues (same rationale as the emoji constants above). */
 const SAMPLE_LINE_POINTS = '0,105 50,95 100,72 150,74 200,48 250,36 300,18';
 const SAMPLE_COMPARISON_POINTS = '0,100 50,88 100,92 150,66 200,58 250,40 300,26';
+
+/** Decorative sample geometry for the `DonutChart` demo (dashboard implementation plan for issue
+ * #17, Decision 8) — same rationale as `SAMPLE_LINE_POINTS` above. */
+const SAMPLE_DONUT_SEGMENTS = [
+  { key: 'a', tenths: 450, color: theme.chart.series[0] },
+  { key: 'b', tenths: 300, color: theme.chart.series[1] },
+  { key: 'c', tenths: 250, color: theme.chart.series[2] },
+];
+
+/** Decorative sample geometry for the `BarChart` demo (dashboard implementation plan for issue
+ * #17, Decision 8). */
+const SAMPLE_BAR_COLUMNS = [
+  { key: 'previous', heightRatio: 0.78, color: theme.chart.comparison, label: 'dic' },
+  { key: 'current', heightRatio: 0.68, color: theme.colors.warning, label: 'ene' },
+];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -466,6 +483,28 @@ export function DesignSystemGallery() {
                 { color: theme.chart.comparison, label: t('ds.legend.item_previous') },
               ]}
             />
+          </Section>
+
+          <Section title={t('ds.section.legend_value')}>
+            <Legend
+              items={[
+                { color: theme.chart.series[0], label: t('ds.legend_value.item_name_1'), value: t('ds.legend_value.item_value_1') },
+                { color: theme.chart.series[1], label: t('ds.legend_value.item_name_2'), value: t('ds.legend_value.item_value_2') },
+              ]}
+            />
+          </Section>
+
+          <Section title={t('ds.section.donut_chart')}>
+            <DonutChart
+              segments={SAMPLE_DONUT_SEGMENTS}
+              trackColor={theme.colors.surface3}
+              strokeWidth={componentMetrics.donutChart.strokeWidth}
+              accessibilityLabel={t('ds.donut_chart.label')}
+            />
+          </Section>
+
+          <Section title={t('ds.section.bar_chart')}>
+            <BarChart columns={SAMPLE_BAR_COLUMNS} />
           </Section>
 
           <Section title={t('ds.section.bank_row')}>
