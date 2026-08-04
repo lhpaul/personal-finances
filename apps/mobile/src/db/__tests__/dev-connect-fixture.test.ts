@@ -70,6 +70,10 @@ describe('plantSyncedConnection / clearConnectFixtures (issue #9, Decision 13)',
       expect(connections).toHaveLength(0);
       const products = db.select().from(userFinancialProducts).all();
       expect(products).toHaveLength(0);
+      // Found in review (CodeRabbit PR #80): the title promises movements cascade away too —
+      // assert it, so a future schema change that drops the cascade fails loudly here.
+      const movements = db.select().from(transactions).all();
+      expect(movements).toHaveLength(0);
     } finally {
       sqlite.close();
     }

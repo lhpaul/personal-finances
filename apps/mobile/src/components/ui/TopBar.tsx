@@ -13,11 +13,13 @@ export type TopBarTitleAlign = 'center' | 'left';
 
 export type TopBarProps = {
   title: string;
-  onBack: () => void;
-  backAccessibilityLabel: string;
-  /** `--left` renders `.mu-topbar__title--left` (no back button, no trailing spacer — the
-   * mockup-viewer chrome screens are the only mockup usage of this modifier). Defaults to
-   * `'center'`, the shape every product screen uses. */
+  /** Required (and rendered) only when `titleAlign` is `'center'` — the default. */
+  onBack?: () => void;
+  backAccessibilityLabel?: string;
+  /** `--left` renders `.mu-topbar__title--left`: **no back button, no trailing spacer** (the
+   * mockup-viewer chrome screens are the only mockup usage of this modifier — found in review,
+   * CodeRabbit PR #80: the back button was rendering unconditionally, contradicting this same
+   * doc comment). Defaults to `'center'`, the shape every product screen uses. */
   titleAlign?: TopBarTitleAlign;
 };
 
@@ -45,21 +47,23 @@ export function TopBar({ title, onBack, backAccessibilityLabel, titleAlign = 'ce
         borderBottomColor: theme.colors.border,
       }}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={backAccessibilityLabel}
-        onPress={onBack}
-        hitSlop={touchMetrics.hitSlop}
-        style={{
-          width: componentMetrics.topBar.buttonSize,
-          height: componentMetrics.topBar.buttonSize,
-          borderRadius: theme.radius.sm,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Text style={{ fontSize: componentMetrics.topBar.buttonGlyphFontSize }}>{BACK_GLYPH}</Text>
-      </Pressable>
+      {titleAlign === 'center' && onBack !== undefined && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={backAccessibilityLabel}
+          onPress={onBack}
+          hitSlop={touchMetrics.hitSlop}
+          style={{
+            width: componentMetrics.topBar.buttonSize,
+            height: componentMetrics.topBar.buttonSize,
+            borderRadius: theme.radius.sm,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ fontSize: componentMetrics.topBar.buttonGlyphFontSize }}>{BACK_GLYPH}</Text>
+        </Pressable>
+      )}
       <Text
         center={titleAlign === 'center'}
         style={{

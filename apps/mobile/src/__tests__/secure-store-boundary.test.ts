@@ -9,11 +9,10 @@ import path from 'node:path';
  * Scans `app/**` and `src/**` (excluding `src/lib/secure-store/**`, the one place this import is
  * allowed) for the same import specifier the lint rule forbids.
  *
- * Edge-case enumeration S1-S8 from the implementation plan's Testing Strategy → Parser-risk
- * addendum.
+ * Edge-case enumeration S1-S9 from the implementation plan's Testing Strategy → Parser-risk
+ * addendum (S9 added in review — CodeRabbit PR #80: dynamic `import()` was not originally
+ * detected).
  */
-
-const FORBIDDEN_SPECIFIER = 'expo-secure-store';
 
 const ROOTS = [
   path.resolve(__dirname, '..', '..', 'app'),
@@ -40,12 +39,15 @@ function listSourceFiles(dir: string): string[] {
   return results;
 }
 
-/** Matches a static `import ... from '<specifier>'` (or a subpath) or `require('<specifier>')` —
- * the specifier must end exactly at the package name or at a `/` boundary (S4, S5). */
+/** Matches a static `import ... from '<specifier>'` (or a subpath), `require('<specifier>')`, or
+ * a dynamic `import('<specifier>')` (S9) — the specifier must end exactly at the package name or
+ * a `/` boundary (S4, S5). The pattern is a fixed literal, not built from a variable (found in
+ * review — CodeRabbit PR #80's `ast-grep` ReDoS finding against the earlier
+ * template-interpolated version): there is exactly one forbidden specifier here, unlike
+ * `db-access-boundary.test.ts`'s array of three, so no interpolation is needed at all. */
 function findForbiddenImports(source: string): boolean {
-  const pattern = new RegExp(
-    `(?:import\\s[^;]*?from\\s*|require\\s*\\(\\s*)['"]${FORBIDDEN_SPECIFIER}(?:/[^'"]*)?['"]`,
-  );
+  const pattern =
+    /(?:import\s[^;]*?from\s*|import\s*\(\s*|require\s*\(\s*)['"]expo-secure-store(?:\/[^'"]*)?['"]/;
   return pattern.test(source);
 }
 
@@ -77,7 +79,7 @@ describe('no file outside src/lib/secure-store/ imports expo-secure-store (non-n
     },
   );
 
-  describe('scanner edge cases (S1-S8)', () => {
+  describe('scanner edge cases (S1-S9)', () => {
     it('S1: `import * as SecureStore from \'expo-secure-store\'` is flagged', () => {
       expect(findForbiddenImports("import * as SecureStore from 'expo-secure-store';")).toBe(true);
     });
@@ -111,6 +113,15 @@ describe('no file outside src/lib/secure-store/ imports expo-secure-store (non-n
       const exempted = allFiles.filter((file) => isUnderSecureStoreDir(file));
       const adapterFiles = exempted.filter((file) => findForbiddenImports(fs.readFileSync(file, 'utf8')));
       expect(adapterFiles).toEqual([path.join(SECURE_STORE_DIR, 'expo-secure-store.adapter.ts')]);
+    });
+
+    it("S9: `await import('expo-secure-store')` (dynamic import) is flagged", () => {
+      expect(findForbiddenImports("const SecureStore = await import('expo-secure-store');")).toBe(
+        true,
+      );
+      expect(
+        findForbiddenImports("import('expo-secure-store/build/SecureStore').then((m) => m);"),
+      ).toBe(true);
     });
 
     it('S8: two import statements on one line both flag — the scan is global, not first-match', () => {

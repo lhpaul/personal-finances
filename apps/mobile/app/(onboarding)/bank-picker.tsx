@@ -45,7 +45,7 @@ export default function BankPicker() {
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: theme.colors.surface0 }}
-      edges={['bottom']}
+      edges={['top', 'bottom']}
       testID={fidelityTestId('bank-picker')}
     >
       <FlowHeader

@@ -23,6 +23,10 @@ const SCANNED_FILES = [
   path.join(FEATURE_ROOT, 'components', 'BankPickerResults.tsx'),
   path.join(FEATURE_ROOT, 'components', 'CredentialForm.tsx'),
   path.join(FEATURE_ROOT, 'components', 'ConnectedBankSummaryList.tsx'),
+  // Found in review (CodeRabbit PR #80): FlowHeader.tsx belongs to this feature too — it
+  // currently calls no `t()` (it only forwards already-resolved props), but scanning it keeps
+  // this list honest if that ever changes.
+  path.join(FEATURE_ROOT, 'components', 'FlowHeader.tsx'),
 ];
 
 /** Keys passed to `t(key, { count })` — the scanner extracts the bare literal (`t()`'s first

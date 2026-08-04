@@ -83,6 +83,12 @@ export function TextField({
           placeholderTextColor={theme.colors.textTertiary}
           editable={!locked}
           secureTextEntry={secureTextEntry}
+          // A masked field is always a credential — React Native's own defaults
+          // (`autoCapitalize: 'sentences'`, `autoCorrect: true`) would otherwise capitalize or
+          // "correct" the very characters the person types, changing what is actually submitted
+          // (found in review — CodeRabbit PR #80).
+          autoCapitalize={secureTextEntry ? 'none' : undefined}
+          autoCorrect={!secureTextEntry}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           // `label` renders as a sibling Text, which React Native does not associate with the

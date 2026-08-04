@@ -26,8 +26,17 @@ function render(query: string, onSelectInstitution = jest.fn()) {
 }
 
 describe('BankPickerResults — list (AC7, AC8)', () => {
-  const tree = render('');
-  const rows = collectElements(tree, (el) => elementTypeName(el) === 'BankRow');
+  // Computed in beforeAll, not at describe-body scope (found in review — CodeRabbit PR #80):
+  // code that runs during Jest's collection phase attributes a throw to the whole file, not a
+  // named test, and still runs even when a --testNamePattern filter selects nothing in this
+  // block.
+  let tree: ReturnType<typeof render>;
+  let rows: ReturnType<typeof collectElements>;
+
+  beforeAll(() => {
+    tree = render('');
+    rows = collectElements(tree, (el) => elementTypeName(el) === 'BankRow');
+  });
 
   it('lists every seeded bank', () => {
     expect(rows).toHaveLength(2);
@@ -35,6 +44,7 @@ describe('BankPickerResults — list (AC7, AC8)', () => {
 
   it('the available bank is pressable and carries the "Disponible" badge, not the unavailable label', () => {
     const availableRow = rows.find((row) => row.props.name === 'Banco de Chile');
+    expect(availableRow).toBeDefined();
     expect(availableRow?.props.onPress).toBeInstanceOf(Function);
     expect(availableRow?.props.unavailableLabel).toBeUndefined();
     expect(availableRow?.props.trailingAccessory?.props.label).toBe('Disponible');
@@ -42,6 +52,7 @@ describe('BankPickerResults — list (AC7, AC8)', () => {
 
   it('the coming-soon bank is not pressable and carries the unavailable label, no trailing accessory (AC8, AC9)', () => {
     const comingSoonRow = rows.find((row) => row.props.name === 'Banco Santander');
+    expect(comingSoonRow).toBeDefined();
     expect(comingSoonRow?.props.onPress).toBeUndefined();
     expect(comingSoonRow?.props.unavailableLabel).toBe('Próximamente');
     expect(comingSoonRow?.props.trailingAccessory).toBeUndefined();

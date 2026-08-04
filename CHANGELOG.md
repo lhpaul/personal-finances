@@ -64,8 +64,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   catalogue, the credential form with shared RUT validation, the rejection and RUT-locked
   states, and the connected screen. Credentials are written only to `expo-secure-store`,
   under a deterministic per-bank key, and the connection row holds the key and never a
-  value. Adds the `TopBar` design-system primitive, extends `BankRow` and `TextField`
-  additively, and adds a dev-only connect-flow fixtures route
+  value. `connectBank` re-checks the RUT lock server-side (not only in the UI) and restores
+  the prior credential if a reconnect's database write fails, so a stale password is never
+  left stranded disguised as the current one. Adds the `TopBar` design-system primitive,
+  extends `BankRow` and `TextField` additively, and adds a dev-only connect-flow fixtures
+  route
 - **Sync engine** (#10): a bank read is stored idempotently — products by the scraper's opaque
   instance identity, movements by an identity that now carries direction and an occurrence index,
   so two identical movements in one read stay two and a re-read adds none. The person's

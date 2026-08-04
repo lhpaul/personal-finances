@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,6 +25,10 @@ const MONOGRAM_LENGTH = 3;
  * The `rejected` param is the dev-fixtures-only stand-in for item #11's failure path (which does
  * not exist yet, Decision 13) — it composes with the RUT lock exactly as spec UX Rules describe:
  * a locked RUT and a rejection message can both be true at once.
+ *
+ * Redirects to the picker when no institution is resolved (found in review — CodeRabbit PR #80):
+ * this route is only ever reachable with `institutionId` already set by the picker, but a deep
+ * link or a module-store reset could otherwise strand the person on an unusable, empty form.
  */
 export default function BankCredentials() {
   const { t } = useTranslation();
@@ -33,7 +37,7 @@ export default function BankCredentials() {
   const { institutionId } = useConnectFlow();
   const institutionsState = useInstitutions();
   const rutLockState = useRutLock();
-  const { state: connectState, connect } = useConnectBank();
+  const { state: connectState, connect, dismissError } = useConnectBank();
 
   const [rut, setRut] = useState('');
   const [password, setPassword] = useState('');
@@ -56,17 +60,31 @@ export default function BankCredentials() {
   }
 
   async function handleConnect(): Promise<void> {
-    if (institutionId === null) return;
-    await connect({ institutionId, rut, password });
+    if (institution === undefined) return;
+    await connect({ institutionId: institution.id, rut, password });
+  }
+
+  function handleChangeRut(value: string): void {
+    dismissError();
+    setRut(formatRutForDisplay(value));
+  }
+
+  function handleChangePassword(value: string): void {
+    dismissError();
+    setPassword(value);
   }
 
   const isRejected = params.rejected === '1' || connectState.status === 'error';
   const errorMessage = isRejected ? t('connect_credentials.error_hint') : undefined;
 
+  if (institutionsState.status === 'ready' && institution === undefined) {
+    return <Redirect href={'/(onboarding)/bank-picker' as never} />;
+  }
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: theme.colors.surface0 }}
-      edges={['bottom']}
+      edges={['top', 'bottom']}
       testID={fidelityTestId('bank-credentials')}
     >
       <FlowHeader
@@ -85,12 +103,16 @@ export default function BankCredentials() {
           bankMonogramColor={institution?.brandColor ?? theme.colors.brandPrimary}
           bankName={institution?.name ?? ''}
           rut={rut}
-          onChangeRut={locked ? () => undefined : (value) => setRut(formatRutForDisplay(value))}
+          onChangeRut={locked ? () => undefined : handleChangeRut}
           password={password}
-          onChangePassword={setPassword}
+          onChangePassword={handleChangePassword}
           locked={locked}
           errorMessage={errorMessage}
-          canConnect={canConnect({ rut, password }) && connectState.status !== 'connecting'}
+          canConnect={
+            institution !== undefined &&
+            canConnect({ rut, password }) &&
+            connectState.status !== 'connecting'
+          }
           onConnect={handleConnect}
           onCancel={goToPicker}
           copy={{

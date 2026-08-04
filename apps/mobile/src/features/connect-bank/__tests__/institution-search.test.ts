@@ -24,7 +24,12 @@ describe('foldForSearch', () => {
   });
 
   it('folds a combining-mark spelling the same as a precomposed one (P3)', () => {
-    const combining = 'Itau'.slice(0, 3) + 'ú'; // "Ita" + "u" + combining acute
+    // Found in review (CodeRabbit PR #80): an explicit \u0301 escape (rather than a raw
+    // glyph in the source, which an editor or formatter could silently re-normalize to NFC)
+    // makes the decomposed spelling unambiguous regardless of how this file is later saved.
+    const combining = 'Itau' + '\u0301'; // "Ita" + "u" + U+0301 COMBINING ACUTE ACCENT
+    expect(combining).not.toBe('Itaú'); // sanity: a genuinely different code-unit sequence
+    expect(foldForSearch(combining)).toBe('itau');
     expect(foldForSearch(combining)).toBe(foldForSearch('Itaú'));
   });
 
@@ -64,7 +69,7 @@ describe('matchInstitutions (Business Rule 8, parser-risk P1-P12)', () => {
   });
 
   it('P3: a combining-acute spelling of "Itaú" matches', () => {
-    const combining = 'Ita' + 'ú';
+    const combining = 'Ita' + 'u' + '\u0301'; // explicit escape (found in review — CodeRabbit PR #80)
     expect(namesOf(matchInstitutions(SORTED, combining))).toEqual(['Banco Itaú']);
   });
 

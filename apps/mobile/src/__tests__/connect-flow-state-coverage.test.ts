@@ -52,4 +52,17 @@ describe('CONNECT_FLOW_STATE_COVERAGE (AC28)', () => {
     expect(fs.existsSync(sourcePath)).toBe(true);
     expect(fs.existsSync(testPath)).toBe(true);
   });
+
+  // Found in review (CodeRabbit PR #80): file existence alone does not prove a state is
+  // asserted — removing the describe block that actually exercises a state left every check
+  // above passing. Each entry's `assertionKeyword` is real content from its test file (a
+  // `describe`/`it` title tied to that state's own assertions), so deleting that block — not
+  // just the file — fails here too.
+  it.each(
+    CONNECT_FLOW_STATE_COVERAGE.map((entry) => [`${entry.screenId}:${entry.stateId}`, entry] as const),
+  )('%s: assertionKeyword is still present in testFile', (_label, entry) => {
+    const testPath = path.resolve(REPO_ROOT, entry.testFile);
+    const testSource = fs.readFileSync(testPath, 'utf8');
+    expect(testSource).toContain(entry.assertionKeyword);
+  });
 });

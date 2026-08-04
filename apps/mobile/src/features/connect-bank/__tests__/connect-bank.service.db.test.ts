@@ -1,8 +1,9 @@
 import { userFinancialInstitutions } from '../../../db/schema';
 import { openBootstrappedMemoryDb } from '../../../db/testing/memory-db';
+import type { AppDatabase } from '../../../db/types';
 import { readCredentials } from '../../../lib/secure-store/credential-store';
 import type { SecureStorePort } from '../../../lib/secure-store/types';
-import { connectBank } from '../connect-bank.service';
+import { connectBank, ConnectBankError } from '../connect-bank.service';
 
 /**
  * Implementation plan Testing Strategy scenarios 3-4 (AC4, AC17, AC19, AC20, AC21, AC22).
@@ -21,6 +22,24 @@ interface ConnectionRow {
   syncStatus: string;
   lastSyncAt: string | null;
   lastSuccessAt: string | null;
+}
+
+/** Wraps a real `AppDatabase` so `.transaction(...)` throws on the next call while every other
+ * method (the `select()` calls `connectBank` makes before opening its transaction) still
+ * delegates to the real database — a realistic simulation of "the write failed" for an
+ * *existing* connection, where a bogus institution id (used elsewhere in this suite) cannot
+ * reach the same code path. */
+function withFailingTransaction(db: AppDatabase): AppDatabase {
+  return new Proxy(db, {
+    get(target, prop, receiver) {
+      if (prop === 'transaction') {
+        return () => {
+          throw new Error('simulated write failure');
+        };
+      }
+      return Reflect.get(target, prop, receiver) as unknown;
+    },
+  });
 }
 
 function createFakePort(): SecureStorePort {
@@ -201,6 +220,74 @@ describe('connectBank (issue #9)', () => {
         rut: '12.345.678-5',
         password: 'clave-uno',
       });
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('restores the prior credential when a reconnect transaction fails (found in review — CodeRabbit PR #80)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    const port = createFakePort();
+    try {
+      await connectBank(
+        { db, secureStore: port, newId: ports.newId, now: ports.now },
+        { institutionId: 'banco-de-chile', rut: '12.345.678-5', password: 'clave-original' },
+      );
+
+      let thrown: unknown;
+      try {
+        await connectBank(
+          { db: withFailingTransaction(db), secureStore: port, newId: ports.newId, now: ports.now },
+          { institutionId: 'banco-de-chile', rut: '12.345.678-5', password: 'clave-nueva-perdida' },
+        );
+      } catch (error: unknown) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(ConnectBankError);
+      expect((thrown as ConnectBankError).reason).toBe('connection_write_failed');
+
+      // The prior (working) credential survives — not the unconfirmed replacement.
+      await expect(readCredentials(port, 'banco-de-chile')).resolves.toEqual({
+        rut: '12.345.678-5',
+        password: 'clave-original',
+      });
+
+      // The original connection itself is untouched by the failed reconnect attempt.
+      const rows = db.select().from(userFinancialInstitutions).all() as ConnectionRow[];
+      const forThisBank = rows.filter((row) => row.financialInstitutionId === 'banco-de-chile');
+      expect(forThisBank).toHaveLength(1);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('rejects a mismatched RUT for a second institution without writing anything (Business Rule 13, found in review)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    const port = createFakePort();
+    try {
+      await connectBank(
+        { db, secureStore: port, newId: ports.newId, now: ports.now },
+        { institutionId: 'banco-de-chile', rut: '12.345.678-5', password: 'clave-uno' },
+      );
+
+      let thrown: unknown;
+      try {
+        await connectBank(
+          { db, secureStore: port, newId: ports.newId, now: ports.now },
+          { institutionId: 'santander', rut: '22.222.222-2', password: 'clave-dos' },
+        );
+      } catch (error: unknown) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(ConnectBankError);
+      expect((thrown as ConnectBankError).reason).toBe('rut_locked_mismatch');
+
+      // Nothing was written for the second institution — no connection, no secure-store entry.
+      const rows = db.select().from(userFinancialInstitutions).all() as ConnectionRow[];
+      expect(rows.filter((row) => row.financialInstitutionId === 'santander')).toHaveLength(0);
+      await expect(readCredentials(port, 'santander')).resolves.toBeNull();
     } finally {
       sqlite.close();
     }

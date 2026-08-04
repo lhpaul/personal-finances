@@ -1,3 +1,4 @@
+import { deriveDateLocal } from '@finanzas/shared-utils';
 import { eq } from 'drizzle-orm';
 
 import { transactions, userFinancialInstitutions, userFinancialProducts } from './schema';
@@ -41,7 +42,12 @@ export function plantSyncedConnection(
   counts: { productCount: number; movementCount: number },
 ): void {
   clearPlantedConnection(db, institutionId);
-  const now = new Date().toISOString();
+  const nowInstant = new Date();
+  const now = nowInstant.toISOString();
+  // Found in review (CodeRabbit PR #80): `now.slice(0, 10)` reads the UTC date, which can name
+  // the wrong Santiago day near local midnight (AGENTS.md troubleshooting: "A transaction shows
+  // up in the wrong month").
+  const dateLocal = deriveDateLocal(nowInstant);
   const connectionId = fixtureConnectionId(institutionId);
 
   db.insert(userFinancialInstitutions)
@@ -86,7 +92,7 @@ export function plantSyncedConnection(
         amount: 1000 + i,
         type: 'debit',
         occurredAt: now,
-        dateLocal: now.slice(0, 10),
+        dateLocal,
         rawDescription: 'Movimiento de ejemplo',
         isManual: 0,
         createdAt: now,

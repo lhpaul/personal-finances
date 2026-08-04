@@ -55,6 +55,32 @@ function dumpDatabaseToSql(sqlite: { prepare: (sql: string) => { all: () => unkn
   return chunks.join('\n');
 }
 
+/**
+ * `String(arg)` turns any plain object into the useless literal `"[object Object]"` — a
+ * credential logged as `console.warn('failed', { password: rut })` would be invisible to a
+ * scan built on it (found in review — CodeRabbit PR #80). Serializes an `Error`'s own
+ * properties (`JSON.stringify` does not walk them by default — `message`/`stack` are
+ * non-enumerable) and falls back to `String` only for values `JSON.stringify` cannot handle
+ * (e.g. `undefined`, a function, a circular structure).
+ */
+function serializeArg(arg: unknown): string {
+  if (arg instanceof Error) {
+    const errorProps: Record<string, unknown> = {};
+    for (const key of Object.getOwnPropertyNames(arg)) {
+      errorProps[key] = (arg as unknown as Record<string, unknown>)[key];
+    }
+    return JSON.stringify(errorProps);
+  }
+  if (typeof arg === 'object' && arg !== null) {
+    try {
+      return JSON.stringify(arg);
+    } catch {
+      return String(arg);
+    }
+  }
+  return String(arg);
+}
+
 function spyOnConsole(): { calls: string[]; restore: () => void } {
   const calls: string[] = [];
   const methods: (keyof Console)[] = ['log', 'warn', 'error', 'info', 'debug'];
@@ -63,7 +89,7 @@ function spyOnConsole(): { calls: string[]; restore: () => void } {
   for (const method of methods) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic console spy
     (console as any)[method] = (...args: unknown[]) => {
-      calls.push(args.map((arg) => String(arg)).join(' '));
+      calls.push(args.map(serializeArg).join(' '));
     };
   }
   return {
@@ -162,6 +188,28 @@ describe('connectBank credential leak scan (AC1, AC2, AC3)', () => {
     } finally {
       consoleSpy.restore();
       sqlite.close();
+    }
+  });
+
+  it('the console scan itself is not vacuous: an object-nested credential is still caught (found in review — CodeRabbit PR #80)', () => {
+    // Proves `serializeArg` — not just the `.not.toContain` assertions above — actually works.
+    // Before this fix, `String({ password: SENTINEL_PASSWORD })` produced the literal
+    // `"[object Object]"`, so every `.not.toContain(SENTINEL_PASSWORD)` check above would have
+    // passed even if `connectBank` logged the credential as an object field, rather than a bare
+    // string. This test plants exactly that shape directly (no `connectBank` involved) and
+    // asserts the scan *would* have flagged it.
+    const consoleSpy = spyOnConsole();
+    try {
+      // eslint-disable-next-line no-console -- deliberately planting a leak shape to prove the scanner catches it
+      console.warn('leak-check', { password: SENTINEL_PASSWORD });
+      // eslint-disable-next-line no-console -- same: an Error whose own property carries the sentinel
+      console.error('leak-check', Object.assign(new Error('failed'), { rut: SENTINEL_RUT }));
+
+      const combined = consoleSpy.calls.join('\n');
+      expect(combined).toContain(SENTINEL_PASSWORD);
+      expect(combined).toContain(SENTINEL_RUT);
+    } finally {
+      consoleSpy.restore();
     }
   });
 

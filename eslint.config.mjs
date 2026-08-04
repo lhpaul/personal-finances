@@ -283,8 +283,10 @@ export const dbAccessBoundary = {
  * only ever be handled by one module —
  * `apps/mobile/src/lib/secure-store/expo-secure-store.adapter.ts` — so `expo-secure-store` may not
  * be imported anywhere else in the app. Mirrors `dbAccessBoundary`'s shape exactly. Applied only
- * by `apps/mobile/eslint.config.mjs`, from `app/**` and `src/**`, with
- * `src/lib/secure-store/**` ignored there (the one directory allowed to import it).
+ * by `apps/mobile/eslint.config.mjs`, from `app/**` and `src/**`, with only that **exact file**
+ * ignored there (found in review — CodeRabbit PR #80: ignoring the whole
+ * `src/lib/secure-store/**` directory would let a *second* file added there later bypass this
+ * rule, even though `port.ts`/`credential-store.ts` never need to import the package themselves).
  *
  * A companion test, `apps/mobile/src/__tests__/secure-store-boundary.test.ts`, scans the same
  * tree for the same import specifier, so the guarantee survives a lint-config regression.

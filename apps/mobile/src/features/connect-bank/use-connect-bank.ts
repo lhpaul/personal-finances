@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { getAppDatabase } from '../../db/runtime';
 import { expoSecureStoreAdapter } from '../../lib/secure-store/expo-secure-store.adapter';
 import { connectBank, ConnectBankError, type ConnectBankErrorReason } from './connect-bank.service';
-import { SYNCING_ROUTE } from './sync-handoff';
+import { buildSyncRequest, setPendingSyncHandoff, SYNCING_ROUTE } from './sync-handoff';
 
 export type ConnectBankUiState =
   | { status: 'idle' }
@@ -26,9 +26,17 @@ export interface ConnectBankFormInput {
  *
  * Navigates with `router.replace` (not `push`) so the credential form is not reachable via the
  * system back gesture from the syncing screen (spec: confirming credentials always leads forward,
- * AC23).
+ * AC23). The navigation call is deliberately **outside** the `try`/`catch` (found in review —
+ * CodeRabbit PR #80): the database write already succeeded once `connectBank` resolves, so a
+ * navigation-time throw must never be reported as `'connection_write_failed'` — doing so would
+ * show the rejection hint and invite a resubmit that could create a second connection for the
+ * same institution.
  */
-export function useConnectBank(): { state: ConnectBankUiState; connect: (input: ConnectBankFormInput) => Promise<void> } {
+export function useConnectBank(): {
+  state: ConnectBankUiState;
+  connect: (input: ConnectBankFormInput) => Promise<void>;
+  dismissError: () => void;
+} {
   const router = useRouter();
   const [state, setState] = useState<ConnectBankUiState>({ status: 'idle' });
   const inFlight = useRef(false);
@@ -37,9 +45,11 @@ export function useConnectBank(): { state: ConnectBankUiState; connect: (input: 
     if (inFlight.current) return;
     inFlight.current = true;
     setState({ status: 'connecting' });
+
+    let result: { userFinancialInstitutionId: string; credentialsKey: string };
     try {
       const db = await getAppDatabase();
-      await connectBank(
+      result = await connectBank(
         {
           db,
           secureStore: expoSecureStoreAdapter,
@@ -48,15 +58,28 @@ export function useConnectBank(): { state: ConnectBankUiState; connect: (input: 
         },
         input,
       );
-      router.replace(SYNCING_ROUTE);
     } catch (error: unknown) {
       const reason: ConnectBankErrorReason =
         error instanceof ConnectBankError ? error.reason : 'connection_write_failed';
       setState({ status: 'error', reason });
-    } finally {
       inFlight.current = false;
+      return;
     }
+
+    // The write succeeded — hand the key (never a value) to item #11's syncing screen, then
+    // navigate. Neither step can turn a successful write back into a reported failure.
+    setPendingSyncHandoff(buildSyncRequest(result, input.institutionId));
+    inFlight.current = false;
+    router.replace(SYNCING_ROUTE);
   }
 
-  return { state, connect };
+  /** Clears a stale rejection hint once the person starts correcting the form (found in review —
+   * CodeRabbit PR #80): without this, `state.status === 'error'` — and the hint it drives on
+   * `bank-credentials` — would otherwise persist under the password field until the next connect
+   * attempt resolves, even after the person has already changed the input. */
+  function dismissError(): void {
+    setState((current) => (current.status === 'error' ? { status: 'idle' } : current));
+  }
+
+  return { state, connect, dismissError };
 }

@@ -337,6 +337,24 @@ describe('institutions repository — connect-a-bank writes (issue #9)', () => {
     }
   });
 
+  it('deleteConnectionIfNeverSynced refuses to delete a connection that already has products, even with last_success_at still null (non-negotiable 3, found in review)', async () => {
+    const { sqlite, db, ports } = await openBootstrappedMemoryDb();
+    try {
+      const connectionId = createTestConnection(db, ports, 'banco-de-chile');
+      // A 'partial' sync outcome can store products and never set last_success_at (item #10's
+      // recordSyncOutcomeInTx) — this must never be treated as "safe to delete".
+      createTestProduct(db, ports, connectionId);
+
+      deleteConnectionIfNeverSynced(db, connectionId);
+
+      expect(
+        db.select().from(userFinancialInstitutions).where(eq(userFinancialInstitutions.id, connectionId)).get(),
+      ).toBeDefined();
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it('getConnectionByInstitution returns undefined when no connection exists, and the connection once one does', async () => {
     const { sqlite, db, ports } = await openBootstrappedMemoryDb();
     try {

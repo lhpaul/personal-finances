@@ -387,8 +387,26 @@ export function upsertConnection(
  * only when it never completed a sync (`last_success_at` still null) — a connection that once
  * synced successfully is never deleted by this path (spec Business Rule 19, "never silently
  * discarded").
+ *
+ * Also refuses to delete a connection that already has products (found in review — CodeRabbit PR
+ * #80): `user_financial_products` and `transactions` both cascade from
+ * `user_financial_institutions` (`onDelete: 'cascade'`), so without this guard a `'partial'` sync
+ * outcome — which item #10's `recordSyncOutcomeInTx` can write without ever setting
+ * `last_success_at` — would let this delete take stored movements with it. AGENTS.md
+ * non-negotiable 3: "Bank movements are never deleted." This item's own `connectBank` never
+ * reaches that state today (the compensating delete only runs for a connection *this same call*
+ * created, which cannot yet have products), but this exported function offers no such protection
+ * to a future caller on its own.
  */
 export function deleteConnectionIfNeverSynced(db: AppDatabase, id: string): void {
+  const hasProducts =
+    db
+      .select({ id: userFinancialProducts.id })
+      .from(userFinancialProducts)
+      .where(eq(userFinancialProducts.userFinancialInstitutionId, id))
+      .get() !== undefined;
+  if (hasProducts) return;
+
   db.delete(userFinancialInstitutions)
     .where(
       and(eq(userFinancialInstitutions.id, id), isNull(userFinancialInstitutions.lastSuccessAt)),

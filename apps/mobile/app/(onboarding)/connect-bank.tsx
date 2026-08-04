@@ -89,6 +89,12 @@ export default function ConnectBankIntro() {
           <SecurityAccordion
             expanded={howItWorksExpanded}
             onToggle={() => setHowItWorksExpanded((prev) => !prev)}
+            copy={{
+              toggleLabel: t('connect_intro.how_it_works_toggle'),
+              step1: t('connect_intro.how_it_works_step_1'),
+              step2: t('connect_intro.how_it_works_step_2'),
+              step3: t('connect_intro.how_it_works_step_3'),
+            }}
           />
         </View>
 

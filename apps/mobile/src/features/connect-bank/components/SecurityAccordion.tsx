@@ -1,5 +1,4 @@
 import { Pressable, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
 
 import { Badge, Text } from '../../../components/ui';
 import { componentMetrics, theme } from '../../../theme';
@@ -10,9 +9,21 @@ const QUESTION_GLYPH = '❓';
 const CHEVRON_DOWN_GLYPH = '▾';
 const CHEVRON_UP_GLYPH = '▴';
 
+/** Every visible string, pre-resolved by the caller — this component calls no hook (not even
+ * `useTranslation`), so it stays directly callable for a renderer-free element-tree assertion
+ * (found in review — CodeRabbit PR #80, AC28's state-coverage residual: this state had no test
+ * at all before this change). */
+export interface SecurityAccordionCopy {
+  toggleLabel: string;
+  step1: string;
+  step2: string;
+  step3: string;
+}
+
 export interface SecurityAccordionProps {
   expanded: boolean;
   onToggle: () => void;
+  copy: SecurityAccordionCopy;
 }
 
 /**
@@ -22,9 +33,7 @@ export interface SecurityAccordionProps {
  * component is presentational). `mu-item*` stays deferred to #19 (Decision 10), so this is built
  * screen-local rather than as a design-system primitive.
  */
-export function SecurityAccordion({ expanded, onToggle }: SecurityAccordionProps) {
-  const { t } = useTranslation();
-
+export function SecurityAccordion({ expanded, onToggle, copy }: SecurityAccordionProps) {
   return (
     <View>
       <Pressable
@@ -44,9 +53,7 @@ export function SecurityAccordion({ expanded, onToggle }: SecurityAccordionProps
         }}
       >
         <Text>{QUESTION_GLYPH}</Text>
-        <Text style={{ flex: 1, fontSize: theme.typography.size.base }}>
-          {t('connect_intro.how_it_works_toggle')}
-        </Text>
+        <Text style={{ flex: 1, fontSize: theme.typography.size.base }}>{copy.toggleLabel}</Text>
         <Text tone="tertiary">{expanded ? CHEVRON_UP_GLYPH : CHEVRON_DOWN_GLYPH}</Text>
       </Pressable>
 
@@ -63,19 +70,19 @@ export function SecurityAccordion({ expanded, onToggle }: SecurityAccordionProps
           <View style={{ flexDirection: 'row', gap: theme.space['3'], alignItems: 'flex-start' }}>
             <Badge tone="info" label="1" />
             <Text variant="small" style={{ flex: 1 }}>
-              {t('connect_intro.how_it_works_step_1')}
+              {copy.step1}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', gap: theme.space['3'], alignItems: 'flex-start' }}>
             <Badge tone="info" label="2" />
             <Text variant="small" style={{ flex: 1 }}>
-              {t('connect_intro.how_it_works_step_2')}
+              {copy.step2}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', gap: theme.space['3'], alignItems: 'flex-start' }}>
             <Badge tone="info" label="3" />
             <Text variant="small" style={{ flex: 1 }}>
-              {t('connect_intro.how_it_works_step_3')}
+              {copy.step3}
             </Text>
           </View>
         </View>
