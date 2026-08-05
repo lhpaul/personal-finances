@@ -513,4 +513,66 @@ AC1's literal command passes 7/10 today (up from round 1's 5/10) and will pass f
 addresses the two new findings above — nothing about this item's own flow files, contract or
 fixture surface is what keeps it short of 10/10 today, aside from the still-unexplained full-suite
 cross-flow interference noted for flow 04.
+
+## Round 3 diagnostic addendum (item #108) — finding 4 corrected, no product defect found
+
+Item #108 (fast track) was opened against finding 4 above, naming three suspects: `secureTextEntry`
+interaction, the `autoCorrect`/`autoCapitalize` hardening from #9's review round, and the
+controlled-input update path swallowing synthetic events. Live reproduction on a dedicated
+`Finanzas E2E` run (iOS 26.5, Maestro CLI 2.6.0, item #108's own worktree and Metro instance,
+`maestro hierarchy` + screenshot evidence at every step) **rules out all three** and corrects finding
+4's own diagnosis:
+
+- **The transactions search field — finding 4's own control case — no longer types either, in this
+  environment.** Re-running the exact `tapOn` → `inputText` sequence finding 4 used to prove "the
+  mechanism works generally" now reproducibly leaves the search field showing its placeholder too
+  (`maestro hierarchy`'s `value` attribute stays `""` after `inputText: 'uber'`), and on other
+  attempts crashes the XCUITest runner outright (`xctest_runner_*.log`: `[TextInputHelper] first
+  character: u` / `remaining text: ber` followed immediately by `Restarting after unexpected exit,
+  crash, or test timeout` and `iOS driver not ready in time`). The search `TextField` carries none
+  of the three named suspects (no `secureTextEntry`, no hardening, no `formatRutForDisplay`
+  transform) — a control case failing identically rules out every one of them as finding 4's cause.
+- **One standalone run of flow 01 got further than round 2 ever recorded, and proves the controlled
+  state pipeline works.** Both `Input text 12.345.678-5` (RUT) and `Input text ZZE2EPASSZZ`
+  (password) reported `COMPLETED`, and the post-run screenshot shows **`Conectar` enabled** —
+  `canConnect` requires `isValidRut(rut) && password.length > 0` (`credential-form.ts`), so the
+  button cannot be enabled unless `onChangeRut`/`onChangePassword` → `setRut`/`setPassword` already
+  received and stored the typed values correctly. The on-screen glyphs still showed the placeholder
+  at that same moment — a stale-native-text rendering artifact from XCUITest's synthetic `typeText`
+  (which mutates the native text buffer outside RN's normal keystroke-driven event-count
+  bookkeeping), not a state or logic defect, and not something a real device's real keystrokes
+  would ever trigger, since those always go through RN's ordinary bridge event path. That same run's
+  actual blocker was unrelated to typing: the subsequent `tapOn: 'Conectar'` reported `COMPLETED`
+  but never reached the button's `onPress` (five retries of `Ver resultado`/`¡Banco conectado!` all
+  timed out on the identical bank-credentials screenshot) — the same "tap reports `COMPLETED`
+  without reaching `onPress`" class this doc already records for flow 04's `ExcludeSheet`
+  (`scrollUntilVisible` → `tapOn`), reproduced here on a plain, unscrolled `tapOn`.
+- **Two further standalone attempts each crashed the WDA driver before reaching `bank-credentials`
+  at all** — once mid-`fixture.yaml`, on a plain `tapOn` with no text entry involved (`iOS driver
+  not ready in time, consider increasing timeout by configuring
+  MAESTRO_DRIVER_STARTUP_TIMEOUT`).
+
+**Conclusion**: the blocker is a broadly unstable Maestro/XCUITest driver (WDA) in this execution
+environment — intermittent crashes after ordinary taps and after text input, throughout the app,
+not confined to `bank-credentials` — not a defect in `CredentialForm.tsx` / `TextField.tsx` /
+`bank-credentials.tsx`. No product code changes accompany this addendum: the security hardening
+(`secureTextEntry`, `autoCorrect`/`autoCapitalize`) is confirmed uninvolved and is left exactly as
+#9 landed it, and forcing a workaround into product code for a test-only, driver-level instability
+would be the wrong fix.
+
+**"Real typing" could not be independently proven inside this session**: driving genuine host-level
+keystrokes into the Simulator (to fully decouple the proof from Maestro's own driver) needs
+AppleScript/System Events UI automation, which this sandboxed CLI session cannot use
+(`osascript is not allowed assistive access (-1719)`), and no alternative input tool (`idb`) is
+installed here. The controlled-state proof above (`Conectar` enabling from synthetic input) is the
+closest available evidence, and it exercises the same JS-bridge path (`onChangeText` → `setState` →
+`value` prop) real keystrokes use, without failure.
+
+**Before re-opening a fix item against this screen**: first rule out driver instability — retry
+after a full simulator `shutdown`/`boot` cycle, and confirm the on-screen software keyboard actually
+renders (a hardware-keyboard-connected Simulator can suppress it). Disabling the preference
+(`defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool NO`, then reboot the
+device) is a reasonable first step; it did not fully resolve the instability observed here on iOS
+26.5 alone, so a different Xcode/iOS/Maestro combination (or a CI-hosted macOS runner, once
+`ENABLE_MAESTRO_E2E` is set) is the more likely fix. Flow 01 remains blocked in this environment.
 </content>
