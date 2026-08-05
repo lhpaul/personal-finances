@@ -33,7 +33,7 @@ function seededCredential(): string {
 /**
  * Builds the scenario-1 fixture: a bootstrapped store with an `active` connection, a
  * `disconnected` one, a product, a transaction, and `onboarding_completed` set — plus a memory
- * secure store seeded with both connections' keys and one orphan (`bank_creds:santander`, no
+ * secure store seeded with both connections' keys and one orphan (`bank_creds.santander`, no
  * connection row).
  */
 async function buildFixture() {

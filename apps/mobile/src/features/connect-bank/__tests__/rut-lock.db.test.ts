@@ -1,6 +1,6 @@
 import { openBootstrappedMemoryDb } from '../../../db/testing/memory-db';
 import { createTestConnection } from '../../../db/testing/product-fixture';
-import { writeCredentials } from '../../../lib/secure-store/credential-store';
+import { credentialsKeyFor, writeCredentials } from '../../../lib/secure-store/credential-store';
 import type { SecureStorePort } from '../../../lib/secure-store/types';
 import { resolveLockedRut } from '../rut-lock';
 
@@ -51,7 +51,7 @@ describe('resolveLockedRut (Decision 6, AC18)', () => {
     try {
       createTestConnection(db, ports, 'banco-de-chile');
       await writeCredentials(port, 'banco-de-chile', { rut: '12.345.678-5', password: 'clave' });
-      await port.deleteItem('bank_creds:banco-de-chile');
+      await port.deleteItem(credentialsKeyFor('banco-de-chile'));
 
       expect(await resolveLockedRut(db, port)).toBeNull();
     } finally {

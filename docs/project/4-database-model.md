@@ -148,7 +148,7 @@ The user's link to one institution on this device. **Holds no secrets** — only
 | `id` | `TEXT PK` | |
 | `financial_institution_id` | `TEXT NOT NULL REFERENCES financial_institutions(id)` | |
 | `status` | `TEXT NOT NULL` | `active` \| `inactive` \| `disconnected` |
-| `credentials_key` | `TEXT NOT NULL` | `expo-secure-store` key, e.g. `bank_creds:banco-de-chile`. **The value never touches SQLite** |
+| `credentials_key` | `TEXT NOT NULL` | `expo-secure-store` key, e.g. `bank_creds.banco-de-chile`. **The value never touches SQLite** |
 | `sync_status` | `TEXT NOT NULL` | `idle` \| `syncing` \| `ok` \| `error` |
 | `last_sync_at` | `TEXT` | Any attempt |
 | `last_success_at` | `TEXT` | Gap #8 — `bank-review` shows this separately |
@@ -162,7 +162,7 @@ Unique: `(financial_institution_id)` — one connection per bank.
 transition.** Connecting a bank creates the row (`status: 'active'`, `sync_status: 'idle'`) or, if
 one already exists for that institution, updates only `status` — `credentials_key`,
 `last_sync_at`, `last_success_at` and the error columns survive a reconnect untouched.
-`credentials_key` is deterministic (`bank_creds:<financial_institution_id>`), which is what lets a
+`credentials_key` is deterministic (`bank_creds.<financial_institution_id>`), which is what lets a
 reconnect resolve to the same secure-store entry instead of creating a second one. Item #10 owns
 every `ok` / `error` transition and the last-attempt/last-success bookkeeping that follows a real
 sync. **Item #20's settings disconnect action is the only writer of `status: 'disconnected'`** —

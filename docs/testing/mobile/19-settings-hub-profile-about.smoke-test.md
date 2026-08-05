@@ -259,7 +259,8 @@ Any other difference is a finding.
 
 - Verify every assertion in the checklist below.
 - Confirm no console output during the whole run contains a RUT-shaped string, a password, or a
-  `bank_creds:` key.
+  `bank_creds.` key (dot separator, not the plan's original colon — item #100 found
+  `expo-secure-store`'s key validator rejects a colon).
 - Shut down the app and the Metro server.
 
 ---

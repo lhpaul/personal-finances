@@ -23,9 +23,14 @@ function createFakePort(initial: Record<string, string> = {}): SecureStorePort {
 }
 
 describe('credentialsKeyFor', () => {
-  it('is deterministic and matches the documented "bank_creds:<institution id>" shape', () => {
-    expect(credentialsKeyFor('banco-de-chile')).toBe('bank_creds:banco-de-chile');
+  it('is deterministic and matches the documented "bank_creds.<institution id>" shape', () => {
+    expect(credentialsKeyFor('banco-de-chile')).toBe('bank_creds.banco-de-chile');
     expect(credentialsKeyFor('banco-de-chile')).toBe(credentialsKeyFor('banco-de-chile'));
+  });
+
+  it('never produces a colon — the real expo-secure-store validator rejects it (issue #100)', () => {
+    expect(credentialsKeyFor('banco-de-chile')).not.toContain(':');
+    expect(credentialsKeyFor('banco-de-chile')).toMatch(/^[\w.-]+$/);
   });
 
   it('produces a different key per institution', () => {
