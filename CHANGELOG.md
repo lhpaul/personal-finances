@@ -183,3 +183,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dismissal is unaffected. The overlay's element-tree construction is split out into a hookless
   `renderOverlayTree` so `Overlay.test.tsx` can assert, via the renderer-free element-tree
   walker, that a `Sheet`'s/`Modal`'s own buttons remain separate accessible nodes.
+- **`StageIntroScreen`'s CTA was unreachable on the reference device profile** (#103): the
+  screen wrapped its content (hero, "what we'll do", the three step icons, the two stat tiles,
+  the "why it matters" list, the note and the "🚀 ¡Empezar mi primera etapa!" CTA) in a plain
+  `View`, not a `ScrollView` — on the 393×852 reference profile the content overflowed the
+  viewport height and the CTA rendered entirely off-screen with no way to scroll to it (found by
+  E2E flow 03 on a real simulator, item #22, PR #102). The content now sits inside a
+  `ScrollView`, following the same pattern `CategorizeCompleteScreen` already uses; a new
+  source-scan test (`stage-intro-scroll.test.ts`) proves the CTA sits inside the `ScrollView`'s
+  open/close tags, with planted-violation proofs for both a missing `ScrollView` and a
+  `ScrollView` present but the CTA left outside it.
