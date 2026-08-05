@@ -44,6 +44,18 @@ tags:
 
 # bank-syncing: complete_with_data emits the same progress sequence as play_full, then settles
 # with the deterministic non-empty read (D8) — no hidden WebView mounts, no real bank contacted.
+# Advancing to bank-connected is a manual "Ver resultado" tap, not an automatic redirect (found
+# on device, D6 flow — same finding as flow 06); retries the tap rather than waiting on the
+# third step's own badge, which stays "En curso" even after the read settles (cosmetic).
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          text: 'Ver resultado'
+          optional: true
+      - assertVisible:
+          text: '¡Banco conectado!'
+          optional: true
 - assertVisible: '¡Banco conectado!'
 - tapOn: 'Estoy listo'
 
