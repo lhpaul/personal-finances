@@ -161,3 +161,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.journal`-only accessor is proven to fail in the same suite. `expo export:embed` alone did not
   catch this (it already passed while the bug existed); the fix's evidence includes a real
   simulator boot reaching the onboarding launch gate.
+- **Secure-store credential keys used a colon the real `expo-secure-store` validator rejects**
+  (#100): `credentialsKeyFor` (`apps/mobile/src/lib/secure-store/credential-store.ts`, #9) built
+  keys as `bank_creds:<institutionId>` — the installed `expo-secure-store@15.0.8`'s own key
+  validator (`build/SecureStore.js`'s `isValidKey`, `/^[\w.-]+$/`) rejects a colon, so every real
+  credential write, read or delete would throw on a device (the same shape #25/PR #99 found and
+  fixed for the encryption key, `db_key.main`). The format is now `bank_creds.<institutionId>`
+  (dot separator, converging with #99's choice); every hand-built literal that bypassed
+  `credentialsKeyFor` (a dev-fixture writer and several test doubles) was swept to call it
+  instead. The in-memory secure-store fake used by Node-tier tests
+  (`apps/mobile/src/lib/secure-store/testing/memory-secure-store.ts`) now enforces the identical
+  key-validation regex on every operation, so a future hand-built invalid key fails in Node
+  instead of only on a real device — no stored-data migration is needed (no released users).

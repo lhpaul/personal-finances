@@ -22,9 +22,20 @@ import { DB_KEY_STORAGE_KEY } from '../db/encryption/constants';
 
 const ROOT = path.resolve(__dirname, '..');
 
-/** The one allowed hand-built `setItem(key, ...)` call site: `credentialsKeyFor`'s own
- * definition and its direct callers inside `credential-store.ts` (K5). */
-const ALLOWLISTED_FILES: readonly string[] = ['src/lib/secure-store/credential-store.ts'];
+/**
+ * The allowed hand-built `setItem(key, ...)` call sites:
+ * - `credentialsKeyFor`'s own definition and its direct callers inside `credential-store.ts`
+ *   (K5).
+ * - `testing/__tests__/memory-secure-store.test.ts` (issue #100): its own planted-violation
+ *   proof (E1, E5) deliberately calls `store.setItem(...)` with a raw, non-generator key (a
+ *   literal colon key, and a bare `key` variable) to prove the fake **rejects** it — the
+ *   opposite of a real bypass of `credentialsKeyFor`, but source-text-identical to one, so it
+ *   must be allowlisted rather than pattern-matched, exactly like `credential-store.ts` itself.
+ */
+const ALLOWLISTED_FILES: readonly string[] = [
+  'src/lib/secure-store/credential-store.ts',
+  'src/lib/secure-store/testing/__tests__/memory-secure-store.test.ts',
+];
 
 /** This file's own planted-violation fixtures (K1-K8 below) are `setItem(`-shaped source-text
  * strings by design — they would otherwise trip the very scan this suite runs over every other

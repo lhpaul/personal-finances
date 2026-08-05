@@ -35,7 +35,7 @@ function seededCredential(): string {
 /**
  * Builds the scenario-1 fixture: a bootstrapped store with an `active` connection, a
  * `disconnected` one, a product, a transaction, and `onboarding_completed` set — plus a memory
- * secure store seeded with both connections' keys, one orphan (`bank_creds:santander`, no
+ * secure store seeded with both connections' keys, one orphan (`bank_creds.santander`, no
  * connection row), and the database key (implementation plan for issue #25, Decision 11) —
  * completing the two-namespace picture `collectSecureStoreKeys` is meant to cover.
  */
