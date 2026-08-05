@@ -69,12 +69,16 @@ export default [
   // `src/features/banks/**` added for issue #20: `disconnect-bank.service.ts` and
   // `use-disconnect-bank.ts` are the one write path that deletes the keychain entry, and the
   // `no-credential-values.test.ts` source scan is the same guarantee's test-time backstop.
+  // `src/db/encryption/**` added for issue #25: this folder holds the database key end to end
+  // (generation, storage lookup, the raw-key `PRAGMA` text) — the same class of secret as a bank
+  // credential (AGENTS.md non-negotiable 1, extended to the database key).
   {
     files: [
       'src/lib/secure-store/**/*.{ts,tsx}',
       'src/features/connect-bank/**/*.{ts,tsx}',
       'src/features/bank-syncing/**/*.{ts,tsx}',
       'src/features/banks/**/*.{ts,tsx}',
+      'src/db/encryption/**/*.{ts,tsx}',
     ],
     rules: {
       'no-console': 'error',

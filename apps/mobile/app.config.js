@@ -51,7 +51,11 @@ module.exports = {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: ['expo-router', 'expo-localization', 'expo-sqlite'],
+    // `useSQLCipher: true` (issue #25, Decision 2) compiles `expo-sqlite` against its vendored
+    // SQLCipher build instead of plain SQLite — a native-build-flag change, never deliverable as
+    // a JS-only OTA update. Every developer, every EAS profile and every existing dev client must
+    // be rebuilt (`npx expo prebuild --clean`) after this change lands.
+    plugins: ['expo-router', 'expo-localization', ['expo-sqlite', { useSQLCipher: true }]],
     // Non-secret EAS project identifier (implementation plan Decision D12) — written by
     // `eas init --account lhpaul --non-interactive` (H1). Public, not a credential; every
     // build variant shares the one EAS project.
