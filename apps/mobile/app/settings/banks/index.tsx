@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, EmptyState, Text, TopBar } from '../../../src/components/ui';
+import { confirmDisconnect } from '../../../src/features/banks/confirm-disconnect';
 import { ConnectedBankRow } from '../../../src/features/banks/components/ConnectedBankRow';
 import { DisconnectConfirmModal } from '../../../src/features/banks/components/DisconnectConfirmModal';
 import {
@@ -41,7 +42,7 @@ export default function SettingsBanks() {
   const [now, setNow] = useState(() => new Date());
   useFocusEffect(useCallback(() => setNow(new Date()), []));
 
-  const dataState = useBankConnections();
+  const { state: dataState, reload: reloadConnections } = useBankConnections();
   const disconnectHook = useDisconnectBank();
 
   const liveConnections = dataState.status === 'ready' ? dataState.connections : [];
@@ -83,13 +84,19 @@ export default function SettingsBanks() {
     router.push('/(onboarding)/bank-picker');
   }
 
-  async function confirmDisconnect(): Promise<void> {
-    if (modalConnection === undefined) return;
-    const outcome = await disconnectHook.run({
-      connectionId: modalConnection.id,
-      institutionId: modalConnection.institutionId,
+  // On success this must both close the modal *and* re-read the list (issue #111): the
+  // disconnect mutates rows in place with no focus change, so `useBankConnections`' focus-driven
+  // reload never fires — without `reloadConnections()` the row keeps showing "Sincronizado"
+  // until the person navigates away and back.
+  function handleConfirmDisconnect(): Promise<void> {
+    return confirmDisconnect({
+      connection: modalConnection,
+      run: disconnectHook.run,
+      onDisconnected: () => {
+        reloadConnections();
+        clearDisconnectParam();
+      },
     });
-    if (outcome?.status === 'disconnected') clearDisconnectParam();
   }
 
   const { bankCount, productCount } = summarizeConnections(connections);
@@ -156,7 +163,7 @@ export default function SettingsBanks() {
         disabled={disconnectHook.status === 'running'}
         failed={disconnectHook.status === 'failed'}
         onCancel={cancelDisconnect}
-        onConfirm={() => void confirmDisconnect()}
+        onConfirm={() => void handleConfirmDisconnect()}
       />
     </SafeAreaView>
   );

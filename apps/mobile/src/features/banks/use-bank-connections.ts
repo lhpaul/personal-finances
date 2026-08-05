@@ -35,16 +35,25 @@ export async function loadBankConnections({
   }
 }
 
+export interface BankConnectionsHandle {
+  state: BankConnectionsState;
+  /** Re-reads the list immediately. The focus-driven reload below only fires when the screen
+   * loses and regains focus — an in-place mutation with no navigation (a confirmed disconnect,
+   * issue #111) needs this explicit trigger or the list keeps showing the pre-mutation rows. */
+  reload: () => void;
+}
+
 /**
  * `settings-banks`'s single feature hook (Decision 3). Re-reads when `useFocusEffect` bumps its
  * `reloadToken` — this is what makes AC3 true end to end: after a credential update the person
  * returns from item #11's syncing screen to `/settings/banks`, and the list re-reads on focus, so
- * the row's sync state is the one the sync just wrote. No TanStack Query, no provider.
+ * the row's sync state is the one the sync just wrote. No TanStack Query, no provider. `reload`
+ * bumps the same token for mutations that happen without a focus change (issue #111).
  *
  * A stored rejection is re-thrown **during render**, not inside the async callback, so it reaches
  * the route's `ErrorBoundary` instead of becoming an unhandled rejection.
  */
-export function useBankConnections(): BankConnectionsState {
+export function useBankConnections(): BankConnectionsHandle {
   const [state, setState] = useState<BankConnectionsState>({ status: 'pending' });
   const [reloadToken, setReloadToken] = useState(0);
   const hasFocusedOnce = useRef(false);
@@ -69,6 +78,8 @@ export function useBankConnections(): BankConnectionsState {
     };
   }, [reloadToken]);
 
+  const reload = useCallback(() => setReloadToken((token) => token + 1), []);
+
   if (state.status === 'error') throw state.error;
-  return state;
+  return { state, reload };
 }
