@@ -46,14 +46,14 @@
       "note": "notifications-schedule's days-step heading (found on device): same composition as the time-step heading, with CALENDAR_GLYPH and notifications_schedule.days_title."
     },
     {
-      "text": "Acerca de, ",
+      "text": "Acerca de, .*",
       "fixture_state": "synced-home",
-      "note": "The settings hub's 'Acerca de' row (found on device): SETTINGS_HUB_ROWS composes a ListRow whose title and subtitle merge into one accessibility label; this row's current subtitle is empty, leaving the trailing ', ' — the literal accessible text, not a typo."
+      "note": "The settings hub's 'Acerca de' row (re-confirmed on device during the #22 closing task's round-2 run): SETTINGS_HUB_ROWS composes a ListRow whose title and subtitle merge into one accessibility label ('Acerca de, Versión 0.0.0' — the subtitle is no longer empty on this build, unlike this entry's original note). Maestro's `tapOn`/`assertVisible` text selector is a full-string (anchored) regex match, not a substring search, so the trailing `.*` is required to match the subtitle remainder regardless of its exact value."
     },
     {
-      "text": "Perfil local, ",
+      "text": "Perfil local, .*",
       "fixture_state": "synced-home",
-      "note": "The settings hub's 'Perfil local' row (found on device) — same ListRow merging as 'Acerca de, ', with an empty current subtitle."
+      "note": "The settings hub's 'Perfil local' row (re-confirmed on device during the #22 closing task's round-2 run) — same ListRow merging as 'Acerca de, .*' ('Perfil local, Sin bancos conectados'), with the same full-match rationale for the trailing `.*`."
     },
     {
       "text": "Freelance",

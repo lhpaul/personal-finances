@@ -15,9 +15,14 @@ tags:
 - openLink: 'finanzas:///settings'
 
 # #screen=settings. Each hub row merges its title and subtitle into one accessibility label
-# (found on device) — see data_selectors ("Acerca de, ", "Perfil local, ").
+# (found on device) — see data_selectors ("Acerca de, .*", "Perfil local, .*"). Both subtitles
+# are non-empty on this build ("Versión 0.0.0", "Sin bancos conectados") — unlike when these
+# selectors were first authored, when the flow-contract's own note recorded an empty subtitle —
+# and Maestro's text selector is a full-string (anchored) regex match, not a substring search, so
+# the trailing `.*` is required to match the subtitle remainder (re-confirmed on device during the
+# #22 closing task's round-2 run).
 - assertVisible: 'Configuración'
-- tapOn: 'Acerca de, '
+- tapOn: 'Acerca de, .*'
 
 # #screen=settings-about. The TopBar's own title renders as a standalone "Acerca de" (distinct
 # from the hub row's merged "Acerca de, " label above) — a screen-unique-enough anchor here since
@@ -25,7 +30,7 @@ tags:
 - assertVisible: 'Acerca de'
 - tapOn: 'Volver'
 - assertVisible: 'Configuración'
-- tapOn: 'Perfil local, '
+- tapOn: 'Perfil local, .*'
 
 # #screen=settings-account (`default` -> `delete-confirm`).
 - assertVisible: 'Perfil local'
