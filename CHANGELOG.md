@@ -173,3 +173,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`apps/mobile/src/lib/secure-store/testing/memory-secure-store.ts`) now enforces the identical
   key-validation regex on every operation, so a future hand-built invalid key fails in Node
   instead of only on a real device — no stored-data migration is needed (no released users).
+- **`StageIntroScreen`'s CTA was unreachable on the reference device profile** (#103): the
+  screen wrapped its content (hero, "what we'll do", the three step icons, the two stat tiles,
+  the "why it matters" list, the note and the "🚀 ¡Empezar mi primera etapa!" CTA) in a plain
+  `View`, not a `ScrollView` — on the 393×852 reference profile the content overflowed the
+  viewport height and the CTA rendered entirely off-screen with no way to scroll to it (found by
+  E2E flow 03 on a real simulator, item #22, PR #102). The content now sits inside a
+  `ScrollView`, following the same pattern `CategorizeCompleteScreen` already uses; a new
+  source-scan test (`stage-intro-scroll.test.ts`) proves the CTA sits inside the `ScrollView`'s
+  open/close tags, with planted-violation proofs for both a missing `ScrollView` and a
+  `ScrollView` present but the CTA left outside it.
