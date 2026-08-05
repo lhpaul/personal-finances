@@ -138,7 +138,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   idempotent device states, a deterministic stubbed read (`complete_with_data`), and `pnpm e2e` /
   `e2e:contract` / `e2e:lint` / `e2e:test`. No flow file contains a real credential, and the
   credential scanner proves it in CI. The macOS `maestro-ios` job is wired but off until
-  `ENABLE_MAESTRO_E2E` is set.
+  `ENABLE_MAESTRO_E2E` is set. Running the suite for real against a Debug build found three
+  pre-existing product bugs blocking four of the ten flows (a real-device-only `expo-secure-store`
+  key-format rejection, a screen missing a `ScrollView`, and a shared overlay primitive that
+  merges sheet/modal contents into one non-individually-tappable accessibility element) — none
+  fixed here (out of this item's scope); see the runbook's *Blocked flows* section.
 
 ### Fixed
 
