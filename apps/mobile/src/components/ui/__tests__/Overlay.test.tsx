@@ -25,7 +25,12 @@ function stubButtons() {
     <>
       <Pressable accessibilityRole="button" accessibilityLabel="Cancelar" onPress={() => undefined} />
       <Pressable accessibilityRole="button" accessibilityLabel="Confirmar" onPress={() => undefined} />
-      <Text>Cuerpo del contenido</Text>
+      {/* All-caps, no spaces: matches `eslint-plugin-i18next`'s default `words.exclude`
+          pattern `[A-Z_-]+` (`no-literal-string`, `mode: 'jsx-text-only'`) — a real Spanish
+          sentence here would trip the same "no user-facing literal string in JSX" rule this
+          repo enforces on app code (AGENTS.md non-negotiable 8), even though this is a
+          throwaway test stub with no actual UI. */}
+      <Text>STUB_BODY_TEXT</Text>
     </>
   );
 }
