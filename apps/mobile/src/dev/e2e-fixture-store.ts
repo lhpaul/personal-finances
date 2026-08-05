@@ -1,4 +1,4 @@
-import { applyFixtureSql, setOnboardingCompleted } from '../db/dev-e2e-fixture';
+import { applyFixtureSql, reclaimInstitutionRowForFixture, setOnboardingCompleted } from '../db/dev-e2e-fixture';
 import { clearSampleFixture, loadSampleFixture } from '../db/dev-fixture';
 // `.sql` is inlined to a string at bundle time by `babel-plugin-inline-import`
 // (`apps/mobile/babel.config.js`) — the same mechanism `src/dev/sample-store.ts` already uses.
@@ -39,6 +39,13 @@ export const E2E_FIXTURE_STATES: E2eFixtureStateId[] = [
  * and is not tracked by its "restore whatever was there before" bookkeeping. */
 const RESET_CREDENTIAL_INSTITUTION_IDS = ['banco-de-chile', 'santander'];
 
+/** `store-v1.sql`'s own literal id for its one `banco-de-chile` connection row — found on device
+ * (first real run): `scripted-read` and a real connect both reach the same institution through
+ * `upsertConnection`, which is genuinely keyed on the institution, but `store-v1.sql`'s own row
+ * carries a different, fixed id. `reclaimInstitutionRowForFixture` needs this literal to know
+ * which row is its own. */
+const SYNCED_HOME_BANCO_DE_CHILE_ROW_ID = 'test-id-000002';
+
 /**
  * Applies one of {@link E2E_FIXTURE_STATES} against the app database (and, for `reset`, the
  * secure store). Every branch is idempotent (D6's "idempotent because" column) — applying the
@@ -64,6 +71,11 @@ export async function applyE2eFixtureState(
       return;
     }
     case 'synced-home': {
+      // Reclaims the banco-de-chile row before the upsert (found on device, first real run):
+      // `scripted-read` or a real connect may have already planted a row for the same
+      // institution under a different id, which `loadSampleFixture`'s id-scoped upsert cannot
+      // see — without this, the unique index on financial_institution_id throws.
+      reclaimInstitutionRowForFixture(db, 'banco-de-chile', SYNCED_HOME_BANCO_DE_CHILE_ROW_ID);
       loadSampleFixture(db, storeFixtureSql);
       setOnboardingCompleted(db, true);
       return;

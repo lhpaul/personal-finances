@@ -18,7 +18,17 @@
     {
       "text": "Banco de Chile",
       "fixture_state": "reset",
-      "note": "The seeded institution catalogue's own name (design/tokens.json-derived, not an i18n key) — visible on bank-picker, bank-credentials, bank-connected, settings-banks and bank-review regardless of fixture state."
+      "note": "The seeded institution catalogue's own name (design/tokens.json-derived, not an i18n key) — visible standalone (bank-credentials' FlowHeader title, bank-review's TopBar title) regardless of fixture state."
+    },
+    {
+      "text": "Banco de Chile, Cuentas, tarjetas y líneas",
+      "fixture_state": "reset",
+      "note": "bank-picker's institution row (found on device): RN merges the row's name and subtitle Text siblings into one accessibility label, so the selector must be the whole merged string, not just the institution name."
+    },
+    {
+      "text": "Banco de Chile, Al día",
+      "fixture_state": "synced-home",
+      "note": "settings-banks' connected-bank row (found on device): ConnectedBankRow merges the bank name and the 'Al día' status badge (home.banks_badge_ok) into one accessibility label."
     },
     {
       "text": "Consultoría Digital SpA",
@@ -26,9 +36,34 @@
       "note": "Merchant name from stage-queue-v1.sql's stage-tx-income row — tapped to open merchant-edit."
     },
     {
+      "text": "⏰ ¿Cuándo te funciona mejor?",
+      "fixture_state": "synced-home",
+      "note": "notifications-schedule's time-step heading (found on device): the screen composes a decorative glyph (a JS constant, not an i18n key — see notifications-schedule.tsx's own CLOCK_GLYPH comment) and notifications_schedule.time_title in one Text, merging them into one accessibility label."
+    },
+    {
+      "text": "📅 ¿Qué días?",
+      "fixture_state": "synced-home",
+      "note": "notifications-schedule's days-step heading (found on device): same composition as the time-step heading, with CALENDAR_GLYPH and notifications_schedule.days_title."
+    },
+    {
+      "text": "Acerca de, ",
+      "fixture_state": "synced-home",
+      "note": "The settings hub's 'Acerca de' row (found on device): SETTINGS_HUB_ROWS composes a ListRow whose title and subtitle merge into one accessibility label; this row's current subtitle is empty, leaving the trailing ', ' — the literal accessible text, not a typo."
+    },
+    {
+      "text": "Perfil local, ",
+      "fixture_state": "synced-home",
+      "note": "The settings hub's 'Perfil local' row (found on device) — same ListRow merging as 'Acerca de, ', with an empty current subtitle."
+    },
+    {
       "text": "Freelance",
       "fixture_state": "stage-queue",
       "note": "The 'freelance' category's Spanish display name (design/tokens.json categoryLabels.income), suggested for stage-tx-income by its merchant's default category."
+    },
+    {
+      "text": "http://localhost:8081",
+      "fixture_state": "reset",
+      "note": "The Expo dev-client's own native launcher chrome (English regardless of app locale, not app copy) — shared/fixture.yaml taps this row to reconnect to Metro after a launchApp(clearState) cold-starts the launcher instead of the JS app (confirmed on device)."
     }
   ],
   "input_values": [],

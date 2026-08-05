@@ -11,6 +11,7 @@ const FAKE_DB = {} as AppDatabase;
 // instance and no `expo-secure-store`.
 const mockApplyFixtureSql = jest.fn();
 const mockSetOnboardingCompleted = jest.fn();
+const mockReclaimInstitutionRowForFixture = jest.fn();
 const mockClearSampleFixture = jest.fn();
 const mockLoadSampleFixture = jest.fn();
 const mockClearScript = jest.fn();
@@ -23,6 +24,7 @@ jest.mock('../../db/runtime', () => ({
 jest.mock('../../db/dev-e2e-fixture', () => ({
   applyFixtureSql: (...args: unknown[]) => mockApplyFixtureSql(...args),
   setOnboardingCompleted: (...args: unknown[]) => mockSetOnboardingCompleted(...args),
+  reclaimInstitutionRowForFixture: (...args: unknown[]) => mockReclaimInstitutionRowForFixture(...args),
 }));
 jest.mock('../../db/dev-fixture', () => ({
   clearSampleFixture: (...args: unknown[]) => mockClearSampleFixture(...args),
@@ -83,11 +85,18 @@ describe('e2e-fixture-store', () => {
     await expect(applyE2eFixtureState('reset', port)).resolves.toBeUndefined();
   });
 
-  it('synced-home loads the store fixture and marks onboarding complete', async () => {
+  it('synced-home reclaims the banco-de-chile row, loads the store fixture, and marks onboarding complete', async () => {
     await applyE2eFixtureState('synced-home', createFakePort());
 
+    expect(mockReclaimInstitutionRowForFixture).toHaveBeenCalledWith(FAKE_DB, 'banco-de-chile', 'test-id-000002');
     expect(mockLoadSampleFixture).toHaveBeenCalledWith(FAKE_DB, expect.any(String));
     expect(mockSetOnboardingCompleted).toHaveBeenCalledWith(FAKE_DB, true);
+    // The reclaim runs before the upsert (found on device) — a scripted-read/real-connect row
+    // for the same institution, under a different id, must be gone before loadSampleFixture's
+    // own id-scoped upsert runs, or the unique index on financial_institution_id throws.
+    const reclaimOrder = mockReclaimInstitutionRowForFixture.mock.invocationCallOrder[0];
+    const loadOrder = mockLoadSampleFixture.mock.invocationCallOrder[0];
+    expect(reclaimOrder).toBeLessThan(loadOrder as number);
   });
 
   it('stage-queue applies the stage-queue delta and marks onboarding complete', async () => {

@@ -1,4 +1,7 @@
+import { and, eq, ne } from 'drizzle-orm';
+
 import { setSetting } from './repositories/settings';
+import { userFinancialInstitutions } from './schema';
 import type { AppDatabase } from './types';
 
 /**
@@ -40,6 +43,33 @@ export function applyFixtureSql(db: AppDatabase, sql: string): void {
       tx.run(statement);
     }
   });
+}
+
+/**
+ * Deletes any `user_financial_institutions` row for `institutionId` whose id is not
+ * `fixtureOwnedId` — found on device (implementation plan for issue #22, first real run):
+ * `user_financial_institutions_institution_unique` (`schema.ts`) allows at most one row per
+ * institution, but `loadSampleFixture`'s upsert (`src/db/dev-fixture.ts`) is scoped only to its
+ * own literal `id`, not to that separate unique index. Applying `synced-home` after `scripted-read`
+ * (or after a real connect, both of which reach the same institution row through
+ * `upsertConnection`, keyed on the institution) would otherwise throw a unique-constraint
+ * violation instead of converging. Reclaiming the row first is the "synced-home" fixture's own
+ * idempotent-because guarantee (D6): the fixture always ends up owning exactly the row its own
+ * `.sql` file names, regardless of what another fixture surface planted first.
+ */
+export function reclaimInstitutionRowForFixture(
+  db: AppDatabase,
+  institutionId: string,
+  fixtureOwnedId: string,
+): void {
+  db.delete(userFinancialInstitutions)
+    .where(
+      and(
+        eq(userFinancialInstitutions.financialInstitutionId, institutionId),
+        ne(userFinancialInstitutions.id, fixtureOwnedId),
+      ),
+    )
+    .run();
 }
 
 /**

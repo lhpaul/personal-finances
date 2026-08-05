@@ -28,7 +28,9 @@ tags:
 
 - tapOn: 'Conectar con mi banco'
 - assertVisible: 'Selecciona tu banco'
-- tapOn: 'Banco de Chile' # data_selectors: seeded institution catalogue name, not an i18n key
+# The row's name and subtitle are merged into one accessibility label on device — see
+# data_selectors ("Banco de Chile, Cuentas, tarjetas y líneas").
+- tapOn: 'Banco de Chile, Cuentas, tarjetas y líneas'
 - assertVisible: 'RUT'
 - tapOn:
     below: 'RUT'

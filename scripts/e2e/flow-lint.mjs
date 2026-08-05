@@ -61,7 +61,11 @@ const RUT_FORMATTED_PATTERN = /\d{1,2}\.\d{3}\.\d{3}-[\dkK]/g;
 const RUT_UNFORMATTED_PATTERN = /\b\d{7,8}-[\dkK]\b/g;
 const CREDENTIAL_KEY_PATTERN = /^\s*-?\s*(password|clave|contraseña|contrasena|secret|token|apiKey)\s*:\s*(.+?)\s*$/;
 const INPUT_TEXT_PATTERN = /^\s*-?\s*inputText\s*:\s*(.+?)\s*$/;
-const SELECTOR_KEY_PATTERN = /^\s*-?\s*(tapOn|assertVisible|below|above)\s*:\s*(.+?)\s*$/;
+// `text` is included alongside the command names themselves (found on device): `tapOn:`/
+// `assertVisible:` also accept an object form (`tapOn: { text: '...', optional: true }`), whose
+// nested `text:` key carries the actual selector literal and would otherwise escape this scan
+// entirely — a blind spot, not merely a missed convenience.
+const SELECTOR_KEY_PATTERN = /^\s*-?\s*(tapOn|assertVisible|below|above|text)\s*:\s*(.+?)\s*$/;
 
 /**
  * Extracts a YAML scalar's actual value from the raw "rest of line after the colon" text,
@@ -104,6 +108,33 @@ function extractYamlScalarValue(raw) {
 
 function isVariableReference(value) {
   return value.startsWith('${') && value.endsWith('}');
+}
+
+const INDENT_PATTERN = /^\s*/;
+const COMMAND_KEY_PATTERN = /^\s*-?\s*([A-Za-z][\w]*)\s*:/;
+
+function indentOf(lineText) {
+  return (INDENT_PATTERN.exec(lineText)?.[0] ?? '').length;
+}
+
+/**
+ * `copyTextFrom:`'s own `text:` value is a regex pattern for *finding* an element, not a literal
+ * copy string (unlike `tapOn:`/`assertVisible:`'s object form) — D10's "must equal an es.json
+ * value" rule does not apply to it. Walks backward from a `text:` line to the nearest
+ * shallower-indented command line to find its enclosing command, the same way a YAML mapping's
+ * key nesting resolves.
+ */
+function isTextKeyUnderCopyTextFrom(lines, index) {
+  const textIndent = indentOf(lines[index] ?? '');
+  for (let i = index - 1; i >= 0; i -= 1) {
+    const candidate = lines[i] ?? '';
+    if (candidate.trim().length === 0) continue;
+    const candidateIndent = indentOf(candidate);
+    if (candidateIndent >= textIndent) continue;
+    const commandMatch = COMMAND_KEY_PATTERN.exec(candidate);
+    return commandMatch?.[1] === 'copyTextFrom';
+  }
+  return false;
 }
 
 /** For `tapOn:`/`assertVisible:`/`below:`/`above:` with an *object* value on the same line — e.g.
@@ -193,7 +224,7 @@ function scanFile(relativePath, source, context) {
     // Selector rule (D10, E19-E22) — every screen this suite reaches without a testID is matched
     // by copy; a selector must be a real catalogue value or a declared data_selectors entry.
     const selectorMatch = SELECTOR_KEY_PATTERN.exec(lineText);
-    if (selectorMatch) {
+    if (selectorMatch && !(selectorMatch[1] === 'text' && isTextKeyUnderCopyTextFrom(lines, index))) {
       const value = extractYamlScalarValue(selectorMatch[2] ?? '');
       if (!isVariableReference(value)) {
         if (value.includes('{{')) {

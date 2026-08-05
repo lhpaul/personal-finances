@@ -183,6 +183,18 @@ test('E21: selector text equal to an es.json value that contains {{count}} is a 
   assert.equal(findingsFor(root, 'SELECTOR').length, 1);
 });
 
+test("a nested tapOn: { text: '...' } object-form selector is scanned (found on device — a blind spot in the line-based key pattern otherwise)", (t) => {
+  const root = makeRoot(t);
+  writeFile(root, 'flows/a.yaml', "- tapOn:\n    text: 'Some unknown copy'\n    optional: true\n");
+  assert.equal(findingsFor(root, 'SELECTOR').length, 1);
+});
+
+test("copyTextFrom:'s own text: regex pattern is exempt from the selector rule — it matches app data, not literal copy", (t) => {
+  const root = makeRoot(t);
+  writeFile(root, 'flows/a.yaml', "- copyTextFrom:\n    text: '.*\\(\\d+\\)'\n");
+  assert.equal(findingsFor(root, 'SELECTOR').length, 0);
+});
+
 test('E22: selector text listed in data_selectors produces no finding', (t) => {
   const root = makeRoot(t);
   writeFile(root, 'flows/a.yaml', "- tapOn: 'Banco de Chile'\n");

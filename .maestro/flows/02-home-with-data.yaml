@@ -12,10 +12,15 @@ tags:
 - openLink: 'finanzas:///'
 
 # #screen=home: hero, financial summary, trend card, category breakdown, recent movements,
-# connected banks (brief scope: "home with data").
+# connected banks (brief scope: "home with data"). The lower cards are below the fold on the
+# fidelity profile's viewport height — assertVisible does not auto-scroll (confirmed on device),
+# so this flow scrolls between assertion groups.
 - assertVisible: 'Finanzas'
 - assertVisible: 'Resumen financiero'
 - assertVisible: 'Análisis de tendencias'
+- scroll
 - assertVisible: 'Análisis por categorías'
+- scroll
 - assertVisible: 'Transacciones recientes'
+- scroll
 - assertVisible: 'Bancos conectados'

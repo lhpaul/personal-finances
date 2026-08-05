@@ -18,8 +18,13 @@ tags:
 - assertVisible: 'Transacciones'
 - openLink: 'finanzas:///transactions/detail-tx-categorized'
 
-# transaction-detail (categorized): exclude it.
+# transaction-detail (categorized): exclude it. The action row is below the fold (confirmed on
+# device) — assertVisible does not auto-scroll.
 - assertVisible: 'Detalle de transacción'
+- repeat:
+    times: 3
+    commands:
+      - scroll
 - tapOn: 'Excluir del análisis'
 - assertVisible: '¿Por qué quieres excluir esta transacción?'
 - tapOn: 'Involucra a más personas'

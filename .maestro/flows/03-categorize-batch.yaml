@@ -11,8 +11,13 @@ tags:
       SUCCESS_LABEL: 'Cola de categorización cargada.'
 - openLink: 'finanzas:///categorize/intro'
 
-# stage-intro.
+# stage-intro. The start CTA is below the fold (confirmed on device) — assertVisible does not
+# auto-scroll, so this scrolls the long intro content into view before tapping.
 - assertVisible: 'Tu primera etapa'
+- repeat:
+    times: 4
+    commands:
+      - scroll
 - tapOn: '🚀 ¡Empezar mi primera etapa!'
 
 # categorize: 4 pending movements (stage-queue-v1.sql), newest first — income, expense,

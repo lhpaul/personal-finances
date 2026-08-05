@@ -3,8 +3,8 @@ import path from 'node:path';
 
 import { isOnboardingCompleted } from '../repositories/settings';
 import { listPendingBatch } from '../repositories/transactions';
-import { applyFixtureSql, setOnboardingCompleted } from '../dev-e2e-fixture';
-import { transactions } from '../schema';
+import { applyFixtureSql, reclaimInstitutionRowForFixture, setOnboardingCompleted } from '../dev-e2e-fixture';
+import { userFinancialInstitutions, transactions } from '../schema';
 import { openBootstrappedMemoryDb } from '../testing/memory-db';
 
 const STAGE_QUEUE_PATH = path.resolve(__dirname, '..', '__fixtures__', 'stage-queue-v1.sql');
@@ -60,6 +60,79 @@ describe('dev-e2e-fixture', () => {
       for (const id of idsAfterFirst) {
         expect(idsAfterSecond.has(id)).toBe(true);
       }
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('reclaimInstitutionRowForFixture deletes another row for the same institution under a different id (found on device)', async () => {
+    const { sqlite, db } = await openBootstrappedMemoryDb();
+    try {
+      const now = new Date().toISOString();
+      db.insert(userFinancialInstitutions)
+        .values({
+          id: 'scripted-read-owned-id',
+          financialInstitutionId: 'banco-de-chile',
+          status: 'active',
+          credentialsKey: 'bank_creds:banco-de-chile',
+          syncStatus: 'idle',
+          createdAt: now,
+        })
+        .run();
+
+      reclaimInstitutionRowForFixture(db, 'banco-de-chile', 'test-id-000002');
+
+      const rows = db.select().from(userFinancialInstitutions).all();
+      expect(rows).toHaveLength(0);
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('reclaimInstitutionRowForFixture never touches the fixture-owned row itself', async () => {
+    const { sqlite, db } = await openBootstrappedMemoryDb();
+    try {
+      const now = new Date().toISOString();
+      db.insert(userFinancialInstitutions)
+        .values({
+          id: 'test-id-000002',
+          financialInstitutionId: 'banco-de-chile',
+          status: 'active',
+          credentialsKey: 'bank_creds:banco-de-chile',
+          syncStatus: 'ok',
+          createdAt: now,
+        })
+        .run();
+
+      reclaimInstitutionRowForFixture(db, 'banco-de-chile', 'test-id-000002');
+
+      const rows = db.select().from(userFinancialInstitutions).all();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.id).toBe('test-id-000002');
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it('reclaimInstitutionRowForFixture never touches a different institution', async () => {
+    const { sqlite, db } = await openBootstrappedMemoryDb();
+    try {
+      const now = new Date().toISOString();
+      db.insert(userFinancialInstitutions)
+        .values({
+          id: 'santander-owned-id',
+          financialInstitutionId: 'santander',
+          status: 'active',
+          credentialsKey: 'bank_creds:santander',
+          syncStatus: 'idle',
+          createdAt: now,
+        })
+        .run();
+
+      reclaimInstitutionRowForFixture(db, 'banco-de-chile', 'test-id-000002');
+
+      const rows = db.select().from(userFinancialInstitutions).all();
+      expect(rows.map((row) => row.id)).toEqual(['santander-owned-id']);
     } finally {
       sqlite.close();
     }

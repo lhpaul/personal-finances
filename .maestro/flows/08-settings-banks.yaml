@@ -14,7 +14,9 @@ tags:
 
 # #screen=settings-banks: the fixture connection's own row.
 - assertVisible: 'Bancos conectados'
-- tapOn: 'Banco de Chile' # data_selectors: seeded institution catalogue name
+# The row's name and its "Al día" status badge are merged into one accessibility label on device
+# — see data_selectors ("Banco de Chile, Al día").
+- tapOn: 'Banco de Chile, Al día'
 
 # #screen=bank-review.
 - assertVisible: 'Productos'

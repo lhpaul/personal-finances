@@ -11,14 +11,22 @@ tags:
       SUCCESS_LABEL: 'Inicio sincronizado cargado.'
 - openLink: 'finanzas:///dashboard'
 
-# #screen=dashboard: month segment (initial), trend, spending overview, category report.
+# #screen=dashboard: month segment (initial), trend, spending overview, category report. The
+# lower sections are below the fold (confirmed on device) — assertVisible does not auto-scroll.
 - assertVisible: 'Dashboard'
 - assertVisible: 'Mes'
 - assertVisible: 'Tendencia'
 - assertVisible: 'Resumen de gastos'
+- scroll
 - assertVisible: 'Reporte por categorías'
 
-# Switch to the week segment and confirm the sections re-render under it.
+# Switch to the week segment and confirm the sections re-render under it. Navigates away and
+# back (a same-route re-openLink keeps the previous scroll position — confirmed on device) to
+# force a fresh mount at the top of the screen before tapping the segment control.
+- openLink: 'finanzas:///'
+- openLink: 'finanzas:///dashboard'
+- assertVisible: 'Dashboard'
 - tapOn: 'Semana'
 - assertVisible: 'Tendencia'
+- scroll
 - assertVisible: 'Reporte por categorías'

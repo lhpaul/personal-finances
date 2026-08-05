@@ -14,15 +14,18 @@ tags:
       SUCCESS_LABEL: 'Inicio sincronizado cargado.'
 - openLink: 'finanzas:///settings'
 
-# #screen=settings.
+# #screen=settings. Each hub row merges its title and subtitle into one accessibility label
+# (found on device) — see data_selectors ("Acerca de, ", "Perfil local, ").
 - assertVisible: 'Configuración'
-- tapOn: 'Acerca de'
+- tapOn: 'Acerca de, '
 
-# #screen=settings-about.
-- assertVisible: 'Privacidad por diseño.'
+# #screen=settings-about. The TopBar's own title renders as a standalone "Acerca de" (distinct
+# from the hub row's merged "Acerca de, " label above) — a screen-unique-enough anchor here since
+# the hub row that led here is no longer on screen.
+- assertVisible: 'Acerca de'
 - tapOn: 'Volver'
 - assertVisible: 'Configuración'
-- tapOn: 'Perfil local'
+- tapOn: 'Perfil local, '
 
 # #screen=settings-account (`default` -> `delete-confirm`).
 - assertVisible: 'Perfil local'

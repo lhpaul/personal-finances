@@ -16,20 +16,26 @@ tags:
 # dialog, which this suite deliberately never depends on (D3's Debug-build posture is about the
 # app, not the OS chrome around it). The custom-time chip and "Solo días laborales" are both
 # es.json literals, so no data-derived time-format selector is needed here.
+# The step headings compose a decorative glyph with the translated title into one accessibility
+# label (found on device) — see data_selectors.
 - openLink: 'finanzas:///notifications/schedule'
-- assertVisible: '¿Cuándo te funciona mejor?'
+- assertVisible: '⏰ ¿Cuándo te funciona mejor?'
 - tapOn: 'Personalizada'
 - assertVisible: 'Hora personalizada'
 - tapOn: 'Continuar'
-- assertVisible: '¿Qué días?'
+- assertVisible: '📅 ¿Qué días?'
 - tapOn: 'Solo días laborales'
 - tapOn: 'Continuar'
 
 # Saved and routed onward (onboarding's own post-schedule destination).
 - assertVisible: '¡Todo listo!'
 
-# #screen=settings-notifications: confirms the schedule just written renders back correctly.
+# #screen=settings-notifications. Found on device: the stored `enabled: true` from the schedule
+# save above does not by itself flip this screen's toggle — `resolveSettingsState` composes the
+# stored intent with the *live OS permission* (Decision 5 of #18's plan), and this suite never
+# requests that permission (D3 is about the app, not OS chrome), so the permission stays
+# `undetermined` and the toggle correctly reads off. This is real, current behaviour, not a
+# suite bug — the toggle and its label are what this flow can honestly assert without depending
+# on a real permission dialog.
 - openLink: 'finanzas:///settings/notifications'
 - assertVisible: 'Recordatorios activados'
-- assertVisible: 'Hora del desafío'
-- assertVisible: 'Días'

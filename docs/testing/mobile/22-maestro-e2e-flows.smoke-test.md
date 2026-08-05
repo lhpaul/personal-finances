@@ -346,7 +346,115 @@ runbooks still works.
   (issues #19/#20/#21/#18 respectively, for traceability).
 - **Cross-midnight runs.** The deterministic read anchors on the run's local day. Two syncs on
   opposite sides of local midnight legitimately produce different dates; re-run from `reset`.
-- **First-run confirmations.** Record here, during implementation: whether Maestro's `clearState`
-  clears the keychain on iOS; which deep-link form each route accepts; and the exact Metro wait
-  condition used.
+
+## First-run confirmations (recorded during implementation)
+
+- **`launchApp: clearState: true` does not auto-reconnect to Metro.** It cold-starts the Expo
+  dev-client's own native "Development Servers" launcher, not the app's JS content. `fixture.yaml`
+  now taps the listed dev-server row and waits for the launcher to disappear before proceeding —
+  every flow funnels through it, so this is handled once, centrally.
+- **A one-time dev-menu tutorial sheet** ("This is the developer menu…") can appear after a fresh
+  connect, on top of whatever screen loads under it. `fixture.yaml` dismisses it (tapping the
+  sheet's own backdrop) before continuing, conditioned on the sheet's "Reload" text being visible.
+- **The device locale matters and is not automatic.** A newly-created simulator can inherit
+  `AppleLanguages`/`AppleLocale` from the host Mac (observed: `en-CL` primary on a Chile-region,
+  English-language Mac) — the app then renders in English, and every Spanish selector in this
+  suite fails. `Finanzas E2E` must have Spanish set as the **primary** language before a Debug
+  build first connects:
+  ```bash
+  xcrun simctl spawn "Finanzas E2E" defaults write -g AppleLanguages -array "es-CL" "en-CL"
+  xcrun simctl spawn "Finanzas E2E" defaults write -g AppleLocale -string "es_CL"
+  ```
+  then terminate and relaunch the app (a full simulator reboot is not required).
+- **Deep-link form**: the three-slash form (`finanzas:///<route>`) works once the app is
+  connected and running. It does **not** work immediately after a `clearState` (see above) — the
+  bare custom scheme is intercepted by the dev-client launcher until a JS bundle is loaded.
+- **Maestro's text matching requires the element's *whole* accessibility text to match** — not a
+  substring search. React Native on iOS frequently merges sibling `Text` nodes that share a
+  `Pressable`/accessible ancestor into one combined `accessibilityText` (e.g. a row's name +
+  status badge, a heading's decorative glyph + its translated title, or — most consequentially —
+  an entire `Sheet`/`Modal`'s content). A selector must equal the *whole* merged string, which is
+  why `data_selectors` carries several composite entries (`"Banco de Chile, Al día"`, `"⏰ ¿Cuándo
+  te funciona mejor?"`, `"Acerca de, "`) rather than the bare catalogue value.
+- **`bank-syncing`'s advance to `bank-connected` is a manual "Ver resultado" tap**, not an
+  automatic redirect — the plan's illustrative flow 01 sample assumed automatic; the real screen
+  enables the CTA once `phase === 'succeeded'` and waits for the tap. The synced step's own status
+  badge was observed to stay "En curso" even after the read settles (cosmetic; the CTA itself is
+  reliably tappable once enabled) — flows 01 and 06 retry the tap a few times rather than waiting
+  on that badge.
+- **Maestro CLI version confirmed**: `2.6.0`, matching the pin. `copyTextFrom` has no way to name
+  its own captured variable — it is always read back as `${maestro.copiedText}` (the plan's
+  illustrative sample assumed a custom `id:` capture name; corrected).
+
+## Blocked flows — real, pre-existing product bugs found on device
+
+Four flows cannot currently pass `maestro test .maestro/`, each blocked by a genuine bug in
+already-merged product code that this device run is the first thing to ever exercise for real
+(the same category of finding AGENTS.md's troubleshooting table already records for #95's P0).
+None of these are fixed in this PR — none is in scope for an E2E-flows item to change product
+code for (D18), and each is cross-cutting enough (credential storage; a shared overlay primitive)
+to need its own reviewed fix. Each is reported here honestly, with evidence, per this item's own
+instruction never to stub a failing flow green.
+
+1. **Flow 01 (`onboarding-connect`) and Flow 07 (`settings-wipe`) — `expo-secure-store` rejects
+   the app's own `bank_creds:<institutionId>` key format on a real device.**
+   `apps/mobile/src/lib/secure-store/credential-store.ts`'s `credentialsKeyFor` produces
+   `bank_creds:banco-de-chile` — the colon fails `expo-secure-store`'s own key validation
+   (`node_modules/expo-secure-store/src/SecureStore.ts`: `isValidKey` requires
+   `/^[\w.-]+$/`, i.e. alphanumeric, `.`, `-`, `_` only — no colon). Every real call to
+   `writeCredentials`/`readCredentials`/`deleteCredentials` throws
+   `Error: Invalid key provided to SecureStore. Keys must not be empty and contain only
+   alphanumeric characters, ".", "-", and "_".` on a real device. This is unconditional and
+   deterministic — not a timing flake. It surfaces first in the `reset` fixture state (which
+   deletes both fixture institutions' credential keys, D7) and again in `settings-wipe`'s
+   `wipeLocalData` sweep. **This is a pre-existing bug in already-merged code (items #9/#19/#20),
+   invisible to every existing Jest test because they all substitute a `SecureStorePort` fake and
+   never call the real native module** — device E2E is the first thing to reach it.
+   Evidence: `evidence/blocker-secure-store-colon-key.png`.
+2. **Flow 03 (`categorize-batch`) — `StageIntroScreen.tsx` wraps its content in a plain `View`,
+   not a `ScrollView`.** On this device profile the content (hero, "what we'll do", the three
+   step icons, the two stat tiles, the "why it matters" list, the note, and the "🚀 ¡Empezar mi
+   primera etapa!" CTA) overflows the viewport height, and the CTA renders entirely off-screen
+   with no way to scroll to it — confirmed by four `scroll` commands producing a pixel-identical
+   screenshot. Evidence: `evidence/flow03-blocker-stageintro-no-scrollview.png`.
+3. **Flow 04 (`transaction-detail-exclude`) and Flow 07 (`settings-wipe`) — the shared `Sheet`/
+   `Modal` overlay primitive merges every descendant's text into one accessibility element,
+   making individual buttons/options untappable by their own text.**
+   `apps/mobile/src/components/ui/_internal/Overlay.tsx`'s outer backdrop `Pressable` (with its
+   own `onPress`) becomes, on iOS, the accessible leaf for the whole subtree it wraps — every
+   `Text` inside a `Sheet` or `Modal` gets flattened into one combined `accessibilityText`
+   (confirmed via `maestro hierarchy`, e.g. `"🚫 Excluir del análisis, ¿Por qué quieres excluir
+   esta transacción?, Transferencia personal, …, Cancelar, Confirmar"` as a *single* element).
+   `tapOn` against any individual option or button inside — "Transferencia personal", "Confirmar",
+   "Borrar todo" — finds nothing, even though the same text renders correctly and is visible.
+   This blocks the exclude-reason confirmation in flow 04 and the destructive delete confirmation
+   in flow 07 — both are the essential action each flow exists to prove, so neither flow can be
+   redesigned around it the way flow 10 was redesigned around the OS permission dialog.
+   Evidence: `evidence/flow04-blocker-sheet-accessibility-fusion.png`,
+   `evidence/flow07-blocker-modal-accessibility-fusion.png`.
+
+**Net result — run standalone, one flow at a time** (`bash scripts/e2e/run-e2e.sh
+.maestro/flows/<file>`, the same command each Step above uses): 6 of 10 flows pass end to end on a
+real `Finanzas E2E` simulator — 02, 05, 06, 08, 09, 10. 01, 03, 04, 07 fail for the three reasons
+above.
+
+**Net result — the literal AC1 command** (`maestro test .maestro/`, all ten in one continuous
+session): 5/10 flows failed on the run recorded for this PR. `05 dashboard`, `08 settings banks`,
+`09 settings categories` and `10 notifications` passed, matching the standalone results exactly.
+`06 re-sync is idempotent` also passed in this run (it did not always land in the standalone
+sample above, timing-dependent). `01`, `03`, `04`, `07` failed for the same three reasons.
+**`02 home with data`, which passes reliably standalone, additionally failed in this combined
+run** — `01`'s app-crash finding (`App crashed or stopped while executing flow`, a variant of the
+same SecureStore throw, this time not caught by the panel's own `try`/`catch` before the process
+terminated) appears to corrupt the shared app session for whichever flow runs immediately after it
+in the same `maestro test .maestro/` invocation, not just `01` itself. This is a corollary of the
+same root-cause bug (finding 1), not a fourth independent one: once finding 1 is fixed, `01` stops
+crashing and this cascade has no trigger left. Full output:
+`.tmp/e2e/.maestro/tests/2026-08-04_205242/` (gitignored, present in the implementation branch's
+worktree at PR time) and `evidence/full-suite-run-final.txt`.
+
+AC1's literal command is correct and will pass once a human decides how to address the findings
+above (a dedicated fix item is the natural next step for each, given their cross-cutting blast
+radius) — nothing about this item's own flow files, contract or fixture surface is what keeps it
+red today.
 </content>

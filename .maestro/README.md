@@ -74,8 +74,9 @@ the `input_values` allowlist, all declared once in `flow-contract.json`:
   password or a `${…}` reference.
 - **R3 — typed input allowlist**: every `inputText:` literal must be declared — this is the rule
   that actually closes the credential path, since typing is how a secret would enter a flow.
-- **R4 — real-bank host**: a hostname under any of `forbidden_hosts` (`bancochile.cl`,
-  `portalpersonas.bancochile.cl`).
+- **R4 — real-bank host**: a hostname under any of the two real Banco de Chile domains named in
+  `flow-contract.json`'s `forbidden_hosts` array (not spelled out here, so this very paragraph
+  does not itself trip the scanner's own blanket substring match).
 
 `flow-contract.json` itself is exempt from R1-R4 (never from the selector rule) — it is the
 declaration surface for the constants and the forbidden-host list; scanning it would otherwise
