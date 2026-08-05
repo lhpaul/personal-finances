@@ -13,13 +13,25 @@ export interface BankCredentials {
 }
 
 /**
- * `credentialsKeyFor('banco-de-chile') === 'bank_creds:banco-de-chile'`, exactly as
+ * `credentialsKeyFor('banco-de-chile') === 'bank_creds.banco-de-chile'`, exactly as
  * `docs/project/4-database-model.md` records for `user_financial_institutions.credentials_key`.
  * Deterministic by construction (Decision 5): reconnecting a bank always resolves to the same
  * key, so there is never a second secure-store entry for the same institution.
+ *
+ * **Deviation from the plan's original `bank_creds:<institutionId>` (colon) shape, found by
+ * issue #100** (mirrors the identically-shaped `db_key:main` finding fixed for the encryption
+ * key by #25/PR #99): the installed `expo-secure-store@15.0.8`'s own key validator —
+ * `build/SecureStore.js`'s `isValidKey`, `/^[\w.-]+$/.test(key)`, called by `ensureValidKey`
+ * from every one of `getItemAsync` / `setItemAsync` / `deleteItemAsync` (and their `*Sync`
+ * counterparts) before any keychain access — rejects a colon and throws `Invalid key provided to
+ * SecureStore. Keys must not be empty and contain only alphanumeric characters, ".", "-", and
+ * "_".` A colon-format key would therefore throw on *every* real credential write, read, or
+ * delete, on a real device — verified by reading the exact regex above, not inferred from a
+ * stack trace. `.` is in the allowed set, so `bank_creds.<institutionId>` is used instead,
+ * converging on the same separator #99 chose for `DB_KEY_STORAGE_KEY`.
  */
 export function credentialsKeyFor(institutionId: string): string {
-  return `bank_creds:${institutionId}`;
+  return `bank_creds.${institutionId}`;
 }
 
 /** Writes both credential values as one JSON object under one key per bank (Decision 4). */

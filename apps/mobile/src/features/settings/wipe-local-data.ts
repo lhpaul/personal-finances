@@ -4,21 +4,26 @@ import { credentialsKeyFor, deleteAllCredentials } from '../../lib/secure-store/
 import type { SecureStorePort } from '../../lib/secure-store/types';
 
 /**
- * Every `bank_creds:<institutionId>` key this device could ever hold (implementation plan for
- * issue #19, Decision 2) — a **derivation**, not a runtime enumeration, because
+ * Every `bank_creds.<institutionId>` key this device could ever hold (implementation plan for
+ * issue #19, Decision 2; separator updated from the plan's original `:` to `.` by issue #100 —
+ * `expo-secure-store` rejects a colon) — a **derivation**, not a runtime enumeration, because
  * `SecureStorePort` deliberately has no "list every key" method (item #9's Decision 4: a real
  * keychain offers no such API).
  *
  * Two sources, because each covers the other's blind spot:
  * - {@link listConnectionsForCredentialLookup} — the key that was actually written, for every
  *   connection this device has ever made, **including** a `disconnected` one (the derivation
- *   must not filter by `status`).
+ *   must not filter by `status`). Coherent with `credentialsKeyFor` by construction (issue #100
+ *   verification): every production writer of `credentialsKey` (`connect-bank.service.ts`,
+ *   `dev-connect-fixture.ts`) derives it via `credentialsKeyFor(institutionId)`, and there are no
+ *   released users whose device could hold a stale pre-#100 colon-format value — no migration is
+ *   needed.
  * - {@link listInstitutions} — the full seeded catalogue. `credentialsKeyFor` is deterministic
- *   (`'bank_creds:' + id`), so this sweeps an **orphan** key: one whose connection row was
+ *   (`'bank_creds.' + id`), so this sweeps an **orphan** key: one whose connection row was
  *   already deleted, or that was written by a connect attempt that crashed before its
  *   transaction committed.
  *
- * The claim "`bank_creds:<institutionId>` is the only key namespace this app ever writes" is held
+ * The claim "`bank_creds.<institutionId>` is the only key namespace this app ever writes" is held
  * by a test, not by this comment — `src/__tests__/secure-store-key-namespace.test.ts` scans every
  * `setItem` call site under `src/**` and fails if one bypasses `credentialsKeyFor(...)`.
  */
@@ -32,7 +37,7 @@ export function collectCredentialKeys(db: AppDatabase): string[] {
 
 /**
  * A closed union with **no message, no key name and no cause payload** (implementation plan
- * Decision 1) — an error string that interpolated a key would put `bank_creds:banco-de-chile` in
+ * Decision 1) — an error string that interpolated a key would put `bank_creds.banco-de-chile` in
  * a log line. The union carries only enough for the UI to pick one of two catalogue keys.
  */
 export type WipeResult =

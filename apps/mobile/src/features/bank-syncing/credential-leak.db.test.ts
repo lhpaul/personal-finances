@@ -2,6 +2,7 @@ import type { ScrapeResult } from '@finanzas/bank-scraper';
 
 import { openBootstrappedMemoryDb } from '../../db/testing/memory-db';
 import { getConnection, upsertConnection } from '../../db/repositories/institutions';
+import { credentialsKeyFor } from '../../lib/secure-store/credential-store';
 import type { SecureStorePort } from '../../lib/secure-store/types';
 import { runSync, type ScraperRunner } from '../sync';
 import { FAILURE_BODY_KEY } from './failure-copy';
@@ -51,7 +52,7 @@ const SENTINEL_PASSWORD = 'ZZSENTINELPASSZZ';
 const FIXTURE_INSTITUTION_ID = 'banco-de-chile';
 
 function createFakePort(credentials: { rut: string; password: string }): SecureStorePort {
-  const key = `bank_creds:${FIXTURE_INSTITUTION_ID}`;
+  const key = credentialsKeyFor(FIXTURE_INSTITUTION_ID);
   const store = new Map<string, string>([[key, JSON.stringify(credentials)]]);
   return {
     getItem: (k) => Promise.resolve(store.has(k) ? (store.get(k) as string) : null),
@@ -75,7 +76,7 @@ function createLeakyFakeRunner(
 ): ScraperRunner {
   return {
     async run(request) {
-      const raw = await port.getItem(`bank_creds:${request.bankId}`);
+      const raw = await port.getItem(credentialsKeyFor(request.bankId));
       const credentials = raw ? (JSON.parse(raw) as { rut: string; password: string }) : null;
       if (!credentials) throw new Error('fixture misconfigured: no credential planted');
 
@@ -171,7 +172,7 @@ describe('bank-syncing credential leak scan (scenario 12; non-negotiable 1)', ()
     try {
       const { id: connectionId } = upsertConnection(db, {
         institutionId: FIXTURE_INSTITUTION_ID,
-        credentialsKey: `bank_creds:${FIXTURE_INSTITUTION_ID}`,
+        credentialsKey: credentialsKeyFor(FIXTURE_INSTITUTION_ID),
         newId: ports.newId,
         now: ports.now,
       });
@@ -187,7 +188,7 @@ describe('bank-syncing credential leak scan (scenario 12; non-negotiable 1)', ()
         connectionId,
         countryCode: 'cl',
         bankId: FIXTURE_INSTITUTION_ID,
-        credentialsKey: `bank_creds:${FIXTURE_INSTITUTION_ID}`,
+        credentialsKey: credentialsKeyFor(FIXTURE_INSTITUTION_ID),
       });
       expect(JSON.stringify(runnerResult)).toContain(SENTINEL_RUT);
       expect(JSON.stringify(runnerResult)).toContain(SENTINEL_PASSWORD);
@@ -221,7 +222,7 @@ describe('bank-syncing credential leak scan (scenario 12; non-negotiable 1)', ()
     try {
       const { id: connectionId } = upsertConnection(db, {
         institutionId: FIXTURE_INSTITUTION_ID,
-        credentialsKey: `bank_creds:${FIXTURE_INSTITUTION_ID}`,
+        credentialsKey: credentialsKeyFor(FIXTURE_INSTITUTION_ID),
         newId: ports.newId,
         now: ports.now,
       });
@@ -262,7 +263,7 @@ describe('bank-syncing credential leak scan (scenario 12; non-negotiable 1)', ()
       {
         resolveBankConfig: () => ({ id: FIXTURE_INSTITUTION_ID }) as never,
         readCredentials: async (bankId) => {
-          const raw = await port.getItem(`bank_creds:${bankId}`);
+          const raw = await port.getItem(credentialsKeyFor(bankId));
           return raw ? (JSON.parse(raw) as { rut: string; password: string }) : null;
         },
         runScript: () => null,

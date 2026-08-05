@@ -1,6 +1,7 @@
 import { deriveDateLocal } from '@finanzas/shared-utils';
 import { eq } from 'drizzle-orm';
 
+import { credentialsKeyFor } from '../lib/secure-store/credential-store';
 import { transactions, userFinancialInstitutions, userFinancialProducts } from './schema';
 import type { AppDatabase } from './types';
 
@@ -55,7 +56,7 @@ export function plantSyncedConnection(
       id: connectionId,
       financialInstitutionId: institutionId,
       status: 'active',
-      credentialsKey: `bank_creds:${institutionId}`,
+      credentialsKey: credentialsKeyFor(institutionId),
       syncStatus: 'ok',
       lastSyncAt: now,
       lastSuccessAt: now,
