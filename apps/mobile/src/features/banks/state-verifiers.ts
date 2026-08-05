@@ -110,6 +110,25 @@ export function verifySettingsBanksDisconnectConfirmState(): void {
     throw new Error('settings-banks route must reset the disconnect hook on cancel, so a stale failure Note cannot reopen later');
   }
 
+  // Issue #111: a confirmed disconnect mutates rows in place with no focus change, so the
+  // hook's own focus-driven reload never fires on its own — the route's `onDisconnected`
+  // callback must call `reload()` (aliased `reloadConnections`) itself, or the list keeps
+  // showing the just-disconnected row until the screen loses and regains focus. Scoped to the
+  // `onDisconnected` callback body (CodeRabbit finding on PR #112): a bare whole-file search
+  // for the statement would keep passing if a future handler elsewhere called it while
+  // `onDisconnected` itself no longer did. The statement form (trailing `;`) is still required
+  // inside the body, so a doc comment that only *mentions* `reloadConnections()` cannot mask
+  // the call site being deleted.
+  const onDisconnectedBody = source.match(/onDisconnected:\s*\(\)\s*=>\s*\{([\s\S]*?)\}/);
+  if (onDisconnectedBody === null) {
+    throw new Error('settings-banks route must wire an onDisconnected callback with a block body');
+  }
+  if (!onDisconnectedBody[1]?.includes('reloadConnections();')) {
+    throw new Error(
+      'settings-banks route must call reloadConnections() inside onDisconnected, or the list stays stale until refocus',
+    );
+  }
+
   const modalSource = readRoute(DISCONNECT_CONFIRM_MODAL);
   if (!modalSource.includes('settings_banks.disconnect_failed')) {
     throw new Error('DisconnectConfirmModal must render settings_banks.disconnect_failed on a failure');

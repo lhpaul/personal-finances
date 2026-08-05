@@ -94,7 +94,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Settings: connected banks and bank review** (#20): the connected-banks list with its empty
   state, per-bank detail with products, balances and cupo, manual re-sync and credential
   update hand-offs, and disconnection — which deletes the keychain entry and keeps every
-  downloaded movement.
+  downloaded movement. The list re-reads immediately after a confirmed disconnect (#111,
+  found in post-merge QA) — it previously kept showing the connected row until the screen
+  lost and regained focus.
 - **Dashboard** (#17): the trend, spending-overview and category-report cards in both
   manifest states (`month`, `week`), with month/week period toggles, donut and bar charts
   on `react-native-svg`, and per-card empty states. Every figure is produced by the same
