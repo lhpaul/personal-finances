@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -5,8 +7,10 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 
 import { __resetBootstrapForTests, ensureDatabaseReady } from '../bootstrap';
+import { LEGACY_DATABASE_NAME } from '../encryption/constants';
 import { runMigrations } from '../migrate';
 import * as schema from '../schema';
+import { loadFixture } from './load-fixture';
 import { createDeterministicPorts } from './ports';
 
 /**
@@ -72,6 +76,51 @@ export async function openBootstrappedMemoryDb() {
     now: ports.now,
   });
   return { sqlite, db, ports };
+}
+
+/**
+ * A **file-backed** migrated store, optionally seeded from a committed `store-v*.sql` snapshot —
+ * the one thing `openMemoryDb()`'s `:memory:` connection cannot support: `ATTACH` needs a second
+ * real file on disk, and `:memory:` databases have none (implementation plan Decision 9,
+ * Layer-by-Layer → `src/db/testing/memory-db.ts`). Used only by
+ * `src/db/encryption/__tests__/migrate-to-encrypted.test.ts` and its siblings, alongside
+ * `src/db/testing/cipher-port.ts`'s `createBetterSqliteCipherPort({ directory })`, which resolves
+ * every bare database name against the same directory this helper returns.
+ *
+ * Opens the plaintext store at `LEGACY_DATABASE_NAME` (`finanzas.db`) — the exact filename
+ * `open-encrypted-store.ts` probes at runtime — inside a fresh, uniquely-named temp directory, so
+ * concurrent test files never collide. `cleanup()` closes the connection and removes the whole
+ * directory (including whatever `finanzas.enc.db` a test's own migration run created next to it).
+ */
+export function openFileBackedLegacyStore(options?: { fixturePath?: string }) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'finanzas-enc-test-'));
+  const filePath = path.join(directory, LEGACY_DATABASE_NAME);
+
+  const sqlite = new Database(filePath);
+  sqlite.pragma('foreign_keys = ON');
+  runMigrations(
+    () => migrate(drizzle(sqlite), { migrationsFolder: MIGRATIONS_FOLDER }),
+    latestJournalEntryTag(),
+  );
+  if (options?.fixturePath) {
+    loadFixture(sqlite, options.fixturePath);
+  }
+  const db = drizzle(sqlite, { schema });
+
+  return {
+    directory,
+    sqlite,
+    db,
+    cleanup: () => {
+      try {
+        sqlite.close();
+      } catch {
+        // Already closed by the test (e.g. after `deleteDatabaseIfPresent` closed it via the
+        // cipher port) — cleanup must still remove the directory either way.
+      }
+      fs.rmSync(directory, { recursive: true, force: true });
+    },
+  };
 }
 
 export { latestJournalEntryTag, MIGRATIONS_FOLDER };

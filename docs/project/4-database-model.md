@@ -16,9 +16,9 @@ keys are named after the table they reference.
 |----------|-------|
 | Engine | **SQLite** via `expo-sqlite` (device-local, no server) |
 | Access layer | **Drizzle ORM** + `drizzle-kit` migrations bundled in the app |
-| Hosting | None. The database file lives in the app sandbox |
+| Hosting | None. The database file lives in the app sandbox, **encrypted at rest with SQLCipher** (item #25 — `finanzas.enc.db`, canonical from that item forward; the pre-#25 plaintext file, `finanzas.db`, no longer exists once a device has migrated) |
 | Multi-tenancy | None. Single local profile, one row in `users`. No account, no sign-in |
-| Secrets | **Never in SQLite.** Bank credentials *and the RUT* live in `expo-secure-store` (iOS Keychain / Android Keystore) |
+| Secrets | **Never in SQLite.** Bank credentials *and the RUT* live in `expo-secure-store` (iOS Keychain / Android Keystore), as does the database's own 32-byte encryption key (`db_key:main`, item #25) — the store cannot be decrypted without it |
 | Money | Integer **minor units** (CLP has no cents → store pesos as integers). Never floats |
 | Dates | ISO-8601 `TEXT` in UTC; a `date_local` `TEXT` (`YYYY-MM-DD`) column carries the bank's calendar day for grouping |
 | Shape-varying data | JSON `TEXT` columns (`assets`, `metadata`, `labels`) where fields differ per row type or per locale. Anything the app **queries, sorts or filters on** stays a real column |
@@ -148,7 +148,7 @@ The user's link to one institution on this device. **Holds no secrets** — only
 | `id` | `TEXT PK` | |
 | `financial_institution_id` | `TEXT NOT NULL REFERENCES financial_institutions(id)` | |
 | `status` | `TEXT NOT NULL` | `active` \| `inactive` \| `disconnected` |
-| `credentials_key` | `TEXT NOT NULL` | `expo-secure-store` key, e.g. `bank_creds:banco-de-chile`. **The value never touches SQLite** |
+| `credentials_key` | `TEXT NOT NULL` | `expo-secure-store` key, e.g. `bank_creds.banco-de-chile`. **The value never touches SQLite** |
 | `sync_status` | `TEXT NOT NULL` | `idle` \| `syncing` \| `ok` \| `error` |
 | `last_sync_at` | `TEXT` | Any attempt |
 | `last_success_at` | `TEXT` | Gap #8 — `bank-review` shows this separately |
@@ -162,7 +162,7 @@ Unique: `(financial_institution_id)` — one connection per bank.
 transition.** Connecting a bank creates the row (`status: 'active'`, `sync_status: 'idle'`) or, if
 one already exists for that institution, updates only `status` — `credentials_key`,
 `last_sync_at`, `last_success_at` and the error columns survive a reconnect untouched.
-`credentials_key` is deterministic (`bank_creds:<financial_institution_id>`), which is what lets a
+`credentials_key` is deterministic (`bank_creds.<financial_institution_id>`), which is what lets a
 reconnect resolve to the same secure-store entry instead of creating a second one. Item #10 owns
 every `ok` / `error` transition and the last-attempt/last-success bookkeeping that follows a real
 sync. **Item #20's settings disconnect action is the only writer of `status: 'disconnected'`** —
@@ -388,7 +388,11 @@ Gap #9. Key-value; avoids a migration per new preference.
 | `value` | `TEXT NOT NULL` (JSON) |
 
 MVP keys: `onboarding_completed`, `reminder_enabled`, `reminder_time`, `reminder_days`,
-`last_categorization_session_at`, `schema_version`, `first_launch_at`.
+`last_categorization_session_at`, `schema_version`, `first_launch_at`, `encryption_migrated_at`
+(item #25 — an ISO-8601 instant, written once by the plaintext-to-encrypted migration's commit
+step; **absent** on a device that has always been a fresh SQLCipher install, since no migration
+ever ran on it. Nothing in the app reads it at runtime; its presence is the migration's own
+on-disk commit marker, checked only by `open-encrypted-store.ts`'s state resolver).
 
 **Value shapes** (issue #8's implementation plan Decision 8 — recorded here so item #18, the
 first writer of the reminder keys, inherits the contract instead of re-deciding it):

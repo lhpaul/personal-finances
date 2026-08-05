@@ -39,6 +39,7 @@ import {
   TransactionRow,
 } from '../components/ui';
 import { componentMetrics, screenMetrics, theme } from '../theme';
+import { EncryptionProbeSection } from './EncryptionProbeSection';
 
 /** Decorative sample glyphs for the `CategoryChip` demo rows below: language-independent, not
  *  user-facing copy, so they do not belong in the i18n catalogues (implementation plan Decision
@@ -545,6 +546,13 @@ export function DesignSystemGallery() {
               <ListRow icon={t('ds.list_row.icon_three')} title={t('ds.list_row.title_three')} />
             </ListGroup>
           </Section>
+
+          {/* Not a design-system primitive — the encryption diagnostics probe (implementation
+              plan for issue #25, Decision 12). Lives here, not in its own `Section` wrapper,
+              because it renders its own heading and is reached at `finanzas://gallery` per the
+              smoke-test runbook's own navigation instructions, not as a `#screen=ds-components`
+              demo row. */}
+          <EncryptionProbeSection />
         </View>
       </ScrollView>
 

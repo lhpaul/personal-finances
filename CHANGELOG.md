@@ -143,6 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   key-format rejection, a screen missing a `ScrollView`, and a shared overlay primitive that
   merges sheet/modal contents into one non-individually-tappable accessibility element) — none
   fixed here (out of this item's scope); see the runbook's *Blocked flows* section.
+- **Encrypt the local database at rest** (#25): the on-device SQLite store is now SQLCipher-encrypted with a 32-byte key held only in `expo-secure-store`. Existing unencrypted databases migrate on first launch via a verified `sqlcipher_export` copy that never deletes the original until the replacement is confirmed row-for-row. Requires a native rebuild — this change cannot be delivered as a JS-only update.
 
 ### Fixed
 
@@ -174,3 +175,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.journal`-only accessor is proven to fail in the same suite. `expo export:embed` alone did not
   catch this (it already passed while the bug existed); the fix's evidence includes a real
   simulator boot reaching the onboarding launch gate.
+- **Secure-store credential keys used a colon the real `expo-secure-store` validator rejects**
+  (#100): `credentialsKeyFor` (`apps/mobile/src/lib/secure-store/credential-store.ts`, #9) built
+  keys as `bank_creds:<institutionId>` — the installed `expo-secure-store@15.0.8`'s own key
+  validator (`build/SecureStore.js`'s `isValidKey`, `/^[\w.-]+$/`) rejects a colon, so every real
+  credential write, read or delete would throw on a device (the same shape #25/PR #99 found and
+  fixed for the encryption key, `db_key.main`). The format is now `bank_creds.<institutionId>`
+  (dot separator, converging with #99's choice); every hand-built literal that bypassed
+  `credentialsKeyFor` (a dev-fixture writer and several test doubles) was swept to call it
+  instead. The in-memory secure-store fake used by Node-tier tests
+  (`apps/mobile/src/lib/secure-store/testing/memory-secure-store.ts`) now enforces the identical
+  key-validation regex on every operation, so a future hand-built invalid key fails in Node
+  instead of only on a real device — no stored-data migration is needed (no released users).
+- **The shared Sheet/Modal overlay fused every descendant into one accessibility element**
+  (#104): `_internal/Overlay.tsx`'s two wrapping `Pressable`s (the backdrop and the no-op
+  content-touch-capture layer) left `accessible` at `Pressable`'s own default (`true`) — a
+  `View`/`Pressable` with `accessible={true}` merges all of its subviews' accessibility info
+  into ONE node, so a screen reader could not reach any individual button inside a `Sheet` or
+  `Modal` (found by E2E flows 04/07 on device, item #22, PR #102). Both wrapping layers are now
+  `accessible={false}`, making them transparent to the accessibility tree while sighted touch
+  dismissal is unaffected. The overlay's element-tree construction is split out into a hookless
+  `renderOverlayTree` so `Overlay.test.tsx` can assert, via the renderer-free element-tree
+  walker, that a `Sheet`'s/`Modal`'s own buttons remain separate accessible nodes.
+- **`StageIntroScreen`'s CTA was unreachable on the reference device profile** (#103): the
+  screen wrapped its content (hero, "what we'll do", the three step icons, the two stat tiles,
+  the "why it matters" list, the note and the "🚀 ¡Empezar mi primera etapa!" CTA) in a plain
+  `View`, not a `ScrollView` — on the 393×852 reference profile the content overflowed the
+  viewport height and the CTA rendered entirely off-screen with no way to scroll to it (found by
+  E2E flow 03 on a real simulator, item #22, PR #102). The content now sits inside a
+  `ScrollView`, following the same pattern `CategorizeCompleteScreen` already uses; a new
+  source-scan test (`stage-intro-scroll.test.ts`) proves the CTA sits inside the `ScrollView`'s
+  open/close tags, with planted-violation proofs for both a missing `ScrollView` and a
+  `ScrollView` present but the CTA left outside it.

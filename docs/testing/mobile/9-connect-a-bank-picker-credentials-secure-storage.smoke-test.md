@@ -241,7 +241,7 @@ Neither shows balances, amounts or anything about categorization.
    ```
 
 **Expected result**: The three `grep` commands print nothing. The `select` prints one row per
-connected bank, with `credentials_key` reading `bank_creds:banco-de-chile` and no column
+connected bank, with `credentials_key` reading `bank_creds.banco-de-chile` (dot separator — colon is rejected by expo-secure-store's key validator; item #100) and no column
 containing a RUT or a password. Repeat this check after the *failed* attempt of step 10 and
 confirm it still holds.
 

@@ -1,24 +1,30 @@
+import { DB_KEY_STORAGE_KEY } from '../../db/encryption/constants';
 import { listInstitutions, listConnectionsForCredentialLookup } from '../../db/repositories/institutions';
 import type { AppDatabase } from '../../db/types';
 import { credentialsKeyFor, deleteAllCredentials } from '../../lib/secure-store/credential-store';
 import type { SecureStorePort } from '../../lib/secure-store/types';
 
 /**
- * Every `bank_creds:<institutionId>` key this device could ever hold (implementation plan for
- * issue #19, Decision 2) — a **derivation**, not a runtime enumeration, because
+ * Every `bank_creds.<institutionId>` key this device could ever hold (implementation plan for
+ * issue #19, Decision 2; separator updated from the plan's original `:` to `.` by issue #100 —
+ * `expo-secure-store` rejects a colon) — a **derivation**, not a runtime enumeration, because
  * `SecureStorePort` deliberately has no "list every key" method (item #9's Decision 4: a real
  * keychain offers no such API).
  *
  * Two sources, because each covers the other's blind spot:
  * - {@link listConnectionsForCredentialLookup} — the key that was actually written, for every
  *   connection this device has ever made, **including** a `disconnected` one (the derivation
- *   must not filter by `status`).
+ *   must not filter by `status`). Coherent with `credentialsKeyFor` by construction (issue #100
+ *   verification): every production writer of `credentialsKey` (`connect-bank.service.ts`,
+ *   `dev-connect-fixture.ts`) derives it via `credentialsKeyFor(institutionId)`, and there are no
+ *   released users whose device could hold a stale pre-#100 colon-format value — no migration is
+ *   needed.
  * - {@link listInstitutions} — the full seeded catalogue. `credentialsKeyFor` is deterministic
- *   (`'bank_creds:' + id`), so this sweeps an **orphan** key: one whose connection row was
+ *   (`'bank_creds.' + id`), so this sweeps an **orphan** key: one whose connection row was
  *   already deleted, or that was written by a connect attempt that crashed before its
  *   transaction committed.
  *
- * The claim "`bank_creds:<institutionId>` is the only key namespace this app ever writes" is held
+ * The claim "`bank_creds.<institutionId>` is the only key namespace this app ever writes" is held
  * by a test, not by this comment — `src/__tests__/secure-store-key-namespace.test.ts` scans every
  * `setItem` call site under `src/**` and fails if one bypasses `credentialsKeyFor(...)`.
  */
@@ -31,14 +37,31 @@ export function collectCredentialKeys(db: AppDatabase): string[] {
 }
 
 /**
+ * Every secure-store key namespace this app ever writes (implementation plan for issue #25,
+ * Decision 11) — {@link collectCredentialKeys}'s own cover, plus `DB_KEY_STORAGE_KEY`
+ * (`src/db/encryption/constants.ts`). This is the *completeness claim* the widened
+ * `src/__tests__/secure-store-key-namespace.test.ts` holds mechanically: every secure-store write
+ * call site in the app resolves to one of the two namespaces this function unions. It is **not**
+ * the deletion order — `wipeLocalData` below deletes the credential keys first, resets the store
+ * second, and the database key last, deliberately not in the shape this function returns them.
+ */
+export function collectSecureStoreKeys(db: AppDatabase): string[] {
+  return [...collectCredentialKeys(db), DB_KEY_STORAGE_KEY];
+}
+
+/**
  * A closed union with **no message, no key name and no cause payload** (implementation plan
- * Decision 1) — an error string that interpolated a key would put `bank_creds:banco-de-chile` in
- * a log line. The union carries only enough for the UI to pick one of two catalogue keys.
+ * Decision 1) — an error string that interpolated a key would put `bank_creds.banco-de-chile` in
+ * a log line. The union carries only enough for the UI to pick one of three catalogue keys.
+ * `'db_key_failed'` (implementation plan for issue #25, Decision 11) is reachable **only after**
+ * every credential key and the store file are both already gone — the worst case it describes is
+ * a stale database key protecting a file that no longer exists, never a surviving secret.
  */
 export type WipeResult =
   | { status: 'ok' }
   | { status: 'credentials_failed' }
-  | { status: 'store_failed' };
+  | { status: 'store_failed' }
+  | { status: 'db_key_failed' };
 
 export interface WipeLocalDataDeps {
   db: AppDatabase;
@@ -67,17 +90,28 @@ export interface WipeLocalDataDeps {
  *    (`resetStore`). A rejection here is caught and reported as `'store_failed'` — this function
  *    never throws, so a caller can never receive an unhandled rejection from the only operation
  *    in the product that cannot be undone.
+ * 5. Delete `DB_KEY_STORAGE_KEY` and confirm it is gone (implementation plan for issue #25,
+ *    Decision 11) — **after** the store file, never before. Deleting the key first and then
+ *    failing to delete the file would leave an encrypted store nothing can ever open again — a
+ *    bricked profile with no recovery. In this order the worst case is a stale key protecting a
+ *    file that no longer exists, which the next launch's `fresh_install` state simply reuses
+ *    fresh (Decision 3's one-way rule only refuses to *generate* a key over existing content; it
+ *    does not refuse to overwrite a key once nothing needs it any more — the next
+ *    `getAppDatabase()` call sees no encrypted content, so `ensureDatabaseKey` regenerates
+ *    without hesitation). A rejection or a confirmed survivor here is reported as
+ *    `'db_key_failed'`.
  *
  * Steps 1-3 are wrapped in their own `try`/`catch` (found in review): a real keychain can reject
  * on I/O — a locked device, a Keystore error — not just silently no-op, and `deleteAllCredentials`
  * / the read-back loop had no guard of their own before this. Any such rejection is reported as
  * `'credentials_failed'`, the same safe outcome as a detected survivor: the database is
  * unreachable from this branch either way, so a mid-loop I/O failure leaves the device in exactly
- * the same consistent, retryable state as a confirmed-surviving key.
+ * the same consistent, retryable state as a confirmed-surviving key. Step 5 is wrapped the same
+ * way, for the same reason, against the same class of real keychain I/O failure.
  *
  * No `DELETE` statement is issued anywhere in this module — the store is destroyed as a file, not
- * as a set of rows (Decision 11). That is what keeps this operation from ever being reusable to
- * delete a single movement, which Business Rule 3 forbids.
+ * as a set of rows (#19's own Decision 11). That is what keeps this operation from ever being
+ * reusable to delete a single movement, which Business Rule 3 forbids.
  */
 export async function wipeLocalData(deps: WipeLocalDataDeps): Promise<WipeResult> {
   try {
@@ -99,6 +133,16 @@ export async function wipeLocalData(deps: WipeLocalDataDeps): Promise<WipeResult
     await deps.resetStore();
   } catch {
     return { status: 'store_failed' };
+  }
+
+  try {
+    await deps.secureStore.deleteItem(DB_KEY_STORAGE_KEY);
+    const survivor = await deps.secureStore.getItem(DB_KEY_STORAGE_KEY);
+    if (survivor !== null) {
+      return { status: 'db_key_failed' };
+    }
+  } catch {
+    return { status: 'db_key_failed' };
   }
 
   return { status: 'ok' };

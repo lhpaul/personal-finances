@@ -8,16 +8,27 @@ import { wipeLocalData, type WipeResult } from './wipe-local-data';
 /**
  * `#screen=settings-account`'s `delete-confirm` state (implementation plan for issue #19,
  * Decision 7). `'confirming'` is the modal's visibility; `'wiping'` disables the confirm button
- * and re-entrancy guards a double tap. The two failure states are split (found in review) because
+ * and re-entrancy guards a double tap. The failure states are split (found in review) because
  * they are not interchangeable outcomes: by construction, `'failed_credentials'` means **nothing**
  * was touched — every credential is still in the keychain, the database is untouched, and the
- * value-free "no se borró nada" copy is accurate. `'failed_store'` is reachable **only after**
+ * value-free "no se borro nada" copy is accurate. `'failed_store'` is reachable **only after**
  * every credential key has already been confirmed deleted (`wipeLocalData`'s step 3 passed) and
- * only the file-deletion step failed — so "no se borró nada" would be false there; it needs its
+ * only the file-deletion step failed — so "no se borro nada" would be false there; it needs its
  * own copy that reflects the credentials being gone and the retry being safe (`resetAppDatabase`
  * has already deleted the file's own directory entry or not at all — either way idempotent).
+ * `'failed_db_key'` (implementation plan for issue #25, Decision 11) is reachable **only after**
+ * both the credentials and the store file are already gone — added as its own phase rather than
+ * collapsed into `'failed_store'`, so this hook always names exactly which step failed, even
+ * though `app/settings/account.tsx` renders it with `'failed_store'`'s own visual treatment (no
+ * mockup exists for this state — issue #25 plan Verification Log row V30).
  */
-export type WipePhase = 'idle' | 'confirming' | 'wiping' | 'failed_credentials' | 'failed_store';
+export type WipePhase =
+  | 'idle'
+  | 'confirming'
+  | 'wiping'
+  | 'failed_credentials'
+  | 'failed_store'
+  | 'failed_db_key';
 
 export interface ConfirmDeleteDeps {
   getPhase: () => WipePhase;
@@ -62,7 +73,15 @@ export async function attemptConfirmDelete(deps: ConfirmDeleteDeps): Promise<voi
     return;
   }
 
-  deps.setPhase(result.status === 'credentials_failed' ? 'failed_credentials' : 'failed_store');
+  if (result.status === 'credentials_failed') {
+    deps.setPhase('failed_credentials');
+    return;
+  }
+  if (result.status === 'store_failed') {
+    deps.setPhase('failed_store');
+    return;
+  }
+  deps.setPhase('failed_db_key');
 }
 
 export interface UseWipeLocalDataResult {

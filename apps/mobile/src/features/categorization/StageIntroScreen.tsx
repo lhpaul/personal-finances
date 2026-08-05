@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -65,7 +65,9 @@ export function StageIntroScreen({ testID }: StageIntroScreenProps) {
         backA11yLabel={t('stage_intro.back_a11y')}
         onBack={() => router.back()}
       />
-      <View style={{ flex: 1, paddingHorizontal: theme.space['5'] }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: theme.space['5'], paddingBottom: theme.space['5'] }}
+      >
         <View style={{ alignItems: 'center', marginTop: theme.space['5'] }}>
           <Text style={{ fontSize: screenMetrics.categorization.stageIntroHeroGlyphSize }}>
             {t('stage_intro.hero_icon')}
@@ -143,10 +145,10 @@ export function StageIntroScreen({ testID }: StageIntroScreenProps) {
           </Note>
         </View>
 
-        <View style={{ marginTop: theme.space['5'], marginBottom: theme.space['5'] }}>
+        <View style={{ marginTop: theme.space['5'] }}>
           <Button label={t('stage_intro.start')} onPress={() => router.push('/categorize')} />
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

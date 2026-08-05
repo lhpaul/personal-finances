@@ -4,6 +4,7 @@ import { transactions, userFinancialProducts } from '../../../db/schema';
 import { openBootstrappedMemoryDb } from '../../../db/testing/memory-db';
 import { createTestConnection, createTestProduct } from '../../../db/testing/product-fixture';
 import type { AppDatabase } from '../../../db/types';
+import { credentialsKeyFor } from '../../../lib/secure-store/credential-store';
 import type { SecureStorePort } from '../../../lib/secure-store/types';
 import { disconnectBank } from '../disconnect-bank.service';
 
@@ -54,7 +55,9 @@ describe('disconnectBank (issue #20, Decisions 1-2)', () => {
       })
       .run();
 
-    const secureStore = createFakePort({ 'bank_creds:banco-de-chile': JSON.stringify({ rut: 'x', password: 'y' }) });
+    const secureStore = createFakePort({
+      [credentialsKeyFor('banco-de-chile')]: JSON.stringify({ rut: 'x', password: 'y' }),
+    });
 
     const productCountBefore = countRows(db, userFinancialProducts);
     const transactionCountBefore = countRows(db, transactions);
@@ -105,7 +108,7 @@ describe('disconnectBank (issue #20, Decisions 1-2)', () => {
   it('disconnecting twice converges on the same state (Scenario 8 — idempotence)', async () => {
     const { db, ports } = await openBootstrappedMemoryDb();
     const connectionId = createTestConnection(db, ports, 'banco-de-chile');
-    const secureStore = createFakePort({ 'bank_creds:banco-de-chile': 'x' });
+    const secureStore = createFakePort({ [credentialsKeyFor('banco-de-chile')]: 'x' });
 
     const first = await disconnectBank({ db, secureStore }, { connectionId, institutionId: 'banco-de-chile' });
     const second = await disconnectBank({ db, secureStore }, { connectionId, institutionId: 'banco-de-chile' });
@@ -118,7 +121,7 @@ describe('disconnectBank (issue #20, Decisions 1-2)', () => {
   it('a disconnected connection is never due for an automatic sync (Scenario 9)', async () => {
     const { db, ports } = await openBootstrappedMemoryDb();
     const connectionId = createTestConnection(db, ports, 'banco-de-chile');
-    const secureStore = createFakePort({ 'bank_creds:banco-de-chile': 'x' });
+    const secureStore = createFakePort({ [credentialsKeyFor('banco-de-chile')]: 'x' });
 
     await disconnectBank({ db, secureStore }, { connectionId, institutionId: 'banco-de-chile' });
 
