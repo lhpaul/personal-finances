@@ -173,3 +173,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`apps/mobile/src/lib/secure-store/testing/memory-secure-store.ts`) now enforces the identical
   key-validation regex on every operation, so a future hand-built invalid key fails in Node
   instead of only on a real device — no stored-data migration is needed (no released users).
+- **The shared Sheet/Modal overlay fused every descendant into one accessibility element**
+  (#104): `_internal/Overlay.tsx`'s two wrapping `Pressable`s (the backdrop and the no-op
+  content-touch-capture layer) left `accessible` at `Pressable`'s own default (`true`) — a
+  `View`/`Pressable` with `accessible={true}` merges all of its subviews' accessibility info
+  into ONE node, so a screen reader could not reach any individual button inside a `Sheet` or
+  `Modal` (found by E2E flows 04/07 on device, item #22, PR #102). Both wrapping layers are now
+  `accessible={false}`, making them transparent to the accessibility tree while sighted touch
+  dismissal is unaffected. The overlay's element-tree construction is split out into a hookless
+  `renderOverlayTree` so `Overlay.test.tsx` can assert, via the renderer-free element-tree
+  walker, that a `Sheet`'s/`Modal`'s own buttons remain separate accessible nodes.
