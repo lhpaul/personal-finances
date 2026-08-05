@@ -375,7 +375,11 @@ runbooks still works.
   status badge, a heading's decorative glyph + its translated title, or — most consequentially —
   an entire `Sheet`/`Modal`'s content). A selector must equal the *whole* merged string, which is
   why `data_selectors` carries several composite entries (`"Banco de Chile, Al día"`, `"⏰ ¿Cuándo
-  te funciona mejor?"`, `"Acerca de, "`) rather than the bare catalogue value.
+  te funciona mejor?"`, `"Acerca de, .*"`) rather than the bare catalogue value — a trailing `.*`
+  is required whenever the merged remainder (a subtitle, a count) can vary or is simply non-empty
+  now where it was empty when the selector was first authored (found again in the #22 closing
+  task's round-2 run — "Acerca de, " and "Perfil local, " stopped matching once their rows' own
+  subtitles stopped being empty).
 - **`bank-syncing`'s advance to `bank-connected` is a manual "Ver resultado" tap**, not an
   automatic redirect — the plan's illustrative flow 01 sample assumed automatic; the real screen
   enables the CTA once `phase === 'succeeded'` and waits for the tap. The synced step's own status
@@ -385,76 +389,128 @@ runbooks still works.
 - **Maestro CLI version confirmed**: `2.6.0`, matching the pin. `copyTextFrom` has no way to name
   its own captured variable — it is always read back as `${maestro.copiedText}` (the plan's
   illustrative sample assumed a custom `id:` capture name; corrected).
+- **`scrollUntilVisible` immediately followed by `tapOn` can report both `COMPLETED` without the
+  tap ever reaching the target's `onPress`** (found in the #22 closing task's round-2 run, flow
+  04's `ExcludeSheet` footer) — the element Maestro locates is real and correctly bounded, but the
+  press does not register, reproducibly, even after a settle wait and repeated taps. A manual
+  `swipe` confined to the scrollable container's own bounds, followed by the same `tapOn`, does not
+  have this issue. Prefer a targeted `swipe` over `scrollUntilVisible` immediately before a `tapOn`
+  on the element it reveals.
 
-## Blocked flows — real, pre-existing product bugs found on device
+## Blocked flows — resolution record (round 2)
 
-Four flows cannot currently pass `maestro test .maestro/`, each blocked by a genuine bug in
-already-merged product code that this device run is the first thing to ever exercise for real
-(the same category of finding AGENTS.md's troubleshooting table already records for #95's P0).
-None of these are fixed in this PR — none is in scope for an E2E-flows item to change product
-code for (D18), and each is cross-cutting enough (credential storage; a shared overlay primitive)
-to need its own reviewed fix. Each is reported here honestly, with evidence, per this item's own
-instruction never to stub a failing flow green.
+The three product bugs below were each found by the round-1 device run recorded in this item's
+original PR and were **not** fixed there (out of scope for an E2E-flows item, D18). All three are
+now fixed on `develop`, and this section records the fix that landed and the round-2 re-run result
+for each affected flow — re-run against a native dev-client rebuild (the same simulator, `Finanzas
+E2E`) as a closing task for this item, once #101/#103/#106 had all merged.
 
-1. **Flow 01 (`onboarding-connect`) and Flow 07 (`settings-wipe`) — `expo-secure-store` rejects
-   the app's own `bank_creds:<institutionId>` key format on a real device.**
-   `apps/mobile/src/lib/secure-store/credential-store.ts`'s `credentialsKeyFor` produces
-   `bank_creds:banco-de-chile` — the colon fails `expo-secure-store`'s own key validation
-   (`node_modules/expo-secure-store/src/SecureStore.ts`: `isValidKey` requires
-   `/^[\w.-]+$/`, i.e. alphanumeric, `.`, `-`, `_` only — no colon). Every real call to
-   `writeCredentials`/`readCredentials`/`deleteCredentials` throws
-   `Error: Invalid key provided to SecureStore. Keys must not be empty and contain only
-   alphanumeric characters, ".", "-", and "_".` on a real device. This is unconditional and
-   deterministic — not a timing flake. It surfaces first in the `reset` fixture state (which
-   deletes both fixture institutions' credential keys, D7) and again in `settings-wipe`'s
-   `wipeLocalData` sweep. **This is a pre-existing bug in already-merged code (items #9/#19/#20),
-   invisible to every existing Jest test because they all substitute a `SecureStorePort` fake and
-   never call the real native module** — device E2E is the first thing to reach it.
-   Evidence: `evidence/blocker-secure-store-colon-key.png`.
-2. **Flow 03 (`categorize-batch`) — `StageIntroScreen.tsx` wraps its content in a plain `View`,
-   not a `ScrollView`.** On this device profile the content (hero, "what we'll do", the three
-   step icons, the two stat tiles, the "why it matters" list, the note, and the "🚀 ¡Empezar mi
-   primera etapa!" CTA) overflows the viewport height, and the CTA renders entirely off-screen
-   with no way to scroll to it — confirmed by four `scroll` commands producing a pixel-identical
-   screenshot. Evidence: `evidence/flow03-blocker-stageintro-no-scrollview.png`.
-3. **Flow 04 (`transaction-detail-exclude`) and Flow 07 (`settings-wipe`) — the shared `Sheet`/
-   `Modal` overlay primitive merges every descendant's text into one accessibility element,
-   making individual buttons/options untappable by their own text.**
-   `apps/mobile/src/components/ui/_internal/Overlay.tsx`'s outer backdrop `Pressable` (with its
-   own `onPress`) becomes, on iOS, the accessible leaf for the whole subtree it wraps — every
-   `Text` inside a `Sheet` or `Modal` gets flattened into one combined `accessibilityText`
-   (confirmed via `maestro hierarchy`, e.g. `"🚫 Excluir del análisis, ¿Por qué quieres excluir
-   esta transacción?, Transferencia personal, …, Cancelar, Confirmar"` as a *single* element).
-   `tapOn` against any individual option or button inside — "Transferencia personal", "Confirmar",
-   "Borrar todo" — finds nothing, even though the same text renders correctly and is visible.
-   This blocks the exclude-reason confirmation in flow 04 and the destructive delete confirmation
-   in flow 07 — both are the essential action each flow exists to prove, so neither flow can be
-   redesigned around it the way flow 10 was redesigned around the OS permission dialog.
-   Evidence: `evidence/flow04-blocker-sheet-accessibility-fusion.png`,
-   `evidence/flow07-blocker-modal-accessibility-fusion.png`.
+1. **`expo-secure-store` rejects the app's own `bank_creds:<institutionId>` key format on a real
+   device** (blocked flows 01 and 07) — fixed by **#100 / PR #101** (`fix/100-secure-store-key-format`):
+   `credentialsKeyFor` now produces a dot, not a colon (`bank_creds.banco-de-chile`), which
+   `expo-secure-store`'s `isValidKey` accepts. **Re-run result**: flow 07 now runs the `reset` and
+   `wipeLocalData` secure-store sweeps this bug used to crash, cleanly, and passes end to end,
+   standalone and in the full suite. Flow 01 no longer crashes on this bug either — but it does not
+   pass, because reaching further exposed a second, unrelated, real bug (finding 4 below).
+2. **`StageIntroScreen.tsx` wraps its content in a plain `View`, not a `ScrollView`** (blocked flow
+   03) — fixed by **#103 / PR #105** (`fix/103-stage-intro-scrollview`): the stage-intro screen's
+   content is now scrollable, and the CTA is reachable. **Re-run result**: flow 03 now scrolls past
+   stage-intro and reaches the categorization screen itself — further than round 1 ever verified —
+   but it does not pass, because the *next* screen in the flow has the identical defect the #103 fix
+   did not touch (finding 5 below).
+3. **The shared `Sheet`/`Modal` overlay primitive merges every descendant's text into one
+   accessibility element** (blocked flows 04 and 07) — fixed by **#104 / PR #106**
+   (`fix/104-overlay-accessibility`): both of `Overlay.tsx`'s wrapping `Pressable`s are now
+   `accessible={false}`, so a screen reader (and Maestro's `tapOn`) reaches each inner control
+   individually instead of one fused string. **Re-run result**: confirmed via `maestro hierarchy`
+   that individual sheet/modal buttons are now distinct, individually-tappable accessibility
+   elements on both affected flows. Flow 07's destructive-delete `Modal` confirmation now taps
+   correctly and the flow passes end to end. Flow 04's `ExcludeSheet` also became individually
+   tappable, but a **flow-file** issue (not a product bug — see below) still blocked it until this
+   closing task's own fix.
 
-**Net result — run standalone, one flow at a time** (`bash scripts/e2e/run-e2e.sh
-.maestro/flows/<file>`, the same command each Step above uses): 6 of 10 flows pass end to end on a
-real `Finanzas E2E` simulator — 02, 05, 06, 08, 09, 10. 01, 03, 04, 07 fail for the three reasons
-above.
+### New findings from round 2
 
-**Net result — the literal AC1 command** (`maestro test .maestro/`, all ten in one continuous
-session): 5/10 flows failed on the run recorded for this PR. `05 dashboard`, `08 settings banks`,
-`09 settings categories` and `10 notifications` passed, matching the standalone results exactly.
-`06 re-sync is idempotent` also passed in this run (it did not always land in the standalone
-sample above, timing-dependent). `01`, `03`, `04`, `07` failed for the same three reasons.
-**`02 home with data`, which passes reliably standalone, additionally failed in this combined
-run** — `01`'s app-crash finding (`App crashed or stopped while executing flow`, a variant of the
-same SecureStore throw, this time not caught by the panel's own `try`/`catch` before the process
-terminated) appears to corrupt the shared app session for whichever flow runs immediately after it
-in the same `maestro test .maestro/` invocation, not just `01` itself. This is a corollary of the
-same root-cause bug (finding 1), not a fourth independent one: once finding 1 is fixed, `01` stops
-crashing and this cascade has no trigger left. Full output:
-`.tmp/e2e/.maestro/tests/2026-08-04_205242/` (gitignored, present in the implementation branch's
-worktree at PR time) and `evidence/full-suite-run-final.txt`.
+Reaching further into two flows — now that the three bugs above no longer block them early —
+surfaced two new, real, pre-existing product bugs neither round-1 run nor its fixes ever reached.
+Both are reported here honestly, with evidence, per this item's own instruction never to stub a
+failing flow green; neither is fixed in this PR for the same reason the original three were not
+(D18 — out of scope for an E2E-flows item to change product code, and each needs its own reviewed
+fix item).
 
-AC1's literal command is correct and will pass once a human decides how to address the findings
-above (a dedicated fix item is the natural next step for each, given their cross-cutting blast
-radius) — nothing about this item's own flow files, contract or fixture surface is what keeps it
-red today.
+4. **Flow 01 (`onboarding-connect`) — the `bank-credentials` screen's RUT and password
+   `TextField`s never receive Maestro's synthetic keystrokes, even once genuinely focused.**
+   `tapOn: below: 'RUT'` (and a raw `point:` tap at the field's visual center, confirmed via
+   `maestro hierarchy` bounds) both put a real text cursor in the field — but a subsequent
+   `inputText`, of one character or many, leaves the field showing its placeholder, unchanged,
+   every time, across repeated isolated attempts (single-character taps, direct-point taps,
+   settle waits). The **same** `inputText` mechanism, same build, same session, *does* land a
+   character in the unrelated `transactions` search field (`/(tabs)/transactions`), which rules
+   out a broad Maestro/build-level typing failure and narrows this to the `bank-credentials`
+   screen specifically — `CredentialForm.tsx` / `TextField.tsx`
+   (`apps/mobile/src/features/connect-bank/`, `apps/mobile/src/components/ui/TextField.tsx`).
+   Root cause not further isolated (Metro's JS console log never reached this session — a
+   separate, unexplained gap — so the usual `console.log`-in-the-handler diagnostic was not
+   available); a dedicated fix item should reproduce with a debugger attached. **Net effect**:
+   `Conectar` stays permanently disabled (`canConnect` requires both fields non-empty), so the
+   flow can never submit a credential and reach `bank-syncing`.
+5. **Flow 03 (`categorize-batch`) — `CategorizeScreen.tsx` has the identical missing-`ScrollView`
+   defect finding 2's fix (#103) did not touch.** The screen's body (`StageProgress`,
+   `MovementCard`, `CategoryGrid`, `NotSureDisclosure`, the skip/next button row) is wrapped in a
+   plain `View`
+   (`apps/mobile/src/features/categorization/CategorizeScreen.tsx`), not a `ScrollView`. For a
+   movement with a merchant name, a bank description and four category choices (`stage-tx-income`,
+   the flow's first fixture movement), the content overflows the viewport and the `Siguiente →` /
+   `Omitir` row renders entirely off-screen — confirmed the same way finding 2 originally was: four
+   `scroll` attempts producing pixel-identical screenshots (the only pixel difference across them
+   is the status-bar clock).
+
+### Flow-file fixes (this closing task, not product bugs)
+
+Two more issues blocked flows 04 and 07 after the three product bugs above were fixed. Both were
+**flow-authoring / tooling issues in this item's own `.maestro/` deliverable**, squarely in this
+item's scope to fix, and both are fixed in this PR (see `.maestro/flows/04-transaction-detail-exclude.yaml`,
+`.maestro/flows/07-settings-wipe.yaml`, `.maestro/flow-contract.json`):
+
+- **Flow 04**: the `ExcludeSheet`'s own internal `ScrollView` needs a scroll to reach its
+  `Cancelar`/`Confirmar` footer on this device profile. `scrollUntilVisible` immediately followed
+  by `tapOn` reported both `COMPLETED` — Maestro found a real, correctly-bounded `Confirmar`
+  element and tapped it — but the tap never actually reached the button's `onPress`: the sheet
+  stayed open and the write never ran, reproducibly, across three separate taps and a settle wait.
+  Isolated against a **known-working** write path on the same screen (`Cambiar categoría`, which
+  visibly changed the transaction's category), the same screen's `actionsState` hook is
+  confirmed *not* broadly broken — the defect is specific to the `scrollUntilVisible` → `tapOn`
+  sequence. A manual `swipe` (from `50%,85%` to `50%,45%`, confined to the sheet's own bounds)
+  followed by the same `tapOn: 'Confirmar'` succeeds end to end. Fixed by replacing
+  `scrollUntilVisible` with the targeted `swipe`.
+- **Flow 07**: the settings hub's "Acerca de" and "Perfil local" rows now render a non-empty
+  subtitle ("Versión 0.0.0", "Sin bancos conectados") — unlike when these selectors were first
+  authored, when `flow-contract.json`'s own note recorded an empty subtitle, making the bare
+  `"Acerca de, "` selector a *complete* match. Maestro's `tapOn`/`assertVisible` text selector is
+  a full-string (anchored) regex match, not a substring search, so once the subtitle became
+  non-empty the bare selector stopped matching at all. Fixed by appending `.*` to both selectors
+  (`"Acerca de, .*"`, `"Perfil local, .*"`), matching the pattern the "First-run confirmations"
+  section below already documents for every other composite selector in this suite.
+
+### Net result (round 2)
+
+**Standalone, one flow at a time** (`bash scripts/e2e/run-e2e.sh .maestro/flows/<file>`): 8 of 10
+flows pass end to end on a real `Finanzas E2E` simulator — 02, 04, 05, 06, 07, 08, 09, 10. 01 and
+03 fail, for the two new findings above.
+
+**The literal AC1 command** (`maestro test .maestro/`, all ten in one continuous session, run
+twice for reproducibility): 7 of 10 flows pass — 02, 05, 06, 07, 08, 09, 10, identically across
+both runs. 01 and 03 fail identically to their standalone runs, for the same two findings. **04
+fails only in this combined run**, deterministically across both repeats, with a fixture-state
+assertion mismatch (`"Detalle de transacción cargado."` not visible; the screen instead shows the
+success toast for `stage-queue`, flow 03's own fixture state) — a cross-flow shared-session
+artifact, the same category of combined-run-only interference round 1's own report first
+documented (there, flow 01's crash corrupting whichever flow ran immediately after it). Flow 04
+passes reliably standalone (confirmed twice), so this is not attributed to flow 04's own logic or
+to this closing task's `swipe` fix.
+
+AC1's literal command passes 7/10 today (up from round 1's 5/10) and will pass fully once a human
+addresses the two new findings above — nothing about this item's own flow files, contract or
+fixture surface is what keeps it short of 10/10 today, aside from the still-unexplained full-suite
+cross-flow interference noted for flow 04.
 </content>
