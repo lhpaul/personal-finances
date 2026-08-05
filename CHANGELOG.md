@@ -213,3 +213,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   source-scan test (`stage-intro-scroll.test.ts`) proves the CTA sits inside the `ScrollView`'s
   open/close tags, with planted-violation proofs for both a missing `ScrollView` and a
   `ScrollView` present but the CTA left outside it.
+- **`CategorizeScreen`'s "Siguiente" CTA was unreachable on the reference device profile** (#107):
+  the identical defect class #103 fixed on `StageIntroScreen` — the screen wrapped its content
+  (stage progress, the movement card, the category grid, the "not sure" disclosure, the optional
+  write-failed note, and the "Omitir" / "Siguiente" buttons) in a plain `View`, not a
+  `ScrollView`, so a taxonomy-heavy category grid could push the CTA entirely off-screen on the
+  393×852 reference profile with no way to scroll to it. The content now sits inside a
+  `ScrollView`, following the same pattern `StageIntroScreen` and `CategorizeCompleteScreen`
+  already use in this same feature folder; a new source-scan test (`categorize-scroll.test.ts`,
+  mirroring `stage-intro-scroll.test.ts`) proves the "Siguiente" CTA sits inside the
+  `ScrollView`'s open/close tags, with planted-violation proofs for both a missing `ScrollView`
+  and a `ScrollView` present but the CTA left outside it. A sweep of every other screen-level
+  `SafeAreaView` in `apps/mobile/app/` and `apps/mobile/src/features/` found no further instance
+  of this defect: `CategorizeCompleteScreen` and `TransactionDetailScreen` already wrap in a
+  `ScrollView`; the two remaining screens without one (`(onboarding)/intro.tsx`,
+  `(onboarding)/ready.tsx`) use a fixed, bounded-content `justifyContent: 'space-between'` splash
+  layout, not an open-ended content list, so they are not the same defect class.

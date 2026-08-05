@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -197,7 +197,9 @@ export function CategorizeScreen({ testID }: CategorizeScreenProps) {
         closeA11yLabel={t('categorize.close_a11y')}
         onClose={() => router.replace('/(tabs)/home')}
       />
-      <View style={{ flex: 1, paddingHorizontal: theme.space['5'] }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: theme.space['5'], paddingBottom: theme.space['5'] }}
+      >
         <StageProgress current={index + 1} total={batch.length} />
 
         <MovementCard
@@ -236,7 +238,7 @@ export function CategorizeScreen({ testID }: CategorizeScreenProps) {
           </View>
         )}
 
-        <View style={{ flexDirection: 'row', gap: theme.space['3'], marginTop: theme.space['5'], marginBottom: theme.space['5'] }}>
+        <View style={{ flexDirection: 'row', gap: theme.space['3'], marginTop: theme.space['5'] }}>
           <View style={{ flex: 1 }}>
             <Button variant="outline" label={t('categorize.skip')} onPress={handleSkip} />
           </View>
@@ -248,7 +250,7 @@ export function CategorizeScreen({ testID }: CategorizeScreenProps) {
             />
           </View>
         </View>
-      </View>
+      </ScrollView>
 
       <ExcludeSheet
         visible={excludeSheetOpen}
