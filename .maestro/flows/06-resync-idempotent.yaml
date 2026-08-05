@@ -1,0 +1,61 @@
+appId: cl.finanzas.mobile.dev
+name: 06 re-sync is idempotent
+tags:
+  - core
+---
+# STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.scripted_read_action / scripted_read_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Instalar lectura guionada'
+      SUCCESS_LABEL: 'Lectura guionada instalada.'
+- openLink: 'finanzas:///bank-syncing'
+
+# The syncing screen auto-starts on mount (a pending ConnectHandoff is already armed). Advancing
+# to bank-connected is a manual "Ver resultado" tap (found on device — the plan's illustrative
+# flow assumed an automatic redirect on success; the real screen enables the CTA only once
+# phase === 'succeeded'). The third step's own badge is found on device to stay "En curso"
+# even after the read settles (a cosmetic display gap, not a functional one — confirmed the CTA
+# itself is tappable and navigates correctly once enabled), so this retries the tap instead of
+# waiting on that badge.
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          text: 'Ver resultado'
+          optional: true
+      - assertVisible:
+          text: '¡Banco conectado!'
+          optional: true
+- assertVisible: '¡Banco conectado!'
+
+- openLink: 'finanzas:///transactions'
+- assertVisible: 'Transacciones'
+# Records the current month's header count ("<mes> (<n>)") before the second sync — read back via
+# ${maestro.copiedText} (Maestro's own fixed variable name; copyTextFrom does not accept a custom
+# capture name — found on device, corrected from the plan's illustrative sample, which named one).
+- copyTextFrom:
+    text: '.*\(\d+\)'
+
+# Re-apply the same scripted read (D6: state application is idempotent) and sync again.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Instalar lectura guionada'
+      SUCCESS_LABEL: 'Lectura guionada instalada.'
+- openLink: 'finanzas:///bank-syncing'
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          text: 'Ver resultado'
+          optional: true
+      - assertVisible:
+          text: '¡Banco conectado!'
+          optional: true
+- assertVisible: '¡Banco conectado!'
+
+- openLink: 'finanzas:///transactions'
+- assertVisible: 'Transacciones'
+# Same read, re-synced: the dedup upsert must leave the count unchanged (non-negotiable 4).
+- assertVisible: '${maestro.copiedText}'

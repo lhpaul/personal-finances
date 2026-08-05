@@ -129,6 +129,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   notifications before registering the new set, so changing it reschedules instead of
   duplicating. `/settings/notifications` shows and edits the same schedule, and reflects a
   revoked OS permission as disabled.
+- **Maestro end-to-end flows** (#22): a contract-driven device E2E suite in `.maestro/` — ten
+  flows covering first-launch onboarding through bank connection, sync to a populated home, a
+  categorization session, transaction detail and exclusion, the dashboard, re-sync idempotency,
+  and (screens #18/#19/#20/#21 having all merged by the time this item was implemented) the
+  settings wipe, settings banks, settings categories and notifications flows the plan originally
+  declared as extensions. Adds the `__DEV__` `/(dev)/e2e-fixtures` panel with five named,
+  idempotent device states, a deterministic stubbed read (`complete_with_data`), and `pnpm e2e` /
+  `e2e:contract` / `e2e:lint` / `e2e:test`. No flow file contains a real credential, and the
+  credential scanner proves it in CI. The macOS `maestro-ios` job is wired but off until
+  `ENABLE_MAESTRO_E2E` is set. Running the suite for real against a Debug build found three
+  pre-existing product bugs blocking four of the ten flows (a real-device-only `expo-secure-store`
+  key-format rejection, a screen missing a `ScrollView`, and a shared overlay primitive that
+  merges sheet/modal contents into one non-individually-tappable accessibility element) — none
+  fixed here (out of this item's scope); see the runbook's *Blocked flows* section. **Closing-task
+  update**: with all three bugs fixed on `develop` (#101, #103, #106), flows 04 and 07 now pass —
+  04 needed a flow-file fix (a targeted `swipe` in place of `scrollUntilVisible` against the
+  exclude sheet's own footer) and 07 needed a selector fix (a `.*` suffix, since the settings
+  hub's "Acerca de"/"Perfil local" subtitles are no longer empty on this build). Flows 01 and 03
+  each hit a new, real, pre-existing product bug the original three findings' fixes uncovered
+  once the flows could run further — see the runbook's *Blocked flows* section for both.
 - **Encrypt the local database at rest** (#25): the on-device SQLite store is now SQLCipher-encrypted with a 32-byte key held only in `expo-secure-store`. Existing unencrypted databases migrate on first launch via a verified `sqlcipher_export` copy that never deletes the original until the replacement is confirmed row-for-row. Requires a native rebuild — this change cannot be delivered as a JS-only update.
 
 ### Fixed

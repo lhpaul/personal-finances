@@ -1,0 +1,25 @@
+appId: cl.finanzas.mobile.dev
+name: 08 settings banks
+tags:
+  - core
+---
+# Promoted from planned (implementation plan Implementation Order step 12): #20 is merged on
+# develop. STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.synced_home_action / synced_home_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar inicio sincronizado'
+      SUCCESS_LABEL: 'Inicio sincronizado cargado.'
+- openLink: 'finanzas:///settings/banks'
+
+# #screen=settings-banks: the fixture connection's own row.
+- assertVisible: 'Bancos conectados'
+# The row's name and its "Al día" status badge are merged into one accessibility label on device
+# — see data_selectors ("Banco de Chile, Al día").
+- tapOn: 'Banco de Chile, Al día'
+
+# #screen=bank-review.
+- assertVisible: 'Productos'
+- tapOn: 'Volver'
+
+- assertVisible: 'Bancos conectados'

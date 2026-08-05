@@ -37,7 +37,7 @@
 
 | Item | Value |
 | --- | --- |
-| App id | `cl.finanzas.mobile` |
+| App id | `cl.finanzas.mobile.dev` (the development-`APP_VARIANT` bundle identifier since #23 — `apps/mobile/app.config.js`; confirmed on device, corrected from the plan's `cl.finanzas.mobile`, which is the production variant) |
 | URL scheme | `finanzas://` (flows use the three-slash form, e.g. `finanzas:///e2e-fixtures`) |
 | E2E fixture panel | `/(dev)/e2e-fixtures` — deep link `finanzas:///e2e-fixtures` (`__DEV__` only) |
 | Fixture states | `reset`, `synced-home`, `stage-queue`, `transaction-detail`, `scripted-read` |
@@ -62,8 +62,9 @@
 3. `pnpm e2e:test`
 
 **Expected result**: all three exit `0`. `pnpm e2e:contract` prints one row per declared flow with
-its id, status (`wired` / `planned`), fixture state, covered screens and owning issue; six rows
-read `wired`. Keep this table — it is the evidence attached to the PR.
+its id, status (`wired` / `planned`), fixture state, covered screens and owning issue; all ten
+rows read `wired` (Implementation Order step 12's promotion happened at dispatch — see Known
+Limitations). Keep this table — it is the evidence attached to the PR.
 
 ### Step 1: Prove the credential scanner works in both directions
 
@@ -91,7 +92,7 @@ nothing.
 
 1. With Metro stopped, run `pnpm e2e`.
 2. Restart Metro. Shut down the `Finanzas E2E` simulator and run `pnpm e2e` again.
-3. Boot the simulator but uninstall the app (`xcrun simctl uninstall booted cl.finanzas.mobile`)
+3. Boot the simulator but uninstall the app (`xcrun simctl uninstall booted cl.finanzas.mobile.dev`)
    and run `pnpm e2e` again.
 
 **Expected result**: three distinct, actionable errors — no Metro, no matching booted device (with
@@ -140,8 +141,11 @@ exits `0`.
 1. `bash scripts/e2e/run-e2e.sh .maestro/flows/03-categorize-batch.yaml`
 
 **Expected result**: the `stage-queue` state applies, the stage intro shows **4** pending
-movements, the flow categorises the batch (suggested chip + `Siguiente →`, with one `Omitir`), and
-the completion screen appears. Flow exits `0`.
+movements. The first movement (merchant "Consultoría Digital SpA") opens `merchant-edit` via the
+merchant-name tap and returns, then confirms its suggested category ("Freelance") and advances;
+the remaining three are skipped (`Omitir`) — one confirm and three skips within the same batch.
+The completion screen shows the partial outcome (1 of 4 resolved), and "Continuar a inicio" lands
+on home. Flow exits `0`.
 
 ### Step 7: Flow 04 — transaction detail and exclusion
 
@@ -149,10 +153,14 @@ the completion screen appears. Flow exits `0`.
 
 1. `bash scripts/e2e/run-e2e.sh .maestro/flows/04-transaction-detail-exclude.yaml`
 
-**Expected result**: the `transaction-detail` state applies, the transactions list opens, a
-movement's detail opens, `Excluir del análisis` opens the reason sheet, confirming records the
-exclusion, and the detail screen then shows the excluded badge and note. The movement is still
-present in the list — excluded, never deleted. Flow exits `0`.
+**Expected result**: the `transaction-detail` state applies, the transactions list opens. The
+flow's own note: `transaction-detail-v1.sql`'s three fixture movements share the exact same date,
+amount and merchant by design (its own header comment) — genuinely ambiguous to a list tap — so
+the flow deep-links to the concrete `detail-tx-categorized` id rather than tapping a list row,
+consistent with D5's own "deterministic state by deep link" philosophy. `Excluir del análisis`
+opens the reason sheet, confirming records the exclusion, and the detail screen then shows the
+excluded badge and note. The movement is still present in the list — excluded, never deleted. Flow
+exits `0`.
 
 ### Step 8: Flow 05 — dashboard
 
@@ -169,22 +177,74 @@ category-report sections render, and switching to the week segment re-renders th
 
 1. `bash scripts/e2e/run-e2e.sh .maestro/flows/06-resync-idempotent.yaml`
 
-**Expected result**: the first scripted sync writes the deterministic read; the transactions month
-header shows a movement count; the second scripted sync of the **same** read leaves that count
-unchanged. A duplicated movement fails this flow. Flow exits `0`.
+**Expected result**: the syncing screen auto-starts on mount (the `scripted-read` state already
+armed a pending handoff) and redirects to `bank-connected` on success — that redirect is the
+sync-completed signal. The flow `copyTextFrom`s the transactions month-header text
+(`"<mes> (<n>)"`) before the second sync, re-applies `scripted-read`, syncs again, and asserts the
+**same** copied text is visible afterward. A duplicated movement (a different count) fails this
+flow. Flow exits `0`.
 
-### Step 10: The acceptance command
+### Step 10: Flow 08 — settings banks
+
+**Maps to**: issue #20 (merged on `develop`; promoted from `planned` to `wired` per the
+implementation plan's Implementation Order step 12)
+
+1. `bash scripts/e2e/run-e2e.sh .maestro/flows/08-settings-banks.yaml`
+
+**Expected result**: the `synced-home` state applies, `settings-banks` shows the fixture
+connection's row ("Banco de Chile"), tapping it opens `bank-review` (`Productos` visible), and
+`Volver` returns to `settings-banks`. Non-destructive — no disconnect. Flow exits `0`.
+
+### Step 11: Flow 09 — settings categories
+
+**Maps to**: issue #21 (merged on `develop`; promoted per Implementation Order step 12)
+
+1. `bash scripts/e2e/run-e2e.sh .maestro/flows/09-settings-categories.yaml`
+
+**Expected result**: `settings-categories` opens on the expense tab ("+ Nueva categoría de
+gasto"), switching to "Ingresos" shows "+ Nueva categoría de ingreso", and switching back to
+"Gastos" restores the expense-tab copy. No category is created, edited or deleted — this flow only
+exercises tab switching. Flow exits `0`.
+
+### Step 12: Flow 10 — notifications
+
+**Maps to**: issue #18 (merged on `develop`; promoted per Implementation Order step 12)
+
+1. `bash scripts/e2e/run-e2e.sh .maestro/flows/10-notifications.yaml`
+
+**Expected result**: the flow deep-links directly to `finanzas:///notifications/schedule` —
+deliberately bypassing `notifications-intro`'s "Habilitar notificaciones", which would otherwise
+require handling a real OS permission dialog this suite does not depend on. Selecting the
+"Personalizada" custom-time chip, continuing to the days step, choosing "Solo días laborales" and
+continuing again saves the schedule and lands on `onboarding-ready`. `settings-notifications` is
+then opened directly and shows the schedule just written (`Recordatorios activados`, the time and
+days sections) — no toggle is tapped, avoiding any OS permission dialog. Flow exits `0`.
+
+### Step 13: Flow 07 — settings wipe (destructive, runs last)
+
+**Maps to**: issue #19 (merged on `develop`; promoted per Implementation Order step 12)
+
+1. `bash scripts/e2e/run-e2e.sh .maestro/flows/07-settings-wipe.yaml`
+
+**Expected result**: `settings` opens; `Acerca de` shows "Privacidad por diseño."; back to
+`settings`; `Perfil local` opens `settings-account`; `Borrar todos mis datos` opens the
+confirmation modal; `Borrar todo` wipes the store and the app re-enters at `onboarding-intro`
+("Bienvenido a Finanzas"). Run this flow **last** — never before another flow in the same session.
+Flow exits `0`.
+
+### Step 14: The acceptance command
 
 **Maps to**: AC1
 
 1. Reset the device state: deep-link to `finanzas:///e2e-fixtures` and tap the `reset` action.
 2. Run the literal acceptance command from the repository root: `maestro test .maestro/`
 
-**Expected result**: exactly six flows execute, in the order `.maestro/config.yaml` declares, and
-all six pass. No subflow under `.maestro/shared/` is executed as a flow, and no `planned` flow is
-attempted. Record the output — it is the evidence attached to the PR.
+**Expected result**: exactly ten flows execute, in the order `.maestro/config.yaml` declares
+(`07-settings-wipe` last, since it wipes the store), and all ten pass. No subflow under
+`.maestro/shared/` is executed as a flow. Record the output — it is the evidence attached to the
+PR.
 
-### Step 11: CI wiring
+### Step 15: CI wiring
 
 **Maps to**: AC1 (CI half), plan D14
 
@@ -197,7 +257,7 @@ attempted. Record the output — it is the evidence attached to the PR.
 **Expected result**: the cheap checks run on every PR; the macOS job is present, correctly gated,
 and costs nothing while the repository variable is unset.
 
-### Step 12: Release-build safety
+### Step 16: Release-build safety
 
 **Maps to**: AGENTS.md non-negotiable 7, plan D3
 
@@ -219,9 +279,9 @@ and costs nothing while the repository variable is unset.
 
 ## Assertions Checklist
 
-- [ ] **AC1** — `maestro test .maestro/` runs six flows against a booted simulator and all pass.
+- [ ] **AC1** — `maestro test .maestro/` runs ten flows against a booted simulator and all pass.
 - [ ] **AC2** — no real credential appears in any file under `.maestro/`; `pnpm e2e:lint` proves it
-      and fails on each of the three planted violations in Step 1.
+      and fails on each of the four planted violations in Step 1.
 - [ ] **AC3** — this runbook exists under `docs/testing/` and every step above has been executed.
 - [ ] Onboarding through bank connection completes with a fixture credential and a stubbed read.
 - [ ] A categorization session moves the four pending movements through the queue.
@@ -229,8 +289,10 @@ and costs nothing while the repository variable is unset.
       deleted.
 - [ ] Re-syncing the same scripted read does not change the movement count.
 - [ ] Every fixture state is idempotent.
-- [ ] `pnpm e2e:contract` reports every MVP screen as covered, planned (with an owning issue), or
-      excluded (with a reason).
+- [ ] Settings wipe, settings banks, settings categories and notifications — all four promoted
+      per Implementation Order step 12 — are wired and pass (Steps 10-13).
+- [ ] `pnpm e2e:contract` reports every MVP screen as covered by a wired flow, or excluded (with a
+      reason) — no `planned` rows remain.
 - [ ] The `maestro-ios` CI job is present, doubly gated, and skipped while `ENABLE_MAESTRO_E2E` is
       unset.
 - [ ] The `__DEV__` fixture surface is unreachable in a release build.
@@ -277,12 +339,178 @@ runbooks still works.
 - **Selector surface is copy.** Screens without a root `fidelityTestId(...)` anchor (`home`, the
   onboarding screens, every settings screen) are matched by Spanish copy. `pnpm e2e:lint` catches
   drift cheaply, but a copy change still requires a flow edit.
-- **Four flows are declared but not written**: settings wipe (#19), settings banks (#20), settings
-  categories (#21) and notifications (#18). Each is a `planned` row in
-  `.maestro/flow-contract.json` naming its owning issue.
+- **All four extension flows are wired, not planned.** By the time this item was implemented,
+  #18/#19/#20/#21 were all merged on `develop`, so Implementation Order step 12's promotion
+  happened immediately rather than being left for a future item: settings wipe, settings banks,
+  settings categories and notifications are all `wired` rows in `.maestro/flow-contract.json`
+  (issues #19/#20/#21/#18 respectively, for traceability).
 - **Cross-midnight runs.** The deterministic read anchors on the run's local day. Two syncs on
   opposite sides of local midnight legitimately produce different dates; re-run from `reset`.
-- **First-run confirmations.** Record here, during implementation: whether Maestro's `clearState`
-  clears the keychain on iOS; which deep-link form each route accepts; and the exact Metro wait
-  condition used.
+
+## First-run confirmations (recorded during implementation)
+
+- **`launchApp: clearState: true` does not auto-reconnect to Metro.** It cold-starts the Expo
+  dev-client's own native "Development Servers" launcher, not the app's JS content. `fixture.yaml`
+  now taps the listed dev-server row and waits for the launcher to disappear before proceeding —
+  every flow funnels through it, so this is handled once, centrally.
+- **A one-time dev-menu tutorial sheet** ("This is the developer menu…") can appear after a fresh
+  connect, on top of whatever screen loads under it. `fixture.yaml` dismisses it (tapping the
+  sheet's own backdrop) before continuing, conditioned on the sheet's "Reload" text being visible.
+- **The device locale matters and is not automatic.** A newly-created simulator can inherit
+  `AppleLanguages`/`AppleLocale` from the host Mac (observed: `en-CL` primary on a Chile-region,
+  English-language Mac) — the app then renders in English, and every Spanish selector in this
+  suite fails. `Finanzas E2E` must have Spanish set as the **primary** language before a Debug
+  build first connects:
+  ```bash
+  xcrun simctl spawn "Finanzas E2E" defaults write -g AppleLanguages -array "es-CL" "en-CL"
+  xcrun simctl spawn "Finanzas E2E" defaults write -g AppleLocale -string "es_CL"
+  ```
+  then terminate and relaunch the app (a full simulator reboot is not required).
+- **Deep-link form**: the three-slash form (`finanzas:///<route>`) works once the app is
+  connected and running. It does **not** work immediately after a `clearState` (see above) — the
+  bare custom scheme is intercepted by the dev-client launcher until a JS bundle is loaded.
+- **Maestro's text matching requires the element's *whole* accessibility text to match** — not a
+  substring search. React Native on iOS frequently merges sibling `Text` nodes that share a
+  `Pressable`/accessible ancestor into one combined `accessibilityText` (e.g. a row's name +
+  status badge, a heading's decorative glyph + its translated title, or — most consequentially —
+  an entire `Sheet`/`Modal`'s content). A selector must equal the *whole* merged string, which is
+  why `data_selectors` carries several composite entries (`"Banco de Chile, Al día"`, `"⏰ ¿Cuándo
+  te funciona mejor?"`, `"Acerca de, .*"`) rather than the bare catalogue value — a trailing `.*`
+  is required whenever the merged remainder (a subtitle, a count) can vary or is simply non-empty
+  now where it was empty when the selector was first authored (found again in the #22 closing
+  task's round-2 run — "Acerca de, " and "Perfil local, " stopped matching once their rows' own
+  subtitles stopped being empty).
+- **`bank-syncing`'s advance to `bank-connected` is a manual "Ver resultado" tap**, not an
+  automatic redirect — the plan's illustrative flow 01 sample assumed automatic; the real screen
+  enables the CTA once `phase === 'succeeded'` and waits for the tap. The synced step's own status
+  badge was observed to stay "En curso" even after the read settles (cosmetic; the CTA itself is
+  reliably tappable once enabled) — flows 01 and 06 retry the tap a few times rather than waiting
+  on that badge.
+- **Maestro CLI version confirmed**: `2.6.0`, matching the pin. `copyTextFrom` has no way to name
+  its own captured variable — it is always read back as `${maestro.copiedText}` (the plan's
+  illustrative sample assumed a custom `id:` capture name; corrected).
+- **`scrollUntilVisible` immediately followed by `tapOn` can report both `COMPLETED` without the
+  tap ever reaching the target's `onPress`** (found in the #22 closing task's round-2 run, flow
+  04's `ExcludeSheet` footer) — the element Maestro locates is real and correctly bounded, but the
+  press does not register, reproducibly, even after a settle wait and repeated taps. A manual
+  `swipe` confined to the scrollable container's own bounds, followed by the same `tapOn`, does not
+  have this issue. Prefer a targeted `swipe` over `scrollUntilVisible` immediately before a `tapOn`
+  on the element it reveals.
+
+## Blocked flows — resolution record (round 2)
+
+The three product bugs below were each found by the round-1 device run recorded in this item's
+original PR and were **not** fixed there (out of scope for an E2E-flows item, D18). All three are
+now fixed on `develop`, and this section records the fix that landed and the round-2 re-run result
+for each affected flow — re-run against a native dev-client rebuild (the same simulator, `Finanzas
+E2E`) as a closing task for this item, once #101/#103/#106 had all merged.
+
+1. **`expo-secure-store` rejects the app's own `bank_creds:<institutionId>` key format on a real
+   device** (blocked flows 01 and 07) — fixed by **#100 / PR #101** (`fix/100-secure-store-key-format`):
+   `credentialsKeyFor` now produces a dot, not a colon (`bank_creds.banco-de-chile`), which
+   `expo-secure-store`'s `isValidKey` accepts. **Re-run result**: flow 07 now runs the `reset` and
+   `wipeLocalData` secure-store sweeps this bug used to crash, cleanly, and passes end to end,
+   standalone and in the full suite. Flow 01 no longer crashes on this bug either — but it does not
+   pass, because reaching further exposed a second, unrelated, real bug (finding 4 below).
+2. **`StageIntroScreen.tsx` wraps its content in a plain `View`, not a `ScrollView`** (blocked flow
+   03) — fixed by **#103 / PR #105** (`fix/103-stage-intro-scrollview`): the stage-intro screen's
+   content is now scrollable, and the CTA is reachable. **Re-run result**: flow 03 now scrolls past
+   stage-intro and reaches the categorization screen itself — further than round 1 ever verified —
+   but it does not pass, because the *next* screen in the flow has the identical defect the #103 fix
+   did not touch (finding 5 below).
+3. **The shared `Sheet`/`Modal` overlay primitive merges every descendant's text into one
+   accessibility element** (blocked flows 04 and 07) — fixed by **#104 / PR #106**
+   (`fix/104-overlay-accessibility`): both of `Overlay.tsx`'s wrapping `Pressable`s are now
+   `accessible={false}`, so a screen reader (and Maestro's `tapOn`) reaches each inner control
+   individually instead of one fused string. **Re-run result**: confirmed via `maestro hierarchy`
+   that individual sheet/modal buttons are now distinct, individually-tappable accessibility
+   elements on both affected flows. Flow 07's destructive-delete `Modal` confirmation now taps
+   correctly and the flow passes end to end. Flow 04's `ExcludeSheet` also became individually
+   tappable, but a **flow-file** issue (not a product bug — see below) still blocked it until this
+   closing task's own fix.
+
+### New findings from round 2
+
+Reaching further into two flows — now that the three bugs above no longer block them early —
+surfaced two new, real, pre-existing product bugs neither round-1 run nor its fixes ever reached.
+Both are reported here honestly, with evidence, per this item's own instruction never to stub a
+failing flow green; neither is fixed in this PR for the same reason the original three were not
+(D18 — out of scope for an E2E-flows item to change product code, and each needs its own reviewed
+fix item).
+
+4. **Flow 01 (`onboarding-connect`) — the `bank-credentials` screen's RUT and password
+   `TextField`s never receive Maestro's synthetic keystrokes, even once genuinely focused.**
+   `tapOn: below: 'RUT'` (and a raw `point:` tap at the field's visual center, confirmed via
+   `maestro hierarchy` bounds) both put a real text cursor in the field — but a subsequent
+   `inputText`, of one character or many, leaves the field showing its placeholder, unchanged,
+   every time, across repeated isolated attempts (single-character taps, direct-point taps,
+   settle waits). The **same** `inputText` mechanism, same build, same session, *does* land a
+   character in the unrelated `transactions` search field (`/(tabs)/transactions`), which rules
+   out a broad Maestro/build-level typing failure and narrows this to the `bank-credentials`
+   screen specifically — `CredentialForm.tsx` / `TextField.tsx`
+   (`apps/mobile/src/features/connect-bank/`, `apps/mobile/src/components/ui/TextField.tsx`).
+   Root cause not further isolated (Metro's JS console log never reached this session — a
+   separate, unexplained gap — so the usual `console.log`-in-the-handler diagnostic was not
+   available); a dedicated fix item should reproduce with a debugger attached. **Net effect**:
+   `Conectar` stays permanently disabled (`canConnect` requires both fields non-empty), so the
+   flow can never submit a credential and reach `bank-syncing`.
+5. **Flow 03 (`categorize-batch`) — `CategorizeScreen.tsx` has the identical missing-`ScrollView`
+   defect finding 2's fix (#103) did not touch.** The screen's body (`StageProgress`,
+   `MovementCard`, `CategoryGrid`, `NotSureDisclosure`, the skip/next button row) is wrapped in a
+   plain `View`
+   (`apps/mobile/src/features/categorization/CategorizeScreen.tsx`), not a `ScrollView`. For a
+   movement with a merchant name, a bank description and four category choices (`stage-tx-income`,
+   the flow's first fixture movement), the content overflows the viewport and the `Siguiente →` /
+   `Omitir` row renders entirely off-screen — confirmed the same way finding 2 originally was: four
+   `scroll` attempts producing pixel-identical screenshots (the only pixel difference across them
+   is the status-bar clock).
+
+### Flow-file fixes (this closing task, not product bugs)
+
+Two more issues blocked flows 04 and 07 after the three product bugs above were fixed. Both were
+**flow-authoring / tooling issues in this item's own `.maestro/` deliverable**, squarely in this
+item's scope to fix, and both are fixed in this PR (see `.maestro/flows/04-transaction-detail-exclude.yaml`,
+`.maestro/flows/07-settings-wipe.yaml`, `.maestro/flow-contract.json`):
+
+- **Flow 04**: the `ExcludeSheet`'s own internal `ScrollView` needs a scroll to reach its
+  `Cancelar`/`Confirmar` footer on this device profile. `scrollUntilVisible` immediately followed
+  by `tapOn` reported both `COMPLETED` — Maestro found a real, correctly-bounded `Confirmar`
+  element and tapped it — but the tap never actually reached the button's `onPress`: the sheet
+  stayed open and the write never ran, reproducibly, across three separate taps and a settle wait.
+  Isolated against a **known-working** write path on the same screen (`Cambiar categoría`, which
+  visibly changed the transaction's category), the same screen's `actionsState` hook is
+  confirmed *not* broadly broken — the defect is specific to the `scrollUntilVisible` → `tapOn`
+  sequence. A manual `swipe` (from `50%,85%` to `50%,45%`, confined to the sheet's own bounds)
+  followed by the same `tapOn: 'Confirmar'` succeeds end to end. Fixed by replacing
+  `scrollUntilVisible` with the targeted `swipe`.
+- **Flow 07**: the settings hub's "Acerca de" and "Perfil local" rows now render a non-empty
+  subtitle ("Versión 0.0.0", "Sin bancos conectados") — unlike when these selectors were first
+  authored, when `flow-contract.json`'s own note recorded an empty subtitle, making the bare
+  `"Acerca de, "` selector a *complete* match. Maestro's `tapOn`/`assertVisible` text selector is
+  a full-string (anchored) regex match, not a substring search, so once the subtitle became
+  non-empty the bare selector stopped matching at all. Fixed by appending `.*` to both selectors
+  (`"Acerca de, .*"`, `"Perfil local, .*"`), matching the pattern the "First-run confirmations"
+  section below already documents for every other composite selector in this suite.
+
+### Net result (round 2)
+
+**Standalone, one flow at a time** (`bash scripts/e2e/run-e2e.sh .maestro/flows/<file>`): 8 of 10
+flows pass end to end on a real `Finanzas E2E` simulator — 02, 04, 05, 06, 07, 08, 09, 10. 01 and
+03 fail, for the two new findings above.
+
+**The literal AC1 command** (`maestro test .maestro/`, all ten in one continuous session, run
+twice for reproducibility): 7 of 10 flows pass — 02, 05, 06, 07, 08, 09, 10, identically across
+both runs. 01 and 03 fail identically to their standalone runs, for the same two findings. **04
+fails only in this combined run**, deterministically across both repeats, with a fixture-state
+assertion mismatch (`"Detalle de transacción cargado."` not visible; the screen instead shows the
+success toast for `stage-queue`, flow 03's own fixture state) — a cross-flow shared-session
+artifact, the same category of combined-run-only interference round 1's own report first
+documented (there, flow 01's crash corrupting whichever flow ran immediately after it). Flow 04
+passes reliably standalone (confirmed twice), so this is not attributed to flow 04's own logic or
+to this closing task's `swipe` fix.
+
+AC1's literal command passes 7/10 today (up from round 1's 5/10) and will pass fully once a human
+addresses the two new findings above — nothing about this item's own flow files, contract or
+fixture surface is what keeps it short of 10/10 today, aside from the still-unexplained full-suite
+cross-flow interference noted for flow 04.
 </content>

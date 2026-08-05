@@ -98,6 +98,15 @@ jobs:
       - name: Mockup manifest verification unit tests
         run: pnpm mockups:verify:test
 
+      - name: E2E flow contract
+        run: pnpm e2e:contract
+
+      - name: E2E flow lint
+        run: pnpm e2e:lint
+
+      - name: E2E toolchain unit tests
+        run: pnpm e2e:test
+
   db-check:
     name: DB check
     runs-on: ubuntu-latest

@@ -1,0 +1,43 @@
+appId: cl.finanzas.mobile.dev
+name: 07 settings wipe (destructive — runs last)
+tags:
+  - core
+  - destructive
+---
+# Promoted from planned (implementation plan Implementation Order step 12): #19 is merged on
+# develop. Runs LAST in .maestro/config.yaml — it wipes the local store, so no other flow may run
+# after it. STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.synced_home_action / synced_home_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar inicio sincronizado'
+      SUCCESS_LABEL: 'Inicio sincronizado cargado.'
+- openLink: 'finanzas:///settings'
+
+# #screen=settings. Each hub row merges its title and subtitle into one accessibility label
+# (found on device) — see data_selectors ("Acerca de, .*", "Perfil local, .*"). Both subtitles
+# are non-empty on this build ("Versión 0.0.0", "Sin bancos conectados") — unlike when these
+# selectors were first authored, when the flow-contract's own note recorded an empty subtitle —
+# and Maestro's text selector is a full-string (anchored) regex match, not a substring search, so
+# the trailing `.*` is required to match the subtitle remainder (re-confirmed on device during the
+# #22 closing task's round-2 run).
+- assertVisible: 'Configuración'
+- tapOn: 'Acerca de, .*'
+
+# #screen=settings-about. The TopBar's own title renders as a standalone "Acerca de" (distinct
+# from the hub row's merged "Acerca de, " label above) — a screen-unique-enough anchor here since
+# the hub row that led here is no longer on screen.
+- assertVisible: 'Acerca de'
+- tapOn: 'Volver'
+- assertVisible: 'Configuración'
+- tapOn: 'Perfil local, .*'
+
+# #screen=settings-account (`default` -> `delete-confirm`).
+- assertVisible: 'Perfil local'
+- tapOn: 'Borrar todos mis datos'
+- assertVisible: '¿Estás seguro? Esta acción es permanente y no se puede deshacer: se borran tus movimientos, categorías y las credenciales de tus bancos de este dispositivo.'
+- tapOn: 'Borrar todo'
+
+# `resetAppDatabase()` and the local profile are gone — the app re-enters at onboarding
+# (AGENTS.md: "there is no sign-in — the profile is the device").
+- assertVisible: 'Bienvenido a Finanzas'

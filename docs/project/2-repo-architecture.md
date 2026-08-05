@@ -53,9 +53,10 @@ personal-finances/
 ├── scripts/
 │   ├── design/                     # Mockup manifest verification: verify-manifest.mjs, pnpm mockups:verify (#24)
 │   ├── mobile-ui/                  # Design-fidelity gate: contract, mockup/simulator capture, diff (#47)
+│   ├── e2e/                        # flow-contract.mjs · flow-lint.mjs · run-e2e.sh (#22)
 │   ├── development-workflow/       # AI workflow helpers
 │   └── dev/                        # Local dev helpers (arrives with a later item)
-├── .maestro/                       # Device E2E flows (arrives with #22)
+├── .maestro/                       # Device E2E flows — flow-contract.json, config.yaml, flows/, shared/ (#22)
 ├── .github/
 │   └── workflows/                  # ci.yml (lint/typecheck/test/db-check/bundle); eas-build.yml
 │                                    # — develop -> preview, main -> production (#23); deploy.yml
@@ -288,6 +289,9 @@ core interaction loop.
 ## A note on `e2e/`
 
 The template ships a Playwright placeholder. This product has no web surface, so the
-label-gated `e2e-regression` workflow stays disabled. End-to-end coverage runs through
-**Maestro** flows in `.maestro/` — see
-[3-software-architecture.md](3-software-architecture.md#testing-strategy).
+label-gated placeholder job in `e2e-regression.yml` stays disabled (its own
+`ENABLE_TEMPLATE_PLACEHOLDER_REGRESSION` variable is unset). End-to-end coverage runs through
+**Maestro** flows in `.maestro/` instead — see
+[3-software-architecture.md](3-software-architecture.md#testing-strategy). The same workflow file
+now also carries `maestro-ios`, the (opt-in) device leg of that suite: label-gated the same way,
+plus its own `ENABLE_MAESTRO_E2E` variable (item #22).

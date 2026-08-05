@@ -87,6 +87,21 @@ describe('scripted-runner (Decision 10)', () => {
     expect(onResult).toHaveBeenCalledTimes(1); // the original timer never fires a second result
   });
 
+  it('complete_with_data settles exactly once with the deterministic, non-empty ScrapeResult (implementation plan for issue #22, D8)', async () => {
+    installScript('complete_with_data');
+    const onResult = jest.fn();
+    const onProgress = jest.fn();
+    runInstalledScript({ onProgress, onResult });
+
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    expect(onResult).toHaveBeenCalledTimes(1);
+    const result = onResult.mock.calls[0][0];
+    expect(result).toMatchObject({ outcome: 'complete', bankId: 'banco-de-chile', readFailure: null });
+    expect(result.products).toHaveLength(2);
+    expect(result.movements).toHaveLength(6);
+    expect(onProgress).toHaveBeenCalled();
+  });
+
   it('play_full reports a non-monotonic raw sequence (the screen, not this script, absorbs it)', async () => {
     installScript('play_full');
     const progressValues: number[] = [];

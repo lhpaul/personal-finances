@@ -1,0 +1,35 @@
+appId: cl.finanzas.mobile.dev
+name: 09 settings categories
+tags:
+  - core
+---
+# Promoted from planned (implementation plan Implementation Order step 12): #21 is merged on
+# develop. STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.synced_home_action / synced_home_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar inicio sincronizado'
+      SUCCESS_LABEL: 'Inicio sincronizado cargado.'
+- openLink: 'finanzas:///settings/categories'
+
+# #screen=settings-categories: expense tab (initial), then income. The create button is below
+# the fold — the starter catalogue's ten expense categories overflow the viewport (confirmed on
+# device) — and the segment control scrolls away with the rest of the content (it is not
+# pinned), so this re-opens the screen (a fresh mount resets scroll position — confirmed on
+# device) before switching tabs rather than scrolling back up.
+- assertVisible: 'Categorías'
+- repeat:
+    times: 3
+    commands:
+      - scroll
+- assertVisible: '+ Nueva categoría de gasto'
+
+- openLink: 'finanzas:///'
+- openLink: 'finanzas:///settings/categories'
+- assertVisible: 'Categorías'
+- tapOn: 'Ingresos'
+- repeat:
+    times: 3
+    commands:
+      - scroll
+- assertVisible: '+ Nueva categoría de ingreso'

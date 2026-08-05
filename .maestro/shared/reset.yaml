@@ -1,0 +1,16 @@
+appId: cl.finanzas.mobile.dev
+---
+# launchApp(clearState) -> apply the `reset` fixture state (fixture.yaml handles reconnecting to
+# Metro and dismissing the one-time dev-menu sheet a data clear triggers) -> re-enter through the
+# real launch gate (implementation plan for issue #22, D5). Does not re-implement fixture.yaml's
+# tap sequence — every flow that needs a fresh first-launch state runs this subflow instead.
+- launchApp:
+    clearState: true
+# STATE_LABEL / SUCCESS_LABEL are the es.json values of dev.e2e_fixtures.reset_action /
+# dev.e2e_fixtures.reset_success.
+- runFlow:
+    file: fixture.yaml
+    env:
+      STATE_LABEL: 'Reiniciar (primer inicio)'
+      SUCCESS_LABEL: 'Estado reiniciado.'
+- openLink: 'finanzas:///'

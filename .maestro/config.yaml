@@ -1,0 +1,22 @@
+# Maestro E2E flows (implementation plan for issue #22, D11).
+#
+# `flows:` enumerates exactly the wired flow files, so `maestro test .maestro/` (AC1's literal
+# acceptance command) runs this suite and nothing else — it does not also try to execute
+# `.maestro/shared/*.yaml`, which are subflows, not flows.
+#
+# Order matters for one reason only: `07-settings-wipe.yaml` wipes the local store and must run
+# last, after every other flow (implementation plan Implementation Order step 12). Every other
+# flow re-applies its own fixture state at the start (via `.maestro/shared/fixture.yaml`), so the
+# rest of the order is not otherwise significant.
+appId: cl.finanzas.mobile.dev
+flows:
+  - flows/01-onboarding-connect.yaml
+  - flows/02-home-with-data.yaml
+  - flows/03-categorize-batch.yaml
+  - flows/04-transaction-detail-exclude.yaml
+  - flows/05-dashboard.yaml
+  - flows/06-resync-idempotent.yaml
+  - flows/08-settings-banks.yaml
+  - flows/09-settings-categories.yaml
+  - flows/10-notifications.yaml
+  - flows/07-settings-wipe.yaml

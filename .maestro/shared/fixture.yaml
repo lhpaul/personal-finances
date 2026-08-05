@@ -1,0 +1,40 @@
+appId: cl.finanzas.mobile.dev
+---
+# The one parameterised subflow every state application in every flow goes through
+# (implementation plan for issue #22, D5, D6). Opens the fixture panel, taps the state whose
+# action copy is passed as STATE_LABEL, and asserts the panel's own per-state success line
+# (SUCCESS_LABEL) before returning — the ordering barrier that stops a later deep link from
+# landing before the write completes (concurrent-event-source addendum).
+#
+# Two params, not one (adapted from the plan's illustrative single-STATE_LABEL sample): every
+# `dev.e2e_fixtures.*` state has its own distinct success line
+# (`apps/mobile/src/i18n/es.json`), not a shared generic one — matching this codebase's existing
+# `SampleDataPanel`/`SyncFixtures` panels, which do the same.
+#
+# Confirmed on device (Claims requiring first-run confirmation): a `launchApp: clearState: true`
+# cold-starts the Expo dev-client's own native "Development Servers" launcher, not the app's JS
+# content — it does not auto-reconnect to Metro, and a first connection after a data clear shows
+# a one-time dev-menu tutorial sheet on top of whatever screen loads. The two guards below make
+# every flow safely runnable standalone (`bash scripts/e2e/run-e2e.sh .maestro/flows/<file>`),
+# not only when preceded by `reset.yaml` in the same suite run — cheap no-ops (`SKIPPED`) once the
+# app is already connected and the sheet has been dismissed once this session.
+- runFlow:
+    when:
+      visible: "DEVELOPMENT SERVERS"
+    commands:
+      - tapOn: "http://localhost:8081"
+      - extendedWaitUntil:
+          notVisible: "DEVELOPMENT SERVERS"
+          timeout: 20000
+- runFlow:
+    when:
+      visible: "Reload"
+    commands:
+      # Taps the dev-menu sheet's own backdrop (its native chrome, in English regardless of app
+      # locale — not one of this suite's own selectors, so D10 does not apply to it) to dismiss
+      # it without navigating anywhere inside the app.
+      - tapOn:
+          point: "50%,10%"
+- openLink: 'finanzas:///e2e-fixtures'
+- tapOn: '${STATE_LABEL}'
+- assertVisible: '${SUCCESS_LABEL}'

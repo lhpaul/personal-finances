@@ -12,6 +12,7 @@ export const DEV_ONLY_ROUTES = [
   '/(dev)/sample-data',
   '/(dev)/connect-fixtures',
   '/(dev)/sync-fixtures',
+  '/(dev)/e2e-fixtures',
 ] as const;
 
 /**

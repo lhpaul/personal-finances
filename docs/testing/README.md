@@ -52,6 +52,11 @@ Does [path/to/committed/spec/for/feature] exist?
 
 > **TODO**: Define the path convention for committed specs (e.g. `apps/e2e/src/[portal]/[feature].spec.ts`) and the run commands for your project.
 
+**Mobile device tests** (this repo): the committed spec path is `.maestro/flows/*.yaml`, driven by
+`.maestro/flow-contract.json`. Run it with `pnpm e2e` (preflight-wrapped) or the literal
+`maestro test .maestro/` — see [`.maestro/README.md`](../../.maestro/README.md) and
+`docs/project/3-software-architecture.md`'s Testing Strategy section.
+
 If the spec exists, run it and report results directly. Do not write a duplicate ad-hoc script.
 
 ---

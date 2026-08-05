@@ -1,0 +1,47 @@
+appId: cl.finanzas.mobile.dev
+name: 04 transaction detail and exclusion
+tags:
+  - core
+---
+# STATE_LABEL / SUCCESS_LABEL: dev.e2e_fixtures.transaction_detail_action / transaction_detail_success.
+- runFlow:
+    file: ../shared/fixture.yaml
+    env:
+      STATE_LABEL: 'Cargar detalle de transacción'
+      SUCCESS_LABEL: 'Detalle de transacción cargado.'
+- openLink: 'finanzas:///transactions'
+
+# transactions: transaction-detail-v1.sql's three fixture movements share the exact same date,
+# amount and merchant by design (their own header comment) — genuinely ambiguous to a list tap.
+# Deep-linking to the concrete id is the deterministic, honest way to reach a *specific* movement
+# (D5's own philosophy — deterministic state by deep link, not by guessing a list position).
+- assertVisible: 'Transacciones'
+- openLink: 'finanzas:///transactions/detail-tx-categorized'
+
+# transaction-detail (categorized): exclude it. The action row is below the fold (confirmed on
+# device) — assertVisible does not auto-scroll.
+- assertVisible: 'Detalle de transacción'
+- repeat:
+    times: 3
+    commands:
+      - scroll
+- tapOn: 'Excluir del análisis'
+- assertVisible: '¿Por qué quieres excluir esta transacción?'
+- tapOn: 'Involucra a más personas'
+# The sheet's own footer (Cancelar/Confirmar) is below the fold of its internal ScrollView on
+# this device profile — a bare `scroll` swipes the full-screen default path, which starts above
+# the sheet's bounds and never reaches its content. A targeted `swipe` confined to the sheet's own
+# area does scroll it and reveal the footer (confirmed on device during the #22 closing task's
+# round-2 run). `scrollUntilVisible` + an immediate `tapOn` was tried first and reported both
+# COMPLETED, but the tap never reached the button — the write never ran and the sheet stayed open
+# even after three retries — a Maestro tooling quirk (the coordinate `scrollUntilVisible` hands to
+# the next command is stale relative to the settled scroll position), not a product bug: the exact
+# same `swipe` + `tapOn` pair against the same button succeeds end to end.
+- swipe:
+    start: '50%,85%'
+    end: '50%,45%'
+- assertVisible: 'Confirmar'
+- tapOn: 'Confirmar'
+
+# The movement is now excluded — never deleted, and still present in the list (non-negotiable 3).
+- assertVisible: 'Excluida del análisis'

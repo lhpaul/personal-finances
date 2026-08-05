@@ -1,5 +1,7 @@
 import type { FailureReasonCode, ScrapeResult, ScraperStepId } from '@finanzas/bank-scraper';
 
+import { buildE2eScrapeResult } from './e2e-read-fixture';
+
 /**
  * `__DEV__`-only scripted `ScraperRunner` support (implementation plan Decision 10, issue #11).
  * Makes every `bank-syncing` state reachable without a real bank: three of the four manifest
@@ -23,6 +25,7 @@ export type SyncFixtureScriptId =
   | 'hold_transactions'
   | 'play_full'
   | 'complete'
+  | 'complete_with_data'
   | 'fail_invalid_credentials'
   | 'fail_session_closed'
   | 'fail_network'
@@ -152,6 +155,20 @@ export function runInstalledScript(callbacks: ScriptRunCallbacks): ScriptRunHand
     after(STEP_MS * 3, () => callbacks.onProgress({ stepId: 'get-products-start', progress: 0.5 }));
     after(STEP_MS * 4, () => callbacks.onProgress({ stepId: 'get-transactions-start', progress: 0.95 }));
     after(STEP_MS * 5, () => settle(completeResult()));
+    return { cancel };
+  }
+
+  if (script === 'complete_with_data') {
+    // Same progress sequence as `play_full` (implementation plan for issue #22, Decision 8) —
+    // settles with the deterministic, non-empty `ScrapeResult` `e2e-read-fixture.ts` builds,
+    // rather than the empty `completeResult()` every other script uses. This is what makes
+    // "sync → home with data" and "re-syncing is idempotent" exercise the real sync-write path.
+    const STEP_MS = 400;
+    after(STEP_MS * 0, () => callbacks.onProgress({ stepId: 'login-start', progress: 0.1 }));
+    after(STEP_MS * 1, () => callbacks.onProgress({ stepId: 'login-start', progress: 0.2 }));
+    after(STEP_MS * 2, () => callbacks.onProgress({ stepId: 'get-products-start', progress: 0.5 }));
+    after(STEP_MS * 3, () => callbacks.onProgress({ stepId: 'get-transactions-start', progress: 0.95 }));
+    after(STEP_MS * 4, () => settle(buildE2eScrapeResult()));
     return { cancel };
   }
 
