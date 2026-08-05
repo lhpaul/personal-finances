@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { Button, Text } from '../components/ui';
@@ -28,9 +29,15 @@ type ProbeStatus =
  * `__DEV__`-gated by its own caller (`app/(dev)/gallery.tsx`, mirroring every other panel under
  * `src/dev/` — the repository's established never-ships convention) and reachable only from
  * `finanzas://gallery`, per the smoke-test runbook's own navigation instructions.
+ *
+ * `?probe=1` auto-runs the probe on mount (mirrors `src/lib/fidelity-preview.ts`'s
+ * `useFidelityPreview` deep-link convention — a `__DEV__`-only query param that forces a
+ * deterministic state without a tap sequence), so a device-tier verification run can drive this
+ * exact screen via `finanzas://gallery?probe=1` and read the result straight off a screenshot.
  */
 export function EncryptionProbeSection() {
   const { t } = useTranslation();
+  const params = useLocalSearchParams<{ probe?: string }>();
   const [status, setStatus] = useState<ProbeStatus>({ kind: 'idle' });
 
   const runProbe = useCallback(async () => {
@@ -47,6 +54,13 @@ export function EncryptionProbeSection() {
     } catch (error: unknown) {
       setStatus({ kind: 'error', error });
     }
+  }, []);
+
+  useEffect(() => {
+    if (__DEV__ && params.probe === '1') {
+      void runProbe();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per mount for the exact `?probe=1` deep link that opened this screen; `runProbe` is a stable useCallback, and re-running on every params identity change would re-trigger on unrelated navigation state.
   }, []);
 
   const outcomeCopy = (outcome: 'succeeded' | 'failed'): string =>

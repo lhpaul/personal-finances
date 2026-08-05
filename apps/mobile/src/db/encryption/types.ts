@@ -60,14 +60,35 @@ export interface CipherDatabasePort {
   /** Opens `databaseName` with no key issued. Used only for the legacy plaintext store (which
    * needs no key) and, internally to `key.ts`, as the "does the encrypted store already have
    * content" probe (Decision 3, Decision 7). */
-  openPlain(databaseName: string): CipherHandle;
+  openPlain(databaseName: string, options?: CipherOpenOptions): CipherHandle;
   /** Opens `databaseName` and issues `PRAGMA key = "x'<keyHex>'"` as the connection's first
    * statement (V15), before `PRAGMA foreign_keys = ON`. */
-  openKeyed(databaseName: string, keyHex: string): CipherHandle;
+  openKeyed(databaseName: string, keyHex: string, options?: CipherOpenOptions): CipherHandle;
   /** Deletes `databaseName` if it exists; a missing file is treated as success (Decision 7, V18).
    * Rethrows any other failure — most notably "currently open", which is a code defect (every
    * handle in this folder is closed before deletion is ever attempted). */
   deleteDatabaseIfPresent(databaseName: string): void;
+}
+
+/**
+ * **Found in independent review**: `openDatabaseSync(name)` with no options caches connections by
+ * `path + options` (V17) — a second open of the *same, still-open* path returns the identical
+ * live handle, not a fresh one. That is correct and desired for every caller in this folder
+ * except one: `src/db/encryption/diagnostics.ts`'s device probe, which must open
+ * `ENCRYPTED_DATABASE_NAME` with **no key** and with a **wrong key** while the app's own live
+ * keyed connection to that exact path is still open (Decision 12's whole premise — the probe
+ * runs from the dev gallery *after* a successful launch). Without forcing a new connection, the
+ * "no key" and "wrong key" opens would silently reuse the live, already-unlocked handle —
+ * reporting `'succeeded'` regardless of the key supplied — and the probe's own `close()` would
+ * then close the app's real, in-use connection out from under it.
+ */
+export interface CipherOpenOptions {
+  /** `true` forces a genuinely new native connection (`useNewConnection: true`, V16) even if a
+   * cached one already exists for this path. `false`/omitted (every caller except the
+   * diagnostics probe) keeps the default caching behaviour, which every other code path in this
+   * folder already satisfies correctly by always closing its own handle before a same-path
+   * reopen. */
+  forceNewConnection?: boolean;
 }
 
 /**

@@ -12,25 +12,38 @@ import {
   setUserVersionStatement,
   userTableCountStatement,
 } from '../encryption/statements';
-import type { CipherDatabasePort, CipherHandle } from '../encryption/types';
+import type { CipherDatabasePort, CipherHandle, CipherOpenOptions } from '../encryption/types';
 
 /**
  * **A labelled test double, not a proof that SQLCipher works** (implementation plan Decision 9).
  * `better-sqlite3` bundles plain SQLite and has no SQLCipher — it cannot execute `PRAGMA key` for
  * effect, and plain SQLite's `ATTACH` grammar does not even accept SQLCipher's `KEY` clause (a
  * parse error, not a silently-ignored pragma). This double therefore diverges from the real
- * statement text in exactly two places, both commented at the point of divergence below:
- * `openKeyed` never issues `keyPragma(...)`, and `attachEncrypted` omits the `KEY` clause
- * `attachEncryptedStatement(...)` produces. Everything else — `copyUserVersionTo`, `detach`,
- * `userTableCount`, the generic `exec`/`query` — reuses the exact same pure builders the real
- * device adapter (`src/db/client.ts`) does, because those operations have nothing
- * SQLCipher-specific about them.
+ * device adapter in exactly three places, each commented at its point of divergence below:
+ *
+ * 1. `openKeyed` never issues `keyPragma(...)`.
+ * 2. `attachEncrypted` omits the `KEY` clause `attachEncryptedStatement(...)` produces.
+ * 3. **Connection identity** (found in independent review): `expo-sqlite` caches connections by
+ *    path + options (V17) — a second open of an already-open path can return the *same* live
+ *    handle, and `deleteDatabaseIfPresent` throws `DeleteDatabaseException` while any cached
+ *    handle for that path remains open (V18). `better-sqlite3`'s `new Database(path)` has no such
+ *    cache — every call is a genuinely independent connection — so this double cannot reproduce
+ *    handle *identity* reuse. It reproduces the **guard** instead: a per-resolved-path open
+ *    ref-count, incremented on every `openPlain`/`openKeyed` and decremented on `close()`, makes
+ *    `deleteDatabaseIfPresent` throw the same `"…currently open. Close it prior to deletion."`
+ *    shape the real device does whenever any handle for that path is still open — so a future
+ *    discipline lapse (a caller that forgets to `close()` before deleting) fails loudly in Node,
+ *    not only in a device runbook.
+ *
+ * Everything else — `copyUserVersionTo`, `detach`, `userTableCount`, the generic `exec`/`query` —
+ * reuses the exact same pure builders the real device adapter (`src/db/client.ts`) does, because
+ * those operations have nothing SQLCipher-specific about them.
  *
  * What this double proves: the six-state resolver, the resume and abort paths, the census gate,
- * the fail-closed key branches, and the wipe ordering (Testing Strategy → "What the Node tier
- * deliberately does not prove"). It never proves `PRAGMA key` encrypts, that `sqlcipher_export`
- * copies faithfully through a codec, or that a wrong key is rejected — those three are
- * device-only, each with its own runbook step.
+ * the fail-closed key branches, the wipe ordering, and every "close before delete" ordering
+ * discipline (Testing Strategy → "What the Node tier deliberately does not prove"). It never
+ * proves `PRAGMA key` encrypts, that `sqlcipher_export` copies faithfully through a codec, or that
+ * a wrong key is rejected — those three are device-only, each with its own runbook step.
  */
 
 /** `exportMainTo`'s mirror of `sqlcipher_export`'s documented statement set (V12): every table
@@ -141,27 +154,70 @@ export interface CipherPortDeps {
 
 export function createBetterSqliteCipherPort(deps: CipherPortDeps): CipherDatabasePort {
   const reportedVersion = deps.cipherVersion === undefined ? '4.7.0-test-double' : deps.cipherVersion;
+  // Divergence #3 (module doc comment): a per-path open ref-count, standing in for
+  // `expo-sqlite`'s own cached-handle bookkeeping, so `deleteDatabaseIfPresent` can enforce V18's
+  // "currently open" guard even though this double's connections have no real identity to share.
+  const openRefCounts = new Map<string, number>();
 
   function resolvePath(databaseName: string): string {
     return path.join(deps.directory, databaseName);
+  }
+
+  function trackOpen(filePath: string): void {
+    openRefCounts.set(filePath, (openRefCounts.get(filePath) ?? 0) + 1);
+  }
+
+  function trackClose(filePath: string): void {
+    const count = openRefCounts.get(filePath) ?? 0;
+    if (count <= 1) {
+      openRefCounts.delete(filePath);
+    } else {
+      openRefCounts.set(filePath, count - 1);
+    }
+  }
+
+  /** Wraps a real handle so its `close()` also decrements the open ref-count exactly once, no
+   * matter how many times a caller (incorrectly) calls `close()` on the same handle. */
+  function openTracked(filePath: string): CipherHandle {
+    trackOpen(filePath);
+    const real = openHandle(filePath, deps.directory);
+    let closed = false;
+    return {
+      ...real,
+      close(): void {
+        if (closed) return;
+        closed = true;
+        trackClose(filePath);
+        real.close();
+      },
+    };
   }
 
   return {
     cipherVersion(): string | null {
       return reportedVersion;
     },
-    openPlain(databaseName: string): CipherHandle {
-      return openHandle(resolvePath(databaseName), deps.directory);
+    // `options` (`CipherOpenOptions`) is accepted for `CipherDatabasePort` compliance only — this
+    // double has no real connection cache to force past (see Divergence #3 above), so
+    // `forceNewConnection` has nothing to do here.
+    openPlain(databaseName: string, _options?: CipherOpenOptions): CipherHandle {
+      return openTracked(resolvePath(databaseName));
     },
-    openKeyed(databaseName: string, keyHex: string): CipherHandle {
+    openKeyed(databaseName: string, keyHex: string, _options?: CipherOpenOptions): CipherHandle {
       if (!isValidRawKeyHex(keyHex)) {
         throw new Error('cipher-port test double: openKeyed key is not 64 lowercase hex characters.');
       }
       // Divergence #2 from the real device adapter (module doc comment): no `PRAGMA key` issued.
-      return openHandle(resolvePath(databaseName), deps.directory);
+      return openTracked(resolvePath(databaseName));
     },
     deleteDatabaseIfPresent(databaseName: string): void {
       const filePath = resolvePath(databaseName);
+      if ((openRefCounts.get(filePath) ?? 0) > 0) {
+        // Mirrors V18's real `DeleteDatabaseException` message shape exactly (`ios/Exceptions.swift`
+        // / `android/…/SQLExceptions.kt`, both "...currently open. Close it prior to deletion.") so
+        // `isNotFoundError`-style substring matching in caller code behaves identically here.
+        throw new Error(`Unable to delete database '${filePath}' that is currently open. Close it prior to deletion.`);
+      }
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }

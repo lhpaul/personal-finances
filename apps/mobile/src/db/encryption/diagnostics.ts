@@ -23,11 +23,22 @@ export interface RunEncryptionDiagnosticsDeps {
  * already completed a real launch, so a genuinely correct open always finds the seeded and synced
  * content — zero tables means either the wrong key or (for the no-key case) a freshly-created,
  * still-unencrypted probe artefact, neither of which is the "succeeded" this probe is asking
- * about. */
+ * about.
+ *
+ * **Always opens `{ forceNewConnection: true }`** (found in independent review). This probe runs
+ * from the dev gallery *after* a successful launch, while `src/db/runtime.ts` still holds the
+ * app's own live, correctly-keyed connection to this exact path open. Without forcing a new
+ * connection, `expo-sqlite`'s cache-by-path-and-options behaviour (V17) would hand back that same
+ * live handle regardless of the key passed here — silently reporting `'succeeded'` for the
+ * no-key and wrong-key probes too — and this function's own `close()` would then tear down the
+ * app's real connection out from under it. */
 function probeOpen(port: CipherDatabasePort, keyHex: string | null): 'succeeded' | 'failed' {
   let handle: CipherHandle | undefined;
   try {
-    handle = keyHex === null ? port.openPlain(ENCRYPTED_DATABASE_NAME) : port.openKeyed(ENCRYPTED_DATABASE_NAME, keyHex);
+    handle =
+      keyHex === null
+        ? port.openPlain(ENCRYPTED_DATABASE_NAME, { forceNewConnection: true })
+        : port.openKeyed(ENCRYPTED_DATABASE_NAME, keyHex, { forceNewConnection: true });
     return handle.userTableCount() > 0 ? 'succeeded' : 'failed';
   } catch {
     return 'failed';
@@ -44,8 +55,11 @@ function wrongKeyDistinctFrom(realKeyHex: string | null): string {
   return candidate === realKeyHex ? '1'.repeat(64) : candidate;
 }
 
+/** Same `forceNewConnection: true` reasoning as {@link probeOpen}: the app's own live connection
+ * is open on this exact path with the exact same stored key, so a default open here would return
+ * *that* handle — and this function's own `close()` would close the live app connection. */
 function collectRowCounts(port: CipherDatabasePort, keyHex: string): Record<string, number> {
-  const handle = port.openKeyed(ENCRYPTED_DATABASE_NAME, keyHex);
+  const handle = port.openKeyed(ENCRYPTED_DATABASE_NAME, keyHex, { forceNewConnection: true });
   try {
     const counts: Record<string, number> = {};
     for (const table of CENSUS_TABLES) {

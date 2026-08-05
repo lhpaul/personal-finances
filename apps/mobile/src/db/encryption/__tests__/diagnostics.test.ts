@@ -8,6 +8,7 @@ import { createBetterSqliteCipherPort } from '../../testing/cipher-port';
 import { DB_KEY_STORAGE_KEY, ENCRYPTED_DATABASE_NAME } from '../constants';
 import { runEncryptionDiagnostics } from '../diagnostics';
 import { getLastResolvedEncryptionState, openEncryptedStore, resetEncryptionStateMemo } from '../open-encrypted-store';
+import type { CipherDatabasePort, CipherHandle } from '../types';
 
 function nodeRandomBytes(byteCount: number): Promise<Uint8Array> {
   return Promise.resolve(new Uint8Array(crypto.randomBytes(byteCount)));
@@ -164,6 +165,55 @@ describe('runEncryptionDiagnostics (Decision 12)', () => {
     } catch (error) {
       cleanup();
       throw error;
+    }
+  });
+});
+
+describe('runEncryptionDiagnostics — every open the probe makes forces a new connection (found in independent review)', () => {
+  it('passes { forceNewConnection: true } to openPlain (no-key probe) and to every openKeyed call (wrong-key probe, stored-key probe, row-count collection)', async () => {
+    const openPlainCalls: unknown[][] = [];
+    const openKeyedCalls: unknown[][] = [];
+
+    function fakeHandle(): CipherHandle {
+      return {
+        db: {} as CipherHandle['db'],
+        exec: () => undefined,
+        query: () => [],
+        userTableCount: () => 1,
+        attachEncrypted: () => undefined,
+        exportMainTo: () => undefined,
+        copyUserVersionTo: () => undefined,
+        detach: () => undefined,
+        close: () => undefined,
+      };
+    }
+
+    const port: CipherDatabasePort = {
+      cipherVersion: () => '4.7.0-fake',
+      openPlain: (databaseName, options) => {
+        openPlainCalls.push([databaseName, options]);
+        return fakeHandle();
+      },
+      openKeyed: (databaseName, keyHex, options) => {
+        openKeyedCalls.push([databaseName, keyHex, options]);
+        return fakeHandle();
+      },
+      deleteDatabaseIfPresent: () => undefined,
+    };
+    const secureStore = createMemorySecureStore({ [DB_KEY_STORAGE_KEY]: 'a'.repeat(64) });
+
+    await runEncryptionDiagnostics({ port, secureStore, digestSha256: nodeDigestSha256, resolvedState: undefined });
+
+    // The no-key probe: exactly one openPlain call, on the encrypted store path, forced new.
+    expect(openPlainCalls).toEqual([[ENCRYPTED_DATABASE_NAME, { forceNewConnection: true }]]);
+
+    // The wrong-key probe, the stored-key probe, and (since the fake handle always reports
+    // userTableCount() > 0, so openWithStoredKey is 'succeeded') the row-count collection open —
+    // three openKeyed calls, every one forced new.
+    expect(openKeyedCalls).toHaveLength(3);
+    for (const call of openKeyedCalls) {
+      expect(call[0]).toBe(ENCRYPTED_DATABASE_NAME);
+      expect(call[2]).toEqual({ forceNewConnection: true });
     }
   });
 });

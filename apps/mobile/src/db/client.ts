@@ -16,7 +16,7 @@ import {
   setUserVersionStatement,
   userTableCountStatement,
 } from './encryption/statements';
-import type { CipherDatabasePort, CipherHandle } from './encryption/types';
+import type { CipherDatabasePort, CipherHandle, CipherOpenOptions } from './encryption/types';
 
 /**
  * The only `expo-sqlite` import in the repository (implementation plan Decision 1, V27). Builds
@@ -88,6 +88,11 @@ function isNotFoundError(error: unknown): boolean {
  * preserved). `openPlain` never issues a key at all — used only for the legacy plaintext store and
  * for the "does the encrypted store already have content" existence probe
  * (`encryption/key.ts`).
+ *
+ * Both `open*` methods accept `options?.forceNewConnection` (see {@link CipherOpenOptions}'s own
+ * doc comment) and pass it straight through as `useNewConnection` — the only thing standing
+ * between the diagnostics probe and silently reusing (and then closing) the app's own live
+ * database connection.
  */
 export function createExpoCipherDatabasePort(): CipherDatabasePort {
   return {
@@ -100,13 +105,19 @@ export function createExpoCipherDatabasePort(): CipherDatabasePort {
         sqlite.closeSync();
       }
     },
-    openPlain(databaseName: string): CipherHandle {
-      const sqlite = openDatabaseSync(databaseName);
+    openPlain(databaseName: string, options?: CipherOpenOptions): CipherHandle {
+      const sqlite = openDatabaseSync(
+        databaseName,
+        options?.forceNewConnection ? { useNewConnection: true } : undefined,
+      );
       sqlite.execSync('PRAGMA foreign_keys = ON;');
       return buildHandle(sqlite);
     },
-    openKeyed(databaseName: string, keyHex: string): CipherHandle {
-      const sqlite = openDatabaseSync(databaseName);
+    openKeyed(databaseName: string, keyHex: string, options?: CipherOpenOptions): CipherHandle {
+      const sqlite = openDatabaseSync(
+        databaseName,
+        options?.forceNewConnection ? { useNewConnection: true } : undefined,
+      );
       sqlite.execSync(keyPragma(keyHex));
       sqlite.execSync('PRAGMA foreign_keys = ON;');
       return buildHandle(sqlite);

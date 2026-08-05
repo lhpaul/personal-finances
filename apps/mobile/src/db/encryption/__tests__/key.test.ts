@@ -8,7 +8,7 @@ import { createBetterSqliteCipherPort } from '../../testing/cipher-port';
 import { DB_KEY_STORAGE_KEY, ENCRYPTED_DATABASE_NAME } from '../constants';
 import { DatabaseKeyMissingError } from '../errors';
 import { isValidRawKeyHex } from '../statements';
-import { ensureDatabaseKey } from '../key';
+import { encryptedStoreHasContent, ensureDatabaseKey } from '../key';
 
 function nodeRandomBytes(byteCount: number): Promise<Uint8Array> {
   return Promise.resolve(new Uint8Array(crypto.randomBytes(byteCount)));
@@ -127,6 +127,48 @@ describe('ensureDatabaseKey — unrecoverable_key_missing (Decision 5, R2)', () 
       expect(secureStore.entries()[DB_KEY_STORAGE_KEY]).toBeUndefined();
       expect(fs.existsSync(encryptedPath)).toBe(true);
       expect(fs.statSync(encryptedPath).size).toBe(sizeBefore);
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+describe('encryptedStoreHasContent — checks the actual table count, not just "did the open throw" (found in independent review)', () => {
+  it('reports true, and never deletes, when a plain open succeeds cleanly but finds real tables and rows', () => {
+    const { directory, cleanup } = tempDirectory();
+    try {
+      const port = createBetterSqliteCipherPort({ directory });
+      // Fabricates the anomalous shape a bare "did it throw?" check would misclassify: a file at
+      // ENCRYPTED_DATABASE_NAME that opens as plain SQLite *without* throwing (so the pre-fix
+      // check would have read this as "no content" and deleted it), but genuinely has a table and
+      // a row in it.
+      const seedHandle = port.openPlain(ENCRYPTED_DATABASE_NAME);
+      seedHandle.exec('CREATE TABLE some_real_table (id TEXT PRIMARY KEY);');
+      seedHandle.exec("INSERT INTO some_real_table (id) VALUES ('real-row');");
+      seedHandle.close();
+      const encryptedPath = path.join(directory, ENCRYPTED_DATABASE_NAME);
+      const sizeBefore = fs.statSync(encryptedPath).size;
+
+      const hasContent = encryptedStoreHasContent(port);
+
+      expect(hasContent).toBe(true);
+      // Never deleted: the file and its size are untouched.
+      expect(fs.existsSync(encryptedPath)).toBe(true);
+      expect(fs.statSync(encryptedPath).size).toBe(sizeBefore);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('reports false, and deletes the zero-table artefact, when a plain open finds genuinely no tables', () => {
+    const { directory, cleanup } = tempDirectory();
+    try {
+      const port = createBetterSqliteCipherPort({ directory });
+
+      const hasContent = encryptedStoreHasContent(port);
+
+      expect(hasContent).toBe(false);
+      expect(fs.existsSync(path.join(directory, ENCRYPTED_DATABASE_NAME))).toBe(false);
     } finally {
       cleanup();
     }

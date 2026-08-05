@@ -33,13 +33,20 @@ function bytesToHex(bytes: Uint8Array): string {
  * handle). It is deleted here, immediately, before this function returns, so a subsequent
  * `openKeyed` call for the same path always gets a genuinely fresh, never-before-written file —
  * required for `PRAGMA key` to be the connection's true first statement (V15).
+ *
+ * **Found in independent review**: a bare "did `userTableCount()` throw?" check treats a
+ * clean-but-*non-zero* result identically to a genuinely empty artefact — "didn't throw" is not
+ * the same claim as "no content". The count itself is checked (`> 0`), mirroring
+ * `open-encrypted-store.ts`'s own legacy-store probe (`legacyProbe.userTableCount() > 0`), so a
+ * future invariant break that leaves a plain-readable file with real rows at
+ * `ENCRYPTED_DATABASE_NAME` is treated as content — never deleted, never silently paved over by a
+ * newly generated key.
  */
 export function encryptedStoreHasContent(port: CipherDatabasePort): boolean {
   const handle = port.openPlain(ENCRYPTED_DATABASE_NAME);
   let hasContent: boolean;
   try {
-    handle.userTableCount();
-    hasContent = false;
+    hasContent = handle.userTableCount() > 0;
   } catch {
     hasContent = true;
   } finally {
