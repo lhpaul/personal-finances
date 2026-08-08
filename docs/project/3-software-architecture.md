@@ -77,6 +77,8 @@ passcode and the OS sandbox.
 **How it comes back:** `auth` and `verify-code` are drawn in the mockups and flagged
 `mvp: false`. When sync ships, identity ships with it, backed by a managed auth provider that
 never sees financial data. `users.id` and stable UUID keys already exist as anchors.
+The accepted remote-architecture decisions are recorded in [Architecture decisions](../decisions/README.md);
+they do not add authentication, a backend, or remote data storage to the MVP.
 
 ### 6. One port, one adapter, one boundary, per native capability
 
