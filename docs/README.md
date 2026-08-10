@@ -11,6 +11,7 @@ These files describe your specific project. They are generated via the [project 
 | [3-software-architecture.md](project/3-software-architecture.md) | Tech stack, design patterns, key architectural decisions       |
 | [4-database-model.md](project/4-database-model.md)               | Data model, schema, access patterns (delete if not applicable) |
 | [5-release-and-signing-runbook.md](project/5-release-and-signing-runbook.md) | EAS build profiles, credential model, delivery workflow, `/prepare-release` integration |
+| [Architecture decisions](decisions/README.md) | Accepted, superseded, and proposed architectural decision records |
 
 ## Best Practices
 
