@@ -72,6 +72,9 @@ apps/mobile/                # @finanzas/mobile — the only shippable artifact
                              #   result, writes products/movements/connection state; #10
     lib/ · hooks/ · i18n/ · types/ · test-utils/
     theme.ts                # Mirror of design/tokens.json
+apps/scraper-lab/           # @finanzas/scraper-lab — developer-only scraper harness (not shipped).
+                             #   Explicit exception to the product scraper flow above: visible
+                             #   WebView for debugging, no SQLite — lab-only, never ships.
 packages/
   shared-domain/            # Pure rules & domain types: no React, no SQL, no I/O
   shared-utils/             # CLP money, dates, RUT
@@ -88,8 +91,8 @@ overrides, and the theme lives at `apps/mobile/src/theme.ts`.
 Layering: `app/ → feature hooks → src/db → SQLite`. Screens never import Drizzle.
 `@finanzas/shared-domain` never imports from `apps/`, from `expo-*`, or from any SQL library.
 
-Local, gitignored reference: `bank-scrapper-app/` (source for `packages/bank-scraper`;
-Banco de Chile already implemented) and `personal-finances-app-mockups-v0/` (superseded).
+Local, gitignored reference: `bank-scrapper-app/` (superseded in-repo by `apps/scraper-lab`;
+Banco de Chile was already implemented there) and `personal-finances-app-mockups-v0/` (superseded).
 
 ---
 
@@ -191,6 +194,8 @@ For normal Codex usage, use `/run-work` to scan the portfolio and discover what 
 # Development (Node 22 via .nvmrc, pnpm 11.12.0 via packageManager)
 pnpm install
 pnpm dev:mobile
+pnpm dev:scraper-lab                            # Metro for the scraper harness
+pnpm dev:scraper-lab:ios                        # first time: native dev client (not Expo Go)
 
 # Mockups (the UI contract — open before implementing any screen)
 open design/mockups/mobile/index.html
@@ -349,7 +354,7 @@ Read [`docs/best-practices/STACK-SPECIFIC.md`](docs/best-practices/STACK-SPECIFI
 | Settings still shows the old figures after "Borrar todos mis datos" | The memoized database handle was not reset | `resetAppDatabase()` (`apps/mobile/src/db/runtime.ts`) is the only sanctioned invalidation path (item #19) — check that `use-wipe-local-data.ts` passes it as `resetStore`, and that no screen holds its own copy of a pre-wipe `db` handle across the wipe |
 | Category order differs between `settings-categories` and a categorization picker | Something sorted categories outside `listCategories`. `sort_order` is written only by `reorderCategories` and `createUserCategory` (item #21) — find and remove the second ordering source rather than adding a threshold or a special case |
 | The app on the Simulator is labelled `Finanzas`, not `Finanzas [DEV]` | A build installed before #23 landed, carrying the old shared `cl.finanzas.mobile` identifier. Delete it from the Simulator, then rebuild: `expo prebuild --clean` then `expo run:ios` |
-| An `EAS build` workflow run never enqueues a build after a merge to `develop`/`main` | Either `EXPO_TOKEN` is absent (expected before `docs/project/5-release-and-signing-runbook.md`'s H3) — check the `preflight` job's `::notice::` — or the push touched no path under the workflow's filter (`apps/**`, `packages/**`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`) |
+| An `EAS build` workflow run never enqueues a build after a merge to `develop`/`main` | Either `EXPO_TOKEN` is absent (expected before `docs/project/5-release-and-signing-runbook.md`'s H3) — check the `preflight` job's `::notice::` — or the push touched no path under the workflow's filter (`apps/mobile/**`, `packages/**`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`) |
 | `pnpm typecheck` fails with `TS2589: Type instantiation is excessively deep and possibly infinite` on a file that calls `t()` through a reused parameter type | The flat i18next catalogue (`es.json`) has grown past a size where `ReturnType<typeof useTranslation>['t']`, used as a standalone parameter type, blows up TypeScript's generic resolution for `i18next`'s `TFunction` overloads (found in review, item #21, at ~740 keys). Every affected file's helper function must take `t: TFunction` (`import type { TFunction } from 'i18next'`) instead of re-deriving the type from `useTranslation()` — the fix is mechanical (a type annotation only, no runtime change) but is not automatic: a newly-added helper that copies the old pattern will reintroduce the failure the next time the catalogue grows |
 | A reminder fires twice, or an old reminder still fires after the schedule changed | A write bypassed `applyReminderSchedule` | Every schedule change must go through `applyReminderSchedule` (`apps/mobile/src/features/reminders/apply-schedule.ts`, item #18), which cancels every `finanzas-reminder*` identifier it owns before scheduling the new set — a caller that calls `NotificationsPort.schedule()` directly skips that cancellation |
 | A `.maestro/` flow fails at its very first `assertVisible` | Metro is not running, or the installed build is not a Debug (`__DEV__`) build (item #22 D3) | `curl -s http://localhost:8081/status`; rebuild a Debug client with `npx expo run:ios --device "Finanzas E2E"`. `bash scripts/e2e/run-e2e.sh` checks both before invoking `maestro` and fails with an actionable message instead of a mysterious timeout |

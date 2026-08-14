@@ -20,6 +20,26 @@ export type LoadEndDecision =
   | { kind: 'no_script' }
   | { kind: 'inject'; scriptKey: string; delay?: number };
 
+/**
+ * Match a configured script path against the URL's pathname + hash (never the host).
+ * Root path `/` is exact-only so it cannot starve more specific routes. When several paths
+ * match, the longest wins.
+ */
+export function matchScriptPath(url: string, path: string): boolean {
+  let location: string;
+  try {
+    const parsed = new URL(url);
+    location = `${parsed.pathname}${parsed.hash}`;
+  } catch {
+    return false;
+  }
+  if (path === '/') {
+    const pathname = location.split('#')[0] ?? location;
+    return pathname === '/' || pathname === '';
+  }
+  return location.includes(path);
+}
+
 export class WebViewDriverService {
   readonly #port: WebViewPort;
   readonly #config: BankConfig;
@@ -57,10 +77,16 @@ export class WebViewDriverService {
     }
     this.#pageLoadedState = { url, loaded: true };
 
-    const scriptKey = Object.keys(this.#config.scripts).find((key) => {
+    let scriptKey: string | undefined;
+    let bestPathLength = -1;
+    for (const key of Object.keys(this.#config.scripts)) {
       const path = this.#config.scripts[key]?.path;
-      return path !== undefined && url.includes(path);
-    });
+      if (path === undefined || !matchScriptPath(url, path)) continue;
+      if (path.length > bestPathLength) {
+        bestPathLength = path.length;
+        scriptKey = key;
+      }
+    }
     if (!scriptKey) return { kind: 'no_script' };
 
     const scriptConfig = this.#config.scripts[scriptKey];

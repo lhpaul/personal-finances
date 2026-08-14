@@ -51,7 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   minor-unit amount parsing including foreign-currency card movements, timezone-independent
   `DD/MM/YYYY` dates, bounded retries with an overall read deadline, and
   `complete` / `partial` / `failed` / `cancelled` read outcomes carrying an opaque per-product
-  identity. Banco Falabella and Banco Pelotillehue are not ported.
+  identity.
+- **Scraper lab app sharing `@finanzas/bank-scraper`** (#116): Falabella and a synthetic Banco
+  Pelotillehue join Banco de Chile in the scraper package (origin allowlist, `toJsStringLiteral`,
+  per-directory containment). `apps/scraper-lab` is a second Expo 54 host with a visible WebView
+  and no SQLite. The product picker still lists only Chile as `available`. EAS auto-builds are
+  filtered to `apps/mobile/**` so the lab is never built on merge.
 - **Design-fidelity gate: port the Zeki fidelity kit wired to the mockup manifest** (#47): `scripts/mobile-ui/` compares every `mvp: true` mockup screen state against the running app on a 393×852 iOS simulator and fails when the pixel mismatch exceeds the screen's threshold. A fidelity contract registers all 64 MVP screen/state targets against `design/mockups/mobile/mockup-manifest.js` and is validated in CI, so a mockup state cannot be added — or a screen shipped — without the gate noticing. `pnpm fidelity:verify-gate` proves the comparison passes on a faithful build and fails on a wrong token, a wrong state and a wrong device size.
 - **Home screen** (#12): the challenge hero, financial summary, trend chart, category
   breakdown, recent movements and connected-banks card, in all four manifest states
@@ -154,6 +159,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Encrypt the local database at rest** (#25): the on-device SQLite store is now SQLCipher-encrypted with a 32-byte key held only in `expo-secure-store`. Existing unencrypted databases migrate on first launch via a verified `sqlcipher_export` copy that never deletes the original until the replacement is confirmed row-for-row. Requires a native rebuild — this change cannot be delivered as a JS-only update.
 
 ### Fixed
+
+- **iOS scrape start no longer crashes on `about:blank`** (#116): `react-native-webview` treats a URI without a host as a file URL and calls `WKWebView loadFileURL`, which throws `about:blank is not a file URL`. The host WebView now loads a blank HTML document for bootstrap and teardown, matching the old lab.
+- **Bank pages stay in the in-app WebView instead of Safari** (#116): `originWhitelist` was bound to `allowedOrigins`, and react-native-webview opens any non-matching URL with `Linking.openURL`. The allowlist remains the navigation/injection/in-page gates; `originWhitelist` stays the default `http://*` / `https://*` so a bank redirect does not leave the app.
+- **Banco de Chile post-login portal is an allowed origin** (#116): after sign-in the bank navigates to `https://portalpersonas.bancochile.cl`. That host is now on `allowedOrigins`; credentials are still typed only at `https://login.portales.bancochile.cl`.
 
 - **Foreign-currency movements no longer leak into peso totals on home or the categorization
   completion tiles** (#86): `sumIncludedByDirectionAndCategory`, `sumIncludedByDirectionAndDay`

@@ -2,10 +2,14 @@ import { resolveBankConfigOrReject } from '../engine/scrape-session';
 import { BANK_CONFIGS } from './index';
 import { CL_BANKS } from './cl';
 
-describe('BANK_CONFIGS registry — AC28: exactly one bank for Chile', () => {
-  it('lists exactly one Chilean bank, banco-de-chile', () => {
-    expect(CL_BANKS).toHaveLength(1);
-    expect(CL_BANKS[0]?.id).toBe('banco-de-chile');
+describe('BANK_CONFIGS registry', () => {
+  it('lists the three Chilean banks with unique ids', () => {
+    expect(CL_BANKS.map((bank) => bank.id).sort()).toEqual([
+      'banco-de-chile',
+      'banco-pelotillehue',
+      'falabella',
+    ]);
+    expect(new Set(CL_BANKS.map((bank) => bank.id)).size).toBe(CL_BANKS.length);
   });
 
   it('the registry exposes cl as the only country key with data', () => {
@@ -28,6 +32,14 @@ describe('BANK_CONFIGS registry — AC18: refusal for an unsupported bank or cou
     const result = resolveBankConfigOrReject(BANK_CONFIGS, 'cl', 'banco-de-chile');
     expect(result).not.toHaveProperty('reason');
     expect((result as { id: string }).id).toBe('banco-de-chile');
+  });
+
+  it('resolves falabella and banco-pelotillehue', () => {
+    expect(resolveBankConfigOrReject(BANK_CONFIGS, 'cl', 'falabella')).toHaveProperty('id', 'falabella');
+    expect(resolveBankConfigOrReject(BANK_CONFIGS, 'cl', 'banco-pelotillehue')).toHaveProperty(
+      'id',
+      'banco-pelotillehue',
+    );
   });
 
   it.each(['constructor', 'toString', 'hasOwnProperty', '__proto__'])(

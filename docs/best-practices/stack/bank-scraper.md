@@ -4,8 +4,10 @@
 reports back products and movements. It is the riskiest code in the repo: it depends on HTML
 we do not control and it is the only module that ever touches a credential.
 
-Ported from `bank-scrapper-app/apps/native/src/components/bank-scrapper/` (issue #6). Banco de
-Chile is the only bank implemented for the MVP.
+Ported from `bank-scrapper-app/apps/native/src/components/bank-scrapper/` (issue #6). The
+registry currently includes Banco de Chile (the MVP product bank), Banco Falabella (lab / future
+product), and Banco Pelotillehue (synthetic demo, never seeded in `apps/mobile`). The product
+picker still offers only Chile as `available`.
 
 ## How it works
 
@@ -87,15 +89,17 @@ only for one read.
   they appear in none of the result, its traces, or any console call. That test is not optional,
   and its own planted-defect proof is recorded in the PR that added it.
 
-## Hosting the WebView (`apps/mobile`)
+## Hosting the WebView (`apps/mobile` and `apps/scraper-lab`)
 
 The React component (`BankScraperComponent`, in `src/component/` — a deep import,
 `@finanzas/bank-scraper/src/component`, deliberately **not** re-exported from the package's
 headless barrel) is the only file in this package that imports `react`, `react-native` or
-`react-native-webview`. `apps/mobile` does not depend on `react-native-webview` on its own — item
-#11's `#screen=bank-syncing` (`apps/mobile/src/features/bank-syncing/use-scraper-runner.tsx`) adds
-it and is the **only** module allowed to import that deep path
-(`no-secure-store-import.test.ts` in that feature asserts this mechanically).
+`react-native-webview`. `apps/mobile` hosts it from
+`apps/mobile/src/features/bank-syncing/use-scraper-runner.tsx` (the **only** module in that app
+allowed to import that deep path — `no-secure-store-import.test.ts` asserts this mechanically).
+`apps/scraper-lab` hosts it from `app/credentials.tsx` with `debugVisible: true` so a developer
+can watch the bank page. Synthetic banks may set `BankConfig.inlineHtml`; the component then
+loads that markup with `baseUrl` equal to `config.url` instead of fetching a remote page.
 
 - `react-native-webview` is a **native module**. A native runtime error (`Cannot find native
   module ...`) needs a rebuilt dev client — never test this screen from Expo Go. `Unable to
@@ -140,10 +144,12 @@ There is no per-bank `tsconfig` — every bank's directory is compiled by the si
 `packages/bank-scraper/tsconfig.json` (`rootDir: "src"`, `include: ["src"]`). Register the new
 config in `src/configs/cl/index.ts` and, if it is a new country, `src/configs/index.ts` — these two
 registry files are the one intentional, named exception to "no file outside the bank's own
-directory changes"; every other file this containment property covers stays inside
+directory changes", together with `src/scripts/all-generated-scripts.ts` (security scans over
+every generated routine) and the containment/registry tests themselves; every other file this
+containment property covers stays inside
 `src/configs/cl/<bank-name>/`. A committed test (`testing/bank-containment.test.ts`) asserts this,
 not a one-off grep at review time — it also asserts the registry never accidentally has more than
-one entry per bank id.
+one entry per bank id. Identifiers of one bank must not appear under another bank's directory.
 
 ## Testing
 

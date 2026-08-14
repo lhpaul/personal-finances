@@ -11,6 +11,7 @@ import { ScrapeSession } from '../engine/scrape-session';
 import type { BankConfig, WebViewPort } from '../types/bank-config.types';
 import type { ScraperStepId } from '../types/protocol.types';
 import type { ScrapeResult } from '../types/scrape-result.types';
+import { ABOUT_BLANK_URL, resolveWebViewSource } from './webview-source';
 
 /**
  * The hidden `<WebView>` and its `WebViewPort` implementation (implementation plan Decision 14,
@@ -24,8 +25,6 @@ import type { ScrapeResult } from '../types/scrape-result.types';
  * app — this component itself has no test in this item's suite. Every acceptance criterion is
  * exercised through `WebViewPort` and `FakeWebViewPort`, never through this component.
  */
-
-const ABOUT_BLANK_URL = 'about:blank';
 
 /**
  * `WebView`'s exported class type is `class WebView<P = undefined> extends Component<WebViewProps
@@ -124,14 +123,17 @@ export const BankScraperComponent = forwardRef<BankScraperHandle, BankScraperPro
       <WebView
         ref={webViewRef}
         style={debugVisible ? styles.visibleWebView : styles.hiddenWebView}
-        source={{ uri: sourceUri }}
+        source={resolveWebViewSource(sourceUri, config)}
         onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
         onMessage={handleMessage}
-        // allowedOrigins is readonly string[]; originWhitelist accepts string[] — a direct cast
-        // is sufficient (CodeRabbit finding #3), no need to go through `unknown` first.
-        originWhitelist={config.allowedOrigins as string[]}
+        // originWhitelist is a *browser* filter: a URL that fails it is opened with
+        // Linking.openURL (Safari). The exact-origin gate is onShouldStartLoadWithRequest,
+        // which cancels in-app. Do not pass allowedOrigins here — a bank redirect off the
+        // credential-entry origin would leave the WebView.
+        originWhitelist={['http://*', 'https://*']}
+        setSupportMultipleWindows={false}
         // Selects the bank's mobile page layout, which every ported selector and fixture was
         // written against (implementation plan Decision 13) — not bot-detection evasion.
         userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"

@@ -54,6 +54,11 @@ export interface BankConfig {
   fields: BankField[];
   scripts: Record<string, ScriptConfig>;
   normalizer: BankNormalizer;
+  /**
+   * When set, the host WebView loads this markup with `baseUrl` equal to {@link BankConfig.url}
+   * instead of fetching a remote page. Used only by synthetic banks (no third-party navigation).
+   */
+  inlineHtml?: string;
 }
 
 /** The seam between the engine and the hidden browser (Decision 14). No `react-native-webview` import. */
