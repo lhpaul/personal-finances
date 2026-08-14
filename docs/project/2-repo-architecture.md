@@ -7,8 +7,9 @@ Single **Turborepo + pnpm workspaces** monorepo, following the conventions alrea
 scoped package names, shared tooling config at the repo root, and per-app config alongside each
 app.
 
-One shippable app (Expo). Packages exist only where code must be testable without booting the
-app, or is genuinely shared: pure domain rules, formatting utilities, and the bank scraper.
+One shippable app (`@finanzas/mobile`) plus a developer-only scraper lab (`@finanzas/scraper-lab`).
+Packages exist only where code must be testable without booting the app, or is genuinely shared:
+pure domain rules, formatting utilities, and the bank scraper.
 
 The repo also carries its own design system (`design/`) and the AI development workflow
 (`docs/`, `.claude/`, `scripts/`), so an agent has specs, mockups, tokens, schema and protocols
@@ -19,30 +20,31 @@ in a single clone.
 ```
 personal-finances/
 ├── apps/
-│   └── mobile/                     # @finanzas/mobile — the Expo app
-│       ├── app/                    # Expo Router routes, mirroring the mockup manifest
-│       ├── src/
-│       │   ├── components/         # Shared components; components/ui/ = design-system primitives
-│       │   ├── db/                 # Drizzle schema, migrations, seeds, repositories
-│       │   │   └── encryption/     # SQLCipher key/state/migration machinery (#25)
-│       │   ├── dev/                # __DEV__-only surfaces (design-system gallery); never ships
-│       │   ├── features/           # One folder per domain area (screens' logic)
-│       │   ├── hooks/
-│       │   ├── lib/                # Query client, formatters, logger
-│       │   ├── i18n/               # es-CL copy
-│       │   ├── types/
-│       │   ├── test-utils/
-│       │   └── theme.ts            # Mirror of design/tokens.json
-│       ├── assets/
-│       ├── drizzle/                # Generated migrations: 0000_*.sql, meta/, migrations.js
-│       ├── scripts/
-│       │   └── db/                 # db:check (four-mode CLI), db:seed (fixture builder), dump.ts
-│       │                           # dev-*.sh still arrives with a later item; EAS entry points
-│       │                           # are root package.json scripts (#23), not apps/mobile/scripts/
-│       ├── __tests__/                  # build-config.test.ts — eas.json <-> app.config.js anti-drift control (#23)
-│       ├── app.config.js · eas.json · metro.config.js
-│       ├── jest.config.js · eslint.config.mjs · tsconfig.json · expo-env.d.ts
-│       └── package.json
+│   ├── mobile/                     # @finanzas/mobile — the Expo product
+│   │   ├── app/                    # Expo Router routes, mirroring the mockup manifest
+│   │   ├── src/
+│   │   │   ├── components/         # Shared components; components/ui/ = design-system primitives
+│   │   │   ├── db/                 # Drizzle schema, migrations, seeds, repositories
+│   │   │   │   └── encryption/     # SQLCipher key/state/migration machinery (#25)
+│   │   │   ├── dev/                # __DEV__-only surfaces (design-system gallery); never ships
+│   │   │   ├── features/           # One folder per domain area (screens' logic)
+│   │   │   ├── hooks/
+│   │   │   ├── lib/                # Query client, formatters, logger
+│   │   │   ├── i18n/               # es-CL copy
+│   │   │   ├── types/
+│   │   │   ├── test-utils/
+│   │   │   └── theme.ts            # Mirror of design/tokens.json
+│   │   ├── assets/
+│   │   ├── drizzle/                # Generated migrations: 0000_*.sql, meta/, migrations.js
+│   │   ├── scripts/
+│   │   │   └── db/                 # db:check (four-mode CLI), db:seed (fixture builder), dump.ts
+│   │   │                           # dev-*.sh still arrives with a later item; EAS entry points
+│   │   │                           # are root package.json scripts (#23), not apps/mobile/scripts/
+│   │   ├── __tests__/                  # build-config.test.ts — eas.json <-> app.config.js anti-drift control (#23)
+│   │   ├── app.config.js · eas.json · metro.config.js
+│   │   ├── jest.config.js · eslint.config.mjs · tsconfig.json · expo-env.d.ts
+│   │   └── package.json
+│   └── scraper-lab/                # @finanzas/scraper-lab — on-device scraper harness (not shipped)
 ├── packages/
 │   ├── shared-domain/              # @finanzas/shared-domain — pure rules & domain types
 │   ├── shared-utils/               # @finanzas/shared-utils — money, dates, RUT
@@ -67,8 +69,8 @@ personal-finances/
 ```
 
 `bank-scrapper-app/` and `personal-finances-app-mockups-v0/` remain on disk as local reference
-(their own git repos, gitignored here). `bank-scrapper-app` is the source for
-`packages/bank-scraper`; `personal-finances-app-mockups-v0` is superseded by `design/mockups`.
+(their own git repos, gitignored here). `apps/scraper-lab` is the in-repo successor of
+`bank-scrapper-app`; `personal-finances-app-mockups-v0` is superseded by `design/mockups`.
 
 ### Conventions inherited from `zeki-platform`
 
@@ -93,13 +95,16 @@ personal-finances/
 - The theme lives in the app (`apps/mobile/src/theme.ts`), not in a UI package. Design-system
   primitives live in `apps/mobile/src/components/ui/`.
 - Root `package.json` exposes the cross-cutting commands (`dev`, `build`, `test`, `lint`,
-  `mockups:*`) and delegates app-specific ones with `pnpm --filter`.
+  `mockups:*`) and delegates app-specific ones with `pnpm --filter`. `pnpm dev` /
+  `turbo run dev` excludes `@finanzas/scraper-lab` so two Metros are not started at once;
+  use `pnpm dev:scraper-lab` for the harness.
 
 ## Applications
 
 | App | Description | Tech | Path |
 |-----|-------------|------|------|
 | `@finanzas/mobile` | The product. Onboarding, bank connection, categorization, dashboard, settings | Expo SDK 54, React Native, Expo Router, TypeScript | `apps/mobile` |
+| `@finanzas/scraper-lab` | Developer harness: pick a bank, enter credentials, run `@finanzas/bank-scraper` with a visible WebView, inspect the result. Not a store build. | Expo SDK 54, same WebView pin as mobile | `apps/scraper-lab` |
 
 There is deliberately **no web app and no backend**. The product is local-first; adding a
 server would undo the differentiator.
@@ -114,8 +119,8 @@ Expo Go cannot run any screen that imports either one.
 | Package | Purpose | Consumed by |
 |---------|---------|-------------|
 | `@finanzas/shared-domain` | Domain types plus pure rules: the inclusion rule, period aggregation math, merchant alias matching, category suggestion. No React, no SQL, no I/O | `apps/mobile` |
-| `@finanzas/shared-utils` | CLP money formatting, date/period helpers, RUT normalization and check-digit validation | `apps/mobile`, `@finanzas/bank-scraper` |
-| `@finanzas/bank-scraper` | WebView automation: `BankScraperRef.start(country, bankId, credentials)`, message protocol, state machine, per-bank script configs | `apps/mobile` |
+| `@finanzas/shared-utils` | CLP money formatting, date/period helpers, RUT normalization and check-digit validation | `apps/mobile`, `apps/scraper-lab`, `@finanzas/bank-scraper` |
+| `@finanzas/bank-scraper` | WebView automation: `startBankRead`, message protocol, state machine, per-bank script configs | `apps/mobile`, `apps/scraper-lab` |
 
 The data layer (Drizzle schema, migrations, seeds, repositories) lives in
 `apps/mobile/src/db/`, following Zeki's convention of keeping repositories inside the app that
@@ -125,6 +130,7 @@ owns them. Only one app consumes it, and it depends on `expo-sqlite`.
 
 ```
 apps/mobile → @finanzas/{shared-domain, shared-utils, bank-scraper}
+apps/scraper-lab → @finanzas/{shared-utils, bank-scraper}
 @finanzas/bank-scraper → @finanzas/shared-utils
 @finanzas/shared-domain → @finanzas/shared-utils
 ```

@@ -70,9 +70,10 @@ export interface Catalogue {
 }
 
 // -------------------------------------------------------------------------------------------
-// Banks — spec Seed Data Contract → Banks. Only `banco-de-chile` must match the scraper's
-// `bankId` (it is `available`); the other five are provisional identifiers, display-only until
-// their scrapers exist (spec Decision 9).
+// Banks — spec Seed Data Contract → Banks. Only `banco-de-chile` is `available` in the product
+// picker. Falabella's scraper lives in `@finanzas/bank-scraper` for `apps/scraper-lab`; this
+// catalogue stays `coming_soon` until a product item flips it. The other four remain display-only
+// until their scrapers exist (spec Decision 9).
 // -------------------------------------------------------------------------------------------
 const BANKS: readonly {
   slug: string;

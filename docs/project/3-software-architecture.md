@@ -8,7 +8,7 @@
 | Navigation | **Expo Router** (file-based) | Routes in `design/mockups/mobile/mockup-manifest.js` are already written as Expo Router paths — the mockup manifest doubles as the routing spec |
 | Storage | **SQLite** via `expo-sqlite` (SQLCipher-encrypted, `useSQLCipher: true` — item #25) + **Drizzle ORM** | Local-first is a product requirement, not a shortcut. Drizzle gives typed queries and file-based migrations without a codegen daemon. `useSQLCipher` is a **native build flag**: it is compiled into the binary via `app.config.js`'s `expo-sqlite` plugin entry, never delivered as a JS-only OTA update — every developer, every EAS profile and every existing dev client must be rebuilt (`npx expo prebuild --clean`) after it changes |
 | Secrets | **`expo-secure-store`** (iOS Keychain / Android Keystore) | The one place bank credentials may exist |
-| Scraping | **`react-native-webview`** + injected scripts (`@finanzas/bank-scraper`) | Ported from `bank-scrapper-app`. Banco de Chile is already implemented |
+| Scraping | **`react-native-webview`** + injected scripts (`@finanzas/bank-scraper`) | Hosted by `apps/mobile` (hidden) and `apps/scraper-lab` (visible). Registry: Chile, Falabella, synthetic Pelotillehue. Product picker still offers only Chile |
 | State | Feature hooks (`getAppDatabase()` + repository functions) + React Context for session state | Screens are read-heavy over SQLite. **Not yet using TanStack Query** — it is not installed; the current pattern is a hook that awaits `getAppDatabase()` and calls repository functions directly (established by issue #8's onboarding screens, the app's first real screens). Adopting a query library for caching/invalidation remains a possible future direction, not a current dependency |
 | Charts | Hand-rolled **`react-native-svg`** components | Item #12's home screen trend line is the first chart built (`src/components/ui/LineChart.tsx`); the dashboard (#17) adds `DonutChart` and `BarChart` and widens `LineChart`/`Legend` additively, all already drawn in the mockups. A chart library would cost more than it saves |
 | i18n | **`i18next`** + `react-i18next` + `expo-localization`, enforced by `eslint-plugin-i18next` |
@@ -37,7 +37,9 @@ with a `BankConfig`, a `WebViewPort` and the caller's credentials) plus a hidden
 implementing that port. `startBankRead({ countryCode, bankId, credentials, port, onResult })` is
 the barrel's convenience entry point: it resolves the bank/country pair against the registry and
 refuses before opening anything for an unsupported one. Bank-specific knowledge lives entirely in
-`src/configs/cl/<bank>/*.script.ts`.
+`src/configs/cl/<bank>/*.script.ts`. `apps/mobile` hosts the WebView hidden during sync;
+`apps/scraper-lab` hosts the same component with a visible WebView and does not persist the
+result.
 
 **Why:** bank sites change without warning. Adding or repairing a bank must be a contained
 change: one directory, unit-tested script generators, no app code touched.
@@ -262,7 +264,7 @@ lands; a dev client built before it landed does not, and must be rebuilt (`npx e
 
 | Branch | Target | Deployment workflow | Path filter | Approval / protections |
 |--------|--------|---------------------|-------------|------------------------|
-| `develop` | `preview` (EAS internal) | `.github/workflows/eas-build.yml` | `apps/**`, `packages/**`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the workflow file | `develop` environment, no required reviewer |
+| `develop` | `preview` (EAS internal) | `.github/workflows/eas-build.yml` | `apps/mobile/**`, `packages/**`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the workflow file | `develop` environment, no required reviewer |
 | `main` | `production` (EAS store submit) | `.github/workflows/eas-build.yml` | same as above | `production` environment — required reviewer + `EXPO_TOKEN`/`EAS_AUTO_SUBMIT` gates |
 
 Every build job gates on a `preflight` job that checks `EXPO_TOKEN`: absent, the workflow stays

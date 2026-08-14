@@ -28,6 +28,8 @@ dist/
 .expo/
 apps/mobile/ios/
 apps/mobile/android/
+apps/scraper-lab/ios/
+apps/scraper-lab/android/
 
 # Temp files
 .tmp/
@@ -44,7 +46,7 @@ credentials.json
 *.jks
 
 # Legacy working folders (own git repos; kept locally as reference)
-# - bank-scrapper-app: scraper prototype; ported into packages/bank-scraper
+# - bank-scrapper-app: original scraper prototype; superseded in-repo by apps/scraper-lab
 # - personal-finances-app-mockups-v0: Figma Make prototype, superseded by design/mockups
 bank-scrapper-app/
 personal-finances-app-mockups-v0/

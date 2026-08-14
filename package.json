@@ -9,9 +9,11 @@
     "pnpm": ">=11"
   },
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=!@finanzas/scraper-lab",
     "dev:mobile": "pnpm --filter @finanzas/mobile dev",
     "dev:mobile:ios": "pnpm --filter @finanzas/mobile dev:ios",
+    "dev:scraper-lab": "pnpm --filter @finanzas/scraper-lab dev",
+    "dev:scraper-lab:ios": "pnpm --filter @finanzas/scraper-lab run:ios",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",

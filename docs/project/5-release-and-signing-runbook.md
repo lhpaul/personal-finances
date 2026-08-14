@@ -68,7 +68,7 @@ repurposed.
 
 | Branch | Push trigger | Build profile | Environment (approval gate) |
 | --- | --- | --- | --- |
-| `develop` | Paths under `apps/**`, `packages/**`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, or the workflow file itself | `preview` | `develop` (no required reviewer) |
+| `develop` | Paths under `apps/mobile/**`, `packages/**`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, or the workflow file itself | `preview` | `develop` (no required reviewer) |
 | `main` | Same path filter | `production` | `production` (required reviewer — H7) |
 
 It also accepts `workflow_dispatch` with `profile` (`preview` / `production`) and `platform`

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { isValidRut, normalizeRut } from '@finanzas/shared-utils';
-import { BANCO_DE_CHILE_CONFIG } from '../configs/cl/banco-de-chile/banco-de-chile.config';
+import { CL_BANKS } from '../configs/cl';
 
 /**
  * AC29: Chilean RUT handling in this package is done with `@finanzas/shared-utils` rather than a
@@ -72,16 +72,15 @@ describe('source-rut-scan', () => {
     expect(violations).toEqual([]);
   });
 
-  it('the Banco de Chile config uses @finanzas/shared-utils for RUT formatting and validation', () => {
-    const rutField = BANCO_DE_CHILE_CONFIG.fields.find((field) => field.id === 'rut');
-    expect(rutField?.formatter).toBeDefined();
-    expect(rutField?.validation?.fn).toBeDefined();
-    // Cross-checks that the wired functions behave exactly like @finanzas/shared-utils's own
-    // (rather than merely being named the same), without re-importing by identity comparison —
-    // formatRut/isValidRut are re-exported through banco-de-chile.config.ts's own import.
-    expect(rutField?.formatter?.('123456785')).toBe('12.345.678-5');
-    expect(rutField?.validation?.fn?.('12.345.678-5')).toBe(true);
-    expect(rutField?.validation?.fn?.('12.345.678-9')).toBe(false);
+  it('every registered Chilean bank config uses @finanzas/shared-utils for RUT formatting and validation', () => {
+    for (const config of CL_BANKS) {
+      const rutField = config.fields.find((field) => field.id === 'rut');
+      expect(rutField?.formatter).toBeDefined();
+      expect(rutField?.validation?.fn).toBeDefined();
+      expect(rutField?.formatter?.('123456785')).toBe('12.345.678-5');
+      expect(rutField?.validation?.fn?.('12.345.678-5')).toBe(true);
+      expect(rutField?.validation?.fn?.('12.345.678-9')).toBe(false);
+    }
   });
 
   describe('planted-violation proof (recorded in the PR)', () => {

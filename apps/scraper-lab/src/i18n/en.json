@@ -1,0 +1,22 @@
+{
+  "lab.title": "Scraper Lab",
+  "lab.subtitle": "Run bank reads on-device with the WebView visible.",
+  "lab.banksHeading": "Banks",
+  "lab.credentialsTitle": "Credentials",
+  "lab.startRead": "Start read",
+  "lab.clearSaved": "Clear saved credentials",
+  "lab.showWebViewState": "Visible WebView: {{state}}",
+  "lab.running": "Reading…",
+  "lab.resultsTitle": "Result",
+  "lab.outcomeValue": "Outcome: {{outcome}} · {{bankId}}",
+  "lab.failureReason": "Reason: {{reason}}",
+  "lab.products": "Products",
+  "lab.movements": "Movements",
+  "lab.traces": "Traces",
+  "lab.noResult": "No result. Try again.",
+  "lab.back": "Back",
+  "lab.stepValue": "Step: {{step}}",
+  "lab.traceLine": "{{group}} {{type}}: {{message}}",
+  "lab.toggleOn": "on",
+  "lab.toggleOff": "off"
+}

@@ -38,6 +38,9 @@ Run the app:
 ```bash
 pnpm install
 pnpm dev:mobile
+# Scraper harness: compile a native client once (WebView is not reliable in Expo Go), then Metro:
+pnpm dev:scraper-lab:ios
+pnpm dev:scraper-lab
 ```
 
 ## How it works
@@ -80,8 +83,8 @@ canonical protocols in [`docs/workflow/`](docs/workflow/). See [`AGENTS.md`](AGE
 
 ## Local reference (not in this repo)
 
-- `bank-scrapper-app/` — the scraper prototype; Banco de Chile already works. Source for
-  `packages/bank-scraper`
+- `bank-scrapper-app/` — the original scraper prototype (gitignored). In-repo successor is
+  `apps/scraper-lab`, sharing `@finanzas/bank-scraper` with the product app
 - `personal-finances-app-mockups-v0/` — the Figma Make prototype, superseded by `design/mockups`
 
 Both are separate git repos, kept locally and gitignored here.
