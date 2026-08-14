@@ -45,6 +45,38 @@ describe('WebViewDriverService', () => {
     expect(decision).toEqual({ kind: 'inject', scriptKey: 'login', delay: undefined });
   });
 
+  it('matches a root login path without starving a longer sibling path', () => {
+    const port = new FakeWebViewPort();
+    const driver = new WebViewDriverService(
+      port,
+      buildConfig({
+        url: 'https://bank.example/',
+        scripts: {
+          home: {
+            path: '/web-clientes/techbank-client',
+            script: () => 'home-script',
+            singleExecution: true,
+          },
+          login: {
+            path: '/',
+            script: () => 'login-script',
+            singleExecution: true,
+          },
+        },
+      }),
+    );
+    expect(driver.handleLoadEnd('https://bank.example/')).toEqual({
+      kind: 'inject',
+      scriptKey: 'login',
+      delay: undefined,
+    });
+    expect(driver.handleLoadEnd('https://bank.example/web-clientes/techbank-client')).toEqual({
+      kind: 'inject',
+      scriptKey: 'home',
+      delay: undefined,
+    });
+  });
+
   it('carries the configured delay through the inject decision', () => {
     const port = new FakeWebViewPort();
     const driver = new WebViewDriverService(port, buildConfig());

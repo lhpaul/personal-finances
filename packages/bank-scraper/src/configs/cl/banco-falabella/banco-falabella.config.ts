@@ -10,9 +10,9 @@ import { bancoFalabellaNormalizer } from './banco-falabella.normalizer';
  * seed), not the source's `bancofalabella`. Login + SPA home (products and movements). The
  * product picker in `apps/mobile` stays `coming_soon` until a later item flips it.
  *
- * Script map order is load-bearing: `home` is listed first because its path is more specific.
- * `WebViewDriverService` uses `Object.keys(...).find(url.includes(path))`, so a login path of
- * `www.bancofalabella.cl` would otherwise match the home URL as well and starve the home script.
+ * Login lives at the origin root (`/`). `WebViewDriverService` matches parsed pathname+hash
+ * (exact `/` vs longer paths), so the root login path cannot starve
+ * `/web-clientes/techbank-client`.
  */
 export const BANCO_FALABELLA_CONFIG: BankConfig = {
   id: FALABELLA_BANK_ID,
@@ -43,12 +43,12 @@ export const BANCO_FALABELLA_CONFIG: BankConfig = {
   ],
   scripts: {
     home: {
-      path: 'web-clientes/techbank-client',
+      path: '/web-clientes/techbank-client',
       script: () => homeScript(),
       singleExecution: true,
     },
     login: {
-      path: 'www.bancofalabella.cl',
+      path: '/',
       script: (input) => loginScript(input as { rut: string; password: string }),
       singleExecution: true,
     },

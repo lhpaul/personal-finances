@@ -72,7 +72,9 @@ apps/mobile/                # @finanzas/mobile — the only shippable artifact
                              #   result, writes products/movements/connection state; #10
     lib/ · hooks/ · i18n/ · types/ · test-utils/
     theme.ts                # Mirror of design/tokens.json
-apps/scraper-lab/           # @finanzas/scraper-lab — on-device scraper harness (not shipped)
+apps/scraper-lab/           # @finanzas/scraper-lab — developer-only scraper harness (not shipped).
+                             #   Explicit exception to the product scraper flow above: visible
+                             #   WebView for debugging, no SQLite — lab-only, never ships.
 packages/
   shared-domain/            # Pure rules & domain types: no React, no SQL, no I/O
   shared-utils/             # CLP money, dates, RUT

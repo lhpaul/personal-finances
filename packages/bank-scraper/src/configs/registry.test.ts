@@ -35,8 +35,11 @@ describe('BANK_CONFIGS registry — AC18: refusal for an unsupported bank or cou
   });
 
   it('resolves falabella and banco-pelotillehue', () => {
-    expect(resolveBankConfigOrReject(BANK_CONFIGS, 'cl', 'falabella')).not.toHaveProperty('reason');
-    expect(resolveBankConfigOrReject(BANK_CONFIGS, 'cl', 'banco-pelotillehue')).not.toHaveProperty('reason');
+    expect(resolveBankConfigOrReject(BANK_CONFIGS, 'cl', 'falabella')).toHaveProperty('id', 'falabella');
+    expect(resolveBankConfigOrReject(BANK_CONFIGS, 'cl', 'banco-pelotillehue')).toHaveProperty(
+      'id',
+      'banco-pelotillehue',
+    );
   });
 
   it.each(['constructor', 'toString', 'hasOwnProperty', '__proto__'])(

@@ -30,19 +30,35 @@ export default function CredentialsScreen() {
   const { setResult } = useResults();
 
   const [credentials, setCredentials] = useState<Record<string, string>>({});
+  const [credentialsReady, setCredentialsReady] = useState(false);
   const [running, setRunning] = useState(false);
   const [stepId, setStepId] = useState<ScraperStepId | null>(null);
   const [debugVisible, setDebugVisible] = useState(true);
 
   useEffect(() => {
     if (!bank) return;
+    let cancelled = false;
     const initial: Record<string, string> = {};
     for (const field of bank.fields) {
       initial[field.id] = '';
     }
-    void readCredentials(expoSecureStoreAdapter, bank.id).then((saved) => {
-      setCredentials(saved ?? initial);
-    });
+    setCredentials(initial);
+    setCredentialsReady(false);
+    void readCredentials(expoSecureStoreAdapter, bank.id)
+      .then(
+        (saved) => {
+          if (!cancelled) setCredentials(saved ?? initial);
+        },
+        () => {
+          if (!cancelled) setCredentials(initial);
+        },
+      )
+      .finally(() => {
+        if (!cancelled) setCredentialsReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [bank]);
 
   const onChangeField = useCallback(
@@ -81,14 +97,14 @@ export default function CredentialsScreen() {
               maxLength={field.maxLength}
               keyboardType={field.keyboardType === 'numeric' ? 'number-pad' : 'default'}
               style={styles.input}
-              editable={!running}
+              editable={!running && credentialsReady}
             />
           </View>
         ))}
         <Pressable
           style={styles.checkbox}
           onPress={() => setDebugVisible((value) => !value)}
-          disabled={running}
+          disabled={running || !credentialsReady}
         >
           <Text>
             {t('lab.showWebViewState', {
@@ -97,8 +113,8 @@ export default function CredentialsScreen() {
           </Text>
         </Pressable>
         <Pressable
-          style={[styles.button, running && styles.buttonDisabled]}
-          disabled={running}
+          style={[styles.button, (running || !credentialsReady) && styles.buttonDisabled]}
+          disabled={running || !credentialsReady}
           onPress={() => {
             setRunning(true);
             setStepId('load-start');
@@ -114,7 +130,7 @@ export default function CredentialsScreen() {
         ) : null}
         <Pressable
           style={styles.secondary}
-          disabled={running}
+          disabled={running || !credentialsReady}
           onPress={() => {
             void deleteCredentials(expoSecureStoreAdapter, bank.id);
             const cleared: Record<string, string> = {};

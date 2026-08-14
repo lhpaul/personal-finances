@@ -42,7 +42,7 @@ export const BANCO_PELOTILLEHUE_CONFIG: BankConfig = {
   ],
   scripts: {
     login: {
-      path: 'pelotillehue.test',
+      path: '/',
       script: (input) => loginScript(input as { rut: string; password: string }),
       singleExecution: true,
     },

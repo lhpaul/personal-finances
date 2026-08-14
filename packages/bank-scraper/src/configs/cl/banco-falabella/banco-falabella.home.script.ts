@@ -10,6 +10,7 @@ import { FALABELLA_BANK_ID } from './banco-falabella.constants';
 
 const PRODUCT_LINK_SELECTOR = "document.querySelectorAll('a.div-product')";
 const PRODUCT_LINK_LABEL = 'ProductLink';
+const ACCOUNT_MOVEMENTS_TABLE_LABEL = 'AccountMovementsTable';
 const LOG_GROUP = 'home';
 
 export function homeScript(): string {
@@ -17,6 +18,10 @@ export function homeScript(): string {
     ${commonHelperFunctions()}
     ${generateInstanceIdHelperFunction()}
     ${generateWaitForElementHelperFunctions({ label: PRODUCT_LINK_LABEL, selector: `${PRODUCT_LINK_SELECTOR}[0]` })}
+    ${generateWaitForElementHelperFunctions({
+      label: ACCOUNT_MOVEMENTS_TABLE_LABEL,
+      selector: "document.getElementById('ctbListMovbfch')",
+    })}
     ${extractProductsHelper()}
     ${toReportedProductHelper()}
     ${fetchAccountTransactionsHelper()}
@@ -168,17 +173,14 @@ function extractProductsHelper(): string {
         if (!target) continue;
         window.productId = account.instanceId;
         target.click();
-        await wait(200);
-        const table = document.getElementById('ctbListMovbfch');
-        if (table) {
-          const movements = fetchAccountTransactions(account.instanceId, '${LOG_GROUP}');
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            eventType: 'state-change',
-            stepId: 'get-transactions-start',
-            progress: 0.8,
-            data: { transactions: movements },
-          }));
-        }
+        await waitFor${ACCOUNT_MOVEMENTS_TABLE_LABEL}Element();
+        const movements = fetchAccountTransactions(account.instanceId, '${LOG_GROUP}');
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          eventType: 'state-change',
+          stepId: 'get-transactions-start',
+          progress: 0.8,
+          data: { transactions: movements },
+        }));
         const homeLink = document.getElementById('Inicio');
         if (homeLink) homeLink.click();
         await wait(200);
@@ -232,6 +234,7 @@ function fetchAccountTransactionsHelper(): string {
       if (!tbody) return [];
       const rows = tbody.querySelectorAll('tr');
       const transactions = [];
+      let position = 0;
       for (let i = 0; i < rows.length; i++) {
         const cells = rows[i].querySelectorAll('td');
         if (cells.length < 4) continue;
@@ -250,9 +253,10 @@ function fetchAccountTransactionsHelper(): string {
           currencyCode: 'CLP',
           rawDescription: rawDescription,
           bankSuppliedId: null,
-          positionInReadSnapshot: i,
+          positionInReadSnapshot: position,
           extras: {},
         });
+        position += 1;
       }
       sendTrace({ logGroup: logGroup, message: 'Fetched ' + transactions.length + ' account transactions' });
       return transactions;
@@ -286,7 +290,7 @@ function fetchCreditCardTransactionsHelper(): string {
         for (let i = 0; i < rows.length; i++) {
           const cells = rows[i].querySelectorAll('td');
           if (cells.length < 4) continue;
-          const dateText = isPending ? '' : cells[0].textContent.trim();
+          const dateText = cells[0].textContent.trim();
           if (!dateText) continue;
           const rawDescription = cells[1].textContent.trim();
           const amountText = cells[3].textContent.trim();

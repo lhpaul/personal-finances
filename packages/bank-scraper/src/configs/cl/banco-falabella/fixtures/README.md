@@ -9,4 +9,4 @@ routines. None of them was captured from a live Banco Falabella session.**
 | --- | --- | --- |
 | `login.html` | `banco-falabella.login.script.ts` | Filling RUT/password after the normal-auth click, submit once. |
 | `login-invalid-credentials.html` | `banco-falabella.login.script.ts` | Visible rejection banner produces `invalid_credentials` with no bank text. |
-| `home.html` | `banco-falabella.home.script.ts` | One checking account and one credit card; two account movements and one card movement. |
+| `home.html` | `banco-falabella.home.script.ts` | One checking account and one credit card; two account movements, one billed card movement, and one pending (`billed: false`) card movement. |

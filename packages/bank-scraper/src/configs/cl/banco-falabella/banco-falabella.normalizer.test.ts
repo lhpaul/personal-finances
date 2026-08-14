@@ -47,4 +47,15 @@ describe('mapMovementExtras', () => {
       installments: '1/1',
     });
   });
+
+  it('converts an unbilled movement to billed: false', () => {
+    expect(mapMovementExtras(movement({ extras: { billed: 'false', installments: '' } }))).toEqual({
+      billed: false,
+      installments: '',
+    });
+  });
+
+  it('handles an empty extras object', () => {
+    expect(mapMovementExtras(movement({ extras: {} }))).toEqual({});
+  });
 });
